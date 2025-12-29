@@ -17,6 +17,9 @@ import ProfilePage from "./pages/ProfilePage";
 import LeaderboardPage from "./pages/LeaderboardPage";
 import InstallPage from "./pages/InstallPage";
 import RulesPage from "./pages/RulesPage";
+import FairPlayPage from "./pages/FairPlayPage";
+import TermsPage from "./pages/TermsPage";
+import FAQsPage from "./pages/FAQsPage";
 import NotFound from "./pages/NotFound";
 import AdminLayout from "./components/admin/AdminLayout";
 import AdminDashboard from "./pages/admin/AdminDashboard";
@@ -56,6 +59,9 @@ const App = () => {
               <Route path="/leaderboard" element={<LeaderboardPage />} />
               <Route path="/install" element={<InstallPage />} />
               <Route path="/rules" element={<RulesPage />} />
+              <Route path="/fair-play" element={<FairPlayPage />} />
+              <Route path="/terms" element={<TermsPage />} />
+              <Route path="/faqs" element={<FAQsPage />} />
               {/* Admin Routes */}
               <Route path="/admin/login" element={<AdminLoginPage />} />
               <Route path="/admin" element={<AdminLayout />}>

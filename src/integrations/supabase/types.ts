@@ -64,6 +64,60 @@ export type Database = {
           },
         ]
       }
+      match_results: {
+        Row: {
+          created_at: string
+          id: string
+          is_winner: boolean | null
+          kills: number | null
+          match_id: string
+          position: number | null
+          prize_amount: number | null
+          registration_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_winner?: boolean | null
+          kills?: number | null
+          match_id: string
+          position?: number | null
+          prize_amount?: number | null
+          registration_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_winner?: boolean | null
+          kills?: number | null
+          match_id?: string
+          position?: number | null
+          prize_amount?: number | null
+          registration_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "match_results_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "matches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "match_results_registration_id_fkey"
+            columns: ["registration_id"]
+            isOneToOne: false
+            referencedRelation: "match_registrations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       matches: {
         Row: {
           banner_url: string | null
