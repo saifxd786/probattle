@@ -135,6 +135,37 @@ const AuthPage = () => {
           return;
         }
 
+        // Ensure user is logged in right after signup (prevents "signed up but not logged in")
+        if (!signupData.session) {
+          const { error: signInAfterSignupError } = await supabase.auth.signInWithPassword({
+            email,
+            password: formData.password,
+          });
+
+          if (signInAfterSignupError) {
+            toast({
+              title: 'Signup Successful',
+              description: 'Account created, but login failed. Please sign in now.',
+              variant: 'destructive',
+            });
+            setIsLoading(false);
+            return;
+          }
+        }
+
+        // Ensure profile exists (so wallet/referrals work reliably)
+        if (signupData.user) {
+          await supabase.from('profiles').upsert(
+            {
+              id: signupData.user.id,
+              username: formData.username,
+              phone: formData.phone,
+              email,
+            },
+            { onConflict: 'id' }
+          );
+        }
+
         // Handle referral if code was provided
         if (referralCode && signupData.user) {
           // Find the referrer by referral code
