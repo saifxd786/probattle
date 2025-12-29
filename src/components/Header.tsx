@@ -1,14 +1,28 @@
-import { Menu, User, LogOut, Download } from 'lucide-react';
+import { Menu, User, LogOut, Download, Smartphone } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import NotificationBell from '@/components/NotificationBell';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [showInstallPrompt, setShowInstallPrompt] = useState(false);
   const { user, signOut } = useAuth();
+
+  useEffect(() => {
+    // Check if already installed as PWA
+    if (!window.matchMedia('(display-mode: standalone)').matches) {
+      setShowInstallPrompt(true);
+    }
+  }, []);
 
   const handleSignOut = async () => {
     await signOut();
@@ -47,16 +61,36 @@ const Header = () => {
 
           {/* Actions */}
           <div className="flex items-center gap-2">
-            <Button 
-              variant="neon" 
-              size="sm" 
-              className="hidden sm:flex gap-2"
-              onClick={() => window.open('/apk/proscrims.apk', '_blank')}
-            >
-              <Download className="w-4 h-4" />
-              <span className="hidden md:inline">Download APK</span>
-              <span className="md:hidden">APK</span>
-            </Button>
+            {showInstallPrompt && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button 
+                    variant="neon" 
+                    size="sm" 
+                    className="hidden sm:flex gap-2"
+                  >
+                    <Download className="w-4 h-4" />
+                    <span className="hidden md:inline">Install App</span>
+                    <span className="md:hidden">Install</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  <DropdownMenuItem asChild>
+                    <Link to="/install" className="flex items-center gap-2 cursor-pointer">
+                      <Smartphone className="w-4 h-4" />
+                      <span>PWA Install</span>
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem 
+                    onClick={() => window.open('/apk/proscrims.apk', '_blank')}
+                    className="flex items-center gap-2 cursor-pointer"
+                  >
+                    <Download className="w-4 h-4" />
+                    <span>Download APK</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
             
             <NotificationBell />
             

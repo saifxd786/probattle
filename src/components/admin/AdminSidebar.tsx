@@ -1,4 +1,4 @@
-import { LayoutDashboard, Gamepad2, Users, CreditCard, Settings, LogOut, ChevronLeft, ArrowLeftRight } from 'lucide-react';
+import { LayoutDashboard, Gamepad2, Users, CreditCard, Settings, LogOut, ChevronLeft, ArrowLeftRight, Bell } from 'lucide-react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
@@ -15,6 +15,7 @@ const navItems = [
   { title: 'Users', url: '/admin/users', icon: Users },
   { title: 'Payments', url: '/admin/payments', icon: CreditCard },
   { title: 'Transactions', url: '/admin/transactions', icon: ArrowLeftRight },
+  { title: 'Notifications', url: '/admin/notifications', icon: Bell },
   { title: 'Settings', url: '/admin/settings', icon: Settings },
 ];
 
