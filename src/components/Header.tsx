@@ -1,11 +1,18 @@
-import { Menu, User, Bell } from 'lucide-react';
+import { Menu, User, Bell, LogOut } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/contexts/AuthContext';
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const { user, signOut } = useAuth();
+
+  const handleSignOut = async () => {
+    await signOut();
+    setIsMenuOpen(false);
+  };
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50">
@@ -44,12 +51,24 @@ const Header = () => {
               <span className="absolute top-2 right-2 w-2 h-2 bg-primary rounded-full" />
             </Button>
             
-            <Link to="/auth">
-              <Button variant="outline" size="sm" className="hidden md:flex">
-                <User className="w-4 h-4 mr-2" />
-                Login
-              </Button>
-            </Link>
+            {user ? (
+              <div className="hidden md:flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">
+                  {user.email?.split('@')[0]}
+                </span>
+                <Button variant="outline" size="sm" onClick={handleSignOut}>
+                  <LogOut className="w-4 h-4 mr-2" />
+                  Logout
+                </Button>
+              </div>
+            ) : (
+              <Link to="/auth">
+                <Button variant="outline" size="sm" className="hidden md:flex">
+                  <User className="w-4 h-4 mr-2" />
+                  Login
+                </Button>
+              </Link>
+            )}
 
             <Button 
               variant="ghost" 
@@ -69,14 +88,30 @@ const Header = () => {
         isMenuOpen ? 'max-h-64' : 'max-h-0'
       )}>
         <div className="container mx-auto px-4 py-4 space-y-2">
-          <Link 
-            to="/auth" 
-            className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-secondary/50 transition-colors"
-            onClick={() => setIsMenuOpen(false)}
-          >
-            <User className="w-5 h-5 text-primary" />
-            <span className="font-medium">Login / Sign Up</span>
-          </Link>
+          {user ? (
+            <>
+              <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-secondary/30">
+                <User className="w-5 h-5 text-primary" />
+                <span className="font-medium">{user.email?.split('@')[0]}</span>
+              </div>
+              <button 
+                onClick={handleSignOut}
+                className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-secondary/50 transition-colors w-full text-left"
+              >
+                <LogOut className="w-5 h-5 text-destructive" />
+                <span className="font-medium">Logout</span>
+              </button>
+            </>
+          ) : (
+            <Link 
+              to="/auth" 
+              className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-secondary/50 transition-colors"
+              onClick={() => setIsMenuOpen(false)}
+            >
+              <User className="w-5 h-5 text-primary" />
+              <span className="font-medium">Login / Sign Up</span>
+            </Link>
+          )}
         </div>
       </div>
     </header>
