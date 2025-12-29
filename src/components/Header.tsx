@@ -1,4 +1,4 @@
-import { Menu, User, LogOut } from 'lucide-react';
+import { Menu, User, LogOut, Download } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
@@ -47,6 +47,17 @@ const Header = () => {
 
           {/* Actions */}
           <div className="flex items-center gap-2">
+            <Button 
+              variant="neon" 
+              size="sm" 
+              className="hidden sm:flex gap-2"
+              onClick={() => window.open('/apk/proscrims.apk', '_blank')}
+            >
+              <Download className="w-4 h-4" />
+              <span className="hidden md:inline">Download APK</span>
+              <span className="md:hidden">APK</span>
+            </Button>
+            
             <NotificationBell />
             
             {user ? (
