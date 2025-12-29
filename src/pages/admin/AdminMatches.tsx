@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Plus, Edit, Trash2 } from 'lucide-react';
+import { Plus, Edit, Trash2, Send } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -169,6 +169,46 @@ const AdminMatches = () => {
     } else {
       toast({ title: 'Success', description: 'Status updated' });
       fetchMatches();
+    }
+  };
+
+  const publishRoomDetails = async (match: Match) => {
+    if (!match.room_id || !match.room_password) {
+      toast({ title: 'Error', description: 'Please set Room ID and Password first', variant: 'destructive' });
+      return;
+    }
+
+    // Get all approved registrations for this match
+    const { data: registrations, error } = await supabase
+      .from('match_registrations')
+      .select('user_id')
+      .eq('match_id', match.id)
+      .eq('is_approved', true);
+
+    if (error) {
+      toast({ title: 'Error', description: 'Failed to fetch registrations', variant: 'destructive' });
+      return;
+    }
+
+    if (!registrations || registrations.length === 0) {
+      toast({ title: 'Info', description: 'No approved registrations for this match' });
+      return;
+    }
+
+    // Create notifications for all registered users
+    const notifications = registrations.map(reg => ({
+      user_id: reg.user_id,
+      title: '🎮 Room Details Published!',
+      message: `Room details for "${match.title}" are now available! Room ID: ${match.room_id} | Password: ${match.room_password}`,
+      type: 'success',
+    }));
+
+    const { error: notifError } = await supabase.from('notifications').insert(notifications);
+
+    if (notifError) {
+      toast({ title: 'Error', description: 'Failed to send notifications', variant: 'destructive' });
+    } else {
+      toast({ title: 'Success', description: `Room details sent to ${registrations.length} players!` });
     }
   };
 
@@ -377,6 +417,16 @@ const AdminMatches = () => {
                       </td>
                       <td className="p-4">
                         <div className="flex items-center gap-1">
+                          {match.room_id && match.room_password && (
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              onClick={() => publishRoomDetails(match)}
+                              title="Send room details to players"
+                            >
+                              <Send className="w-4 h-4 text-primary" />
+                            </Button>
+                          )}
                           <Button variant="ghost" size="icon" onClick={() => handleEdit(match)}>
                             <Edit className="w-4 h-4" />
                           </Button>

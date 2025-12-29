@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Phone, Lock, User, ArrowRight, Eye, EyeOff } from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Phone, Lock, User, ArrowRight, Eye, EyeOff, Gift } from 'lucide-react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from '@/hooks/use-toast';
@@ -16,12 +16,16 @@ const phoneSchema = z.string().trim().min(10, { message: 'Phone number must be a
 const passwordSchema = z.string().min(6, { message: 'Password must be at least 6 characters' }).max(72);
 const usernameSchema = z.string().trim().min(3, { message: 'Username must be at least 3 characters' }).max(30);
 
+const REFERRAL_REWARD = 10;
+
 const AuthPage = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { user } = useAuth();
   const [mode, setMode] = useState<AuthMode>('login');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [referralCode, setReferralCode] = useState('');
 
   const [formData, setFormData] = useState({
     phone: '',
@@ -29,6 +33,15 @@ const AuthPage = () => {
     confirmPassword: '',
     username: '',
   });
+
+  // Check for referral code in URL
+  useEffect(() => {
+    const ref = searchParams.get('ref');
+    if (ref) {
+      setReferralCode(ref);
+      setMode('signup');
+    }
+  }, [searchParams]);
 
   // Redirect if already logged in
   useEffect(() => {
@@ -96,7 +109,7 @@ const AuthPage = () => {
 
         // Sign up
         const redirectUrl = `${window.location.origin}/`;
-        const { error } = await supabase.auth.signUp({
+        const { data: signupData, error } = await supabase.auth.signUp({
           email,
           password: formData.password,
           options: {
@@ -120,6 +133,55 @@ const AuthPage = () => {
           });
           setIsLoading(false);
           return;
+        }
+
+        // Handle referral if code was provided
+        if (referralCode && signupData.user) {
+          // Find the referrer by referral code
+          const { data: referrer } = await supabase
+            .from('profiles')
+            .select('id')
+            .eq('referral_code', referralCode)
+            .maybeSingle();
+
+          if (referrer) {
+            // Update the new user's profile with referred_by
+            await supabase
+              .from('profiles')
+              .update({ referred_by: referrer.id })
+              .eq('id', signupData.user.id);
+
+            // Create referral record
+            await supabase.from('referrals').insert({
+              referrer_id: referrer.id,
+              referred_id: signupData.user.id,
+              referral_code: referralCode,
+              reward_amount: REFERRAL_REWARD,
+              is_rewarded: true,
+            });
+
+            // Credit the referrer's wallet
+            const { data: referrerProfile } = await supabase
+              .from('profiles')
+              .select('wallet_balance')
+              .eq('id', referrer.id)
+              .single();
+
+            if (referrerProfile) {
+              await supabase
+                .from('profiles')
+                .update({ wallet_balance: (referrerProfile.wallet_balance || 0) + REFERRAL_REWARD })
+                .eq('id', referrer.id);
+
+              // Send notification to referrer
+              await supabase.from('notifications').insert({
+                user_id: referrer.id,
+                title: '🎉 Referral Reward!',
+                message: `${formData.username} signed up using your referral code! ₹${REFERRAL_REWARD} has been added to your wallet.`,
+                type: 'success',
+              });
+            }
+          }
         }
 
         toast({
@@ -263,6 +325,20 @@ const AuthPage = () => {
                   onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
                   className="pl-10 bg-secondary/50 border-border/50 focus:border-primary"
                   required
+                />
+              </div>
+            )}
+
+            {/* Referral Code (signup only) */}
+            {mode === 'signup' && (
+              <div className="relative">
+                <Gift className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  type="text"
+                  placeholder="Referral Code (optional)"
+                  value={referralCode}
+                  onChange={(e) => setReferralCode(e.target.value.toUpperCase())}
+                  className="pl-10 bg-secondary/50 border-border/50 focus:border-primary"
                 />
               </div>
             )}

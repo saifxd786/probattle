@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import Header from '@/components/Header';
 import BottomNav from '@/components/BottomNav';
 import TelegramFloat from '@/components/TelegramFloat';
+import ReferralSection from '@/components/ReferralSection';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -288,6 +289,9 @@ const ProfilePage = () => {
                 </CardContent>
               </Card>
             </motion.div>
+
+            {/* Referral Section */}
+            <ReferralSection />
 
             {/* Match History */}
             <motion.div
