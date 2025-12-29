@@ -1,13 +1,13 @@
-import { Home, Gamepad2, Trophy, Wallet, MessageCircle } from 'lucide-react';
+import { Home, Gamepad2, Trophy, Wallet, Crown } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 
 const navItems = [
   { icon: Home, label: 'Home', path: '/' },
   { icon: Gamepad2, label: 'Matches', path: '/matches' },
+  { icon: Crown, label: 'Leaders', path: '/leaderboard' },
   { icon: Trophy, label: 'My Games', path: '/my-games' },
   { icon: Wallet, label: 'Wallet', path: '/wallet' },
-  { icon: MessageCircle, label: 'Support', path: '/support' },
 ];
 
 const BottomNav = () => {
