@@ -51,11 +51,37 @@ const MatchCard = ({
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isRoomDialogOpen, setIsRoomDialogOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingCredentials, setIsLoadingCredentials] = useState(false);
   const [teamName, setTeamName] = useState('');
   const [copiedField, setCopiedField] = useState<'id' | 'password' | null>(null);
+  const [secureRoomId, setSecureRoomId] = useState<string | null>(null);
+  const [secureRoomPassword, setSecureRoomPassword] = useState<string | null>(null);
 
   const isFree = entryFee === 0 || isFreeMatch;
   const slotsPercentage = (slots.current / slots.total) * 100;
+
+  const fetchSecureCredentials = async () => {
+    if (!user) return;
+    
+    setIsLoadingCredentials(true);
+    try {
+      const { data, error } = await supabase.rpc('get_match_room_credentials', {
+        _match_id: id
+      });
+      
+      if (error) {
+        console.error('Error fetching credentials:', error);
+        toast({ title: 'Error', description: 'Could not fetch room credentials', variant: 'destructive' });
+      } else if (data && data.length > 0) {
+        setSecureRoomId(data[0].room_id);
+        setSecureRoomPassword(data[0].room_password);
+      }
+    } catch (err) {
+      console.error('Error:', err);
+    } finally {
+      setIsLoadingCredentials(false);
+    }
+  };
 
   const handleJoinClick = () => {
     if (!user) {
@@ -64,6 +90,8 @@ const MatchCard = ({
     }
     
     if (isRegistered) {
+      // Fetch credentials securely when opening room dialog
+      fetchSecureCredentials();
       setIsRoomDialogOpen(true);
       return;
     }
@@ -269,16 +297,21 @@ const MatchCard = ({
           </DialogHeader>
           
           <div className="space-y-4 mt-4">
-            {roomId && roomPassword ? (
+            {isLoadingCredentials ? (
+              <div className="text-center py-8">
+                <div className="w-8 h-8 mx-auto border-2 border-primary border-t-transparent rounded-full animate-spin mb-4" />
+                <p className="text-sm text-muted-foreground">Loading room details...</p>
+              </div>
+            ) : secureRoomId && secureRoomPassword ? (
               <>
                 <div className="space-y-2">
                   <Label>Room ID</Label>
                   <div className="flex gap-2">
-                    <Input value={roomId} readOnly />
+                    <Input value={secureRoomId} readOnly />
                     <Button 
                       variant="outline" 
                       size="icon"
-                      onClick={() => handleCopy(roomId, 'id')}
+                      onClick={() => handleCopy(secureRoomId, 'id')}
                     >
                       {copiedField === 'id' ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
                     </Button>
@@ -288,11 +321,11 @@ const MatchCard = ({
                 <div className="space-y-2">
                   <Label>Password</Label>
                   <div className="flex gap-2">
-                    <Input value={roomPassword} readOnly />
+                    <Input value={secureRoomPassword} readOnly />
                     <Button 
                       variant="outline" 
                       size="icon"
-                      onClick={() => handleCopy(roomPassword, 'password')}
+                      onClick={() => handleCopy(secureRoomPassword, 'password')}
                     >
                       {copiedField === 'password' ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
                     </Button>
