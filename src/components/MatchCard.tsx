@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Users, Clock, Trophy, Zap, Lock, Copy, Check, AlertCircle, Wallet } from 'lucide-react';
+import { Users, Clock, Trophy, Zap, Lock, Copy, Check, AlertCircle, Wallet, Radio } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
@@ -68,6 +68,12 @@ const MatchCard = ({
   
   // Live countdown timer state
   const [timeRemaining, setTimeRemaining] = useState<{ hours: number; minutes: number; seconds: number } | null>(null);
+
+  // Check if match is live (countdown finished)
+  const isMatchLive = timeRemaining !== null && 
+    timeRemaining.hours === 0 && 
+    timeRemaining.minutes === 0 && 
+    timeRemaining.seconds === 0;
 
   // Parse match time and calculate countdown
   useEffect(() => {
@@ -292,7 +298,14 @@ const MatchCard = ({
                   {isFree ? 'Free' : `₹${entryFee}`}
                 </span>
                 
-                {status === 'filling' && (
+                {isMatchLive && (
+                  <span className="flex items-center gap-1 text-[10px] text-red-500 animate-pulse">
+                    <Radio className="w-3 h-3" />
+                    LIVE
+                  </span>
+                )}
+
+                {!isMatchLive && status === 'filling' && (
                   <span className="flex items-center gap-1 text-[10px] text-yellow-400">
                     <Zap className="w-3 h-3" />
                     Filling Fast
