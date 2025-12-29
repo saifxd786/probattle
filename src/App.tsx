@@ -14,6 +14,12 @@ import WalletPage from "./pages/WalletPage";
 import SupportPage from "./pages/SupportPage";
 import AuthPage from "./pages/AuthPage";
 import NotFound from "./pages/NotFound";
+import AdminLayout from "./components/admin/AdminLayout";
+import AdminDashboard from "./pages/admin/AdminDashboard";
+import AdminMatches from "./pages/admin/AdminMatches";
+import AdminUsers from "./pages/admin/AdminUsers";
+import AdminPayments from "./pages/admin/AdminPayments";
+import AdminSettings from "./pages/admin/AdminSettings";
 
 const queryClient = new QueryClient();
 
@@ -39,6 +45,14 @@ const App = () => {
               <Route path="/wallet" element={<WalletPage />} />
               <Route path="/support" element={<SupportPage />} />
               <Route path="/auth" element={<AuthPage />} />
+              {/* Admin Routes */}
+              <Route path="/admin" element={<AdminLayout />}>
+                <Route index element={<AdminDashboard />} />
+                <Route path="matches" element={<AdminMatches />} />
+                <Route path="users" element={<AdminUsers />} />
+                <Route path="payments" element={<AdminPayments />} />
+                <Route path="settings" element={<AdminSettings />} />
+              </Route>
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>
