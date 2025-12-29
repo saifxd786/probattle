@@ -20,6 +20,8 @@ interface MatchCardProps {
   prize: number;
   prizePerKill?: number;
   firstPlacePrize?: number;
+  secondPlacePrize?: number;
+  thirdPlacePrize?: number;
   slots: { current: number; total: number };
   time: string;
   status: 'open' | 'filling' | 'full';
@@ -41,6 +43,8 @@ const MatchCard = ({
   prize,
   prizePerKill = 0,
   firstPlacePrize = 0,
+  secondPlacePrize = 0,
+  thirdPlacePrize = 0,
   slots, 
   time, 
   status,
@@ -81,19 +85,30 @@ const MatchCard = ({
     timeRemaining.minutes === 0 && 
     timeRemaining.seconds === 0;
 
-  // Parse match time and calculate countdown
+  // Parse match time and calculate countdown - handles ISO string properly
   useEffect(() => {
     const calculateTimeRemaining = () => {
-      const now = new Date();
+      // Get current time in milliseconds
+      const nowMs = Date.now();
+      
+      // Parse the match time - it's stored as ISO string in UTC
       const matchDate = new Date(time);
+      const matchMs = matchDate.getTime();
       
-      if (isNaN(matchDate.getTime())) return null;
+      // Check if date is valid
+      if (isNaN(matchMs)) {
+        console.log('Invalid match time:', time);
+        return null;
+      }
 
-      const diff = matchDate.getTime() - now.getTime();
+      // Calculate difference in milliseconds
+      const diffMs = matchMs - nowMs;
       
-      if (diff <= 0) return { hours: 0, minutes: 0, seconds: 0 };
+      // If match time has passed, return zeros
+      if (diffMs <= 0) return { hours: 0, minutes: 0, seconds: 0 };
       
-      const totalSeconds = Math.floor(diff / 1000);
+      // Convert to hours, minutes, seconds
+      const totalSeconds = Math.floor(diffMs / 1000);
       const hours = Math.floor(totalSeconds / 3600);
       const minutes = Math.floor((totalSeconds % 3600) / 60);
       const seconds = totalSeconds % 60;
@@ -106,7 +121,10 @@ const MatchCard = ({
       setTimeRemaining(remaining);
     };
 
+    // Initial update
     updateTimer();
+    
+    // Update every second
     const interval = setInterval(updateTimer, 1000);
 
     return () => clearInterval(interval);
@@ -342,16 +360,26 @@ const MatchCard = ({
           </div>
           
           {/* Rewards Display for Classic Matches */}
-          {isClassicMatch && (firstPlacePrize > 0 || prizePerKill > 0) && (
-            <div className="mt-2 flex flex-wrap gap-2">
+          {isClassicMatch && (firstPlacePrize > 0 || secondPlacePrize > 0 || thirdPlacePrize > 0 || prizePerKill > 0) && (
+            <div className="mt-2 flex flex-wrap gap-1.5">
               {firstPlacePrize > 0 && (
-                <span className="px-2 py-1 bg-yellow-500/20 text-yellow-400 text-[10px] rounded-full border border-yellow-500/30">
-                  🏆 1st Place: ₹{firstPlacePrize}
+                <span className="px-2 py-0.5 bg-yellow-500/20 text-yellow-400 text-[10px] rounded-full border border-yellow-500/30">
+                  🥇 ₹{firstPlacePrize}
+                </span>
+              )}
+              {secondPlacePrize > 0 && (
+                <span className="px-2 py-0.5 bg-gray-400/20 text-gray-300 text-[10px] rounded-full border border-gray-400/30">
+                  🥈 ₹{secondPlacePrize}
+                </span>
+              )}
+              {thirdPlacePrize > 0 && (
+                <span className="px-2 py-0.5 bg-amber-600/20 text-amber-500 text-[10px] rounded-full border border-amber-600/30">
+                  🥉 ₹{thirdPlacePrize}
                 </span>
               )}
               {prizePerKill > 0 && (
-                <span className="px-2 py-1 bg-red-500/20 text-red-400 text-[10px] rounded-full border border-red-500/30">
-                  💀 Per Kill: ₹{prizePerKill}
+                <span className="px-2 py-0.5 bg-red-500/20 text-red-400 text-[10px] rounded-full border border-red-500/30">
+                  💀 ₹{prizePerKill}/kill
                 </span>
               )}
             </div>

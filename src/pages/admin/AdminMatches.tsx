@@ -43,6 +43,8 @@ const defaultFormData = {
   prize_pool: 0,
   prize_per_kill: 0,
   first_place_prize: 0,
+  second_place_prize: 0,
+  third_place_prize: 0,
   map_name: '',
   max_slots: 100,
   match_time: '',
@@ -93,6 +95,8 @@ const AdminMatches = () => {
       prize_pool: formData.prize_pool,
       prize_per_kill: formData.prize_per_kill,
       first_place_prize: formData.first_place_prize,
+      second_place_prize: formData.second_place_prize,
+      third_place_prize: formData.third_place_prize,
       map_name: formData.map_name || null,
       max_slots: formData.max_slots,
       match_time: isoMatchTime,
@@ -164,6 +168,8 @@ const AdminMatches = () => {
       prize_pool: match.prize_pool,
       prize_per_kill: match.prize_per_kill || 0,
       first_place_prize: match.first_place_prize || 0,
+      second_place_prize: (match as any).second_place_prize || 0,
+      third_place_prize: (match as any).third_place_prize || 0,
       map_name: match.map_name || '',
       max_slots: match.max_slots,
       match_time: localDateTime,
@@ -321,15 +327,35 @@ const AdminMatches = () => {
                   />
                 </div>
                 {formData.match_type === 'classic' && (
-                  <div className="col-span-2">
-                    <Label>1st Place Prize (₹) - For Classic Matches</Label>
-                    <Input
-                      type="number"
-                      value={formData.first_place_prize}
-                      onChange={(e) => setFormData({ ...formData, first_place_prize: Number(e.target.value) })}
-                      placeholder="Winner gets this amount"
-                    />
-                  </div>
+                  <>
+                    <div>
+                      <Label>1st Place Prize (₹)</Label>
+                      <Input
+                        type="number"
+                        value={formData.first_place_prize}
+                        onChange={(e) => setFormData({ ...formData, first_place_prize: Number(e.target.value) })}
+                        placeholder="Winner prize"
+                      />
+                    </div>
+                    <div>
+                      <Label>2nd Place Prize (₹)</Label>
+                      <Input
+                        type="number"
+                        value={formData.second_place_prize}
+                        onChange={(e) => setFormData({ ...formData, second_place_prize: Number(e.target.value) })}
+                        placeholder="Runner up prize"
+                      />
+                    </div>
+                    <div>
+                      <Label>3rd Place Prize (₹)</Label>
+                      <Input
+                        type="number"
+                        value={formData.third_place_prize}
+                        onChange={(e) => setFormData({ ...formData, third_place_prize: Number(e.target.value) })}
+                        placeholder="Third place prize"
+                      />
+                    </div>
+                  </>
                 )}
                 <div>
                   <Label>Map Name</Label>
