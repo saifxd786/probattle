@@ -13,6 +13,7 @@ import MyGamesPage from "./pages/MyGamesPage";
 import WalletPage from "./pages/WalletPage";
 import SupportPage from "./pages/SupportPage";
 import AuthPage from "./pages/AuthPage";
+import ProfilePage from "./pages/ProfilePage";
 import NotFound from "./pages/NotFound";
 import AdminLayout from "./components/admin/AdminLayout";
 import AdminDashboard from "./pages/admin/AdminDashboard";
@@ -46,6 +47,7 @@ const App = () => {
               <Route path="/wallet" element={<WalletPage />} />
               <Route path="/support" element={<SupportPage />} />
               <Route path="/auth" element={<AuthPage />} />
+              <Route path="/profile" element={<ProfilePage />} />
               {/* Admin Routes */}
               <Route path="/admin" element={<AdminLayout />}>
                 <Route index element={<AdminDashboard />} />

@@ -53,12 +53,14 @@ const Header = () => {
             
             {user ? (
               <div className="hidden md:flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">
-                  {user.email?.split('@')[0]}
-                </span>
+                <Link to="/profile">
+                  <Button variant="ghost" size="sm">
+                    <User className="w-4 h-4 mr-2" />
+                    {user.email?.split('@')[0]}
+                  </Button>
+                </Link>
                 <Button variant="outline" size="sm" onClick={handleSignOut}>
-                  <LogOut className="w-4 h-4 mr-2" />
-                  Logout
+                  <LogOut className="w-4 h-4" />
                 </Button>
               </div>
             ) : (
@@ -85,15 +87,26 @@ const Header = () => {
       {/* Mobile Menu */}
       <div className={cn(
         'absolute top-full left-0 right-0 bg-background/95 backdrop-blur-xl border-b border-border/50 md:hidden transition-all duration-300 overflow-hidden',
-        isMenuOpen ? 'max-h-64' : 'max-h-0'
+        isMenuOpen ? 'max-h-80' : 'max-h-0'
       )}>
         <div className="container mx-auto px-4 py-4 space-y-2">
           {user ? (
             <>
-              <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-secondary/30">
+              <Link 
+                to="/profile"
+                onClick={() => setIsMenuOpen(false)}
+                className="flex items-center gap-3 px-4 py-3 rounded-lg bg-secondary/30"
+              >
                 <User className="w-5 h-5 text-primary" />
                 <span className="font-medium">{user.email?.split('@')[0]}</span>
-              </div>
+              </Link>
+              <Link 
+                to="/wallet"
+                onClick={() => setIsMenuOpen(false)}
+                className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-secondary/50 transition-colors"
+              >
+                <span className="font-medium">💰 Wallet</span>
+              </Link>
               <button 
                 onClick={handleSignOut}
                 className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-secondary/50 transition-colors w-full text-left"
