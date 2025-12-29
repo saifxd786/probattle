@@ -18,6 +18,8 @@ interface MatchCardProps {
   map: string;
   entryFee: number;
   prize: number;
+  prizePerKill?: number;
+  firstPlacePrize?: number;
   slots: { current: number; total: number };
   time: string;
   status: 'open' | 'filling' | 'full';
@@ -25,6 +27,7 @@ interface MatchCardProps {
   roomPassword?: string | null;
   isRegistered?: boolean;
   isFreeMatch?: boolean;
+  isClassicMatch?: boolean;
   onRegister?: () => void;
   delay?: number;
 }
@@ -35,7 +38,9 @@ const MatchCard = ({
   mode, 
   map, 
   entryFee, 
-  prize, 
+  prize,
+  prizePerKill = 0,
+  firstPlacePrize = 0,
   slots, 
   time, 
   status,
@@ -43,6 +48,7 @@ const MatchCard = ({
   roomPassword,
   isRegistered = false,
   isFreeMatch = false,
+  isClassicMatch = false,
   onRegister,
   delay = 0 
 }: MatchCardProps) => {
@@ -320,8 +326,8 @@ const MatchCard = ({
                 )}
               </div>
               
-              <h4 className="font-display text-base font-bold tracking-wide">{mode}</h4>
-              <p className="text-xs text-muted-foreground mt-0.5">{map}</p>
+              <h4 className="font-display text-base font-bold tracking-wide">{title}</h4>
+              <p className="text-xs text-muted-foreground mt-0.5">{mode} • {map}</p>
             </div>
             
             {prize > 0 && (
@@ -334,6 +340,22 @@ const MatchCard = ({
               </div>
             )}
           </div>
+          
+          {/* Rewards Display for Classic Matches */}
+          {isClassicMatch && (firstPlacePrize > 0 || prizePerKill > 0) && (
+            <div className="mt-2 flex flex-wrap gap-2">
+              {firstPlacePrize > 0 && (
+                <span className="px-2 py-1 bg-yellow-500/20 text-yellow-400 text-[10px] rounded-full border border-yellow-500/30">
+                  🏆 1st Place: ₹{firstPlacePrize}
+                </span>
+              )}
+              {prizePerKill > 0 && (
+                <span className="px-2 py-1 bg-red-500/20 text-red-400 text-[10px] rounded-full border border-red-500/30">
+                  💀 Per Kill: ₹{prizePerKill}
+                </span>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Info */}

@@ -11,8 +11,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Database } from '@/integrations/supabase/types';
 
 import bgmiCard from '@/assets/bgmi-card.jpg';
-import tdmBanner from '@/assets/tdm-banner.jpg';
-import classicBanner from '@/assets/classic-banner.jpg';
+import tdmBanner from '@/assets/bgmi-tdm-banner.jpg';
+import classicBanner from '@/assets/bgmi-classic-banner.jpg';
 
 type Match = Database['public']['Tables']['matches']['Row'];
 type MatchType = Database['public']['Enums']['match_type'];
@@ -206,6 +206,8 @@ const BGMIPage = () => {
                 map={match.map_name || 'TBD'}
                 entryFee={match.entry_fee}
                 prize={match.prize_pool}
+                prizePerKill={match.prize_per_kill || 0}
+                firstPlacePrize={match.first_place_prize || 0}
                 slots={{ current: match.filled_slots, total: match.max_slots }}
                 time={match.match_time}
                 status={getMatchStatus(match)}
@@ -213,6 +215,7 @@ const BGMIPage = () => {
                 roomPassword={match.room_password}
                 isRegistered={userRegistrations.includes(match.id)}
                 isFreeMatch={match.is_free}
+                isClassicMatch={match.match_type === 'classic'}
                 onRegister={handleRegistrationChange}
                 delay={index * 0.05}
               />
