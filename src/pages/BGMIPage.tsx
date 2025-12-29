@@ -207,7 +207,7 @@ const BGMIPage = () => {
                 entryFee={match.entry_fee}
                 prize={match.prize_pool}
                 slots={{ current: match.filled_slots, total: match.max_slots }}
-                time={formatMatchTime(match.match_time)}
+                time={match.match_time}
                 status={getMatchStatus(match)}
                 roomId={match.room_id}
                 roomPassword={match.room_password}
