@@ -71,6 +71,7 @@ export type Database = {
           created_by: string | null
           entry_fee: number
           filled_slots: number
+          first_place_prize: number | null
           game: Database["public"]["Enums"]["game_type"]
           id: string
           is_free: boolean
@@ -93,6 +94,7 @@ export type Database = {
           created_by?: string | null
           entry_fee?: number
           filled_slots?: number
+          first_place_prize?: number | null
           game?: Database["public"]["Enums"]["game_type"]
           id?: string
           is_free?: boolean
@@ -115,6 +117,7 @@ export type Database = {
           created_by?: string | null
           entry_fee?: number
           filled_slots?: number
+          first_place_prize?: number | null
           game?: Database["public"]["Enums"]["game_type"]
           id?: string
           is_free?: boolean

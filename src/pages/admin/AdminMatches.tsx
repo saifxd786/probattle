@@ -24,6 +24,8 @@ type Match = {
   status: MatchStatus;
   entry_fee: number;
   prize_pool: number;
+  prize_per_kill: number;
+  first_place_prize: number;
   map_name: string | null;
   max_slots: number;
   filled_slots: number;
@@ -40,6 +42,7 @@ const defaultFormData = {
   entry_fee: 0,
   prize_pool: 0,
   prize_per_kill: 0,
+  first_place_prize: 0,
   map_name: '',
   max_slots: 100,
   match_time: '',
@@ -78,6 +81,10 @@ const AdminMatches = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    // Convert local datetime to proper ISO format with timezone
+    const localDate = new Date(formData.match_time);
+    const isoMatchTime = localDate.toISOString();
+
     const matchData = {
       title: formData.title,
       game: formData.game,
@@ -85,9 +92,10 @@ const AdminMatches = () => {
       entry_fee: formData.is_free ? 0 : formData.entry_fee,
       prize_pool: formData.prize_pool,
       prize_per_kill: formData.prize_per_kill,
+      first_place_prize: formData.first_place_prize,
       map_name: formData.map_name || null,
       max_slots: formData.max_slots,
-      match_time: formData.match_time,
+      match_time: isoMatchTime,
       room_id: formData.room_id || null,
       room_password: formData.room_password || null,
       rules: formData.rules || null,
@@ -138,16 +146,27 @@ const AdminMatches = () => {
 
   const handleEdit = (match: Match) => {
     setEditingMatch(match);
+    // Convert ISO time to local datetime-local format
+    const matchDate = new Date(match.match_time);
+    const localDateTime = matchDate.toLocaleString('sv-SE', { 
+      year: 'numeric', 
+      month: '2-digit', 
+      day: '2-digit', 
+      hour: '2-digit', 
+      minute: '2-digit' 
+    }).replace(' ', 'T');
+    
     setFormData({
       title: match.title,
       game: match.game,
       match_type: match.match_type,
       entry_fee: match.entry_fee,
       prize_pool: match.prize_pool,
-      prize_per_kill: 0,
+      prize_per_kill: match.prize_per_kill || 0,
+      first_place_prize: match.first_place_prize || 0,
       map_name: match.map_name || '',
       max_slots: match.max_slots,
-      match_time: match.match_time ? match.match_time.slice(0, 16) : '',
+      match_time: localDateTime,
       room_id: match.room_id || '',
       room_password: match.room_password || '',
       rules: '',
@@ -292,6 +311,26 @@ const AdminMatches = () => {
                     onChange={(e) => setFormData({ ...formData, prize_pool: Number(e.target.value) })}
                   />
                 </div>
+                <div>
+                  <Label>Per Kill Prize (₹)</Label>
+                  <Input
+                    type="number"
+                    value={formData.prize_per_kill}
+                    onChange={(e) => setFormData({ ...formData, prize_per_kill: Number(e.target.value) })}
+                    placeholder="Reward per kill"
+                  />
+                </div>
+                {formData.match_type === 'classic' && (
+                  <div className="col-span-2">
+                    <Label>1st Place Prize (₹) - For Classic Matches</Label>
+                    <Input
+                      type="number"
+                      value={formData.first_place_prize}
+                      onChange={(e) => setFormData({ ...formData, first_place_prize: Number(e.target.value) })}
+                      placeholder="Winner gets this amount"
+                    />
+                  </div>
+                )}
                 <div>
                   <Label>Map Name</Label>
                   <Input
