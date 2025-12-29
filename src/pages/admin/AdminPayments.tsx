@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Check, X, Eye, Clock, CheckCircle, XCircle } from 'lucide-react';
+import { Check, X, Eye, Clock, CheckCircle, XCircle, User, Gamepad2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -16,6 +16,9 @@ type Registration = {
   payment_screenshot_url: string | null;
   is_approved: boolean;
   registered_at: string;
+  bgmi_ingame_name: string | null;
+  bgmi_player_id: string | null;
+  bgmi_player_level: number | null;
   matches: {
     title: string;
     entry_fee: number;
@@ -32,8 +35,9 @@ type Registration = {
 const AdminPayments = () => {
   const [registrations, setRegistrations] = useState<Registration[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [filter, setFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('pending');
+  const [filter, setFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
   const [selectedScreenshot, setSelectedScreenshot] = useState<string | null>(null);
+  const [selectedPlayer, setSelectedPlayer] = useState<Registration | null>(null);
 
   const fetchRegistrations = async () => {
     let query = supabase
@@ -95,7 +99,6 @@ const AdminPayments = () => {
     if (error) {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
     } else {
-      // Send notification
       await createNotification(
         reg.user_id,
         'Match Registration Approved!',
@@ -117,7 +120,6 @@ const AdminPayments = () => {
     if (error) {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
     } else {
-      // Send notification
       await createNotification(
         reg.user_id,
         'Match Registration Rejected',
@@ -131,17 +133,17 @@ const AdminPayments = () => {
   };
 
   const filterButtons = [
+    { key: 'all', label: 'All', icon: null },
     { key: 'pending', label: 'Pending', icon: Clock },
     { key: 'approved', label: 'Approved', icon: CheckCircle },
     { key: 'rejected', label: 'Rejected', icon: XCircle },
-    { key: 'all', label: 'All', icon: null },
   ] as const;
 
   return (
     <div className="p-6 space-y-6">
       <div>
-        <h1 className="text-2xl font-display font-bold">Payment Approvals</h1>
-        <p className="text-muted-foreground">Review and approve match registration payments</p>
+        <h1 className="text-2xl font-display font-bold">Match Registrations</h1>
+        <p className="text-muted-foreground">View all match registrations and player details</p>
       </div>
 
       {/* Filter Tabs */}
@@ -169,7 +171,7 @@ const AdminPayments = () => {
                 <tr className="border-b border-border">
                   <th className="text-left p-4 font-medium text-muted-foreground">User</th>
                   <th className="text-left p-4 font-medium text-muted-foreground">Match</th>
-                  <th className="text-left p-4 font-medium text-muted-foreground">Team</th>
+                  <th className="text-left p-4 font-medium text-muted-foreground">BGMI Info</th>
                   <th className="text-left p-4 font-medium text-muted-foreground">Amount</th>
                   <th className="text-left p-4 font-medium text-muted-foreground">Screenshot</th>
                   <th className="text-left p-4 font-medium text-muted-foreground">Date</th>
@@ -203,7 +205,17 @@ const AdminPayments = () => {
                           <p className="text-xs text-muted-foreground uppercase">{reg.matches?.game}</p>
                         </div>
                       </td>
-                      <td className="p-4 text-sm">{reg.team_name || '-'}</td>
+                      <td className="p-4">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setSelectedPlayer(reg)}
+                          className="gap-2"
+                        >
+                          <Gamepad2 className="w-4 h-4" />
+                          View Details
+                        </Button>
+                      </td>
                       <td className="p-4 font-medium">₹{reg.matches?.entry_fee || 0}</td>
                       <td className="p-4">
                         {reg.payment_screenshot_url ? (
@@ -216,7 +228,7 @@ const AdminPayments = () => {
                             View
                           </Button>
                         ) : (
-                          <span className="text-muted-foreground text-sm">No screenshot</span>
+                          <span className="text-muted-foreground text-sm">-</span>
                         )}
                       </td>
                       <td className="p-4 text-sm">
@@ -278,6 +290,45 @@ const AdminPayments = () => {
               alt="Payment screenshot"
               className="w-full rounded-lg"
             />
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Player Details Dialog */}
+      <Dialog open={!!selectedPlayer} onOpenChange={() => setSelectedPlayer(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Gamepad2 className="w-5 h-5" />
+              BGMI Player Details
+            </DialogTitle>
+          </DialogHeader>
+          {selectedPlayer && (
+            <div className="space-y-4 mt-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="p-3 bg-secondary/50 rounded-lg">
+                  <p className="text-xs text-muted-foreground">In-Game Name</p>
+                  <p className="font-medium">{selectedPlayer.bgmi_ingame_name || selectedPlayer.team_name || 'N/A'}</p>
+                </div>
+                <div className="p-3 bg-secondary/50 rounded-lg">
+                  <p className="text-xs text-muted-foreground">Player ID</p>
+                  <p className="font-medium">{selectedPlayer.bgmi_player_id || 'N/A'}</p>
+                </div>
+                <div className="p-3 bg-secondary/50 rounded-lg">
+                  <p className="text-xs text-muted-foreground">Player Level</p>
+                  <p className="font-medium">{selectedPlayer.bgmi_player_level || 'N/A'}</p>
+                </div>
+                <div className="p-3 bg-secondary/50 rounded-lg">
+                  <p className="text-xs text-muted-foreground">Match</p>
+                  <p className="font-medium">{selectedPlayer.matches?.title}</p>
+                </div>
+              </div>
+              <div className="p-3 bg-secondary/50 rounded-lg">
+                <p className="text-xs text-muted-foreground">Account</p>
+                <p className="font-medium">{selectedPlayer.profiles?.username}</p>
+                <p className="text-sm text-muted-foreground">{selectedPlayer.profiles?.email}</p>
+              </div>
+            </div>
           )}
         </DialogContent>
       </Dialog>

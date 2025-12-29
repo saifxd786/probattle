@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Users, Clock, Trophy, Zap, Lock, Copy, Check, Upload } from 'lucide-react';
+import { Users, Clock, Trophy, Zap, Lock, Copy, Check, AlertCircle, Wallet } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
@@ -52,13 +52,39 @@ const MatchCard = ({
   const [isRoomDialogOpen, setIsRoomDialogOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingCredentials, setIsLoadingCredentials] = useState(false);
-  const [teamName, setTeamName] = useState('');
   const [copiedField, setCopiedField] = useState<'id' | 'password' | null>(null);
   const [secureRoomId, setSecureRoomId] = useState<string | null>(null);
   const [secureRoomPassword, setSecureRoomPassword] = useState<string | null>(null);
+  const [walletBalance, setWalletBalance] = useState<number>(0);
+  
+  // Form fields
+  const [bgmiIngameName, setBgmiIngameName] = useState('');
+  const [bgmiPlayerId, setBgmiPlayerId] = useState('');
+  const [bgmiPlayerLevel, setBgmiPlayerLevel] = useState('');
 
   const isFree = entryFee === 0 || isFreeMatch;
   const slotsPercentage = (slots.current / slots.total) * 100;
+  const hasEnoughBalance = walletBalance >= entryFee;
+
+  useEffect(() => {
+    if (user) {
+      fetchWalletBalance();
+    }
+  }, [user]);
+
+  const fetchWalletBalance = async () => {
+    if (!user) return;
+    
+    const { data } = await supabase
+      .from('profiles')
+      .select('wallet_balance')
+      .eq('id', user.id)
+      .maybeSingle();
+    
+    if (data) {
+      setWalletBalance(data.wallet_balance || 0);
+    }
+  };
 
   const fetchSecureCredentials = async () => {
     if (!user) return;
@@ -90,7 +116,6 @@ const MatchCard = ({
     }
     
     if (isRegistered) {
-      // Fetch credentials securely when opening room dialog
       fetchSecureCredentials();
       setIsRoomDialogOpen(true);
       return;
@@ -102,16 +127,70 @@ const MatchCard = ({
   const handleRegister = async () => {
     if (!user) return;
     
+    // Validate BGMI fields
+    if (!bgmiIngameName.trim()) {
+      toast({ title: 'Error', description: 'Please enter your BGMI In-Game Name', variant: 'destructive' });
+      return;
+    }
+    if (!bgmiPlayerId.trim()) {
+      toast({ title: 'Error', description: 'Please enter your BGMI Player ID', variant: 'destructive' });
+      return;
+    }
+    const level = parseInt(bgmiPlayerLevel);
+    if (!bgmiPlayerLevel || isNaN(level)) {
+      toast({ title: 'Error', description: 'Please enter your BGMI Player Level', variant: 'destructive' });
+      return;
+    }
+    if (level < 30) {
+      toast({ title: 'Level Too Low', description: 'Minimum level 30 is required to participate', variant: 'destructive' });
+      return;
+    }
+    
+    // Check wallet balance for paid matches
+    if (!isFree && !hasEnoughBalance) {
+      toast({ title: 'Insufficient Balance', description: 'Please add funds to your wallet', variant: 'destructive' });
+      navigate('/wallet');
+      return;
+    }
+    
     setIsLoading(true);
     
+    // If paid match, deduct from wallet first
+    if (!isFree) {
+      const newBalance = walletBalance - entryFee;
+      const { error: walletError } = await supabase
+        .from('profiles')
+        .update({ wallet_balance: newBalance })
+        .eq('id', user.id);
+      
+      if (walletError) {
+        toast({ title: 'Error', description: 'Failed to deduct entry fee', variant: 'destructive' });
+        setIsLoading(false);
+        return;
+      }
+      
+      // Create transaction record
+      await supabase.from('transactions').insert({
+        user_id: user.id,
+        amount: entryFee,
+        type: 'entry_fee',
+        status: 'completed',
+        description: `Entry fee for ${title}`
+      });
+    }
+    
+    // Register for match - directly approved since payment is done via wallet
     const { error } = await supabase
       .from('match_registrations')
       .insert({
         match_id: id,
         user_id: user.id,
-        team_name: teamName || null,
-        payment_status: isFree ? 'approved' : 'pending',
-        is_approved: isFree,
+        team_name: bgmiIngameName,
+        bgmi_ingame_name: bgmiIngameName,
+        bgmi_player_id: bgmiPlayerId,
+        bgmi_player_level: level,
+        payment_status: 'approved',
+        is_approved: true,
       });
 
     if (error) {
@@ -119,15 +198,20 @@ const MatchCard = ({
         toast({ title: 'Already Registered', description: 'You have already registered for this match.', variant: 'destructive' });
       } else {
         toast({ title: 'Error', description: error.message, variant: 'destructive' });
+        // Refund if registration failed
+        if (!isFree) {
+          await supabase
+            .from('profiles')
+            .update({ wallet_balance: walletBalance })
+            .eq('id', user.id);
+        }
       }
     } else {
-      if (isFree) {
-        toast({ title: 'Registered!', description: 'You have successfully joined the match. Room details will be shown before match starts.' });
-      } else {
-        toast({ title: 'Registration Submitted', description: 'Please complete the payment. Your registration is pending approval.' });
-      }
+      toast({ title: 'Joined Successfully!', description: 'Room details will be available before match starts.' });
       setIsDialogOpen(false);
-      setTeamName('');
+      setBgmiIngameName('');
+      setBgmiPlayerId('');
+      setBgmiPlayerLevel('');
       onRegister?.();
     }
     
@@ -257,20 +341,62 @@ const MatchCard = ({
           
           <div className="space-y-4 mt-4">
             <div>
-              <Label>Team Name (Optional)</Label>
+              <Label>BGMI In-Game Name <span className="text-destructive">*</span></Label>
               <Input
-                value={teamName}
-                onChange={(e) => setTeamName(e.target.value)}
-                placeholder="Enter your team/player name"
+                value={bgmiIngameName}
+                onChange={(e) => setBgmiIngameName(e.target.value)}
+                placeholder="Your BGMI username"
               />
+            </div>
+
+            <div>
+              <Label>BGMI Player ID <span className="text-destructive">*</span></Label>
+              <Input
+                value={bgmiPlayerId}
+                onChange={(e) => setBgmiPlayerId(e.target.value)}
+                placeholder="e.g., 5123456789"
+              />
+            </div>
+
+            <div>
+              <Label>BGMI Player Level <span className="text-destructive">*</span></Label>
+              <Input
+                type="number"
+                value={bgmiPlayerLevel}
+                onChange={(e) => setBgmiPlayerLevel(e.target.value)}
+                placeholder="Minimum level 30"
+                min={1}
+                max={100}
+              />
+              <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+                <AlertCircle className="w-3 h-3" />
+                Level 30+ required to participate
+              </p>
             </div>
 
             {!isFree && (
               <div className="p-4 bg-primary/10 border border-primary/20 rounded-lg">
-                <p className="text-sm font-medium">Entry Fee: ₹{entryFee}</p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  After registration, make payment via UPI and upload screenshot. Your entry will be approved by admin.
-                </p>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-medium">Entry Fee</span>
+                  <span className="font-bold text-primary">₹{entryFee}</span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="flex items-center gap-1 text-muted-foreground">
+                    <Wallet className="w-4 h-4" />
+                    Wallet Balance
+                  </span>
+                  <span className={cn(
+                    'font-medium',
+                    hasEnoughBalance ? 'text-green-400' : 'text-destructive'
+                  )}>
+                    ₹{walletBalance}
+                  </span>
+                </div>
+                {!hasEnoughBalance && (
+                  <p className="text-xs text-destructive mt-2">
+                    Insufficient balance. Please add ₹{entryFee - walletBalance} to your wallet.
+                  </p>
+                )}
               </div>
             )}
 
@@ -278,8 +404,13 @@ const MatchCard = ({
               <Button variant="outline" onClick={() => setIsDialogOpen(false)} className="flex-1">
                 Cancel
               </Button>
-              <Button variant="neon" onClick={handleRegister} disabled={isLoading} className="flex-1">
-                {isLoading ? 'Registering...' : isFree ? 'Join Now' : 'Register'}
+              <Button 
+                variant="neon" 
+                onClick={handleRegister} 
+                disabled={isLoading || (!isFree && !hasEnoughBalance)} 
+                className="flex-1"
+              >
+                {isLoading ? 'Joining...' : isFree ? 'Join Now' : `Pay ₹${entryFee} & Join`}
               </Button>
             </div>
           </div>
