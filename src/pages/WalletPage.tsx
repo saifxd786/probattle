@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { Wallet, Plus, ArrowUpRight, ArrowDownLeft, History, Copy, Check, Loader2 } from 'lucide-react';
+import { Wallet, Plus, ArrowUpRight, ArrowDownLeft, History, Copy, Check, Loader2, Upload, Image as ImageIcon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import Header from '@/components/Header';
 import BottomNav from '@/components/BottomNav';
@@ -26,6 +26,7 @@ type Transaction = {
   status: string;
   description: string | null;
   created_at: string;
+  screenshot_url: string | null;
 };
 
 type Profile = {
@@ -47,6 +48,9 @@ const WalletPage = () => {
   const [upiId, setUpiId] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [screenshot, setScreenshot] = useState<File | null>(null);
+  const [screenshotPreview, setScreenshotPreview] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const fetchData = async () => {
     if (!user) return;
@@ -87,6 +91,20 @@ const WalletPage = () => {
     fetchData();
   }, [user, navigate]);
 
+  const handleScreenshotChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        toast({ title: 'Error', description: 'File size must be less than 5MB', variant: 'destructive' });
+        return;
+      }
+      setScreenshot(file);
+      const reader = new FileReader();
+      reader.onloadend = () => setScreenshotPreview(reader.result as string);
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleDeposit = async () => {
     if (!user) return;
 
@@ -97,26 +115,51 @@ const WalletPage = () => {
       return;
     }
 
+    if (!screenshot) {
+      toast({ title: 'Error', description: 'Please upload payment screenshot', variant: 'destructive' });
+      return;
+    }
+
     setIsSubmitting(true);
 
-    const { error } = await supabase.from('transactions').insert({
-      user_id: user.id,
-      type: 'deposit',
-      amount,
-      status: 'pending',
-      description: `Deposit request of ₹${amount}`,
-    });
+    try {
+      // Upload screenshot
+      const fileExt = screenshot.name.split('.').pop();
+      const fileName = `${user.id}/${Date.now()}.${fileExt}`;
+      
+      const { error: uploadError } = await supabase.storage
+        .from('payment-screenshots')
+        .upload(fileName, screenshot);
 
-    if (error) {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
-    } else {
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('payment-screenshots')
+        .getPublicUrl(fileName);
+
+      // Create transaction with screenshot
+      const { error } = await supabase.from('transactions').insert({
+        user_id: user.id,
+        type: 'deposit',
+        amount,
+        status: 'pending',
+        description: `Deposit request of ₹${amount}`,
+        screenshot_url: fileName,
+      });
+
+      if (error) throw error;
+
       toast({ 
         title: 'Deposit Request Submitted', 
-        description: `Please pay ₹${amount} to ${UPI_ID} and wait for admin approval.` 
+        description: 'Your payment screenshot has been uploaded. Wait for admin approval.' 
       });
       setIsDepositOpen(false);
       setCustomAmount('');
+      setScreenshot(null);
+      setScreenshotPreview(null);
       fetchData();
+    } catch (error: any) {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
     }
 
     setIsSubmitting(false);
@@ -354,13 +397,49 @@ const WalletPage = () => {
                   {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
                 </Button>
               </div>
-              <p className="text-xs text-muted-foreground">
-                After payment, your deposit will be approved by admin.
-              </p>
             </div>
 
-            <Button variant="neon" className="w-full" onClick={handleDeposit} disabled={isSubmitting}>
-              {isSubmitting ? 'Submitting...' : `Request Deposit of ₹${customAmount || depositAmount}`}
+            {/* Screenshot Upload */}
+            <div>
+              <Label>Payment Screenshot *</Label>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleScreenshotChange}
+                className="hidden"
+              />
+              <div 
+                onClick={() => fileInputRef.current?.click()}
+                className="mt-2 border-2 border-dashed border-border rounded-lg p-4 cursor-pointer hover:border-primary/50 transition-colors"
+              >
+                {screenshotPreview ? (
+                  <div className="relative">
+                    <img 
+                      src={screenshotPreview} 
+                      alt="Screenshot preview" 
+                      className="w-full h-32 object-contain rounded"
+                    />
+                    <p className="text-xs text-center text-muted-foreground mt-2">
+                      Click to change
+                    </p>
+                  </div>
+                ) : (
+                  <div className="text-center py-4">
+                    <Upload className="w-8 h-8 mx-auto text-muted-foreground mb-2" />
+                    <p className="text-sm text-muted-foreground">
+                      Upload payment screenshot
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Max 5MB, PNG/JPG
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <Button variant="neon" className="w-full" onClick={handleDeposit} disabled={isSubmitting || !screenshot}>
+              {isSubmitting ? 'Uploading...' : `Request Deposit of ₹${customAmount || depositAmount}`}
             </Button>
           </div>
         </DialogContent>

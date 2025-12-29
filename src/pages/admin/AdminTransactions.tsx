@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
-import { Check, X, Search, Clock, CheckCircle, XCircle, Loader2 } from 'lucide-react';
+import { Check, X, Search, Clock, CheckCircle, XCircle, Loader2, Image as ImageIcon } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 
@@ -16,6 +17,7 @@ type Transaction = {
   upi_id: string | null;
   description: string | null;
   created_at: string;
+  screenshot_url: string | null;
   profiles: {
     username: string | null;
     user_code: string | null;
@@ -28,6 +30,8 @@ const AdminTransactions = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'pending' | 'processing' | 'completed' | 'cancelled'>('pending');
   const [searchTerm, setSearchTerm] = useState('');
+  const [screenshotUrl, setScreenshotUrl] = useState<string | null>(null);
+  const [isScreenshotOpen, setIsScreenshotOpen] = useState(false);
 
   const fetchTransactions = async () => {
     setIsLoading(true);
@@ -69,6 +73,24 @@ const AdminTransactions = () => {
     fetchTransactions();
   }, [filter]);
 
+  const createNotification = async (userId: string, title: string, message: string, type: string) => {
+    await supabase.from('notifications').insert({
+      user_id: userId,
+      title,
+      message,
+      type,
+    });
+  };
+
+  const viewScreenshot = async (path: string) => {
+    const { data } = supabase.storage
+      .from('payment-screenshots')
+      .getPublicUrl(path);
+    
+    setScreenshotUrl(data.publicUrl);
+    setIsScreenshotOpen(true);
+  };
+
   const handleApprove = async (tx: Transaction) => {
     // Update transaction status
     const { error: txError } = await supabase
@@ -99,13 +121,20 @@ const AdminTransactions = () => {
     if (profileError) {
       toast({ title: 'Warning', description: 'Transaction approved but wallet update failed', variant: 'destructive' });
     } else {
+      // Send notification
+      const notifTitle = tx.type === 'deposit' ? 'Deposit Approved!' : 'Withdrawal Completed!';
+      const notifMessage = tx.type === 'deposit' 
+        ? `₹${tx.amount} has been added to your wallet.`
+        : `₹${tx.amount} has been sent to your UPI ID.`;
+      await createNotification(tx.user_id, notifTitle, notifMessage, 'success');
+      
       toast({ title: 'Success', description: 'Transaction approved and wallet updated' });
     }
 
     fetchTransactions();
   };
 
-  const handleReject = async (txId: string) => {
+  const handleReject = async (txId: string, userId: string, type: string, amount: number) => {
     const { error } = await supabase
       .from('transactions')
       .update({ status: 'cancelled' })
@@ -114,6 +143,11 @@ const AdminTransactions = () => {
     if (error) {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
     } else {
+      // Send notification
+      const notifTitle = type === 'deposit' ? 'Deposit Rejected' : 'Withdrawal Rejected';
+      const notifMessage = `Your ${type} request of ₹${amount} was rejected. Please contact support.`;
+      await createNotification(userId, notifTitle, notifMessage, 'error');
+      
       toast({ title: 'Rejected', description: 'Transaction has been cancelled' });
       fetchTransactions();
     }
@@ -203,8 +237,10 @@ const AdminTransactions = () => {
               <thead>
                 <tr className="border-b border-border">
                   <th className="text-left p-4 font-medium text-muted-foreground">User</th>
+                  <th className="text-left p-4 font-medium text-muted-foreground">User</th>
                   <th className="text-left p-4 font-medium text-muted-foreground">Type</th>
                   <th className="text-left p-4 font-medium text-muted-foreground">Amount</th>
+                  <th className="text-left p-4 font-medium text-muted-foreground">Screenshot</th>
                   <th className="text-left p-4 font-medium text-muted-foreground">UPI ID</th>
                   <th className="text-left p-4 font-medium text-muted-foreground">Date</th>
                   <th className="text-left p-4 font-medium text-muted-foreground">Status</th>
@@ -214,13 +250,13 @@ const AdminTransactions = () => {
               <tbody>
                 {isLoading ? (
                   <tr>
-                    <td colSpan={7} className="p-4 text-center text-muted-foreground">
+                    <td colSpan={8} className="p-4 text-center text-muted-foreground">
                       <Loader2 className="w-5 h-5 animate-spin mx-auto" />
                     </td>
                   </tr>
                 ) : filteredTransactions.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="p-4 text-center text-muted-foreground">
+                    <td colSpan={8} className="p-4 text-center text-muted-foreground">
                       No transactions found
                     </td>
                   </tr>
@@ -241,6 +277,21 @@ const AdminTransactions = () => {
                         </span>
                       </td>
                       <td className="p-4 font-display font-bold">₹{tx.amount}</td>
+                      <td className="p-4">
+                        {tx.screenshot_url ? (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => viewScreenshot(tx.screenshot_url!)}
+                            className="gap-1"
+                          >
+                            <ImageIcon className="w-4 h-4" />
+                            View
+                          </Button>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">-</span>
+                        )}
+                      </td>
                       <td className="p-4 text-sm font-mono">{tx.upi_id || '-'}</td>
                       <td className="p-4 text-sm">
                         {format(new Date(tx.created_at), 'MMM dd, hh:mm a')}
@@ -273,7 +324,7 @@ const AdminTransactions = () => {
                             <Button
                               variant="ghost"
                               size="icon"
-                              onClick={() => handleReject(tx.id)}
+                              onClick={() => handleReject(tx.id, tx.user_id, tx.type, tx.amount)}
                               title="Reject"
                             >
                               <X className="w-4 h-4 text-red-500" />
@@ -293,7 +344,7 @@ const AdminTransactions = () => {
                             <Button
                               variant="ghost"
                               size="icon"
-                              onClick={() => handleReject(tx.id)}
+                              onClick={() => handleReject(tx.id, tx.user_id, tx.type, tx.amount)}
                               title="Cancel"
                             >
                               <X className="w-4 h-4 text-red-500" />
@@ -309,6 +360,22 @@ const AdminTransactions = () => {
           </div>
         </CardContent>
       </Card>
+
+      {/* Screenshot Dialog */}
+      <Dialog open={isScreenshotOpen} onOpenChange={setIsScreenshotOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Payment Screenshot</DialogTitle>
+          </DialogHeader>
+          {screenshotUrl && (
+            <img 
+              src={screenshotUrl} 
+              alt="Payment screenshot" 
+              className="w-full rounded-lg"
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
