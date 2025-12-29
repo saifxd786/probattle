@@ -12,7 +12,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { format } from 'date-fns';
 import { Database } from '@/integrations/supabase/types';
 import MatchResultsDialog from '@/components/admin/MatchResultsDialog';
-import { Database } from '@/integrations/supabase/types';
 
 type GameType = Database['public']['Enums']['game_type'];
 type MatchType = Database['public']['Enums']['match_type'];
@@ -509,7 +508,6 @@ const AdminMatches = () => {
                           </Button>
                           <Button variant="ghost" size="icon" onClick={() => handleDelete(match.id)}>
                             <Trash2 className="w-4 h-4 text-destructive" />
-                          </Button>
                           </Button>
                         </div>
                       </td>
