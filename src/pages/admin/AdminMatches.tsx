@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Plus, Edit, Trash2, Send } from 'lucide-react';
+import { Plus, Edit, Trash2, Send, Trophy } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -10,6 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { toast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { format } from 'date-fns';
+import { Database } from '@/integrations/supabase/types';
+import MatchResultsDialog from '@/components/admin/MatchResultsDialog';
 import { Database } from '@/integrations/supabase/types';
 
 type GameType = Database['public']['Enums']['game_type'];
@@ -61,6 +63,8 @@ const AdminMatches = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingMatch, setEditingMatch] = useState<Match | null>(null);
   const [formData, setFormData] = useState(defaultFormData);
+  const [resultsMatch, setResultsMatch] = useState<Match | null>(null);
+  const [isResultsOpen, setIsResultsOpen] = useState(false);
 
   const fetchMatches = async () => {
     const { data, error } = await supabase
@@ -492,11 +496,20 @@ const AdminMatches = () => {
                               <Send className="w-4 h-4 text-primary" />
                             </Button>
                           )}
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            onClick={() => { setResultsMatch(match); setIsResultsOpen(true); }}
+                            title="Declare Results"
+                          >
+                            <Trophy className="w-4 h-4 text-yellow-500" />
+                          </Button>
                           <Button variant="ghost" size="icon" onClick={() => handleEdit(match)}>
                             <Edit className="w-4 h-4" />
                           </Button>
                           <Button variant="ghost" size="icon" onClick={() => handleDelete(match.id)}>
                             <Trash2 className="w-4 h-4 text-destructive" />
+                          </Button>
                           </Button>
                         </div>
                       </td>
@@ -508,6 +521,13 @@ const AdminMatches = () => {
           </div>
         </CardContent>
       </Card>
+
+      <MatchResultsDialog
+        match={resultsMatch}
+        isOpen={isResultsOpen}
+        onClose={() => setIsResultsOpen(false)}
+        onResultsDeclared={fetchMatches}
+      />
     </div>
   );
 };
