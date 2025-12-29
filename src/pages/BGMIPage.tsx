@@ -1,39 +1,114 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Loader2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import Header from '@/components/Header';
 import BottomNav from '@/components/BottomNav';
 import TelegramFloat from '@/components/TelegramFloat';
 import MatchCard from '@/components/MatchCard';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { Database } from '@/integrations/supabase/types';
 
 import bgmiCard from '@/assets/bgmi-card.jpg';
 import tdmBanner from '@/assets/tdm-banner.jpg';
 import classicBanner from '@/assets/classic-banner.jpg';
 
+type Match = Database['public']['Tables']['matches']['Row'];
+type MatchType = Database['public']['Enums']['match_type'];
+
 const tabs = ['TDM Matches', 'Classic Matches'] as const;
 
-const tdmMatches = [
-  { id: '1', mode: '1 vs 1', map: 'Warehouse', entryFee: 0, prize: 0, slots: { current: 1, total: 2 }, time: 'Starting in 5 min', status: 'open' as const },
-  { id: '2', mode: '1 vs 1', map: 'Warehouse', entryFee: 10, prize: 18, slots: { current: 2, total: 2 }, time: 'Starting in 10 min', status: 'full' as const },
-  { id: '3', mode: '2 vs 2', map: 'Santorini', entryFee: 20, prize: 70, slots: { current: 3, total: 4 }, time: 'Starting in 15 min', status: 'filling' as const },
-  { id: '4', mode: '2 vs 2', map: 'Ruins', entryFee: 0, prize: 0, slots: { current: 2, total: 4 }, time: 'Starting in 20 min', status: 'open' as const },
-  { id: '5', mode: '4 vs 4', map: 'Warehouse', entryFee: 50, prize: 350, slots: { current: 6, total: 8 }, time: 'Starting in 30 min', status: 'filling' as const },
-  { id: '6', mode: '4 vs 4', map: 'Santorini', entryFee: 25, prize: 175, slots: { current: 4, total: 8 }, time: 'Starting in 45 min', status: 'open' as const },
-];
-
-const classicMatches = [
-  { id: '7', mode: '100 Players', map: 'Erangel', entryFee: 30, prize: 2500, slots: { current: 78, total: 100 }, time: '8:00 PM Today', status: 'filling' as const },
-  { id: '8', mode: '100 Players', map: 'Miramar', entryFee: 0, prize: 0, slots: { current: 45, total: 100 }, time: '9:00 PM Today', status: 'open' as const },
-  { id: '9', mode: '100 Players', map: 'Sanhok', entryFee: 50, prize: 4000, slots: { current: 92, total: 100 }, time: '10:00 PM Today', status: 'filling' as const },
-  { id: '10', mode: '100 Players', map: 'Vikendi', entryFee: 20, prize: 1500, slots: { current: 100, total: 100 }, time: '11:00 PM Today', status: 'full' as const },
-];
-
 const BGMIPage = () => {
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<typeof tabs[number]>('TDM Matches');
+  const [matches, setMatches] = useState<Match[]>([]);
+  const [userRegistrations, setUserRegistrations] = useState<string[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const fetchMatches = async () => {
+    setIsLoading(true);
+    
+    const matchTypes: MatchType[] = activeTab === 'TDM Matches' 
+      ? ['tdm_1v1', 'tdm_2v2', 'tdm_4v4'] 
+      : ['classic'];
+    
+    const { data, error } = await supabase
+      .from('matches')
+      .select('*')
+      .eq('game', 'bgmi')
+      .in('match_type', matchTypes)
+      .in('status', ['upcoming', 'live'])
+      .order('match_time', { ascending: true });
+
+    if (!error && data) {
+      setMatches(data);
+    }
+    setIsLoading(false);
+  };
+
+  const fetchUserRegistrations = async () => {
+    if (!user) {
+      setUserRegistrations([]);
+      return;
+    }
+
+    const { data } = await supabase
+      .from('match_registrations')
+      .select('match_id')
+      .eq('user_id', user.id);
+
+    if (data) {
+      setUserRegistrations(data.map((r) => r.match_id));
+    }
+  };
+
+  useEffect(() => {
+    fetchMatches();
+  }, [activeTab]);
+
+  useEffect(() => {
+    fetchUserRegistrations();
+  }, [user]);
+
+  const handleRegistrationChange = () => {
+    fetchMatches();
+    fetchUserRegistrations();
+  };
 
   const currentBanner = activeTab === 'TDM Matches' ? tdmBanner : classicBanner;
-  const currentMatches = activeTab === 'TDM Matches' ? tdmMatches : classicMatches;
+
+  const getMatchMode = (match: Match) => {
+    switch (match.match_type) {
+      case 'tdm_1v1': return '1 vs 1';
+      case 'tdm_2v2': return '2 vs 2';
+      case 'tdm_4v4': return '4 vs 4';
+      case 'classic': return '100 Players';
+      default: return match.match_type;
+    }
+  };
+
+  const getMatchStatus = (match: Match): 'open' | 'filling' | 'full' => {
+    const percentage = (match.filled_slots / match.max_slots) * 100;
+    if (percentage >= 100) return 'full';
+    if (percentage >= 70) return 'filling';
+    return 'open';
+  };
+
+  const formatMatchTime = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = date.getTime() - now.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+
+    if (diffMins < 0) return 'Started';
+    if (diffMins < 60) return `Starting in ${diffMins} min`;
+    if (diffMins < 1440) {
+      const hours = Math.floor(diffMins / 60);
+      return `In ${hours} hour${hours > 1 ? 's' : ''}`;
+    }
+    return date.toLocaleDateString('en-IN', { weekday: 'short', hour: '2-digit', minute: '2-digit' });
+  };
 
   return (
     <div className="min-h-screen bg-background pb-20">
@@ -105,22 +180,44 @@ const BGMIPage = () => {
 
       {/* Matches Grid */}
       <section className="container mx-auto px-4 py-6">
-        <motion.div
-          key={activeTab}
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3 }}
-          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
-        >
-          {currentMatches.map((match, index) => (
-            <MatchCard key={match.id} {...match} delay={index * 0.05} />
-          ))}
-        </motion.div>
-
-        {currentMatches.length === 0 && (
+        {isLoading ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="w-6 h-6 animate-spin text-primary" />
+          </div>
+        ) : matches.length === 0 ? (
           <div className="text-center py-12">
             <p className="text-muted-foreground">No matches available right now</p>
+            <p className="text-sm text-muted-foreground mt-1">Check back later for new matches!</p>
           </div>
+        ) : (
+          <motion.div
+            key={activeTab}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3 }}
+            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
+          >
+            {matches.map((match, index) => (
+              <MatchCard
+                key={match.id}
+                id={match.id}
+                title={match.title}
+                mode={getMatchMode(match)}
+                map={match.map_name || 'TBD'}
+                entryFee={match.entry_fee}
+                prize={match.prize_pool}
+                slots={{ current: match.filled_slots, total: match.max_slots }}
+                time={formatMatchTime(match.match_time)}
+                status={getMatchStatus(match)}
+                roomId={match.room_id}
+                roomPassword={match.room_password}
+                isRegistered={userRegistrations.includes(match.id)}
+                isFreeMatch={match.is_free}
+                onRegister={handleRegistrationChange}
+                delay={index * 0.05}
+              />
+            ))}
+          </motion.div>
         )}
       </section>
 
