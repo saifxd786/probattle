@@ -1,63 +1,160 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Mail, Phone, Lock, User, ArrowRight, Eye, EyeOff } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Mail, Lock, User, ArrowRight, Eye, EyeOff } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { z } from 'zod';
 
 type AuthMode = 'login' | 'signup';
-type LoginMethod = 'email' | 'phone';
+
+// Validation schemas
+const emailSchema = z.string().trim().email({ message: 'Invalid email address' }).max(255);
+const passwordSchema = z.string().min(6, { message: 'Password must be at least 6 characters' }).max(72);
+const usernameSchema = z.string().trim().min(3, { message: 'Username must be at least 3 characters' }).max(30);
 
 const AuthPage = () => {
+  const navigate = useNavigate();
+  const { user } = useAuth();
   const [mode, setMode] = useState<AuthMode>('login');
-  const [loginMethod, setLoginMethod] = useState<LoginMethod>('email');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
   const [formData, setFormData] = useState({
     email: '',
-    phone: '',
     password: '',
     confirmPassword: '',
     username: '',
   });
 
+  // Redirect if already logged in
+  useEffect(() => {
+    if (user) {
+      navigate('/');
+    }
+  }, [user, navigate]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
-    // Validation
-    if (mode === 'signup') {
-      if (formData.password !== formData.confirmPassword) {
+    try {
+      // Validate email
+      const emailResult = emailSchema.safeParse(formData.email);
+      if (!emailResult.success) {
         toast({
-          title: 'Error',
-          description: 'Passwords do not match',
+          title: 'Validation Error',
+          description: emailResult.error.errors[0].message,
           variant: 'destructive',
         });
         setIsLoading(false);
         return;
       }
-      if (formData.password.length < 6) {
-        toast({
-          title: 'Error',
-          description: 'Password must be at least 6 characters',
-          variant: 'destructive',
-        });
-        setIsLoading(false);
-        return;
-      }
-    }
 
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-    
-    toast({
-      title: mode === 'login' ? 'Welcome back!' : 'Account created!',
-      description: mode === 'login' 
-        ? 'You have successfully logged in.' 
-        : 'Your account has been created. You can now login.',
-    });
+      // Validate password
+      const passwordResult = passwordSchema.safeParse(formData.password);
+      if (!passwordResult.success) {
+        toast({
+          title: 'Validation Error',
+          description: passwordResult.error.errors[0].message,
+          variant: 'destructive',
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      if (mode === 'signup') {
+        // Validate username
+        const usernameResult = usernameSchema.safeParse(formData.username);
+        if (!usernameResult.success) {
+          toast({
+            title: 'Validation Error',
+            description: usernameResult.error.errors[0].message,
+            variant: 'destructive',
+          });
+          setIsLoading(false);
+          return;
+        }
+
+        if (formData.password !== formData.confirmPassword) {
+          toast({
+            title: 'Error',
+            description: 'Passwords do not match',
+            variant: 'destructive',
+          });
+          setIsLoading(false);
+          return;
+        }
+
+        // Sign up
+        const redirectUrl = `${window.location.origin}/`;
+        const { error } = await supabase.auth.signUp({
+          email: formData.email,
+          password: formData.password,
+          options: {
+            emailRedirectTo: redirectUrl,
+            data: {
+              username: formData.username,
+            },
+          },
+        });
+
+        if (error) {
+          let errorMessage = error.message;
+          if (error.message.includes('already registered')) {
+            errorMessage = 'This email is already registered. Please login instead.';
+          }
+          toast({
+            title: 'Signup Error',
+            description: errorMessage,
+            variant: 'destructive',
+          });
+          setIsLoading(false);
+          return;
+        }
+
+        toast({
+          title: 'Account created!',
+          description: 'Welcome to ProScims! You are now logged in.',
+        });
+        navigate('/');
+      } else {
+        // Login
+        const { error } = await supabase.auth.signInWithPassword({
+          email: formData.email,
+          password: formData.password,
+        });
+
+        if (error) {
+          let errorMessage = error.message;
+          if (error.message.includes('Invalid login credentials')) {
+            errorMessage = 'Invalid email or password. Please try again.';
+          }
+          toast({
+            title: 'Login Error',
+            description: errorMessage,
+            variant: 'destructive',
+          });
+          setIsLoading(false);
+          return;
+        }
+
+        toast({
+          title: 'Welcome back!',
+          description: 'You have successfully logged in.',
+        });
+        navigate('/');
+      }
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'An unexpected error occurred. Please try again.',
+        variant: 'destructive',
+      });
+    }
 
     setIsLoading(false);
   };
@@ -101,27 +198,6 @@ const AuthPage = () => {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Login method toggle (for login only) */}
-            {mode === 'login' && (
-              <div className="flex gap-2 mb-4">
-                {(['email', 'phone'] as LoginMethod[]).map((method) => (
-                  <button
-                    key={method}
-                    type="button"
-                    onClick={() => setLoginMethod(method)}
-                    className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-medium transition-all duration-300 ${
-                      loginMethod === method
-                        ? 'bg-primary/10 text-primary border border-primary/30'
-                        : 'bg-secondary/50 text-muted-foreground border border-transparent'
-                    }`}
-                  >
-                    {method === 'email' ? <Mail className="w-4 h-4" /> : <Phone className="w-4 h-4" />}
-                    {method === 'email' ? 'Email' : 'Phone'}
-                  </button>
-                ))}
-              </div>
-            )}
-
             {/* Username (signup only) */}
             {mode === 'signup' && (
               <div className="relative">
@@ -137,34 +213,18 @@ const AuthPage = () => {
               </div>
             )}
 
-            {/* Email/Phone */}
-            {(mode === 'signup' || loginMethod === 'email') && (
-              <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
-                  type="email"
-                  placeholder="Email address"
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  className="pl-10 bg-secondary/50 border-border/50 focus:border-primary"
-                  required
-                />
-              </div>
-            )}
-
-            {loginMethod === 'phone' && mode === 'login' && (
-              <div className="relative">
-                <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
-                  type="tel"
-                  placeholder="Phone number"
-                  value={formData.phone}
-                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                  className="pl-10 bg-secondary/50 border-border/50 focus:border-primary"
-                  required
-                />
-              </div>
-            )}
+            {/* Email */}
+            <div className="relative">
+              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                type="email"
+                placeholder="Email address"
+                value={formData.email}
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                className="pl-10 bg-secondary/50 border-border/50 focus:border-primary"
+                required
+              />
+            </div>
 
             {/* Password */}
             <div className="relative">
