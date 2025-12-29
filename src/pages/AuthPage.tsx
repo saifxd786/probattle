@@ -1,0 +1,254 @@
+import { useState } from 'react';
+import { motion } from 'framer-motion';
+import { Mail, Phone, Lock, User, ArrowRight, Eye, EyeOff } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { toast } from '@/hooks/use-toast';
+
+type AuthMode = 'login' | 'signup';
+type LoginMethod = 'email' | 'phone';
+
+const AuthPage = () => {
+  const [mode, setMode] = useState<AuthMode>('login');
+  const [loginMethod, setLoginMethod] = useState<LoginMethod>('email');
+  const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const [formData, setFormData] = useState({
+    email: '',
+    phone: '',
+    password: '',
+    confirmPassword: '',
+    username: '',
+  });
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+
+    // Validation
+    if (mode === 'signup') {
+      if (formData.password !== formData.confirmPassword) {
+        toast({
+          title: 'Error',
+          description: 'Passwords do not match',
+          variant: 'destructive',
+        });
+        setIsLoading(false);
+        return;
+      }
+      if (formData.password.length < 6) {
+        toast({
+          title: 'Error',
+          description: 'Password must be at least 6 characters',
+          variant: 'destructive',
+        });
+        setIsLoading(false);
+        return;
+      }
+    }
+
+    // Simulate API call
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+    
+    toast({
+      title: mode === 'login' ? 'Welcome back!' : 'Account created!',
+      description: mode === 'login' 
+        ? 'You have successfully logged in.' 
+        : 'Your account has been created. You can now login.',
+    });
+
+    setIsLoading(false);
+  };
+
+  return (
+    <div className="min-h-screen bg-background flex items-center justify-center p-4 cyber-grid">
+      {/* Decorative elements */}
+      <div className="fixed inset-0 pointer-events-none">
+        <div className="absolute top-0 left-1/4 w-96 h-96 bg-primary/5 rounded-full blur-3xl" />
+        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-primary/5 rounded-full blur-3xl" />
+      </div>
+
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="relative w-full max-w-md"
+      >
+        {/* Logo */}
+        <Link to="/" className="block text-center mb-8">
+          <h1 className="font-display text-3xl font-bold text-gradient">ProScims</h1>
+          <p className="text-xs text-muted-foreground mt-1">Play. Compete. Win.</p>
+        </Link>
+
+        {/* Card */}
+        <div className="glass-card p-6 md:p-8">
+          {/* Toggle */}
+          <div className="flex gap-1 p-1 bg-secondary/50 rounded-lg mb-6">
+            {(['login', 'signup'] as AuthMode[]).map((m) => (
+              <button
+                key={m}
+                onClick={() => setMode(m)}
+                className={`flex-1 py-2.5 rounded-md font-display text-xs uppercase tracking-wider transition-all duration-300 ${
+                  mode === m
+                    ? 'bg-primary text-primary-foreground shadow-lg'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                {m === 'login' ? 'Sign In' : 'Sign Up'}
+              </button>
+            ))}
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Login method toggle (for login only) */}
+            {mode === 'login' && (
+              <div className="flex gap-2 mb-4">
+                {(['email', 'phone'] as LoginMethod[]).map((method) => (
+                  <button
+                    key={method}
+                    type="button"
+                    onClick={() => setLoginMethod(method)}
+                    className={`flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-medium transition-all duration-300 ${
+                      loginMethod === method
+                        ? 'bg-primary/10 text-primary border border-primary/30'
+                        : 'bg-secondary/50 text-muted-foreground border border-transparent'
+                    }`}
+                  >
+                    {method === 'email' ? <Mail className="w-4 h-4" /> : <Phone className="w-4 h-4" />}
+                    {method === 'email' ? 'Email' : 'Phone'}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Username (signup only) */}
+            {mode === 'signup' && (
+              <div className="relative">
+                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  type="text"
+                  placeholder="Username"
+                  value={formData.username}
+                  onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                  className="pl-10 bg-secondary/50 border-border/50 focus:border-primary"
+                  required
+                />
+              </div>
+            )}
+
+            {/* Email/Phone */}
+            {(mode === 'signup' || loginMethod === 'email') && (
+              <div className="relative">
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  type="email"
+                  placeholder="Email address"
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  className="pl-10 bg-secondary/50 border-border/50 focus:border-primary"
+                  required
+                />
+              </div>
+            )}
+
+            {loginMethod === 'phone' && mode === 'login' && (
+              <div className="relative">
+                <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  type="tel"
+                  placeholder="Phone number"
+                  value={formData.phone}
+                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                  className="pl-10 bg-secondary/50 border-border/50 focus:border-primary"
+                  required
+                />
+              </div>
+            )}
+
+            {/* Password */}
+            <div className="relative">
+              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                type={showPassword ? 'text' : 'password'}
+                placeholder="Password"
+                value={formData.password}
+                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                className="pl-10 pr-10 bg-secondary/50 border-border/50 focus:border-primary"
+                required
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              >
+                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
+
+            {/* Confirm Password (signup only) */}
+            {mode === 'signup' && (
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="Confirm password"
+                  value={formData.confirmPassword}
+                  onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+                  className="pl-10 bg-secondary/50 border-border/50 focus:border-primary"
+                  required
+                />
+              </div>
+            )}
+
+            {/* Forgot password */}
+            {mode === 'login' && (
+              <div className="text-right">
+                <button type="button" className="text-xs text-primary hover:underline">
+                  Forgot password?
+                </button>
+              </div>
+            )}
+
+            {/* Submit */}
+            <Button 
+              type="submit" 
+              variant="neon" 
+              className="w-full" 
+              size="lg"
+              disabled={isLoading}
+            >
+              {isLoading ? (
+                <div className="w-5 h-5 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
+              ) : (
+                <>
+                  {mode === 'login' ? 'Sign In' : 'Create Account'}
+                  <ArrowRight className="w-4 h-4" />
+                </>
+              )}
+            </Button>
+          </form>
+
+          {/* Terms */}
+          {mode === 'signup' && (
+            <p className="text-[10px] text-muted-foreground text-center mt-4">
+              By signing up, you agree to our{' '}
+              <Link to="/terms" className="text-primary hover:underline">Terms of Service</Link>
+              {' '}and{' '}
+              <Link to="/privacy" className="text-primary hover:underline">Privacy Policy</Link>
+            </p>
+          )}
+        </div>
+
+        {/* Back to home */}
+        <p className="text-center mt-6 text-sm text-muted-foreground">
+          <Link to="/" className="hover:text-primary transition-colors">
+            ← Back to Home
+          </Link>
+        </p>
+      </motion.div>
+    </div>
+  );
+};
+
+export default AuthPage;
