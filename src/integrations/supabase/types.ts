@@ -165,6 +165,8 @@ export type Database = {
           id: string
           is_banned: boolean | null
           phone: string | null
+          referral_code: string | null
+          referred_by: string | null
           updated_at: string | null
           user_code: string | null
           username: string | null
@@ -177,6 +179,8 @@ export type Database = {
           id: string
           is_banned?: boolean | null
           phone?: string | null
+          referral_code?: string | null
+          referred_by?: string | null
           updated_at?: string | null
           user_code?: string | null
           username?: string | null
@@ -189,10 +193,42 @@ export type Database = {
           id?: string
           is_banned?: boolean | null
           phone?: string | null
+          referral_code?: string | null
+          referred_by?: string | null
           updated_at?: string | null
           user_code?: string | null
           username?: string | null
           wallet_balance?: number | null
+        }
+        Relationships: []
+      }
+      referrals: {
+        Row: {
+          created_at: string
+          id: string
+          is_rewarded: boolean
+          referral_code: string
+          referred_id: string
+          referrer_id: string
+          reward_amount: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_rewarded?: boolean
+          referral_code: string
+          referred_id: string
+          referrer_id: string
+          reward_amount?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_rewarded?: boolean
+          referral_code?: string
+          referred_id?: string
+          referrer_id?: string
+          reward_amount?: number
         }
         Relationships: []
       }
