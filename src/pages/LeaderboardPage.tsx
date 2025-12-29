@@ -6,22 +6,22 @@ import BottomNav from '@/components/BottomNav';
 import TelegramFloat from '@/components/TelegramFloat';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 
-// Fake Indian names leaderboard data
+// Professional BGMI players leaderboard data with Hindu + Muslim names
 const FAKE_PLAYERS = [
-  { id: 1, name: 'Arjun Sharma', username: 'ArjunOP', wins: 147, earnings: 45600, referrals: 23, avatar: 'A' },
-  { id: 2, name: 'Priya Patel', username: 'PriyaGamer', wins: 132, earnings: 38900, referrals: 18, avatar: 'P' },
-  { id: 3, name: 'Rahul Singh', username: 'RahulKing', wins: 128, earnings: 35200, referrals: 31, avatar: 'R' },
-  { id: 4, name: 'Sneha Reddy', username: 'SnehaQueen', wins: 119, earnings: 32100, referrals: 15, avatar: 'S' },
-  { id: 5, name: 'Vikram Yadav', username: 'VikramPro', wins: 108, earnings: 29800, referrals: 27, avatar: 'V' },
-  { id: 6, name: 'Ananya Gupta', username: 'AnanyaStar', wins: 98, earnings: 27500, referrals: 12, avatar: 'A' },
-  { id: 7, name: 'Karthik Nair', username: 'KarthikBeast', wins: 94, earnings: 25100, referrals: 19, avatar: 'K' },
-  { id: 8, name: 'Divya Joshi', username: 'DivyaFire', wins: 89, earnings: 23400, referrals: 8, avatar: 'D' },
+  { id: 1, name: 'Arjun Sharma', username: 'JEEMIKIOP', wins: 147, earnings: 45600, referrals: 23, avatar: 'A' },
+  { id: 2, name: 'Mohd Faizan', username: 'FaizanxOP', wins: 132, earnings: 38900, referrals: 18, avatar: 'M' },
+  { id: 3, name: 'Rahul Singh', username: 'RahulGodOP', wins: 128, earnings: 35200, referrals: 31, avatar: 'R' },
+  { id: 4, name: 'Imran Khan', username: 'ImranSniper', wins: 119, earnings: 32100, referrals: 15, avatar: 'I' },
+  { id: 5, name: 'Vikram Yadav', username: 'VikramTDM', wins: 108, earnings: 29800, referrals: 27, avatar: 'V' },
+  { id: 6, name: 'Aamir Hussain', username: 'AamirBeast', wins: 98, earnings: 27500, referrals: 12, avatar: 'A' },
+  { id: 7, name: 'Karthik Nair', username: 'KarthikOP', wins: 94, earnings: 25100, referrals: 19, avatar: 'K' },
+  { id: 8, name: 'Salman Mirza', username: 'SalmanPro', wins: 89, earnings: 23400, referrals: 8, avatar: 'S' },
   { id: 9, name: 'Rohit Kumar', username: 'RohitLegend', wins: 85, earnings: 21800, referrals: 22, avatar: 'R' },
-  { id: 10, name: 'Meera Iyer', username: 'MeeraAce', wins: 81, earnings: 19600, referrals: 14, avatar: 'M' },
+  { id: 10, name: 'Zaid Ahmed', username: 'ZaidAssault', wins: 81, earnings: 19600, referrals: 14, avatar: 'Z' },
   { id: 11, name: 'Aditya Verma', username: 'AdityaSniper', wins: 77, earnings: 18200, referrals: 9, avatar: 'A' },
-  { id: 12, name: 'Kavitha Pillai', username: 'KavithaX', wins: 73, earnings: 16900, referrals: 16, avatar: 'K' },
+  { id: 12, name: 'Rehan Shaikh', username: 'RehanKiller', wins: 73, earnings: 16900, referrals: 16, avatar: 'R' },
   { id: 13, name: 'Suresh Menon', username: 'SureshGod', wins: 69, earnings: 15400, referrals: 11, avatar: 'S' },
-  { id: 14, name: 'Lakshmi Rao', username: 'LakshmiPro', wins: 65, earnings: 14100, referrals: 7, avatar: 'L' },
+  { id: 14, name: 'Ayaan Malik', username: 'AyaanRush', wins: 65, earnings: 14100, referrals: 7, avatar: 'A' },
   { id: 15, name: 'Naveen Hegde', username: 'NaveenElite', wins: 61, earnings: 12800, referrals: 20, avatar: 'N' },
 ];
 

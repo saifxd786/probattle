@@ -105,7 +105,7 @@ const NotificationBell = () => {
     }
   };
 
-  if (!user) return null;
+  // Show bell icon even for non-logged in users (will show empty state)
 
   return (
     <Popover open={isOpen} onOpenChange={setIsOpen}>
@@ -143,7 +143,12 @@ const NotificationBell = () => {
         </div>
 
         <ScrollArea className="max-h-80">
-          {notifications.length === 0 ? (
+          {!user ? (
+            <div className="p-6 text-center text-muted-foreground">
+              <Bell className="w-8 h-8 mx-auto mb-2 opacity-50" />
+              <p className="text-sm">Login to see notifications</p>
+            </div>
+          ) : notifications.length === 0 ? (
             <div className="p-6 text-center text-muted-foreground">
               <Bell className="w-8 h-8 mx-auto mb-2 opacity-50" />
               <p className="text-sm">No notifications yet</p>
