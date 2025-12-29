@@ -15,6 +15,7 @@ import SupportPage from "./pages/SupportPage";
 import AuthPage from "./pages/AuthPage";
 import ProfilePage from "./pages/ProfilePage";
 import LeaderboardPage from "./pages/LeaderboardPage";
+import InstallPage from "./pages/InstallPage";
 import NotFound from "./pages/NotFound";
 import AdminLayout from "./components/admin/AdminLayout";
 import AdminDashboard from "./pages/admin/AdminDashboard";
@@ -23,6 +24,8 @@ import AdminUsers from "./pages/admin/AdminUsers";
 import AdminPayments from "./pages/admin/AdminPayments";
 import AdminSettings from "./pages/admin/AdminSettings";
 import AdminTransactions from "./pages/admin/AdminTransactions";
+import AdminLoginPage from "./pages/admin/AdminLoginPage";
+import AdminNotificationsPage from "./pages/admin/AdminNotificationsPage";
 
 const queryClient = new QueryClient();
 
@@ -50,13 +53,16 @@ const App = () => {
               <Route path="/auth" element={<AuthPage />} />
               <Route path="/profile" element={<ProfilePage />} />
               <Route path="/leaderboard" element={<LeaderboardPage />} />
+              <Route path="/install" element={<InstallPage />} />
               {/* Admin Routes */}
+              <Route path="/admin/login" element={<AdminLoginPage />} />
               <Route path="/admin" element={<AdminLayout />}>
                 <Route index element={<AdminDashboard />} />
                 <Route path="matches" element={<AdminMatches />} />
                 <Route path="users" element={<AdminUsers />} />
                 <Route path="payments" element={<AdminPayments />} />
                 <Route path="transactions" element={<AdminTransactions />} />
+                <Route path="notifications" element={<AdminNotificationsPage />} />
                 <Route path="settings" element={<AdminSettings />} />
               </Route>
               <Route path="*" element={<NotFound />} />
