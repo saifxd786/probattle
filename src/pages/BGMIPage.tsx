@@ -11,6 +11,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Database } from '@/integrations/supabase/types';
 
 import bgmiCard from '@/assets/bgmi-card.jpg';
+import bgmiHeroBanner from '@/assets/bgmi-hero-banner.jpg';
 import tdmBanner from '@/assets/bgmi-tdm-banner.jpg';
 import classicBanner from '@/assets/bgmi-classic-banner.jpg';
 
@@ -118,8 +119,8 @@ const BGMIPage = () => {
       <section className="relative pt-16">
         <div className="relative h-48 md:h-64 overflow-hidden">
           <img 
-            src={currentBanner}
-            alt={activeTab}
+            src={bgmiHeroBanner}
+            alt="BGMI Tournaments"
             className="w-full h-full object-cover"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-background via-background/50 to-transparent" />
@@ -208,6 +209,8 @@ const BGMIPage = () => {
                 prize={match.prize_pool}
                 prizePerKill={match.prize_per_kill || 0}
                 firstPlacePrize={match.first_place_prize || 0}
+                secondPlacePrize={(match as any).second_place_prize || 0}
+                thirdPlacePrize={(match as any).third_place_prize || 0}
                 slots={{ current: match.filled_slots, total: match.max_slots }}
                 time={match.match_time}
                 status={getMatchStatus(match)}

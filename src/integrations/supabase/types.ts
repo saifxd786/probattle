@@ -84,7 +84,9 @@ export type Database = {
           room_id: string | null
           room_password: string | null
           rules: string | null
+          second_place_prize: number | null
           status: Database["public"]["Enums"]["match_status"]
+          third_place_prize: number | null
           title: string
           updated_at: string | null
         }
@@ -107,7 +109,9 @@ export type Database = {
           room_id?: string | null
           room_password?: string | null
           rules?: string | null
+          second_place_prize?: number | null
           status?: Database["public"]["Enums"]["match_status"]
+          third_place_prize?: number | null
           title: string
           updated_at?: string | null
         }
@@ -130,7 +134,9 @@ export type Database = {
           room_id?: string | null
           room_password?: string | null
           rules?: string | null
+          second_place_prize?: number | null
           status?: Database["public"]["Enums"]["match_status"]
+          third_place_prize?: number | null
           title?: string
           updated_at?: string | null
         }
@@ -257,6 +263,7 @@ export type Database = {
           updated_at: string | null
           upi_id: string | null
           user_id: string
+          utr_id: string | null
         }
         Insert: {
           admin_note?: string | null
@@ -270,6 +277,7 @@ export type Database = {
           updated_at?: string | null
           upi_id?: string | null
           user_id: string
+          utr_id?: string | null
         }
         Update: {
           admin_note?: string | null
@@ -283,6 +291,7 @@ export type Database = {
           updated_at?: string | null
           upi_id?: string | null
           user_id?: string
+          utr_id?: string | null
         }
         Relationships: []
       }

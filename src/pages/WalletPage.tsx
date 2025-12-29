@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { Wallet, Plus, ArrowUpRight, ArrowDownLeft, History, Copy, Check, Loader2, Upload, Image as ImageIcon } from 'lucide-react';
+import { Wallet, Plus, ArrowUpRight, ArrowDownLeft, History, Copy, Check, Loader2, Upload, Image as ImageIcon, MessageCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import Header from '@/components/Header';
 import BottomNav from '@/components/BottomNav';
@@ -27,12 +27,15 @@ type Transaction = {
   description: string | null;
   created_at: string;
   screenshot_url: string | null;
+  utr_id: string | null;
 };
 
 type Profile = {
   wallet_balance: number;
   user_code: string | null;
 };
+
+const TELEGRAM_SUPPORT = 'https://t.me/ProScrimsSupport';
 
 const WalletPage = () => {
   const { user } = useAuth();
@@ -50,6 +53,7 @@ const WalletPage = () => {
   const [copied, setCopied] = useState(false);
   const [screenshot, setScreenshot] = useState<File | null>(null);
   const [screenshotPreview, setScreenshotPreview] = useState<string | null>(null);
+  const [utrId, setUtrId] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const fetchData = async () => {
@@ -71,7 +75,7 @@ const WalletPage = () => {
     // Fetch transactions
     const { data: txData } = await supabase
       .from('transactions')
-      .select('*')
+      .select('id, type, amount, status, description, created_at, screenshot_url, utr_id')
       .eq('user_id', user.id)
       .order('created_at', { ascending: false })
       .limit(50);
@@ -115,36 +119,39 @@ const WalletPage = () => {
       return;
     }
 
-    if (!screenshot) {
-      toast({ title: 'Error', description: 'Please upload payment screenshot', variant: 'destructive' });
+    // UTR is required
+    if (!utrId.trim()) {
+      toast({ title: 'Error', description: 'Please enter your UTR/Transaction ID', variant: 'destructive' });
       return;
     }
 
     setIsSubmitting(true);
 
     try {
-      // Upload screenshot
-      const fileExt = screenshot.name.split('.').pop();
-      const fileName = `${user.id}/${Date.now()}.${fileExt}`;
+      let screenshotUrl = null;
       
-      const { error: uploadError } = await supabase.storage
-        .from('payment-screenshots')
-        .upload(fileName, screenshot);
+      // Upload screenshot if provided (now optional)
+      if (screenshot) {
+        const fileExt = screenshot.name.split('.').pop();
+        const fileName = `${user.id}/${Date.now()}.${fileExt}`;
+        
+        const { error: uploadError } = await supabase.storage
+          .from('payment-screenshots')
+          .upload(fileName, screenshot);
 
-      if (uploadError) throw uploadError;
+        if (uploadError) throw uploadError;
+        screenshotUrl = fileName;
+      }
 
-      const { data: { publicUrl } } = supabase.storage
-        .from('payment-screenshots')
-        .getPublicUrl(fileName);
-
-      // Create transaction with screenshot
+      // Create transaction with UTR
       const { error } = await supabase.from('transactions').insert({
         user_id: user.id,
         type: 'deposit',
         amount,
         status: 'pending',
         description: `Deposit request of ₹${amount}`,
-        screenshot_url: fileName,
+        screenshot_url: screenshotUrl,
+        utr_id: utrId.trim(),
       });
 
       if (error) throw error;
@@ -157,6 +164,7 @@ const WalletPage = () => {
       setCustomAmount('');
       setScreenshot(null);
       setScreenshotPreview(null);
+      setUtrId('');
       fetchData();
     } catch (error: any) {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
@@ -230,6 +238,20 @@ const WalletPage = () => {
       return <ArrowDownLeft className="w-4 h-4 text-green-500" />;
     }
     return <ArrowUpRight className="w-4 h-4 text-red-500" />;
+  };
+
+  const handleContactSupport = (tx: Transaction) => {
+    const userId = profile?.user_code || user?.id || 'Unknown';
+    const message = encodeURIComponent(
+      `🔔 Payment Support Request\n\n` +
+      `User ID: ${userId}\n` +
+      `Amount: ₹${tx.amount}\n` +
+      `UTR ID: ${tx.utr_id || 'Not provided'}\n` +
+      `Transaction ID: ${tx.id}\n` +
+      `Date: ${format(new Date(tx.created_at), 'MMM dd, yyyy hh:mm a')}\n\n` +
+      `Please verify my payment.`
+    );
+    window.open(`${TELEGRAM_SUPPORT}?text=${message}`, '_blank');
   };
 
   if (!user) return null;
@@ -321,35 +343,53 @@ const WalletPage = () => {
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: index * 0.05 }}
-                  className="glass-card p-4 flex items-center justify-between"
+                  className="glass-card p-4"
                 >
-                  <div className="flex items-center gap-3">
-                    <div className={`p-2 rounded-lg ${
-                      ['deposit', 'prize', 'refund', 'admin_credit'].includes(tx.type) 
-                        ? 'bg-green-500/10' 
-                        : 'bg-red-500/10'
-                    }`}>
-                      {getTypeIcon(tx.type)}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className={`p-2 rounded-lg ${
+                        ['deposit', 'prize', 'refund', 'admin_credit'].includes(tx.type) 
+                          ? 'bg-green-500/10' 
+                          : 'bg-red-500/10'
+                      }`}>
+                        {getTypeIcon(tx.type)}
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium capitalize">{tx.type.replace('_', ' ')}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {format(new Date(tx.created_at), 'MMM dd, hh:mm a')}
+                        </p>
+                        {tx.utr_id && (
+                          <p className="text-[10px] text-muted-foreground mt-0.5">
+                            UTR: {tx.utr_id}
+                          </p>
+                        )}
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-sm font-medium capitalize">{tx.type.replace('_', ' ')}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {format(new Date(tx.created_at), 'MMM dd, hh:mm a')}
-                      </p>
+                    <div className="text-right">
+                      <div className={`font-display font-bold ${
+                        ['deposit', 'prize', 'refund', 'admin_credit'].includes(tx.type) 
+                          ? 'text-green-500' 
+                          : 'text-red-500'
+                      }`}>
+                        {['deposit', 'prize', 'refund', 'admin_credit'].includes(tx.type) ? '+' : '-'}₹{tx.amount}
+                      </div>
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${getStatusColor(tx.status)}`}>
+                        {tx.status}
+                      </span>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <div className={`font-display font-bold ${
-                      ['deposit', 'prize', 'refund', 'admin_credit'].includes(tx.type) 
-                        ? 'text-green-500' 
-                        : 'text-red-500'
-                    }`}>
-                      {['deposit', 'prize', 'refund', 'admin_credit'].includes(tx.type) ? '+' : '-'}₹{tx.amount}
-                    </div>
-                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${getStatusColor(tx.status)}`}>
-                      {tx.status}
-                    </span>
-                  </div>
+                  
+                  {/* Contact Support for Pending Deposits */}
+                  {tx.type === 'deposit' && tx.status === 'pending' && (
+                    <button
+                      onClick={() => handleContactSupport(tx)}
+                      className="mt-3 w-full flex items-center justify-center gap-2 py-2 px-3 rounded-lg bg-primary/10 border border-primary/30 text-primary text-xs hover:bg-primary/20 transition-colors"
+                    >
+                      <MessageCircle className="w-3.5 h-3.5" />
+                      For faster approval, contact support
+                    </button>
+                  )}
                 </motion.div>
               ))}
             </div>
@@ -399,9 +439,22 @@ const WalletPage = () => {
               </div>
             </div>
 
-            {/* Screenshot Upload */}
+            {/* UTR ID Field */}
             <div>
-              <Label>Payment Screenshot *</Label>
+              <Label>UTR / Transaction ID *</Label>
+              <Input
+                value={utrId}
+                onChange={(e) => setUtrId(e.target.value)}
+                placeholder="Enter 12-digit UTR number"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Find this in your UPI app payment history
+              </p>
+            </div>
+
+            {/* Screenshot Upload - Optional */}
+            <div>
+              <Label>Payment Screenshot (Optional)</Label>
               <input
                 ref={fileInputRef}
                 type="file"
@@ -428,7 +481,7 @@ const WalletPage = () => {
                   <div className="text-center py-4">
                     <Upload className="w-8 h-8 mx-auto text-muted-foreground mb-2" />
                     <p className="text-sm text-muted-foreground">
-                      Upload payment screenshot
+                      Upload payment screenshot (optional)
                     </p>
                     <p className="text-xs text-muted-foreground mt-1">
                       Max 5MB, PNG/JPG
@@ -438,8 +491,8 @@ const WalletPage = () => {
               </div>
             </div>
 
-            <Button variant="neon" className="w-full" onClick={handleDeposit} disabled={isSubmitting || !screenshot}>
-              {isSubmitting ? 'Uploading...' : `Request Deposit of ₹${customAmount || depositAmount}`}
+            <Button variant="neon" className="w-full" onClick={handleDeposit} disabled={isSubmitting || !utrId.trim()}>
+              {isSubmitting ? 'Submitting...' : `Request Deposit of ₹${customAmount || depositAmount}`}
             </Button>
           </div>
         </DialogContent>
