@@ -16,6 +16,9 @@ export type Database = {
     Tables: {
       match_registrations: {
         Row: {
+          bgmi_ingame_name: string | null
+          bgmi_player_id: string | null
+          bgmi_player_level: number | null
           id: string
           is_approved: boolean | null
           match_id: string
@@ -26,6 +29,9 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          bgmi_ingame_name?: string | null
+          bgmi_player_id?: string | null
+          bgmi_player_level?: number | null
           id?: string
           is_approved?: boolean | null
           match_id: string
@@ -36,6 +42,9 @@ export type Database = {
           user_id: string
         }
         Update: {
+          bgmi_ingame_name?: string | null
+          bgmi_player_id?: string | null
+          bgmi_player_level?: number | null
           id?: string
           is_approved?: boolean | null
           match_id?: string
