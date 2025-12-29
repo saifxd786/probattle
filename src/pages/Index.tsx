@@ -9,6 +9,7 @@ import Footer from '@/components/Footer';
 import GameCard from '@/components/GameCard';
 import HowItWorks from '@/components/HowItWorks';
 import TrustSection from '@/components/TrustSection';
+import { useAuth } from '@/contexts/AuthContext';
 
 import heroBanner from '@/assets/hero-banner.jpg';
 import bgmiCard from '@/assets/bgmi-card.jpg';
@@ -24,6 +25,8 @@ const games = [
 ];
 
 const Index = () => {
+  const { user } = useAuth();
+  
   return (
     <div className="min-h-screen bg-background">
       <Header />
@@ -65,11 +68,13 @@ const Index = () => {
                   <ChevronRight className="w-5 h-5" />
                 </Button>
               </Link>
-              <Link to="/auth">
-                <Button variant="outline" size="xl">
-                  Create Account
-                </Button>
-              </Link>
+              {!user && (
+                <Link to="/auth">
+                  <Button variant="outline" size="xl">
+                    Create Account
+                  </Button>
+                </Link>
+              )}
             </div>
           </motion.div>
 
