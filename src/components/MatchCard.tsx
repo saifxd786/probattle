@@ -67,32 +67,26 @@ const MatchCard = ({
   const hasEnoughBalance = walletBalance >= entryFee;
   
   // Live countdown timer state
-  const [timeRemaining, setTimeRemaining] = useState<{ minutes: number; seconds: number } | null>(null);
+  const [timeRemaining, setTimeRemaining] = useState<{ hours: number; minutes: number; seconds: number } | null>(null);
 
   // Parse match time and calculate countdown
   useEffect(() => {
     const calculateTimeRemaining = () => {
-      // Parse the time string (e.g., "Today 7:00 PM" or actual timestamp)
       const now = new Date();
-      let matchDate: Date | null = null;
-
-      // Try parsing as ISO string first
-      const parsedDate = new Date(time);
-      if (!isNaN(parsedDate.getTime())) {
-        matchDate = parsedDate;
-      }
-
-      if (!matchDate) return null;
+      const matchDate = new Date(time);
+      
+      if (isNaN(matchDate.getTime())) return null;
 
       const diff = matchDate.getTime() - now.getTime();
       
-      if (diff <= 0) return { minutes: 0, seconds: 0 };
+      if (diff <= 0) return { hours: 0, minutes: 0, seconds: 0 };
       
       const totalSeconds = Math.floor(diff / 1000);
-      const minutes = Math.floor(totalSeconds / 60);
+      const hours = Math.floor(totalSeconds / 3600);
+      const minutes = Math.floor((totalSeconds % 3600) / 60);
       const seconds = totalSeconds % 60;
       
-      return { minutes, seconds };
+      return { hours, minutes, seconds };
     };
 
     const updateTimer = () => {
@@ -105,6 +99,18 @@ const MatchCard = ({
 
     return () => clearInterval(interval);
   }, [time]);
+
+  // Format display time
+  const formatDisplayTime = (dateString: string) => {
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return dateString;
+    return date.toLocaleString('en-IN', { 
+      weekday: 'short', 
+      hour: '2-digit', 
+      minute: '2-digit',
+      hour12: true 
+    });
+  };
 
   useEffect(() => {
     if (user) {
@@ -350,14 +356,14 @@ const MatchCard = ({
           </div>
 
           {/* Live Timer */}
-          {timeRemaining && (timeRemaining.minutes > 0 || timeRemaining.seconds > 0) && (
+          {timeRemaining && (timeRemaining.hours > 0 || timeRemaining.minutes > 0 || timeRemaining.seconds > 0) && (
             <div className="flex items-center justify-center">
               <div className="flex items-center gap-1.5 text-sm font-mono font-bold text-primary">
-                <Clock className="w-4 h-4" />
+                <Clock className="w-4 h-4 animate-pulse" />
                 <span className="bg-primary/20 px-2 py-0.5 rounded border border-primary/30">
-                  {timeRemaining.minutes < 60 
-                    ? `${String(timeRemaining.minutes).padStart(2, '0')}:${String(timeRemaining.seconds).padStart(2, '0')}`
-                    : `${Math.floor(timeRemaining.minutes / 60)}h ${timeRemaining.minutes % 60}m`
+                  {timeRemaining.hours > 0 
+                    ? `${timeRemaining.hours}h ${String(timeRemaining.minutes).padStart(2, '0')}m ${String(timeRemaining.seconds).padStart(2, '0')}s`
+                    : `${String(timeRemaining.minutes).padStart(2, '0')}:${String(timeRemaining.seconds).padStart(2, '0')}`
                   }
                 </span>
               </div>
@@ -368,7 +374,7 @@ const MatchCard = ({
           <div className="flex items-center justify-between">
             <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
               <Clock className="w-3.5 h-3.5" />
-              {time}
+              {formatDisplayTime(time)}
             </span>
             
             <Button 
