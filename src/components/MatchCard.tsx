@@ -65,6 +65,46 @@ const MatchCard = ({
   const isFree = entryFee === 0 || isFreeMatch;
   const slotsPercentage = (slots.current / slots.total) * 100;
   const hasEnoughBalance = walletBalance >= entryFee;
+  
+  // Live countdown timer state
+  const [timeRemaining, setTimeRemaining] = useState<{ minutes: number; seconds: number } | null>(null);
+
+  // Parse match time and calculate countdown
+  useEffect(() => {
+    const calculateTimeRemaining = () => {
+      // Parse the time string (e.g., "Today 7:00 PM" or actual timestamp)
+      const now = new Date();
+      let matchDate: Date | null = null;
+
+      // Try parsing as ISO string first
+      const parsedDate = new Date(time);
+      if (!isNaN(parsedDate.getTime())) {
+        matchDate = parsedDate;
+      }
+
+      if (!matchDate) return null;
+
+      const diff = matchDate.getTime() - now.getTime();
+      
+      if (diff <= 0) return { minutes: 0, seconds: 0 };
+      
+      const totalSeconds = Math.floor(diff / 1000);
+      const minutes = Math.floor(totalSeconds / 60);
+      const seconds = totalSeconds % 60;
+      
+      return { minutes, seconds };
+    };
+
+    const updateTimer = () => {
+      const remaining = calculateTimeRemaining();
+      setTimeRemaining(remaining);
+    };
+
+    updateTimer();
+    const interval = setInterval(updateTimer, 1000);
+
+    return () => clearInterval(interval);
+  }, [time]);
 
   useEffect(() => {
     if (user) {
@@ -309,7 +349,22 @@ const MatchCard = ({
             </div>
           </div>
 
-          {/* Time */}
+          {/* Live Timer */}
+          {timeRemaining && (timeRemaining.minutes > 0 || timeRemaining.seconds > 0) && (
+            <div className="flex items-center justify-center">
+              <div className="flex items-center gap-1.5 text-sm font-mono font-bold text-primary">
+                <Clock className="w-4 h-4" />
+                <span className="bg-primary/20 px-2 py-0.5 rounded border border-primary/30">
+                  {timeRemaining.minutes < 60 
+                    ? `${String(timeRemaining.minutes).padStart(2, '0')}:${String(timeRemaining.seconds).padStart(2, '0')}`
+                    : `${Math.floor(timeRemaining.minutes / 60)}h ${timeRemaining.minutes % 60}m`
+                  }
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* Time & Join Button */}
           <div className="flex items-center justify-between">
             <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
               <Clock className="w-3.5 h-3.5" />
