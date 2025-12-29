@@ -1,26 +1,221 @@
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Wallet, Plus, ArrowUpRight, ArrowDownLeft, History } from 'lucide-react';
+import { Wallet, Plus, ArrowUpRight, ArrowDownLeft, History, Copy, Check, Loader2 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import Header from '@/components/Header';
 import BottomNav from '@/components/BottomNav';
 import TelegramFloat from '@/components/TelegramFloat';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { toast } from '@/hooks/use-toast';
+import { format } from 'date-fns';
+
+const DEPOSIT_AMOUNTS = [100, 200, 500, 1000, 5000];
+const MIN_DEPOSIT = 100;
+const MIN_WITHDRAWAL = 110;
+const UPI_ID = 'mohdqureshi807@naviaxis';
+
+type Transaction = {
+  id: string;
+  type: string;
+  amount: number;
+  status: string;
+  description: string | null;
+  created_at: string;
+};
+
+type Profile = {
+  wallet_balance: number;
+  user_code: string | null;
+};
 
 const WalletPage = () => {
-  const balance = 0;
-  const transactions: { type: 'credit' | 'debit'; amount: number; description: string; date: string }[] = [];
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isDepositOpen, setIsDepositOpen] = useState(false);
+  const [isWithdrawOpen, setIsWithdrawOpen] = useState(false);
+  const [depositAmount, setDepositAmount] = useState<number>(100);
+  const [customAmount, setCustomAmount] = useState('');
+  const [withdrawAmount, setWithdrawAmount] = useState('');
+  const [upiId, setUpiId] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const fetchData = async () => {
+    if (!user) return;
+
+    setIsLoading(true);
+
+    // Fetch profile
+    const { data: profileData } = await supabase
+      .from('profiles')
+      .select('wallet_balance, user_code')
+      .eq('id', user.id)
+      .single();
+
+    if (profileData) {
+      setProfile(profileData);
+    }
+
+    // Fetch transactions
+    const { data: txData } = await supabase
+      .from('transactions')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(50);
+
+    if (txData) {
+      setTransactions(txData);
+    }
+
+    setIsLoading(false);
+  };
+
+  useEffect(() => {
+    if (!user) {
+      navigate('/auth');
+      return;
+    }
+    fetchData();
+  }, [user, navigate]);
+
+  const handleDeposit = async () => {
+    if (!user) return;
+
+    const amount = customAmount ? Number(customAmount) : depositAmount;
+
+    if (amount < MIN_DEPOSIT) {
+      toast({ title: 'Error', description: `Minimum deposit is ₹${MIN_DEPOSIT}`, variant: 'destructive' });
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    const { error } = await supabase.from('transactions').insert({
+      user_id: user.id,
+      type: 'deposit',
+      amount,
+      status: 'pending',
+      description: `Deposit request of ₹${amount}`,
+    });
+
+    if (error) {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    } else {
+      toast({ 
+        title: 'Deposit Request Submitted', 
+        description: `Please pay ₹${amount} to ${UPI_ID} and wait for admin approval.` 
+      });
+      setIsDepositOpen(false);
+      setCustomAmount('');
+      fetchData();
+    }
+
+    setIsSubmitting(false);
+  };
+
+  const handleWithdraw = async () => {
+    if (!user || !profile) return;
+
+    const amount = Number(withdrawAmount);
+
+    if (amount < MIN_WITHDRAWAL) {
+      toast({ title: 'Error', description: `Minimum withdrawal is ₹${MIN_WITHDRAWAL}`, variant: 'destructive' });
+      return;
+    }
+
+    if (amount > profile.wallet_balance) {
+      toast({ title: 'Error', description: 'Insufficient balance', variant: 'destructive' });
+      return;
+    }
+
+    if (!upiId.trim()) {
+      toast({ title: 'Error', description: 'Please enter your UPI ID', variant: 'destructive' });
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    const { error } = await supabase.from('transactions').insert({
+      user_id: user.id,
+      type: 'withdrawal',
+      amount,
+      status: 'pending',
+      upi_id: upiId.trim(),
+      description: `Withdrawal request of ₹${amount}`,
+    });
+
+    if (error) {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    } else {
+      toast({ title: 'Withdrawal Request Submitted', description: 'Your request is being processed.' });
+      setIsWithdrawOpen(false);
+      setWithdrawAmount('');
+      setUpiId('');
+      fetchData();
+    }
+
+    setIsSubmitting(false);
+  };
+
+  const copyUPI = () => {
+    navigator.clipboard.writeText(UPI_ID);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'completed': return 'bg-green-500/20 text-green-500';
+      case 'pending': return 'bg-yellow-500/20 text-yellow-500';
+      case 'processing': return 'bg-blue-500/20 text-blue-500';
+      case 'cancelled': return 'bg-red-500/20 text-red-500';
+      default: return 'bg-gray-500/20 text-gray-500';
+    }
+  };
+
+  const getTypeIcon = (type: string) => {
+    if (['deposit', 'prize', 'refund', 'admin_credit'].includes(type)) {
+      return <ArrowDownLeft className="w-4 h-4 text-green-500" />;
+    }
+    return <ArrowUpRight className="w-4 h-4 text-red-500" />;
+  };
+
+  if (!user) return null;
 
   return (
     <div className="min-h-screen bg-background pb-20">
       <Header />
       
       <main className="container mx-auto px-4 pt-20">
+        {/* User ID Badge */}
+        {profile?.user_code && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-4 text-center"
+          >
+            <span className="inline-flex items-center gap-2 px-3 py-1.5 bg-primary/10 border border-primary/30 rounded-full text-sm">
+              <span className="text-muted-foreground">Your ID:</span>
+              <span className="font-display font-bold text-primary">{profile.user_code}</span>
+            </span>
+          </motion.div>
+        )}
+
         {/* Balance Card */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           className="glass-card p-6 mb-6 relative overflow-hidden"
         >
-          {/* Background glow */}
           <div className="absolute top-0 right-0 w-40 h-40 bg-primary/10 rounded-full blur-3xl" />
           
           <div className="relative">
@@ -30,15 +225,19 @@ const WalletPage = () => {
             </div>
             
             <div className="font-display text-4xl font-bold mb-4">
-              ₹{balance.toFixed(2)}
+              {isLoading ? (
+                <Loader2 className="w-8 h-8 animate-spin" />
+              ) : (
+                `₹${(profile?.wallet_balance || 0).toFixed(2)}`
+              )}
             </div>
             
             <div className="flex gap-3">
-              <Button variant="neon" size="sm" className="flex-1">
+              <Button variant="neon" size="sm" className="flex-1" onClick={() => setIsDepositOpen(true)}>
                 <Plus className="w-4 h-4 mr-1" />
                 Add Money
               </Button>
-              <Button variant="outline" size="sm" className="flex-1">
+              <Button variant="outline" size="sm" className="flex-1" onClick={() => setIsWithdrawOpen(true)}>
                 <ArrowUpRight className="w-4 h-4 mr-1" />
                 Withdraw
               </Button>
@@ -57,7 +256,11 @@ const WalletPage = () => {
             <h2 className="font-display text-lg font-bold">Transaction History</h2>
           </div>
 
-          {transactions.length === 0 ? (
+          {isLoading ? (
+            <div className="flex justify-center py-12">
+              <Loader2 className="w-6 h-6 animate-spin text-primary" />
+            </div>
+          ) : transactions.length === 0 ? (
             <div className="glass-card p-8 text-center">
               <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-primary/10 flex items-center justify-center">
                 <History className="w-8 h-8 text-primary/50" />
@@ -71,27 +274,38 @@ const WalletPage = () => {
             <div className="space-y-3">
               {transactions.map((tx, index) => (
                 <motion.div
-                  key={index}
+                  key={tx.id}
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: index * 0.05 }}
                   className="glass-card p-4 flex items-center justify-between"
                 >
                   <div className="flex items-center gap-3">
-                    <div className={`p-2 rounded-lg ${tx.type === 'credit' ? 'bg-green-500/10' : 'bg-red-500/10'}`}>
-                      {tx.type === 'credit' ? (
-                        <ArrowDownLeft className="w-4 h-4 text-green-500" />
-                      ) : (
-                        <ArrowUpRight className="w-4 h-4 text-red-500" />
-                      )}
+                    <div className={`p-2 rounded-lg ${
+                      ['deposit', 'prize', 'refund', 'admin_credit'].includes(tx.type) 
+                        ? 'bg-green-500/10' 
+                        : 'bg-red-500/10'
+                    }`}>
+                      {getTypeIcon(tx.type)}
                     </div>
                     <div>
-                      <p className="text-sm font-medium">{tx.description}</p>
-                      <p className="text-xs text-muted-foreground">{tx.date}</p>
+                      <p className="text-sm font-medium capitalize">{tx.type.replace('_', ' ')}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {format(new Date(tx.created_at), 'MMM dd, hh:mm a')}
+                      </p>
                     </div>
                   </div>
-                  <div className={`font-display font-bold ${tx.type === 'credit' ? 'text-green-500' : 'text-red-500'}`}>
-                    {tx.type === 'credit' ? '+' : '-'}₹{tx.amount}
+                  <div className="text-right">
+                    <div className={`font-display font-bold ${
+                      ['deposit', 'prize', 'refund', 'admin_credit'].includes(tx.type) 
+                        ? 'text-green-500' 
+                        : 'text-red-500'
+                    }`}>
+                      {['deposit', 'prize', 'refund', 'admin_credit'].includes(tx.type) ? '+' : '-'}₹{tx.amount}
+                    </div>
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${getStatusColor(tx.status)}`}>
+                      {tx.status}
+                    </span>
                   </div>
                 </motion.div>
               ))}
@@ -99,6 +313,97 @@ const WalletPage = () => {
           )}
         </motion.div>
       </main>
+
+      {/* Deposit Dialog */}
+      <Dialog open={isDepositOpen} onOpenChange={setIsDepositOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add Money</DialogTitle>
+            <DialogDescription>Minimum deposit: ₹{MIN_DEPOSIT}</DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 mt-4">
+            <div className="grid grid-cols-3 gap-2">
+              {DEPOSIT_AMOUNTS.map((amount) => (
+                <Button
+                  key={amount}
+                  variant={depositAmount === amount && !customAmount ? 'default' : 'outline'}
+                  onClick={() => { setDepositAmount(amount); setCustomAmount(''); }}
+                  className="font-display"
+                >
+                  ₹{amount}
+                </Button>
+              ))}
+            </div>
+
+            <div>
+              <Label>Custom Amount</Label>
+              <Input
+                type="number"
+                placeholder={`Min ₹${MIN_DEPOSIT}`}
+                value={customAmount}
+                onChange={(e) => setCustomAmount(e.target.value)}
+              />
+            </div>
+
+            <div className="p-4 bg-primary/10 border border-primary/20 rounded-lg space-y-2">
+              <p className="text-sm font-medium">Pay to UPI ID:</p>
+              <div className="flex items-center gap-2">
+                <code className="flex-1 p-2 bg-background rounded text-sm font-mono">{UPI_ID}</code>
+                <Button variant="outline" size="icon" onClick={copyUPI}>
+                  {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                After payment, your deposit will be approved by admin.
+              </p>
+            </div>
+
+            <Button variant="neon" className="w-full" onClick={handleDeposit} disabled={isSubmitting}>
+              {isSubmitting ? 'Submitting...' : `Request Deposit of ₹${customAmount || depositAmount}`}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Withdraw Dialog */}
+      <Dialog open={isWithdrawOpen} onOpenChange={setIsWithdrawOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Withdraw Money</DialogTitle>
+            <DialogDescription>Minimum withdrawal: ₹{MIN_WITHDRAWAL}</DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 mt-4">
+            <div>
+              <Label>Amount</Label>
+              <Input
+                type="number"
+                placeholder={`Min ₹${MIN_WITHDRAWAL}`}
+                value={withdrawAmount}
+                onChange={(e) => setWithdrawAmount(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Available: ₹{(profile?.wallet_balance || 0).toFixed(2)}
+              </p>
+            </div>
+
+            <div>
+              <Label>Your UPI ID</Label>
+              <Input
+                type="text"
+                placeholder="yourname@upi"
+                value={upiId}
+                onChange={(e) => setUpiId(e.target.value)}
+              />
+            </div>
+
+            <Button variant="neon" className="w-full" onClick={handleWithdraw} disabled={isSubmitting}>
+              {isSubmitting ? 'Submitting...' : 'Request Withdrawal'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <BottomNav />
       <TelegramFloat />

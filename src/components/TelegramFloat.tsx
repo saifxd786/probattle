@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 const TelegramFloat = () => {
   return (
     <motion.a
-      href="https://t.me/ProScimstournament"
+      href="https://t.me/ProScrimsTournament"
       target="_blank"
       rel="noopener noreferrer"
       className="fixed bottom-20 right-4 z-50 md:bottom-6 group"
@@ -22,9 +22,6 @@ const TelegramFloat = () => {
         <div className="relative flex items-center justify-center w-14 h-14 bg-[#0088cc] rounded-full shadow-lg transition-all duration-300 group-hover:shadow-[0_0_30px_rgba(0,136,204,0.6)]">
           <MessageCircle className="w-6 h-6 text-white" />
         </div>
-        
-        {/* Pulse ring */}
-        <div className="absolute inset-0 rounded-full border-2 border-[#0088cc] animate-ping opacity-30" />
       </div>
       
       {/* Tooltip */}

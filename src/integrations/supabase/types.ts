@@ -133,6 +133,7 @@ export type Database = {
           is_banned: boolean | null
           phone: string | null
           updated_at: string | null
+          user_code: string | null
           username: string | null
           wallet_balance: number | null
         }
@@ -144,6 +145,7 @@ export type Database = {
           is_banned?: boolean | null
           phone?: string | null
           updated_at?: string | null
+          user_code?: string | null
           username?: string | null
           wallet_balance?: number | null
         }
@@ -155,8 +157,48 @@ export type Database = {
           is_banned?: boolean | null
           phone?: string | null
           updated_at?: string | null
+          user_code?: string | null
           username?: string | null
           wallet_balance?: number | null
+        }
+        Relationships: []
+      }
+      transactions: {
+        Row: {
+          admin_note: string | null
+          amount: number
+          created_at: string | null
+          description: string | null
+          id: string
+          status: Database["public"]["Enums"]["transaction_status"]
+          type: Database["public"]["Enums"]["transaction_type"]
+          updated_at: string | null
+          upi_id: string | null
+          user_id: string
+        }
+        Insert: {
+          admin_note?: string | null
+          amount: number
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          status?: Database["public"]["Enums"]["transaction_status"]
+          type: Database["public"]["Enums"]["transaction_type"]
+          updated_at?: string | null
+          upi_id?: string | null
+          user_id: string
+        }
+        Update: {
+          admin_note?: string | null
+          amount?: number
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          status?: Database["public"]["Enums"]["transaction_status"]
+          type?: Database["public"]["Enums"]["transaction_type"]
+          updated_at?: string | null
+          upi_id?: string | null
+          user_id?: string
         }
         Relationships: []
       }
@@ -196,6 +238,15 @@ export type Database = {
       game_type: "bgmi" | "freefire" | "clash_royale" | "ludo"
       match_status: "upcoming" | "pending" | "live" | "completed" | "cancelled"
       match_type: "tdm_1v1" | "tdm_2v2" | "tdm_4v4" | "classic"
+      transaction_status: "processing" | "pending" | "completed" | "cancelled"
+      transaction_type:
+        | "deposit"
+        | "withdrawal"
+        | "prize"
+        | "entry_fee"
+        | "refund"
+        | "admin_credit"
+        | "admin_debit"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -327,6 +378,16 @@ export const Constants = {
       game_type: ["bgmi", "freefire", "clash_royale", "ludo"],
       match_status: ["upcoming", "pending", "live", "completed", "cancelled"],
       match_type: ["tdm_1v1", "tdm_2v2", "tdm_4v4", "classic"],
+      transaction_status: ["processing", "pending", "completed", "cancelled"],
+      transaction_type: [
+        "deposit",
+        "withdrawal",
+        "prize",
+        "entry_fee",
+        "refund",
+        "admin_credit",
+        "admin_debit",
+      ],
     },
   },
 } as const
