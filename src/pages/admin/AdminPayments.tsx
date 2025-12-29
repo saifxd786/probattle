@@ -77,31 +77,54 @@ const AdminPayments = () => {
     fetchRegistrations();
   }, [filter]);
 
-  const handleApprove = async (id: string) => {
+  const createNotification = async (userId: string, title: string, message: string, type: string) => {
+    await supabase.from('notifications').insert({
+      user_id: userId,
+      title,
+      message,
+      type,
+    });
+  };
+
+  const handleApprove = async (reg: Registration) => {
     const { error } = await supabase
       .from('match_registrations')
       .update({ is_approved: true, payment_status: 'approved' })
-      .eq('id', id);
+      .eq('id', reg.id);
 
     if (error) {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
     } else {
+      // Send notification
+      await createNotification(
+        reg.user_id,
+        'Match Registration Approved!',
+        `Your registration for "${reg.matches?.title}" has been approved. Room details will be shared before the match.`,
+        'success'
+      );
+      
       toast({ title: 'Success', description: 'Registration approved! Slot count updated.' });
       fetchRegistrations();
     }
   };
 
-  const handleReject = async (id: string) => {
-    const reason = prompt('Enter rejection reason (optional):');
-    
+  const handleReject = async (reg: Registration) => {
     const { error } = await supabase
       .from('match_registrations')
       .update({ is_approved: false, payment_status: 'rejected' })
-      .eq('id', id);
+      .eq('id', reg.id);
 
     if (error) {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
     } else {
+      // Send notification
+      await createNotification(
+        reg.user_id,
+        'Match Registration Rejected',
+        `Your registration for "${reg.matches?.title}" was rejected. Please contact support.`,
+        'error'
+      );
+      
       toast({ title: 'Rejected', description: 'Registration has been rejected.' });
       fetchRegistrations();
     }
@@ -218,7 +241,7 @@ const AdminPayments = () => {
                             <Button
                               variant="ghost"
                               size="icon"
-                              onClick={() => handleApprove(reg.id)}
+                              onClick={() => handleApprove(reg)}
                               title="Approve"
                             >
                               <Check className="w-4 h-4 text-green-500" />
@@ -226,7 +249,7 @@ const AdminPayments = () => {
                             <Button
                               variant="ghost"
                               size="icon"
-                              onClick={() => handleReject(reg.id)}
+                              onClick={() => handleReject(reg)}
                               title="Reject"
                             >
                               <X className="w-4 h-4 text-red-500" />
