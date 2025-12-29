@@ -20,6 +20,7 @@ import AdminMatches from "./pages/admin/AdminMatches";
 import AdminUsers from "./pages/admin/AdminUsers";
 import AdminPayments from "./pages/admin/AdminPayments";
 import AdminSettings from "./pages/admin/AdminSettings";
+import AdminTransactions from "./pages/admin/AdminTransactions";
 
 const queryClient = new QueryClient();
 
@@ -51,6 +52,7 @@ const App = () => {
                 <Route path="matches" element={<AdminMatches />} />
                 <Route path="users" element={<AdminUsers />} />
                 <Route path="payments" element={<AdminPayments />} />
+                <Route path="transactions" element={<AdminTransactions />} />
                 <Route path="settings" element={<AdminSettings />} />
               </Route>
               <Route path="*" element={<NotFound />} />

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Mail, Lock, User, ArrowRight, Eye, EyeOff } from 'lucide-react';
+import { Phone, Lock, User, ArrowRight, Eye, EyeOff } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,7 +12,7 @@ import { z } from 'zod';
 type AuthMode = 'login' | 'signup';
 
 // Validation schemas
-const emailSchema = z.string().trim().email({ message: 'Invalid email address' }).max(255);
+const phoneSchema = z.string().trim().min(10, { message: 'Phone number must be at least 10 digits' }).max(15).regex(/^[0-9]+$/, { message: 'Phone number must contain only digits' });
 const passwordSchema = z.string().min(6, { message: 'Password must be at least 6 characters' }).max(72);
 const usernameSchema = z.string().trim().min(3, { message: 'Username must be at least 3 characters' }).max(30);
 
@@ -24,7 +24,7 @@ const AuthPage = () => {
   const [isLoading, setIsLoading] = useState(false);
 
   const [formData, setFormData] = useState({
-    email: '',
+    phone: '',
     password: '',
     confirmPassword: '',
     username: '',
@@ -37,17 +37,20 @@ const AuthPage = () => {
     }
   }, [user, navigate]);
 
+  // Generate email from phone number for Supabase auth
+  const phoneToEmail = (phone: string) => `${phone}@proscims.app`;
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
     try {
-      // Validate email
-      const emailResult = emailSchema.safeParse(formData.email);
-      if (!emailResult.success) {
+      // Validate phone
+      const phoneResult = phoneSchema.safeParse(formData.phone);
+      if (!phoneResult.success) {
         toast({
           title: 'Validation Error',
-          description: emailResult.error.errors[0].message,
+          description: phoneResult.error.errors[0].message,
           variant: 'destructive',
         });
         setIsLoading(false);
@@ -65,6 +68,8 @@ const AuthPage = () => {
         setIsLoading(false);
         return;
       }
+
+      const email = phoneToEmail(formData.phone);
 
       if (mode === 'signup') {
         // Validate username
@@ -92,12 +97,13 @@ const AuthPage = () => {
         // Sign up
         const redirectUrl = `${window.location.origin}/`;
         const { error } = await supabase.auth.signUp({
-          email: formData.email,
+          email,
           password: formData.password,
           options: {
             emailRedirectTo: redirectUrl,
             data: {
               username: formData.username,
+              phone: formData.phone,
             },
           },
         });
@@ -105,7 +111,7 @@ const AuthPage = () => {
         if (error) {
           let errorMessage = error.message;
           if (error.message.includes('already registered')) {
-            errorMessage = 'This email is already registered. Please login instead.';
+            errorMessage = 'This phone number is already registered. Please login instead.';
           }
           toast({
             title: 'Signup Error',
@@ -124,14 +130,14 @@ const AuthPage = () => {
       } else {
         // Login
         const { error } = await supabase.auth.signInWithPassword({
-          email: formData.email,
+          email,
           password: formData.password,
         });
 
         if (error) {
           let errorMessage = error.message;
           if (error.message.includes('Invalid login credentials')) {
-            errorMessage = 'Invalid email or password. Please try again.';
+            errorMessage = 'Invalid phone number or password. Please try again.';
           }
           toast({
             title: 'Login Error',
@@ -213,14 +219,14 @@ const AuthPage = () => {
               </div>
             )}
 
-            {/* Email */}
+            {/* Phone */}
             <div className="relative">
-              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
-                type="email"
-                placeholder="Email address"
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                type="tel"
+                placeholder="Phone Number"
+                value={formData.phone}
+                onChange={(e) => setFormData({ ...formData, phone: e.target.value.replace(/\D/g, '') })}
                 className="pl-10 bg-secondary/50 border-border/50 focus:border-primary"
                 required
               />
