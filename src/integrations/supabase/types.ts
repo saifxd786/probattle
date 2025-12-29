@@ -14,6 +14,116 @@ export type Database = {
   }
   public: {
     Tables: {
+      match_registrations: {
+        Row: {
+          id: string
+          is_approved: boolean | null
+          match_id: string
+          payment_screenshot_url: string | null
+          payment_status: string
+          registered_at: string | null
+          team_name: string | null
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          is_approved?: boolean | null
+          match_id: string
+          payment_screenshot_url?: string | null
+          payment_status?: string
+          registered_at?: string | null
+          team_name?: string | null
+          user_id: string
+        }
+        Update: {
+          id?: string
+          is_approved?: boolean | null
+          match_id?: string
+          payment_screenshot_url?: string | null
+          payment_status?: string
+          registered_at?: string | null
+          team_name?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "match_registrations_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "matches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      matches: {
+        Row: {
+          banner_url: string | null
+          created_at: string | null
+          created_by: string | null
+          entry_fee: number
+          filled_slots: number
+          game: Database["public"]["Enums"]["game_type"]
+          id: string
+          is_free: boolean
+          map_name: string | null
+          match_time: string
+          match_type: Database["public"]["Enums"]["match_type"]
+          max_slots: number
+          prize_per_kill: number | null
+          prize_pool: number
+          room_id: string | null
+          room_password: string | null
+          rules: string | null
+          status: Database["public"]["Enums"]["match_status"]
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          banner_url?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          entry_fee?: number
+          filled_slots?: number
+          game?: Database["public"]["Enums"]["game_type"]
+          id?: string
+          is_free?: boolean
+          map_name?: string | null
+          match_time: string
+          match_type: Database["public"]["Enums"]["match_type"]
+          max_slots?: number
+          prize_per_kill?: number | null
+          prize_pool?: number
+          room_id?: string | null
+          room_password?: string | null
+          rules?: string | null
+          status?: Database["public"]["Enums"]["match_status"]
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          banner_url?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          entry_fee?: number
+          filled_slots?: number
+          game?: Database["public"]["Enums"]["game_type"]
+          id?: string
+          is_free?: boolean
+          map_name?: string | null
+          match_time?: string
+          match_type?: Database["public"]["Enums"]["match_type"]
+          max_slots?: number
+          prize_per_kill?: number | null
+          prize_pool?: number
+          room_id?: string | null
+          room_password?: string | null
+          rules?: string | null
+          status?: Database["public"]["Enums"]["match_status"]
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -83,6 +193,9 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"
+      game_type: "bgmi" | "freefire" | "clash_royale" | "ludo"
+      match_status: "upcoming" | "pending" | "live" | "completed" | "cancelled"
+      match_type: "tdm_1v1" | "tdm_2v2" | "tdm_4v4" | "classic"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -211,6 +324,9 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "moderator", "user"],
+      game_type: ["bgmi", "freefire", "clash_royale", "ludo"],
+      match_status: ["upcoming", "pending", "live", "completed", "cancelled"],
+      match_type: ["tdm_1v1", "tdm_2v2", "tdm_4v4", "classic"],
     },
   },
 } as const
