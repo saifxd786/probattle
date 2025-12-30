@@ -530,12 +530,14 @@ const AdminMatches = () => {
                             </Button>
                           )}
                           <Button 
-                            variant="ghost" 
-                            size="icon" 
+                            variant="outline" 
+                            size="sm"
+                            className="text-yellow-500 border-yellow-500/50 hover:bg-yellow-500/10"
                             onClick={() => { setResultsMatch(match); setIsResultsOpen(true); }}
                             title="Declare Results"
                           >
-                            <Trophy className="w-4 h-4 text-yellow-500" />
+                            <Trophy className="w-4 h-4 mr-1" />
+                            Result Out
                           </Button>
                           <Button variant="ghost" size="icon" onClick={() => handleEdit(match)}>
                             <Edit className="w-4 h-4" />
