@@ -13,6 +13,8 @@ type Profile = {
   email: string | null;
   wallet_balance: number;
   is_banned: boolean;
+  ban_reason: string | null;
+  banned_at: string | null;
   created_at: string;
 };
 
@@ -56,9 +58,22 @@ const AdminUsers = () => {
   }, []);
 
   const toggleBan = async (userId: string, currentStatus: boolean) => {
+    let banReason: string | null = null;
+    
+    // If banning (not currently banned), ask for reason
+    if (!currentStatus) {
+      banReason = prompt('Enter ban reason (optional):');
+    }
+    
+    const updateData: { is_banned: boolean; ban_reason: string | null; banned_at: string | null } = {
+      is_banned: !currentStatus,
+      ban_reason: !currentStatus ? (banReason || 'Violation of terms of service') : null,
+      banned_at: !currentStatus ? new Date().toISOString() : null,
+    };
+    
     const { error } = await supabase
       .from('profiles')
-      .update({ is_banned: !currentStatus })
+      .update(updateData)
       .eq('id', userId);
 
     if (error) {
