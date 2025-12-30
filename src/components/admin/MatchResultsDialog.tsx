@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Trophy, Medal, Skull, User } from 'lucide-react';
+import { Trophy, Medal, Skull, User, Gamepad2, Award, XCircle } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { cn } from '@/lib/utils';
 
 type Match = {
   id: string;
@@ -24,21 +25,20 @@ type Registration = {
   id: string;
   user_id: string;
   bgmi_ingame_name: string | null;
+  bgmi_player_id: string | null;
   team_name: string | null;
-  profiles?: {
-    username: string | null;
-    user_code: string | null;
-  };
 };
 
 type ResultEntry = {
   registration_id: string;
   user_id: string;
   player_name: string;
+  player_id: string;
   position: number | null;
   kills: number;
   prize_amount: number;
   is_winner: boolean;
+  result_status: 'pending' | 'win' | 'lose';
 };
 
 interface MatchResultsDialogProps {
@@ -54,6 +54,9 @@ const MatchResultsDialog = ({ match, isOpen, onClose, onResultsDeclared }: Match
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
 
+  const isClassicMatch = match?.match_type === 'classic';
+  const isTDMMatch = match?.match_type?.startsWith('tdm');
+
   useEffect(() => {
     if (match && isOpen) {
       fetchRegistrations();
@@ -66,32 +69,25 @@ const MatchResultsDialog = ({ match, isOpen, onClose, onResultsDeclared }: Match
     setIsLoading(true);
     const { data, error } = await supabase
       .from('match_registrations')
-      .select(`
-        id,
-        user_id,
-        bgmi_ingame_name,
-        team_name,
-        profiles:user_id (
-          username,
-          user_code
-        )
-      `)
+      .select('id, user_id, bgmi_ingame_name, bgmi_player_id, team_name')
       .eq('match_id', match.id)
       .eq('is_approved', true);
 
     if (error) {
       toast({ title: 'Error', description: 'Failed to fetch registrations', variant: 'destructive' });
     } else if (data) {
-      setRegistrations(data as any);
-      // Initialize results for each registration
-      setResults(data.map((reg: any) => ({
+      setRegistrations(data);
+      // Initialize results for each registration - using only in-game name
+      setResults(data.map((reg) => ({
         registration_id: reg.id,
         user_id: reg.user_id,
-        player_name: reg.bgmi_ingame_name || reg.profiles?.username || 'Unknown',
+        player_name: reg.bgmi_ingame_name || 'Unknown Player',
+        player_id: reg.bgmi_player_id || '',
         position: null,
         kills: 0,
         prize_amount: 0,
-        is_winner: false
+        is_winner: false,
+        result_status: 'pending' as const
       })));
     }
     setIsLoading(false);
@@ -102,21 +98,33 @@ const MatchResultsDialog = ({ match, isOpen, onClose, onResultsDeclared }: Match
       if (r.registration_id === regId) {
         const updated = { ...r, [field]: value };
         
-        // Auto-calculate prize based on position and kills
+        // Auto-calculate prize based on position, kills, and win status
         if (match) {
           let prize = 0;
           
-          // Position-based prizes for classic matches
-          if (updated.position === 1) {
-            prize += match.first_place_prize || 0;
+          // For TDM matches - winner gets first place prize
+          if (isTDMMatch && updated.result_status === 'win') {
+            prize = match.first_place_prize || 0;
             updated.is_winner = true;
-          } else if (updated.position === 2) {
-            prize += (match as any).second_place_prize || 0;
-          } else if (updated.position === 3) {
-            prize += (match as any).third_place_prize || 0;
+            updated.position = 1;
+          } else if (isTDMMatch && updated.result_status === 'lose') {
+            updated.is_winner = false;
+            updated.position = null;
           }
           
-          // Per-kill prize
+          // For Classic matches - position-based prizes
+          if (isClassicMatch) {
+            if (updated.position === 1) {
+              prize += match.first_place_prize || 0;
+              updated.is_winner = true;
+            } else if (updated.position === 2) {
+              prize += (match as any).second_place_prize || 0;
+            } else if (updated.position === 3) {
+              prize += (match as any).third_place_prize || 0;
+            }
+          }
+          
+          // Per-kill prize (for all match types)
           if (match.prize_per_kill && updated.kills > 0) {
             prize += match.prize_per_kill * updated.kills;
           }
@@ -136,8 +144,10 @@ const MatchResultsDialog = ({ match, isOpen, onClose, onResultsDeclared }: Match
     setIsSaving(true);
     
     try {
-      // Filter only results with prizes
-      const resultsToSave = results.filter(r => r.prize_amount > 0 || r.position);
+      // Filter results that have been marked
+      const resultsToSave = results.filter(r => 
+        r.prize_amount > 0 || r.position || r.result_status !== 'pending'
+      );
       
       if (resultsToSave.length === 0) {
         toast({ title: 'Error', description: 'Please set at least one result', variant: 'destructive' });
@@ -186,7 +196,7 @@ const MatchResultsDialog = ({ match, isOpen, onClose, onResultsDeclared }: Match
             amount: result.prize_amount,
             type: 'prize' as const,
             status: 'completed' as const,
-            description: `🏆 Prize for "${match.title}" - Position: ${result.position || 'N/A'}, Kills: ${result.kills}`
+            description: `🏆 Prize for "${match.title}" - ${result.is_winner ? 'Winner' : `Position: ${result.position || 'N/A'}`}, Kills: ${result.kills}`
           }]);
 
           // Send notification
@@ -199,19 +209,32 @@ const MatchResultsDialog = ({ match, isOpen, onClose, onResultsDeclared }: Match
         }
       }
 
+      // Send notifications to losers in TDM
+      if (isTDMMatch) {
+        const losers = results.filter(r => r.result_status === 'lose');
+        for (const loser of losers) {
+          await supabase.from('notifications').insert({
+            user_id: loser.user_id,
+            title: '😔 Match Result',
+            message: `You lost in "${match.title}". Better luck next time!`,
+            type: 'info'
+          });
+        }
+      }
+
       // Update match status to completed
       await supabase
         .from('matches')
         .update({ status: 'completed' })
         .eq('id', match.id);
 
-      // Notify all participants about results
-      const nonWinners = results.filter(r => r.prize_amount === 0);
-      for (const participant of nonWinners) {
+      // Notify all participants about results (those without specific results)
+      const unmarkedParticipants = results.filter(r => r.prize_amount === 0 && r.result_status === 'pending');
+      for (const participant of unmarkedParticipants) {
         await supabase.from('notifications').insert({
           user_id: participant.user_id,
           title: '📊 Match Results Declared',
-          message: `Results for "${match.title}" have been declared. Better luck next time!`,
+          message: `Results for "${match.title}" have been declared.`,
           type: 'info'
         });
       }
@@ -225,8 +248,6 @@ const MatchResultsDialog = ({ match, isOpen, onClose, onResultsDeclared }: Match
       setIsSaving(false);
     }
   };
-
-  const isClassicMatch = match?.match_type === 'classic';
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -267,32 +288,83 @@ const MatchResultsDialog = ({ match, isOpen, onClose, onResultsDeclared }: Match
                     </div>
                   </>
                 )}
+                {isTDMMatch && (
+                  <div>
+                    <span className="text-muted-foreground">Winner Prize:</span>
+                    <p className="font-bold text-yellow-500">₹{match?.first_place_prize || 0}</p>
+                  </div>
+                )}
                 <div>
                   <span className="text-muted-foreground">Per Kill:</span>
                   <p className="font-bold text-red-500">₹{match?.prize_per_kill || 0}</p>
                 </div>
               </div>
 
+              {/* Match ID */}
+              <div className="text-xs text-muted-foreground text-center">
+                Match ID: <span className="font-mono text-primary">{match?.id.slice(0, 8).toUpperCase()}</span>
+              </div>
+
               {/* Player Results */}
               <div className="space-y-3">
                 {results.map((result, idx) => (
-                  <div key={result.registration_id} className="glass-card p-4">
+                  <div 
+                    key={result.registration_id} 
+                    className={cn(
+                      "glass-card p-4 transition-colors",
+                      result.result_status === 'win' && "border-green-500/50 bg-green-500/5",
+                      result.result_status === 'lose' && "border-red-500/50 bg-red-500/5"
+                    )}
+                  >
                     <div className="flex items-center gap-3 mb-3">
                       <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
-                        <User className="w-4 h-4 text-primary" />
+                        <Gamepad2 className="w-4 h-4 text-primary" />
                       </div>
-                      <div>
+                      <div className="flex-1">
                         <p className="font-medium">{result.player_name}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {registrations[idx]?.team_name || 'Solo Player'}
-                        </p>
+                        {result.player_id && (
+                          <p className="text-xs text-muted-foreground">ID: {result.player_id}</p>
+                        )}
                       </div>
                       {result.prize_amount > 0 && (
-                        <span className="ml-auto text-primary font-bold">₹{result.prize_amount}</span>
+                        <span className="text-primary font-bold">₹{result.prize_amount}</span>
+                      )}
+                      {result.result_status === 'win' && (
+                        <span className="flex items-center gap-1 text-green-500 text-xs">
+                          <Award className="w-4 h-4" /> Winner
+                        </span>
+                      )}
+                      {result.result_status === 'lose' && (
+                        <span className="flex items-center gap-1 text-red-500 text-xs">
+                          <XCircle className="w-4 h-4" /> Lost
+                        </span>
                       )}
                     </div>
 
                     <div className="grid grid-cols-2 gap-3">
+                      {/* TDM Win/Lose Selection */}
+                      {isTDMMatch && (
+                        <div>
+                          <Label className="text-xs flex items-center gap-1">
+                            <Trophy className="w-3 h-3" /> Result
+                          </Label>
+                          <Select
+                            value={result.result_status}
+                            onValueChange={(v) => updateResult(result.registration_id, 'result_status', v)}
+                          >
+                            <SelectTrigger className="mt-1">
+                              <SelectValue placeholder="Select result" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="pending">Not Set</SelectItem>
+                              <SelectItem value="win">🏆 Winner</SelectItem>
+                              <SelectItem value="lose">❌ Lost</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
+
+                      {/* Classic Position Selection */}
                       {isClassicMatch && (
                         <div>
                           <Label className="text-xs flex items-center gap-1">
@@ -319,6 +391,8 @@ const MatchResultsDialog = ({ match, isOpen, onClose, onResultsDeclared }: Match
                           </Select>
                         </div>
                       )}
+
+                      {/* Kills Input */}
                       <div>
                         <Label className="text-xs flex items-center gap-1">
                           <Skull className="w-3 h-3" /> Kills

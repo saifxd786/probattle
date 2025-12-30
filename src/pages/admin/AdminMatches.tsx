@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Plus, Edit, Trash2, Send, Trophy } from 'lucide-react';
+import { Plus, Edit, Trash2, Send, Trophy, Users, Copy, Check } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -12,6 +12,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { format } from 'date-fns';
 import { Database } from '@/integrations/supabase/types';
 import MatchResultsDialog from '@/components/admin/MatchResultsDialog';
+import MatchParticipantsDialog from '@/components/MatchParticipantsDialog';
 
 type GameType = Database['public']['Enums']['game_type'];
 type MatchType = Database['public']['Enums']['match_type'];
@@ -64,6 +65,16 @@ const AdminMatches = () => {
   const [formData, setFormData] = useState(defaultFormData);
   const [resultsMatch, setResultsMatch] = useState<Match | null>(null);
   const [isResultsOpen, setIsResultsOpen] = useState(false);
+  const [participantsMatch, setParticipantsMatch] = useState<Match | null>(null);
+  const [isParticipantsOpen, setIsParticipantsOpen] = useState(false);
+  const [copiedMatchId, setCopiedMatchId] = useState<string | null>(null);
+
+  const copyMatchId = (matchId: string) => {
+    navigator.clipboard.writeText(matchId.slice(0, 8).toUpperCase());
+    setCopiedMatchId(matchId);
+    toast({ title: 'Copied!', description: 'Match ID copied to clipboard' });
+    setTimeout(() => setCopiedMatchId(null), 2000);
+  };
 
   const fetchMatches = async () => {
     const { data, error } = await supabase
@@ -432,6 +443,7 @@ const AdminMatches = () => {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-border">
+                  <th className="text-left p-4 font-medium text-muted-foreground">Match ID</th>
                   <th className="text-left p-4 font-medium text-muted-foreground">Match</th>
                   <th className="text-left p-4 font-medium text-muted-foreground">Type</th>
                   <th className="text-left p-4 font-medium text-muted-foreground">Entry</th>
@@ -445,15 +457,29 @@ const AdminMatches = () => {
               <tbody>
                 {isLoading ? (
                   <tr>
-                    <td colSpan={8} className="p-4 text-center text-muted-foreground">Loading...</td>
+                    <td colSpan={9} className="p-4 text-center text-muted-foreground">Loading...</td>
                   </tr>
                 ) : matches.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="p-4 text-center text-muted-foreground">No matches found</td>
+                    <td colSpan={9} className="p-4 text-center text-muted-foreground">No matches found</td>
                   </tr>
                 ) : (
                   matches.map((match) => (
                     <tr key={match.id} className="border-b border-border/50 hover:bg-secondary/20">
+                      <td className="p-4">
+                        <button
+                          onClick={() => copyMatchId(match.id)}
+                          className="flex items-center gap-1 text-xs font-mono bg-secondary/50 px-2 py-1 rounded hover:bg-secondary transition-colors"
+                          title="Click to copy"
+                        >
+                          {match.id.slice(0, 8).toUpperCase()}
+                          {copiedMatchId === match.id ? (
+                            <Check className="w-3 h-3 text-green-500" />
+                          ) : (
+                            <Copy className="w-3 h-3 text-muted-foreground" />
+                          )}
+                        </button>
+                      </td>
                       <td className="p-4">
                         <div>
                           <p className="font-medium">{match.title}</p>
@@ -485,6 +511,14 @@ const AdminMatches = () => {
                       </td>
                       <td className="p-4">
                         <div className="flex items-center gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => { setParticipantsMatch(match); setIsParticipantsOpen(true); }}
+                            title="View Players"
+                          >
+                            <Users className="w-4 h-4 text-blue-500" />
+                          </Button>
                           {match.room_id && match.room_password && (
                             <Button 
                               variant="ghost" 
@@ -525,6 +559,13 @@ const AdminMatches = () => {
         isOpen={isResultsOpen}
         onClose={() => setIsResultsOpen(false)}
         onResultsDeclared={fetchMatches}
+      />
+
+      <MatchParticipantsDialog
+        matchId={participantsMatch?.id || null}
+        matchTitle={participantsMatch?.title || ''}
+        isOpen={isParticipantsOpen}
+        onClose={() => setIsParticipantsOpen(false)}
       />
     </div>
   );

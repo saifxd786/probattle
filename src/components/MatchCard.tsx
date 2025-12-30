@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Users, Clock, Trophy, Zap, Lock, Copy, Check, AlertCircle, Wallet, Radio, Ban } from 'lucide-react';
+import { Users, Clock, Trophy, Zap, Lock, Copy, Check, AlertCircle, Wallet, Radio, Ban, Hash } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
@@ -10,6 +10,7 @@ import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
+import MatchParticipantsDialog from './MatchParticipantsDialog';
 
 // Map images
 import mapErangel from '@/assets/map-erangel.jpg';
@@ -79,13 +80,17 @@ const MatchCard = ({
   const navigate = useNavigate();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isRoomDialogOpen, setIsRoomDialogOpen] = useState(false);
+  const [isParticipantsOpen, setIsParticipantsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingCredentials, setIsLoadingCredentials] = useState(false);
-  const [copiedField, setCopiedField] = useState<'id' | 'password' | null>(null);
+  const [copiedField, setCopiedField] = useState<'id' | 'password' | 'matchId' | null>(null);
   const [secureRoomId, setSecureRoomId] = useState<string | null>(null);
   const [secureRoomPassword, setSecureRoomPassword] = useState<string | null>(null);
   const [walletBalance, setWalletBalance] = useState<number>(0);
   const [isBanned, setIsBanned] = useState(false);
+  
+  // Generate short match ID from UUID
+  const shortMatchId = id.slice(0, 8).toUpperCase();
   
   // Get map image based on map name
   const getMapImage = () => {
@@ -344,9 +349,10 @@ const MatchCard = ({
     setIsLoading(false);
   };
 
-  const handleCopy = (text: string, field: 'id' | 'password') => {
+  const handleCopy = (text: string, field: 'id' | 'password' | 'matchId') => {
     navigator.clipboard.writeText(text);
     setCopiedField(field);
+    toast({ title: 'Copied!', description: 'Copied to clipboard' });
     setTimeout(() => setCopiedField(null), 2000);
   };
 
@@ -416,7 +422,18 @@ const MatchCard = ({
               </div>
               
               <h4 className="font-display text-base font-bold tracking-wide">{title}</h4>
-              <p className="text-xs text-muted-foreground mt-0.5">{mode} • {map}</p>
+              <div className="flex items-center gap-2 mt-0.5">
+                <p className="text-xs text-muted-foreground">{mode} • {map}</p>
+                <button 
+                  onClick={() => handleCopy(shortMatchId, 'matchId')}
+                  className="flex items-center gap-1 text-[10px] text-primary/80 hover:text-primary transition-colors"
+                  title="Copy Match ID"
+                >
+                  <Hash className="w-3 h-3" />
+                  {shortMatchId}
+                  {copiedField === 'matchId' && <Check className="w-3 h-3" />}
+                </button>
+              </div>
             </div>
             
             {prize > 0 && (
@@ -459,13 +476,18 @@ const MatchCard = ({
 
         {/* Info */}
         <div className="p-4 pt-3 space-y-3">
-          {/* Slots Progress */}
+          {/* Slots Progress with View Opponents */}
           <div>
             <div className="flex items-center justify-between text-xs mb-1.5">
-              <span className="flex items-center gap-1.5 text-muted-foreground">
+              <button 
+                onClick={() => setIsParticipantsOpen(true)}
+                className="flex items-center gap-1.5 text-muted-foreground hover:text-primary transition-colors"
+                title="View participants"
+              >
                 <Users className="w-3.5 h-3.5" />
-                Slots
-              </span>
+                <span>Slots</span>
+                <span className="text-primary text-[10px]">(View)</span>
+              </button>
               <span className={cn(
                 'font-medium',
                 slotsPercentage >= 80 ? 'text-yellow-400' : 'text-foreground'
@@ -674,6 +696,14 @@ const MatchCard = ({
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Participants Dialog */}
+      <MatchParticipantsDialog
+        matchId={id}
+        matchTitle={title}
+        isOpen={isParticipantsOpen}
+        onClose={() => setIsParticipantsOpen(false)}
+      />
     </>
   );
 };
