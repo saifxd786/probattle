@@ -85,7 +85,17 @@ const AuthPage = () => {
       const email = phoneToEmail(formData.phone);
 
       if (mode === 'signup') {
-        // Validate username
+        // Validate username - now compulsory
+        if (!formData.username.trim()) {
+          toast({
+            title: 'Name Required',
+            description: 'Please enter your name to create an account',
+            variant: 'destructive',
+          });
+          setIsLoading(false);
+          return;
+        }
+
         const usernameResult = usernameSchema.safeParse(formData.username);
         if (!usernameResult.success) {
           toast({
@@ -96,7 +106,6 @@ const AuthPage = () => {
           setIsLoading(false);
           return;
         }
-
         if (formData.password !== formData.confirmPassword) {
           toast({
             title: 'Error',
@@ -166,7 +175,7 @@ const AuthPage = () => {
           );
         }
 
-        // Handle referral if code was provided
+        // Handle referral if code was provided - reward on first deposit only
         if (referralCode && signupData.user) {
           // Find the referrer by referral code
           const { data: referrer } = await supabase
@@ -182,36 +191,14 @@ const AuthPage = () => {
               .update({ referred_by: referrer.id })
               .eq('id', signupData.user.id);
 
-            // Create referral record
+            // Create referral record with is_rewarded = false (will be rewarded on first deposit)
             await supabase.from('referrals').insert({
               referrer_id: referrer.id,
               referred_id: signupData.user.id,
               referral_code: referralCode,
               reward_amount: REFERRAL_REWARD,
-              is_rewarded: true,
+              is_rewarded: false, // Will be set to true on first deposit
             });
-
-            // Credit the referrer's wallet
-            const { data: referrerProfile } = await supabase
-              .from('profiles')
-              .select('wallet_balance')
-              .eq('id', referrer.id)
-              .single();
-
-            if (referrerProfile) {
-              await supabase
-                .from('profiles')
-                .update({ wallet_balance: (referrerProfile.wallet_balance || 0) + REFERRAL_REWARD })
-                .eq('id', referrer.id);
-
-              // Send notification to referrer
-              await supabase.from('notifications').insert({
-                user_id: referrer.id,
-                title: '🎉 Referral Reward!',
-                message: `${formData.username} signed up using your referral code! ₹${REFERRAL_REWARD} has been added to your wallet.`,
-                type: 'success',
-              });
-            }
           }
         }
 
@@ -297,13 +284,13 @@ const AuthPage = () => {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Username (signup only) */}
+            {/* Name (signup only - compulsory) */}
             {mode === 'signup' && (
               <div className="relative">
                 <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
                   type="text"
-                  placeholder="Username"
+                  placeholder="Your Name *"
                   value={formData.username}
                   onChange={(e) => setFormData({ ...formData, username: e.target.value })}
                   className="pl-10 bg-secondary/50 border-border/50 focus:border-primary"
@@ -413,10 +400,10 @@ const AuthPage = () => {
           )}
         </div>
 
-        {/* Back to home */}
+        {/* Account link */}
         <p className="text-center mt-6 text-sm text-muted-foreground">
-          <Link to="/" className="hover:text-primary transition-colors">
-            ← Back to Home
+          <Link to="/profile" className="hover:text-primary transition-colors">
+            ← Go to Account
           </Link>
         </p>
       </motion.div>

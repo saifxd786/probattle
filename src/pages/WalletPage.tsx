@@ -429,7 +429,47 @@ const WalletPage = () => {
               />
             </div>
 
-            <div className="p-4 bg-primary/10 border border-primary/20 rounded-lg space-y-2">
+            {/* UPI Payment Methods */}
+            <div className="p-4 bg-primary/10 border border-primary/20 rounded-lg space-y-3">
+              <div className="flex items-center justify-center gap-4 pb-3 border-b border-border/30">
+                <div className="flex flex-col items-center gap-1">
+                  <div className="w-10 h-10 rounded-lg bg-white flex items-center justify-center shadow-sm">
+                    <svg viewBox="0 0 24 24" className="w-7 h-7" fill="none">
+                      <rect width="24" height="24" rx="4" fill="#5F259F"/>
+                      <path d="M7.5 5.5L10 12L7 17H9.5L12.5 12L10 5.5H7.5Z" fill="white"/>
+                      <path d="M12 5.5L14.5 12L11.5 17H14L17 12L14.5 5.5H12Z" fill="white"/>
+                    </svg>
+                  </div>
+                  <span className="text-[10px] text-muted-foreground">PhonePe</span>
+                </div>
+                <div className="flex flex-col items-center gap-1">
+                  <div className="w-10 h-10 rounded-lg bg-white flex items-center justify-center shadow-sm">
+                    <svg viewBox="0 0 24 24" className="w-7 h-7">
+                      <rect width="24" height="24" rx="4" fill="#fff"/>
+                      <path d="M12 4C7.58 4 4 7.58 4 12s3.58 8 8 8 8-3.58 8-8-3.58-8-8-8z" fill="#4285F4"/>
+                      <path d="M12 6.5c1.38 0 2.63.56 3.54 1.46l-1.41 1.41A3.5 3.5 0 0012 8.5a3.5 3.5 0 00-3.5 3.5 3.5 3.5 0 003.5 3.5 3.5 3.5 0 003.35-2.5H12v-2h5.74A7.96 7.96 0 0118 12c0 3.31-2.69 6-6 6s-6-2.69-6-6 2.69-6 6-6z" fill="#fff"/>
+                    </svg>
+                  </div>
+                  <span className="text-[10px] text-muted-foreground">GPay</span>
+                </div>
+                <div className="flex flex-col items-center gap-1">
+                  <div className="w-10 h-10 rounded-lg bg-white flex items-center justify-center shadow-sm">
+                    <svg viewBox="0 0 24 24" className="w-7 h-7">
+                      <rect width="24" height="24" rx="4" fill="#002970"/>
+                      <path d="M7 8h2v8H7V8zm4 0h2v8h-2V8zm4 0h2v8h-2V8z" fill="#00BAF2"/>
+                      <circle cx="17" cy="12" r="3" fill="#00BAF2"/>
+                    </svg>
+                  </div>
+                  <span className="text-[10px] text-muted-foreground">Paytm</span>
+                </div>
+                <div className="flex flex-col items-center gap-1">
+                  <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-orange-500 to-green-600 flex items-center justify-center shadow-sm">
+                    <span className="text-white font-bold text-xs">UPI</span>
+                  </div>
+                  <span className="text-[10px] text-muted-foreground">Any UPI</span>
+                </div>
+              </div>
+              
               <p className="text-sm font-medium">Pay to UPI ID:</p>
               <div className="flex items-center gap-2">
                 <code className="flex-1 p-2 bg-background rounded text-sm font-mono">{UPI_ID}</code>

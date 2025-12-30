@@ -128,10 +128,73 @@ const AdminTransactions = () => {
         : `₹${tx.amount} has been sent to your UPI ID.`;
       await createNotification(tx.user_id, notifTitle, notifMessage, 'success');
       
+      // Handle referral reward on FIRST deposit
+      if (tx.type === 'deposit') {
+        await processReferralReward(tx.user_id, tx.profiles?.username || 'User');
+      }
+      
       toast({ title: 'Success', description: 'Transaction approved and wallet updated' });
     }
 
     fetchTransactions();
+  };
+
+  // Process referral reward when user makes first deposit
+  const processReferralReward = async (userId: string, username: string) => {
+    const REFERRAL_REWARD = 10;
+
+    // Check if there's an unrewarded referral for this user
+    const { data: referral } = await supabase
+      .from('referrals')
+      .select('id, referrer_id, is_rewarded')
+      .eq('referred_id', userId)
+      .eq('is_rewarded', false)
+      .maybeSingle();
+
+    if (!referral) return; // No pending referral or already rewarded
+
+    // Get referrer's current balance
+    const { data: referrerProfile } = await supabase
+      .from('profiles')
+      .select('wallet_balance, username')
+      .eq('id', referral.referrer_id)
+      .single();
+
+    if (!referrerProfile) return;
+
+    // Credit referrer's wallet
+    const { error: walletError } = await supabase
+      .from('profiles')
+      .update({ wallet_balance: (referrerProfile.wallet_balance || 0) + REFERRAL_REWARD })
+      .eq('id', referral.referrer_id);
+
+    if (walletError) {
+      console.error('Failed to credit referral reward:', walletError);
+      return;
+    }
+
+    // Mark referral as rewarded
+    await supabase
+      .from('referrals')
+      .update({ is_rewarded: true })
+      .eq('id', referral.id);
+
+    // Create transaction record for referrer
+    await supabase.from('transactions').insert({
+      user_id: referral.referrer_id,
+      type: 'admin_credit',
+      amount: REFERRAL_REWARD,
+      status: 'completed',
+      description: `Referral bonus - ${username} made their first deposit`,
+    });
+
+    // Send notification to referrer
+    await createNotification(
+      referral.referrer_id,
+      '🎉 Referral Reward!',
+      `${username} made their first deposit! ₹${REFERRAL_REWARD} has been added to your wallet.`,
+      'success'
+    );
   };
 
   const handleReject = async (txId: string, userId: string, type: string, amount: number) => {
