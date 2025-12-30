@@ -109,31 +109,57 @@ const AdminTransactions = () => {
 
     if (tx.type === 'deposit') {
       newBalance = currentBalance + tx.amount;
+      
+      // Get current wager requirement
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('wager_requirement')
+        .eq('id', tx.user_id)
+        .single();
+      
+      const currentWager = (profileData?.wager_requirement as number) || 0;
+      
+      // Update wallet balance AND add to wager requirement for deposits
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({ 
+          wallet_balance: newBalance,
+          wager_requirement: currentWager + tx.amount
+        })
+        .eq('id', tx.user_id);
+        
+      if (profileError) {
+        toast({ title: 'Warning', description: 'Transaction approved but wallet update failed', variant: 'destructive' });
+        return;
+      }
     } else if (tx.type === 'withdrawal') {
       newBalance = Math.max(0, currentBalance - tx.amount);
+      
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({ wallet_balance: newBalance })
+        .eq('id', tx.user_id);
+        
+      if (profileError) {
+        toast({ title: 'Warning', description: 'Transaction approved but wallet update failed', variant: 'destructive' });
+        return;
+      }
     }
 
-    const { error: profileError } = await supabase
-      .from('profiles')
-      .update({ wallet_balance: newBalance })
-      .eq('id', tx.user_id);
+    // For deposits, the success handling is done above
+    if (tx.type === 'deposit') {
 
-    if (profileError) {
-      toast({ title: 'Warning', description: 'Transaction approved but wallet update failed', variant: 'destructive' });
-    } else {
-      // Send notification
-      const notifTitle = tx.type === 'deposit' ? 'Deposit Approved!' : 'Withdrawal Completed!';
-      const notifMessage = tx.type === 'deposit' 
-        ? `₹${tx.amount} has been added to your wallet.`
-        : `₹${tx.amount} has been sent to your UPI ID.`;
-      await createNotification(tx.user_id, notifTitle, notifMessage, 'success');
+      // Send notification for deposit
+      await createNotification(tx.user_id, 'Deposit Approved!', `₹${tx.amount} has been added to your wallet.`, 'success');
       
       // Handle referral reward on FIRST deposit
-      if (tx.type === 'deposit') {
-        await processReferralReward(tx.user_id, tx.profiles?.username || 'User');
-      }
+      await processReferralReward(tx.user_id, tx.profiles?.username || 'User');
       
-      toast({ title: 'Success', description: 'Transaction approved and wallet updated' });
+      toast({ title: 'Success', description: 'Deposit approved and wager requirement set' });
+    } else {
+      // Send notification for withdrawal
+      await createNotification(tx.user_id, 'Withdrawal Completed!', `₹${tx.amount} has been sent to your UPI ID.`, 'success');
+      toast({ title: 'Success', description: 'Withdrawal completed' });
     }
 
     fetchTransactions();
