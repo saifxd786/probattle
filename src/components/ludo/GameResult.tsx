@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useEffect, useState } from 'react';
 import { soundManager } from '@/utils/soundManager';
+import { hapticManager } from '@/utils/hapticManager';
 
 interface GameResultProps {
   isWinner: boolean;
@@ -76,11 +77,13 @@ const GameResult = ({ isWinner, rewardAmount, entryAmount, playerName, onPlayAga
   const [soundEnabled, setSoundEnabled] = useState(true);
 
   useEffect(() => {
-    // Play result sound
+    // Play result sound and haptic
     if (isWinner) {
       soundManager.playWin();
+      hapticManager.gameWin();
     } else {
       soundManager.playLose();
+      hapticManager.gameLose();
     }
   }, [isWinner]);
 
@@ -244,6 +247,7 @@ const GameResult = ({ isWinner, rewardAmount, entryAmount, playerName, onPlayAga
           <Button
             onClick={() => {
               soundManager.playClick();
+              hapticManager.buttonTap();
               onPlayAgain();
             }}
             className="w-full bg-gradient-to-r from-primary to-cyan-500 hover:opacity-90 text-primary-foreground font-semibold py-6 shadow-lg"
@@ -255,6 +259,7 @@ const GameResult = ({ isWinner, rewardAmount, entryAmount, playerName, onPlayAga
           <Button
             onClick={() => {
               soundManager.playClick();
+              hapticManager.buttonTap();
               onGoHome();
             }}
             variant="outline"
