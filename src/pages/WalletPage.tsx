@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { Wallet, Plus, ArrowUpRight, ArrowDownLeft, History, Copy, Check, Loader2, Upload, Image as ImageIcon, MessageCircle } from 'lucide-react';
+import { Wallet, Plus, ArrowUpRight, ArrowDownLeft, History, Copy, Check, Loader2, Upload, Image as ImageIcon, MessageCircle, AlertCircle } from 'lucide-react';
 import phonepeLogo from '@/assets/phonepe-logo.png';
 import gpayLogo from '@/assets/gpay-logo.png';
 import paytmLogo from '@/assets/paytm-logo.png';
@@ -36,6 +36,7 @@ type Transaction = {
 type Profile = {
   wallet_balance: number;
   user_code: string | null;
+  wager_requirement: number;
 };
 
 const TELEGRAM_SUPPORT = 'https://t.me/ProScrimsSupport';
@@ -67,12 +68,16 @@ const WalletPage = () => {
     // Fetch profile
     const { data: profileData } = await supabase
       .from('profiles')
-      .select('wallet_balance, user_code')
+      .select('wallet_balance, user_code, wager_requirement')
       .eq('id', user.id)
       .single();
 
     if (profileData) {
-      setProfile(profileData);
+      setProfile({
+        wallet_balance: profileData.wallet_balance || 0,
+        user_code: profileData.user_code,
+        wager_requirement: (profileData.wager_requirement as number) || 0
+      });
     }
 
     // Fetch transactions
@@ -188,6 +193,16 @@ const WalletPage = () => {
 
     if (amount > profile.wallet_balance) {
       toast({ title: 'Error', description: 'Insufficient balance', variant: 'destructive' });
+      return;
+    }
+
+    // Check wager requirement
+    if (profile.wager_requirement > 0) {
+      toast({ 
+        title: 'Wager Requirement Not Met', 
+        description: `You need to use ₹${profile.wager_requirement.toFixed(2)} more on matches before withdrawing.`, 
+        variant: 'destructive' 
+      });
       return;
     }
 
@@ -538,6 +553,34 @@ const WalletPage = () => {
           </DialogHeader>
           
           <div className="space-y-4 mt-4">
+            {/* Wager Requirement Progress */}
+            {profile && profile.wager_requirement > 0 && (
+              <div className="p-4 bg-orange-500/10 border border-orange-500/30 rounded-lg">
+                <div className="flex items-center gap-2 mb-2">
+                  <AlertCircle className="w-4 h-4 text-orange-500" />
+                  <span className="text-sm font-medium text-orange-500">Wager Requirement</span>
+                </div>
+                <p className="text-xs text-muted-foreground mb-3">
+                  You must use your deposited amount on matches before withdrawing.
+                </p>
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Remaining to use:</span>
+                    <span className="font-display font-bold text-orange-500">₹{profile.wager_requirement.toFixed(2)}</span>
+                  </div>
+                  <div className="w-full bg-secondary rounded-full h-2">
+                    <div 
+                      className="bg-orange-500 h-2 rounded-full transition-all"
+                      style={{ width: `${Math.max(0, 100 - (profile.wager_requirement / (profile.wallet_balance + profile.wager_requirement)) * 100)}%` }}
+                    />
+                  </div>
+                  <p className="text-[10px] text-muted-foreground text-center">
+                    Join matches to complete wager requirement
+                  </p>
+                </div>
+              </div>
+            )}
+
             <div>
               <Label>Amount</Label>
               <Input
@@ -592,8 +635,13 @@ const WalletPage = () => {
               </div>
             </div>
 
-            <Button variant="neon" className="w-full" onClick={handleWithdraw} disabled={isSubmitting}>
-              {isSubmitting ? 'Submitting...' : 'Request Withdrawal'}
+            <Button 
+              variant="neon" 
+              className="w-full" 
+              onClick={handleWithdraw} 
+              disabled={isSubmitting || (profile?.wager_requirement || 0) > 0}
+            >
+              {isSubmitting ? 'Submitting...' : (profile?.wager_requirement || 0) > 0 ? 'Complete Wager First' : 'Request Withdrawal'}
             </Button>
           </div>
         </DialogContent>

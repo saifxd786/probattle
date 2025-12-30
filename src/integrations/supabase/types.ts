@@ -242,6 +242,7 @@ export type Database = {
           updated_at: string | null
           user_code: string | null
           username: string | null
+          wager_requirement: number | null
           wallet_balance: number | null
         }
         Insert: {
@@ -256,6 +257,7 @@ export type Database = {
           updated_at?: string | null
           user_code?: string | null
           username?: string | null
+          wager_requirement?: number | null
           wallet_balance?: number | null
         }
         Update: {
@@ -270,6 +272,7 @@ export type Database = {
           updated_at?: string | null
           user_code?: string | null
           username?: string | null
+          wager_requirement?: number | null
           wallet_balance?: number | null
         }
         Relationships: []

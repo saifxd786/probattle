@@ -233,10 +233,23 @@ const MatchCard = ({
     
     // If paid match, deduct from wallet first
     if (!isFree) {
+      // Get current profile data including wager requirement
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('wallet_balance, wager_requirement')
+        .eq('id', user.id)
+        .single();
+      
+      const currentWager = (profileData?.wager_requirement as number) || 0;
       const newBalance = walletBalance - entryFee;
+      const newWager = Math.max(0, currentWager - entryFee); // Reduce wager requirement
+      
       const { error: walletError } = await supabase
         .from('profiles')
-        .update({ wallet_balance: newBalance })
+        .update({ 
+          wallet_balance: newBalance,
+          wager_requirement: newWager
+        })
         .eq('id', user.id);
       
       if (walletError) {
