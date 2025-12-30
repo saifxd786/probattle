@@ -15,13 +15,23 @@ import {
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showInstallPrompt, setShowInstallPrompt] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
   const { user, signOut } = useAuth();
 
   useEffect(() => {
+    // Check if mobile device
+    const checkMobile = () => {
+      const userAgent = navigator.userAgent.toLowerCase();
+      const isMobileDevice = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(userAgent);
+      setIsMobile(isMobileDevice);
+    };
+    
     // Check if already installed as PWA
     if (!window.matchMedia('(display-mode: standalone)').matches) {
       setShowInstallPrompt(true);
     }
+    
+    checkMobile();
   }, []);
 
   const handleSignOut = async () => {
@@ -61,17 +71,16 @@ const Header = () => {
 
           {/* Actions */}
           <div className="flex items-center gap-2">
-            {showInstallPrompt && (
+            {showInstallPrompt && isMobile && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button 
                     variant="neon" 
                     size="sm" 
-                    className="hidden sm:flex gap-2"
+                    className="flex gap-2"
                   >
                     <Download className="w-4 h-4" />
-                    <span className="hidden md:inline">Install App</span>
-                    <span className="md:hidden">Install</span>
+                    <span>Install</span>
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-48">
