@@ -57,7 +57,7 @@ const AdminLudoSettings = () => {
         is_enabled: settings.isEnabled,
         min_entry_amount: settings.minEntryAmount,
         reward_multiplier: settings.rewardMultiplier,
-        difficulty: settings.difficulty,
+        difficulty: settings.difficulty as 'easy' | 'normal' | 'competitive',
         dice_randomness_weight: settings.diceRandomnessWeight,
         new_user_boost: settings.newUserBoost,
         high_amount_competitive: settings.highAmountCompetitive
