@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { BOT_NAMES } from '@/components/ludo/MatchmakingScreen';
+import { soundManager } from '@/utils/soundManager';
 
 interface Token {
   id: number;
@@ -339,6 +340,8 @@ export const useLudoGame = () => {
   }, [gameState]);
 
   const moveToken = useCallback((color: string, tokenId: number, diceValue: number) => {
+    soundManager.playTokenMove();
+    
     setGameState(prev => {
       const updatedPlayers = prev.players.map(player => {
         if (player.color !== color) return player;
@@ -349,8 +352,12 @@ export const useLudoGame = () => {
           let newPosition = token.position;
           if (token.position === 0 && diceValue === 6) {
             newPosition = 1; // Enter the board
+            soundManager.playTokenEnter();
           } else if (token.position > 0) {
             newPosition = Math.min(token.position + diceValue, 57);
+            if (newPosition === 57) {
+              soundManager.playTokenHome();
+            }
           }
 
           return { ...token, position: newPosition };
@@ -388,6 +395,8 @@ export const useLudoGame = () => {
   }, []);
 
   const nextTurn = useCallback(() => {
+    soundManager.playTurnChange();
+    
     setGameState(prev => {
       const nextPlayerIndex = (prev.currentTurn + 1) % prev.players.length;
       const isUserTurn = !prev.players[nextPlayerIndex].isBot;
