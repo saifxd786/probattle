@@ -151,6 +151,7 @@ export const useLudoGame = () => {
     const { data: match, error: matchError } = await supabase
       .from('ludo_matches')
       .insert({
+        created_by: user.id,
         entry_amount: entryAmount,
         reward_amount: rewardAmount,
         player_count: playerMode,
