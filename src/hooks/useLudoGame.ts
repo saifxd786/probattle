@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { BOT_NAMES } from '@/components/ludo/MatchmakingScreen';
 import { soundManager } from '@/utils/soundManager';
+import { hapticManager } from '@/utils/hapticManager';
 
 interface Token {
   id: number;
@@ -341,6 +342,7 @@ export const useLudoGame = () => {
 
   const moveToken = useCallback((color: string, tokenId: number, diceValue: number) => {
     soundManager.playTokenMove();
+    hapticManager.tokenMove();
     
     setGameState(prev => {
       const updatedPlayers = prev.players.map(player => {
@@ -353,10 +355,12 @@ export const useLudoGame = () => {
           if (token.position === 0 && diceValue === 6) {
             newPosition = 1; // Enter the board
             soundManager.playTokenEnter();
+            hapticManager.tokenEnter();
           } else if (token.position > 0) {
             newPosition = Math.min(token.position + diceValue, 57);
             if (newPosition === 57) {
               soundManager.playTokenHome();
+              hapticManager.tokenHome();
             }
           }
 

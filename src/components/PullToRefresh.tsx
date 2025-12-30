@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback, ReactNode } from 'react';
 import { motion, useMotionValue, useTransform, animate } from 'framer-motion';
 import { RefreshCw } from 'lucide-react';
+import { hapticManager } from '@/utils/hapticManager';
 
 interface PullToRefreshProps {
   children: ReactNode;
@@ -66,12 +67,14 @@ const PullToRefresh = ({ children, onRefresh, disabled = false }: PullToRefreshP
 
     if (currentPull >= PULL_THRESHOLD && !isRefreshing) {
       setIsRefreshing(true);
+      hapticManager.pullToRefresh();
       
       // Animate to refresh position
       animate(pullDistance, 60, { duration: 0.2 });
 
       try {
         await onRefresh();
+        hapticManager.success();
       } finally {
         setIsRefreshing(false);
         animate(pullDistance, 0, { duration: 0.3 });

@@ -2,6 +2,7 @@ import { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { soundManager } from '@/utils/soundManager';
+import { hapticManager } from '@/utils/hapticManager';
 
 interface LudoDiceProps {
   value: number;
@@ -97,6 +98,7 @@ const LudoDice = ({ value, isRolling, onRoll, disabled, canRoll }: LudoDiceProps
     if (disabled || !canRoll) return;
     soundManager.playClick();
     soundManager.playDiceRoll();
+    hapticManager.diceRoll();
     setShowResult(false);
     onRoll();
   };
@@ -107,6 +109,7 @@ const LudoDice = ({ value, isRolling, onRoll, disabled, canRoll }: LudoDiceProps
     setTimeout(() => {
       setShowResult(true);
       soundManager.playDiceResult(value);
+      hapticManager.diceResult(value);
     }, 100);
   }
 
