@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { User, Edit2, Save, X, History, Trophy, Calendar, Loader2, Copy, Check } from 'lucide-react';
+import { User, Edit2, Save, X, History, Trophy, Calendar, Loader2, Copy, Check, Ban, AlertTriangle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import Header from '@/components/Header';
 import BottomNav from '@/components/BottomNav';
@@ -22,6 +22,8 @@ type Profile = {
   user_code: string | null;
   wallet_balance: number;
   is_banned: boolean;
+  ban_reason: string | null;
+  banned_at: string | null;
   created_at: string;
 };
 
@@ -174,6 +176,48 @@ const ProfilePage = () => {
           </div>
         ) : (
           <>
+            {/* Banned Status Banner */}
+            {profile?.is_banned && (
+              <motion.div
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+              >
+                <Card className="border-destructive/50 bg-destructive/10">
+                  <CardContent className="p-4">
+                    <div className="flex items-start gap-4">
+                      <div className="p-3 rounded-full bg-destructive/20">
+                        <Ban className="w-6 h-6 text-destructive" />
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <h3 className="font-display font-bold text-destructive text-lg">Account Banned</h3>
+                          <AlertTriangle className="w-4 h-4 text-destructive" />
+                        </div>
+                        <p className="text-sm text-muted-foreground mb-2">
+                          Your account has been suspended and you cannot participate in matches or withdraw funds.
+                        </p>
+                        {profile.ban_reason && (
+                          <div className="p-3 bg-background/50 rounded-lg mb-2">
+                            <span className="text-xs text-muted-foreground block mb-1">Reason:</span>
+                            <p className="text-sm font-medium text-destructive">{profile.ban_reason}</p>
+                          </div>
+                        )}
+                        {profile.banned_at && (
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <Calendar className="w-3 h-3" />
+                            <span>Banned on: {format(new Date(profile.banned_at), 'MMM dd, yyyy hh:mm a')}</span>
+                          </div>
+                        )}
+                        <p className="text-xs text-muted-foreground mt-3">
+                          If you believe this is a mistake, please contact support.
+                        </p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            )}
+
             {/* Profile Card */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
