@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Users, Clock, Trophy, Zap, Lock, Copy, Check, AlertCircle, Wallet, Radio } from 'lucide-react';
+import { Users, Clock, Trophy, Zap, Lock, Copy, Check, AlertCircle, Wallet, Radio, Ban } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
@@ -10,6 +10,25 @@ import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
+
+// Map images
+import mapErangel from '@/assets/map-erangel.jpg';
+import mapMiramar from '@/assets/map-miramar.jpg';
+import mapSanhok from '@/assets/map-sanhok.jpg';
+import mapLivik from '@/assets/map-livik.jpg';
+import mapTdm from '@/assets/map-tdm.jpg';
+
+// Map name to image mapping
+const mapImages: Record<string, string> = {
+  'erangel': mapErangel,
+  'miramar': mapMiramar,
+  'sanhok': mapSanhok,
+  'livik': mapLivik,
+  'tdm': mapTdm,
+  'warehouse': mapTdm,
+  'hangar': mapTdm,
+  'ruins': mapTdm,
+};
 
 interface MatchCardProps {
   id: string;
@@ -66,6 +85,13 @@ const MatchCard = ({
   const [secureRoomId, setSecureRoomId] = useState<string | null>(null);
   const [secureRoomPassword, setSecureRoomPassword] = useState<string | null>(null);
   const [walletBalance, setWalletBalance] = useState<number>(0);
+  const [isBanned, setIsBanned] = useState(false);
+  
+  // Get map image based on map name
+  const getMapImage = () => {
+    const mapKey = map.toLowerCase().replace(/\s+/g, '');
+    return mapImages[mapKey] || mapErangel;
+  };
   
   // Form fields
   const [bgmiIngameName, setBgmiIngameName] = useState('');
@@ -144,21 +170,22 @@ const MatchCard = ({
 
   useEffect(() => {
     if (user) {
-      fetchWalletBalance();
+      fetchUserProfile();
     }
   }, [user]);
 
-  const fetchWalletBalance = async () => {
+  const fetchUserProfile = async () => {
     if (!user) return;
     
     const { data } = await supabase
       .from('profiles')
-      .select('wallet_balance')
+      .select('wallet_balance, is_banned')
       .eq('id', user.id)
       .maybeSingle();
     
     if (data) {
       setWalletBalance(data.wallet_balance || 0);
+      setIsBanned(data.is_banned || false);
     }
   };
 
@@ -188,6 +215,16 @@ const MatchCard = ({
   const handleJoinClick = () => {
     if (!user) {
       navigate('/auth');
+      return;
+    }
+    
+    // Check if user is banned
+    if (isBanned) {
+      toast({ 
+        title: 'Account Banned', 
+        description: 'Your account has been banned. You cannot join matches.', 
+        variant: 'destructive' 
+      });
       return;
     }
     
@@ -321,6 +358,27 @@ const MatchCard = ({
         transition={{ duration: 0.4, delay }}
         className="glass-card overflow-hidden group hover:border-primary/40 transition-all duration-300"
       >
+        {/* Map Banner Image */}
+        <div className="relative h-24 overflow-hidden">
+          <img 
+            src={getMapImage()} 
+            alt={map} 
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/50 to-transparent" />
+          <div className="absolute bottom-2 left-2 right-2 flex items-center justify-between">
+            <span className="px-2 py-0.5 bg-background/80 backdrop-blur-sm rounded text-xs font-medium border border-border/50">
+              {map}
+            </span>
+            {isBanned && (
+              <span className="flex items-center gap-1 px-2 py-0.5 bg-destructive/80 backdrop-blur-sm rounded text-xs text-white">
+                <Ban className="w-3 h-3" />
+                Banned
+              </span>
+            )}
+          </div>
+        </div>
+        
         {/* Header */}
         <div className="relative p-4 pb-3 border-b border-border/50">
           <div className="flex items-start justify-between">
