@@ -14,6 +14,178 @@ export type Database = {
   }
   public: {
     Tables: {
+      ludo_match_players: {
+        Row: {
+          bot_avatar_url: string | null
+          bot_name: string | null
+          id: string
+          is_bot: boolean
+          is_winner: boolean
+          joined_at: string
+          match_id: string
+          player_color: string
+          token_positions: Json
+          tokens_home: number
+          user_id: string | null
+        }
+        Insert: {
+          bot_avatar_url?: string | null
+          bot_name?: string | null
+          id?: string
+          is_bot?: boolean
+          is_winner?: boolean
+          joined_at?: string
+          match_id: string
+          player_color: string
+          token_positions?: Json
+          tokens_home?: number
+          user_id?: string | null
+        }
+        Update: {
+          bot_avatar_url?: string | null
+          bot_name?: string | null
+          id?: string
+          is_bot?: boolean
+          is_winner?: boolean
+          joined_at?: string
+          match_id?: string
+          player_color?: string
+          token_positions?: Json
+          tokens_home?: number
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ludo_match_players_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "ludo_matches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ludo_matches: {
+        Row: {
+          created_at: string
+          current_turn: number | null
+          difficulty: Database["public"]["Enums"]["ludo_difficulty"]
+          ended_at: string | null
+          entry_amount: number
+          game_state: Json | null
+          id: string
+          player_count: number
+          reward_amount: number
+          started_at: string | null
+          status: Database["public"]["Enums"]["ludo_match_status"]
+          updated_at: string
+          winner_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          current_turn?: number | null
+          difficulty?: Database["public"]["Enums"]["ludo_difficulty"]
+          ended_at?: string | null
+          entry_amount?: number
+          game_state?: Json | null
+          id?: string
+          player_count?: number
+          reward_amount?: number
+          started_at?: string | null
+          status?: Database["public"]["Enums"]["ludo_match_status"]
+          updated_at?: string
+          winner_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          current_turn?: number | null
+          difficulty?: Database["public"]["Enums"]["ludo_difficulty"]
+          ended_at?: string | null
+          entry_amount?: number
+          game_state?: Json | null
+          id?: string
+          player_count?: number
+          reward_amount?: number
+          started_at?: string | null
+          status?: Database["public"]["Enums"]["ludo_match_status"]
+          updated_at?: string
+          winner_id?: string | null
+        }
+        Relationships: []
+      }
+      ludo_settings: {
+        Row: {
+          created_at: string
+          dice_randomness_weight: number
+          difficulty: Database["public"]["Enums"]["ludo_difficulty"]
+          high_amount_competitive: boolean
+          id: string
+          is_enabled: boolean
+          min_entry_amount: number
+          new_user_boost: boolean
+          reward_multiplier: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          dice_randomness_weight?: number
+          difficulty?: Database["public"]["Enums"]["ludo_difficulty"]
+          high_amount_competitive?: boolean
+          id?: string
+          is_enabled?: boolean
+          min_entry_amount?: number
+          new_user_boost?: boolean
+          reward_multiplier?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          dice_randomness_weight?: number
+          difficulty?: Database["public"]["Enums"]["ludo_difficulty"]
+          high_amount_competitive?: boolean
+          id?: string
+          is_enabled?: boolean
+          min_entry_amount?: number
+          new_user_boost?: boolean
+          reward_multiplier?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      ludo_transactions: {
+        Row: {
+          amount: number
+          created_at: string
+          id: string
+          match_id: string | null
+          type: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          id?: string
+          match_id?: string | null
+          type: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: string
+          match_id?: string | null
+          type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ludo_transactions_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "ludo_matches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       match_registrations: {
         Row: {
           bgmi_ingame_name: string | null
@@ -403,6 +575,8 @@ export type Database = {
     Enums: {
       app_role: "admin" | "moderator" | "user"
       game_type: "bgmi" | "freefire" | "clash_royale" | "ludo"
+      ludo_difficulty: "easy" | "normal" | "competitive"
+      ludo_match_status: "waiting" | "in_progress" | "completed" | "cancelled"
       match_status: "upcoming" | "pending" | "live" | "completed" | "cancelled"
       match_type: "tdm_1v1" | "tdm_2v2" | "tdm_4v4" | "classic"
       transaction_status: "processing" | "pending" | "completed" | "cancelled"
@@ -543,6 +717,8 @@ export const Constants = {
     Enums: {
       app_role: ["admin", "moderator", "user"],
       game_type: ["bgmi", "freefire", "clash_royale", "ludo"],
+      ludo_difficulty: ["easy", "normal", "competitive"],
+      ludo_match_status: ["waiting", "in_progress", "completed", "cancelled"],
       match_status: ["upcoming", "pending", "live", "completed", "cancelled"],
       match_type: ["tdm_1v1", "tdm_2v2", "tdm_4v4", "classic"],
       transaction_status: ["processing", "pending", "completed", "cancelled"],

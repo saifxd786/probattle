@@ -1,4 +1,4 @@
-import { LayoutDashboard, Gamepad2, Users, CreditCard, Settings, LogOut, ChevronLeft, ArrowLeftRight, Bell } from 'lucide-react';
+import { LayoutDashboard, Gamepad2, Users, CreditCard, Settings, LogOut, ChevronLeft, ArrowLeftRight, Bell, Dices } from 'lucide-react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
@@ -12,6 +12,7 @@ interface AdminSidebarProps {
 const navItems = [
   { title: 'Dashboard', url: '/admin', icon: LayoutDashboard },
   { title: 'Matches', url: '/admin/matches', icon: Gamepad2 },
+  { title: 'Ludo', url: '/admin/ludo', icon: Dices },
   { title: 'Users', url: '/admin/users', icon: Users },
   { title: 'Payments', url: '/admin/payments', icon: CreditCard },
   { title: 'Transactions', url: '/admin/transactions', icon: ArrowLeftRight },

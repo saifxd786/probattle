@@ -20,6 +20,8 @@ import RulesPage from "./pages/RulesPage";
 import FairPlayPage from "./pages/FairPlayPage";
 import TermsPage from "./pages/TermsPage";
 import FAQsPage from "./pages/FAQsPage";
+import LudoPage from "./pages/LudoPage";
+import LudoRulesPage from "./pages/LudoRulesPage";
 import NotFound from "./pages/NotFound";
 import AdminLayout from "./components/admin/AdminLayout";
 import AdminDashboard from "./pages/admin/AdminDashboard";
@@ -30,6 +32,7 @@ import AdminSettings from "./pages/admin/AdminSettings";
 import AdminTransactions from "./pages/admin/AdminTransactions";
 import AdminLoginPage from "./pages/admin/AdminLoginPage";
 import AdminNotificationsPage from "./pages/admin/AdminNotificationsPage";
+import AdminLudoSettings from "./pages/admin/AdminLudoSettings";
 
 const queryClient = new QueryClient();
 
@@ -62,6 +65,8 @@ const App = () => {
               <Route path="/fair-play" element={<FairPlayPage />} />
               <Route path="/terms" element={<TermsPage />} />
               <Route path="/faqs" element={<FAQsPage />} />
+              <Route path="/ludo" element={<LudoPage />} />
+              <Route path="/ludo/rules" element={<LudoRulesPage />} />
               {/* Admin Routes */}
               <Route path="/admin/login" element={<AdminLoginPage />} />
               <Route path="/admin" element={<AdminLayout />}>
@@ -72,6 +77,7 @@ const App = () => {
                 <Route path="transactions" element={<AdminTransactions />} />
                 <Route path="notifications" element={<AdminNotificationsPage />} />
                 <Route path="settings" element={<AdminSettings />} />
+                <Route path="ludo" element={<AdminLudoSettings />} />
               </Route>
               <Route path="*" element={<NotFound />} />
             </Routes>
