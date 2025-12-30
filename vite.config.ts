@@ -14,7 +14,7 @@ export default defineConfig(({ mode }) => ({
     react(),
     mode === "development" && componentTagger(),
     VitePWA({
-      registerType: "autoUpdate",
+      registerType: "prompt",
       includeAssets: ["favicon.ico", "apple-touch-icon.png", "mask-icon.svg"],
       manifest: {
         name: "ProScrims - Esports Tournament Platform",
@@ -60,7 +60,10 @@ export default defineConfig(({ mode }) => ({
               }
             }
           }
-        ]
+        ],
+        // Handle skip waiting message from UpdatePrompt
+        skipWaiting: false,
+        clientsClaim: true
       }
     })
   ].filter(Boolean),

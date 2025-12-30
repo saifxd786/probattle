@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import SplashScreen from './components/SplashScreen';
+import UpdatePrompt from './components/UpdatePrompt';
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -49,6 +50,7 @@ const App = () => {
         <TooltipProvider>
           <Toaster />
           <Sonner />
+          <UpdatePrompt />
           <BrowserRouter>
             <Routes>
               <Route path="/" element={<Index />} />
