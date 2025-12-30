@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Users, Clock, Trophy, Zap, Lock, Copy, Check, AlertCircle, Wallet, Radio, Ban, Hash } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -44,6 +44,7 @@ interface MatchCardProps {
   thirdPlacePrize?: number;
   slots: { current: number; total: number };
   time: string;
+  nowMs: number;
   status: 'open' | 'filling' | 'full';
   roomId?: string | null;
   roomPassword?: string | null;
@@ -65,8 +66,9 @@ const MatchCard = ({
   firstPlacePrize = 0,
   secondPlacePrize = 0,
   thirdPlacePrize = 0,
-  slots, 
-  time, 
+  slots,
+  time,
+  nowMs,
   status,
   roomId,
   roomPassword,
@@ -106,60 +108,36 @@ const MatchCard = ({
   const isFree = entryFee === 0 || isFreeMatch;
   const slotsPercentage = (slots.current / slots.total) * 100;
   const hasEnoughBalance = walletBalance >= entryFee;
-  
-  // Live countdown timer state
-  const [timeRemaining, setTimeRemaining] = useState<{ hours: number; minutes: number; seconds: number } | null>(null);
+
+  const matchTimeMs = useMemo(() => {
+    const raw = (time ?? '').trim();
+    if (!raw) return Number.NaN;
+
+    // Some WebViews/Safari builds are picky; normalize common "YYYY-MM-DD HH:mm" shapes.
+    const normalized = raw.includes(' ') && !raw.includes('T') ? raw.replace(' ', 'T') : raw;
+    return new Date(normalized).getTime();
+  }, [time]);
+
+  const timeRemaining = useMemo(() => {
+    if (!Number.isFinite(matchTimeMs)) return null;
+
+    const diffMs = matchTimeMs - nowMs;
+    if (diffMs <= 0) return { hours: 0, minutes: 0, seconds: 0 };
+
+    const totalSeconds = Math.floor(diffMs / 1000);
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+
+    return { hours, minutes, seconds };
+  }, [matchTimeMs, nowMs]);
 
   // Check if match is live (countdown finished)
-  const isMatchLive = timeRemaining !== null && 
-    timeRemaining.hours === 0 && 
-    timeRemaining.minutes === 0 && 
+  const isMatchLive =
+    timeRemaining !== null &&
+    timeRemaining.hours === 0 &&
+    timeRemaining.minutes === 0 &&
     timeRemaining.seconds === 0;
-
-  // Parse match time and calculate countdown - handles ISO string properly
-  useEffect(() => {
-    const calculateTimeRemaining = () => {
-      // Get current time in milliseconds
-      const nowMs = Date.now();
-      
-      // Parse the match time - it's stored as ISO string in UTC
-      const matchDate = new Date(time);
-      const matchMs = matchDate.getTime();
-      
-      // Check if date is valid
-      if (isNaN(matchMs)) {
-        console.log('Invalid match time:', time);
-        return null;
-      }
-
-      // Calculate difference in milliseconds
-      const diffMs = matchMs - nowMs;
-      
-      // If match time has passed, return zeros
-      if (diffMs <= 0) return { hours: 0, minutes: 0, seconds: 0 };
-      
-      // Convert to hours, minutes, seconds
-      const totalSeconds = Math.floor(diffMs / 1000);
-      const hours = Math.floor(totalSeconds / 3600);
-      const minutes = Math.floor((totalSeconds % 3600) / 60);
-      const seconds = totalSeconds % 60;
-      
-      return { hours, minutes, seconds };
-    };
-
-    const updateTimer = () => {
-      const remaining = calculateTimeRemaining();
-      setTimeRemaining(remaining);
-    };
-
-    // Initial update
-    updateTimer();
-    
-    // Update every second
-    const interval = setInterval(updateTimer, 1000);
-
-    return () => clearInterval(interval);
-  }, [time]);
 
   // Format display time
   const formatDisplayTime = (dateString: string) => {

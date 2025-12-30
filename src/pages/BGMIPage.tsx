@@ -8,6 +8,7 @@ import TelegramFloat from '@/components/TelegramFloat';
 import MatchCard from '@/components/MatchCard';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useNow } from '@/hooks/useNow';
 import { Database } from '@/integrations/supabase/types';
 
 import bgmiCard from '@/assets/bgmi-card.jpg';
@@ -22,6 +23,7 @@ const tabs = ['TDM Matches', 'Classic Matches'] as const;
 
 const BGMIPage = () => {
   const { user } = useAuth();
+  const nowMs = useNow(1000);
   const [activeTab, setActiveTab] = useState<typeof tabs[number]>('TDM Matches');
   const [matches, setMatches] = useState<Match[]>([]);
   const [userRegistrations, setUserRegistrations] = useState<string[]>([]);
@@ -213,6 +215,7 @@ const BGMIPage = () => {
                 thirdPlacePrize={(match as any).third_place_prize || 0}
                 slots={{ current: match.filled_slots, total: match.max_slots }}
                 time={match.match_time}
+                nowMs={nowMs}
                 status={getMatchStatus(match)}
                 roomId={match.room_id}
                 roomPassword={match.room_password}
