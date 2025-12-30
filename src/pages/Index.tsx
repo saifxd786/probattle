@@ -9,7 +9,9 @@ import Footer from '@/components/Footer';
 import GameCard from '@/components/GameCard';
 import HowItWorks from '@/components/HowItWorks';
 import TrustSection from '@/components/TrustSection';
+import PullToRefresh from '@/components/PullToRefresh';
 import { useAuth } from '@/contexts/AuthContext';
+import { usePullToRefresh } from '@/hooks/usePullToRefresh';
 
 import heroBanner from '@/assets/hero-banner.jpg';
 import bgmiCard from '@/assets/bgmi-card.jpg';
@@ -26,8 +28,10 @@ const games = [
 
 const Index = () => {
   const { user } = useAuth();
+  const { handleRefresh } = usePullToRefresh();
   
   return (
+    <PullToRefresh onRefresh={handleRefresh}>
     <div className="min-h-screen bg-background">
       <Header />
       
@@ -134,6 +138,7 @@ const Index = () => {
       <BottomNav />
       <TelegramFloat />
     </div>
+    </PullToRefresh>
   );
 };
 

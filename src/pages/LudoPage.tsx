@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import Header from '@/components/Header';
 import BottomNav from '@/components/BottomNav';
 import TelegramFloat from '@/components/TelegramFloat';
+import PullToRefresh from '@/components/PullToRefresh';
 import { Button } from '@/components/ui/button';
 import EntrySelector from '@/components/ludo/EntrySelector';
 import MatchmakingScreen from '@/components/ludo/MatchmakingScreen';
@@ -12,10 +13,12 @@ import LudoDice from '@/components/ludo/LudoDice';
 import GameResult from '@/components/ludo/GameResult';
 import { useLudoGame } from '@/hooks/useLudoGame';
 import { useAuth } from '@/contexts/AuthContext';
+import { usePullToRefresh } from '@/hooks/usePullToRefresh';
 
 const LudoPage = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { handleRefresh } = usePullToRefresh();
   const {
     settings,
     gameState,
@@ -35,6 +38,7 @@ const LudoPage = () => {
 
   if (!settings.isEnabled) {
     return (
+      <PullToRefresh onRefresh={handleRefresh}>
       <div className="min-h-screen bg-background pb-20">
         <Header />
         <main className="container mx-auto px-4 pt-20 text-center">
@@ -44,6 +48,7 @@ const LudoPage = () => {
         </main>
         <BottomNav />
       </div>
+      </PullToRefresh>
     );
   }
 
@@ -169,6 +174,7 @@ const LudoPage = () => {
 
   // Home Screen
   return (
+    <PullToRefresh onRefresh={handleRefresh}>
     <div className="min-h-screen bg-background pb-20">
       <Header />
       
@@ -269,6 +275,7 @@ const LudoPage = () => {
       <BottomNav />
       <TelegramFloat />
     </div>
+    </PullToRefresh>
   );
 };
 
