@@ -67,6 +67,7 @@ export type Database = {
       ludo_matches: {
         Row: {
           created_at: string
+          created_by: string
           current_turn: number | null
           difficulty: Database["public"]["Enums"]["ludo_difficulty"]
           ended_at: string | null
@@ -82,6 +83,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          created_by: string
           current_turn?: number | null
           difficulty?: Database["public"]["Enums"]["ludo_difficulty"]
           ended_at?: string | null
@@ -97,6 +99,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          created_by?: string
           current_turn?: number | null
           difficulty?: Database["public"]["Enums"]["ludo_difficulty"]
           ended_at?: string | null
@@ -110,7 +113,15 @@ export type Database = {
           updated_at?: string
           winner_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "ludo_matches_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       ludo_settings: {
         Row: {
@@ -568,6 +579,10 @@ export type Database = {
         Returns: boolean
       }
       is_registered_for_match: {
+        Args: { _match_id: string; _user_id: string }
+        Returns: boolean
+      }
+      ludo_is_user_in_match: {
         Args: { _match_id: string; _user_id: string }
         Returns: boolean
       }
