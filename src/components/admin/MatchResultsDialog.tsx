@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Trophy, Medal, Skull, Gamepad2, Award, XCircle, Edit } from 'lucide-react';
+import { Trophy, Medal, Skull, Gamepad2, Award, XCircle, Edit, Users, RotateCcw } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,6 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
 type Match = {
   id: string;
@@ -67,6 +68,7 @@ const MatchResultsDialog = ({ match, isOpen, onClose, onResultsDeclared, isEditM
   const [existingResults, setExistingResults] = useState<ExistingResult[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [bulkKills, setBulkKills] = useState<number>(0);
 
   const isClassicMatch = match?.match_type === 'classic';
   const isTDMMatch = match?.match_type?.startsWith('tdm');
@@ -201,6 +203,57 @@ const MatchResultsDialog = ({ match, isOpen, onClose, onResultsDeclared, isEditM
       }
       return r;
     }));
+  };
+
+  // Bulk actions
+  const markAllAsWinners = () => {
+    setResults(prev => prev.map(r => {
+      const updated = { ...r, result_status: 'win' as const, is_winner: true, position: 1 };
+      if (match) {
+        updated.prize_amount = (match.first_place_prize || 0) + (match.prize_per_kill * r.kills);
+      }
+      return updated;
+    }));
+    toast({ title: 'Bulk Action', description: 'All players marked as winners' });
+  };
+
+  const markAllAsLosers = () => {
+    setResults(prev => prev.map(r => {
+      const updated = { ...r, result_status: 'lose' as const, is_winner: false, position: null, prize_amount: 0 };
+      return updated;
+    }));
+    toast({ title: 'Bulk Action', description: 'All players marked as losers' });
+  };
+
+  const applyBulkKills = () => {
+    setResults(prev => prev.map(r => {
+      const updated = { ...r, kills: bulkKills };
+      if (match && match.prize_per_kill && bulkKills > 0) {
+        let prize = match.prize_per_kill * bulkKills;
+        if (r.is_winner || r.result_status === 'win') {
+          prize += match.first_place_prize || 0;
+        } else if (isClassicMatch && r.position === 2) {
+          prize += (match as any).second_place_prize || 0;
+        } else if (isClassicMatch && r.position === 3) {
+          prize += (match as any).third_place_prize || 0;
+        }
+        updated.prize_amount = prize;
+      }
+      return updated;
+    }));
+    toast({ title: 'Bulk Action', description: `Applied ${bulkKills} kills to all players` });
+  };
+
+  const resetAllResults = () => {
+    setResults(prev => prev.map(r => ({
+      ...r,
+      position: null,
+      kills: 0,
+      prize_amount: 0,
+      is_winner: false,
+      result_status: 'pending' as const
+    })));
+    toast({ title: 'Reset', description: 'All results have been reset' });
   };
 
   const handleDeclareResults = async () => {
@@ -424,6 +477,73 @@ const MatchResultsDialog = ({ match, isOpen, onClose, onResultsDeclared, isEditM
               <div className="text-xs text-muted-foreground text-center">
                 Match ID: <span className="font-mono text-primary">{match?.id.slice(0, 8).toUpperCase()}</span>
                 {isEditMode && <span className="ml-2 text-yellow-500">(Edit Mode)</span>}
+              </div>
+
+              {/* Bulk Actions */}
+              <div className="glass-card p-3 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium flex items-center gap-2">
+                    <Users className="w-4 h-4" /> Bulk Actions
+                  </span>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={resetAllResults}
+                    className="text-muted-foreground hover:text-destructive"
+                  >
+                    <RotateCcw className="w-3 h-3 mr-1" /> Reset All
+                  </Button>
+                </div>
+                
+                <div className="flex flex-wrap gap-2">
+                  {isTDMMatch && (
+                    <>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={markAllAsWinners}
+                        className="text-green-500 border-green-500/50 hover:bg-green-500/10"
+                      >
+                        <Award className="w-3 h-3 mr-1" /> All Winners
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={markAllAsLosers}
+                        className="text-red-500 border-red-500/50 hover:bg-red-500/10"
+                      >
+                        <XCircle className="w-3 h-3 mr-1" /> All Losers
+                      </Button>
+                    </>
+                  )}
+                  
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" size="sm">
+                        <Skull className="w-3 h-3 mr-1" /> Apply Kills to All
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-48">
+                      <div className="space-y-2">
+                        <Label className="text-xs">Kills for all players</Label>
+                        <Input
+                          type="number"
+                          min={0}
+                          value={bulkKills}
+                          onChange={(e) => setBulkKills(parseInt(e.target.value) || 0)}
+                          placeholder="Enter kills"
+                        />
+                        <Button 
+                          size="sm" 
+                          className="w-full"
+                          onClick={applyBulkKills}
+                        >
+                          Apply to All
+                        </Button>
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                </div>
               </div>
 
               <div className="space-y-3">
