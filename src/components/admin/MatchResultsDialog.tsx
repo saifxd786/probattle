@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Trophy, Medal, Skull, User, Gamepad2, Award, XCircle } from 'lucide-react';
+import { Trophy, Medal, Skull, Gamepad2, Award, XCircle, Edit } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -39,6 +39,18 @@ type ResultEntry = {
   prize_amount: number;
   is_winner: boolean;
   result_status: 'pending' | 'win' | 'lose';
+  original_prize: number;
+  existing_result_id: string | null;
+};
+
+type ExistingResult = {
+  id: string;
+  user_id: string;
+  registration_id: string | null;
+  position: number | null;
+  kills: number;
+  prize_amount: number;
+  is_winner: boolean;
 };
 
 interface MatchResultsDialogProps {
@@ -46,11 +58,13 @@ interface MatchResultsDialogProps {
   isOpen: boolean;
   onClose: () => void;
   onResultsDeclared: () => void;
+  isEditMode?: boolean;
 }
 
-const MatchResultsDialog = ({ match, isOpen, onClose, onResultsDeclared }: MatchResultsDialogProps) => {
+const MatchResultsDialog = ({ match, isOpen, onClose, onResultsDeclared, isEditMode = false }: MatchResultsDialogProps) => {
   const [registrations, setRegistrations] = useState<Registration[]>([]);
   const [results, setResults] = useState<ResultEntry[]>([]);
+  const [existingResults, setExistingResults] = useState<ExistingResult[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -60,8 +74,28 @@ const MatchResultsDialog = ({ match, isOpen, onClose, onResultsDeclared }: Match
   useEffect(() => {
     if (match && isOpen) {
       fetchRegistrations();
+      if (isEditMode) {
+        fetchExistingResults();
+      } else {
+        setExistingResults([]);
+      }
     }
-  }, [match, isOpen]);
+  }, [match, isOpen, isEditMode]);
+
+  const fetchExistingResults = async () => {
+    if (!match) return;
+    
+    const { data, error } = await supabase
+      .from('match_results')
+      .select('*')
+      .eq('match_id', match.id);
+
+    if (error) {
+      toast({ title: 'Error', description: 'Failed to fetch existing results', variant: 'destructive' });
+    } else if (data) {
+      setExistingResults(data);
+    }
+  };
 
   const fetchRegistrations = async () => {
     if (!match) return;
@@ -77,32 +111,65 @@ const MatchResultsDialog = ({ match, isOpen, onClose, onResultsDeclared }: Match
       toast({ title: 'Error', description: 'Failed to fetch registrations', variant: 'destructive' });
     } else if (data) {
       setRegistrations(data);
-      // Initialize results for each registration - using only in-game name
-      setResults(data.map((reg) => ({
-        registration_id: reg.id,
-        user_id: reg.user_id,
-        player_name: reg.bgmi_ingame_name || 'Unknown Player',
-        player_id: reg.bgmi_player_id || '',
-        position: null,
-        kills: 0,
-        prize_amount: 0,
-        is_winner: false,
-        result_status: 'pending' as const
-      })));
     }
     setIsLoading(false);
   };
+
+  // Update results when both registrations and existing results are loaded
+  useEffect(() => {
+    if (registrations.length > 0) {
+      const initialResults = registrations.map((reg) => {
+        const existing = existingResults.find(r => r.registration_id === reg.id || r.user_id === reg.user_id);
+        
+        if (existing && isEditMode) {
+          let resultStatus: 'pending' | 'win' | 'lose' = 'pending';
+          if (existing.is_winner) {
+            resultStatus = 'win';
+          } else if (isTDMMatch && !existing.is_winner && existingResults.length > 0) {
+            resultStatus = 'lose';
+          }
+          
+          return {
+            registration_id: reg.id,
+            user_id: reg.user_id,
+            player_name: reg.bgmi_ingame_name || 'Unknown Player',
+            player_id: reg.bgmi_player_id || '',
+            position: existing.position,
+            kills: existing.kills || 0,
+            prize_amount: existing.prize_amount || 0,
+            is_winner: existing.is_winner || false,
+            result_status: resultStatus,
+            original_prize: existing.prize_amount || 0,
+            existing_result_id: existing.id
+          };
+        }
+        
+        return {
+          registration_id: reg.id,
+          user_id: reg.user_id,
+          player_name: reg.bgmi_ingame_name || 'Unknown Player',
+          player_id: reg.bgmi_player_id || '',
+          position: null,
+          kills: 0,
+          prize_amount: 0,
+          is_winner: false,
+          result_status: 'pending' as const,
+          original_prize: 0,
+          existing_result_id: null
+        };
+      });
+      setResults(initialResults);
+    }
+  }, [registrations, existingResults, isEditMode, isTDMMatch]);
 
   const updateResult = (regId: string, field: keyof ResultEntry, value: any) => {
     setResults(prev => prev.map(r => {
       if (r.registration_id === regId) {
         const updated = { ...r, [field]: value };
         
-        // Auto-calculate prize based on position, kills, and win status
         if (match) {
           let prize = 0;
           
-          // For TDM matches - winner gets first place prize
           if (isTDMMatch && updated.result_status === 'win') {
             prize = match.first_place_prize || 0;
             updated.is_winner = true;
@@ -112,7 +179,6 @@ const MatchResultsDialog = ({ match, isOpen, onClose, onResultsDeclared }: Match
             updated.position = null;
           }
           
-          // For Classic matches - position-based prizes
           if (isClassicMatch) {
             if (updated.position === 1) {
               prize += match.first_place_prize || 0;
@@ -124,7 +190,6 @@ const MatchResultsDialog = ({ match, isOpen, onClose, onResultsDeclared }: Match
             }
           }
           
-          // Per-kill prize (for all match types)
           if (match.prize_per_kill && updated.kills > 0) {
             prize += match.prize_per_kill * updated.kills;
           }
@@ -144,7 +209,6 @@ const MatchResultsDialog = ({ match, isOpen, onClose, onResultsDeclared }: Match
     setIsSaving(true);
     
     try {
-      // Filter results that have been marked
       const resultsToSave = results.filter(r => 
         r.prize_amount > 0 || r.position || r.result_status !== 'pending'
       );
@@ -155,7 +219,73 @@ const MatchResultsDialog = ({ match, isOpen, onClose, onResultsDeclared }: Match
         return;
       }
 
-      // Insert results
+      if (isEditMode) {
+        // Update existing results
+        for (const result of resultsToSave) {
+          if (result.existing_result_id) {
+            await supabase
+              .from('match_results')
+              .update({
+                position: result.position,
+                kills: result.kills,
+                prize_amount: result.prize_amount,
+                is_winner: result.is_winner
+              })
+              .eq('id', result.existing_result_id);
+          } else {
+            await supabase.from('match_results').insert({
+              match_id: match.id,
+              user_id: result.user_id,
+              registration_id: result.registration_id,
+              position: result.position,
+              kills: result.kills,
+              prize_amount: result.prize_amount,
+              is_winner: result.is_winner
+            });
+          }
+
+          // Adjust wallet balance
+          const originalPrize = result.original_prize || 0;
+          const prizeDifference = result.prize_amount - originalPrize;
+
+          if (prizeDifference !== 0) {
+            const { data: profile } = await supabase
+              .from('profiles')
+              .select('wallet_balance')
+              .eq('id', result.user_id)
+              .single();
+
+            if (profile) {
+              await supabase
+                .from('profiles')
+                .update({ wallet_balance: (profile.wallet_balance || 0) + prizeDifference })
+                .eq('id', result.user_id);
+
+              await supabase.from('transactions').insert([{
+                user_id: result.user_id,
+                amount: Math.abs(prizeDifference),
+                type: prizeDifference > 0 ? 'prize' as const : 'admin_debit' as const,
+                status: 'completed' as const,
+                description: `📝 Result correction for "${match.title}" - ${prizeDifference > 0 ? 'Additional' : 'Deducted'} ₹${Math.abs(prizeDifference)}`
+              }]);
+
+              await supabase.from('notifications').insert({
+                user_id: result.user_id,
+                title: '📝 Result Updated',
+                message: `Your result for "${match.title}" has been updated. ${prizeDifference > 0 ? `Additional ₹${prizeDifference} added` : prizeDifference < 0 ? `₹${Math.abs(prizeDifference)} deducted` : 'No prize change.'}`,
+                type: 'info'
+              });
+            }
+          }
+        }
+
+        toast({ title: 'Success', description: 'Results updated successfully!' });
+        onResultsDeclared();
+        onClose();
+        return;
+      }
+
+      // Insert new results
       const { error: resultsError } = await supabase
         .from('match_results')
         .insert(
@@ -172,10 +302,8 @@ const MatchResultsDialog = ({ match, isOpen, onClose, onResultsDeclared }: Match
 
       if (resultsError) throw resultsError;
 
-      // Add prize money to winners' wallets and send notifications
       for (const result of resultsToSave) {
         if (result.prize_amount > 0) {
-          // Get current wallet balance
           const { data: profile } = await supabase
             .from('profiles')
             .select('wallet_balance')
@@ -183,14 +311,12 @@ const MatchResultsDialog = ({ match, isOpen, onClose, onResultsDeclared }: Match
             .single();
 
           if (profile) {
-            // Update wallet balance
             await supabase
               .from('profiles')
               .update({ wallet_balance: (profile.wallet_balance || 0) + result.prize_amount })
               .eq('id', result.user_id);
           }
 
-          // Create transaction record
           await supabase.from('transactions').insert([{
             user_id: result.user_id,
             amount: result.prize_amount,
@@ -199,7 +325,6 @@ const MatchResultsDialog = ({ match, isOpen, onClose, onResultsDeclared }: Match
             description: `🏆 Prize for "${match.title}" - ${result.is_winner ? 'Winner' : `Position: ${result.position || 'N/A'}`}, Kills: ${result.kills}`
           }]);
 
-          // Send notification
           await supabase.from('notifications').insert({
             user_id: result.user_id,
             title: result.is_winner ? '🏆 Congratulations! You Won!' : '💰 Match Rewards',
@@ -209,7 +334,6 @@ const MatchResultsDialog = ({ match, isOpen, onClose, onResultsDeclared }: Match
         }
       }
 
-      // Send notifications to losers in TDM
       if (isTDMMatch) {
         const losers = results.filter(r => r.result_status === 'lose');
         for (const loser of losers) {
@@ -222,13 +346,11 @@ const MatchResultsDialog = ({ match, isOpen, onClose, onResultsDeclared }: Match
         }
       }
 
-      // Update match status to completed
       await supabase
         .from('matches')
         .update({ status: 'completed' })
         .eq('id', match.id);
 
-      // Notify all participants about results (those without specific results)
       const unmarkedParticipants = results.filter(r => r.prize_amount === 0 && r.result_status === 'pending');
       for (const participant of unmarkedParticipants) {
         await supabase.from('notifications').insert({
@@ -254,8 +376,8 @@ const MatchResultsDialog = ({ match, isOpen, onClose, onResultsDeclared }: Match
       <DialogContent className="max-w-3xl max-h-[90vh]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Trophy className="w-5 h-5 text-primary" />
-            Declare Results - {match?.title}
+            {isEditMode ? <Edit className="w-5 h-5 text-primary" /> : <Trophy className="w-5 h-5 text-primary" />}
+            {isEditMode ? 'Edit Results' : 'Declare Results'} - {match?.title}
           </DialogTitle>
         </DialogHeader>
 
@@ -266,7 +388,6 @@ const MatchResultsDialog = ({ match, isOpen, onClose, onResultsDeclared }: Match
             <div className="py-8 text-center text-muted-foreground">No approved registrations found</div>
           ) : (
             <div className="space-y-4">
-              {/* Prize Info */}
               <div className="glass-card p-4 grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
                 <div>
                   <span className="text-muted-foreground">Prize Pool:</span>
@@ -300,14 +421,13 @@ const MatchResultsDialog = ({ match, isOpen, onClose, onResultsDeclared }: Match
                 </div>
               </div>
 
-              {/* Match ID */}
               <div className="text-xs text-muted-foreground text-center">
                 Match ID: <span className="font-mono text-primary">{match?.id.slice(0, 8).toUpperCase()}</span>
+                {isEditMode && <span className="ml-2 text-yellow-500">(Edit Mode)</span>}
               </div>
 
-              {/* Player Results */}
               <div className="space-y-3">
-                {results.map((result, idx) => (
+                {results.map((result) => (
                   <div 
                     key={result.registration_id} 
                     className={cn(
@@ -329,6 +449,9 @@ const MatchResultsDialog = ({ match, isOpen, onClose, onResultsDeclared }: Match
                       {result.prize_amount > 0 && (
                         <span className="text-primary font-bold">₹{result.prize_amount}</span>
                       )}
+                      {isEditMode && result.original_prize > 0 && result.prize_amount !== result.original_prize && (
+                        <span className="text-xs text-muted-foreground">(was ₹{result.original_prize})</span>
+                      )}
                       {result.result_status === 'win' && (
                         <span className="flex items-center gap-1 text-green-500 text-xs">
                           <Award className="w-4 h-4" /> Winner
@@ -342,7 +465,6 @@ const MatchResultsDialog = ({ match, isOpen, onClose, onResultsDeclared }: Match
                     </div>
 
                     <div className="grid grid-cols-2 gap-3">
-                      {/* TDM Win/Lose Selection */}
                       {isTDMMatch && (
                         <div>
                           <Label className="text-xs flex items-center gap-1">
@@ -364,7 +486,6 @@ const MatchResultsDialog = ({ match, isOpen, onClose, onResultsDeclared }: Match
                         </div>
                       )}
 
-                      {/* Classic Position Selection */}
                       {isClassicMatch && (
                         <div>
                           <Label className="text-xs flex items-center gap-1">
@@ -392,7 +513,6 @@ const MatchResultsDialog = ({ match, isOpen, onClose, onResultsDeclared }: Match
                         </div>
                       )}
 
-                      {/* Kills Input */}
                       <div>
                         <Label className="text-xs flex items-center gap-1">
                           <Skull className="w-3 h-3" /> Kills
@@ -420,7 +540,7 @@ const MatchResultsDialog = ({ match, isOpen, onClose, onResultsDeclared }: Match
             onClick={handleDeclareResults} 
             disabled={isSaving || registrations.length === 0}
           >
-            {isSaving ? 'Processing...' : 'Declare Results & Distribute Prizes'}
+            {isSaving ? 'Processing...' : isEditMode ? 'Update Results' : 'Declare Results & Distribute Prizes'}
           </Button>
         </div>
       </DialogContent>

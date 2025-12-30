@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Plus, Edit, Trash2, Send, Trophy, Users, Copy, Check } from 'lucide-react';
+import { Plus, Edit, Trash2, Send, Trophy, Users, Copy, Check, Pencil } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -65,6 +65,7 @@ const AdminMatches = () => {
   const [formData, setFormData] = useState(defaultFormData);
   const [resultsMatch, setResultsMatch] = useState<Match | null>(null);
   const [isResultsOpen, setIsResultsOpen] = useState(false);
+  const [isEditResultsMode, setIsEditResultsMode] = useState(false);
   const [participantsMatch, setParticipantsMatch] = useState<Match | null>(null);
   const [isParticipantsOpen, setIsParticipantsOpen] = useState(false);
   const [copiedMatchId, setCopiedMatchId] = useState<string | null>(null);
@@ -529,16 +530,29 @@ const AdminMatches = () => {
                               <Send className="w-4 h-4 text-primary" />
                             </Button>
                           )}
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            className="text-yellow-500 border-yellow-500/50 hover:bg-yellow-500/10"
-                            onClick={() => { setResultsMatch(match); setIsResultsOpen(true); }}
-                            title="Declare Results"
-                          >
-                            <Trophy className="w-4 h-4 mr-1" />
-                            Result Out
-                          </Button>
+                          {match.status === 'completed' ? (
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              className="text-blue-500 border-blue-500/50 hover:bg-blue-500/10"
+                              onClick={() => { setResultsMatch(match); setIsEditResultsMode(true); setIsResultsOpen(true); }}
+                              title="Edit Results"
+                            >
+                              <Pencil className="w-4 h-4 mr-1" />
+                              Edit Results
+                            </Button>
+                          ) : (
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              className="text-yellow-500 border-yellow-500/50 hover:bg-yellow-500/10"
+                              onClick={() => { setResultsMatch(match); setIsEditResultsMode(false); setIsResultsOpen(true); }}
+                              title="Declare Results"
+                            >
+                              <Trophy className="w-4 h-4 mr-1" />
+                              Result Out
+                            </Button>
+                          )}
                           <Button variant="ghost" size="icon" onClick={() => handleEdit(match)}>
                             <Edit className="w-4 h-4" />
                           </Button>
@@ -559,8 +573,9 @@ const AdminMatches = () => {
       <MatchResultsDialog
         match={resultsMatch}
         isOpen={isResultsOpen}
-        onClose={() => setIsResultsOpen(false)}
+        onClose={() => { setIsResultsOpen(false); setIsEditResultsMode(false); }}
         onResultsDeclared={fetchMatches}
+        isEditMode={isEditResultsMode}
       />
 
       <MatchParticipantsDialog
