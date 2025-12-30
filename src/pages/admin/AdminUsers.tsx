@@ -6,6 +6,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { toast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
+import BanUserDialog from '@/components/admin/BanUserDialog';
 
 type Profile = {
   id: string;
@@ -28,6 +29,8 @@ const AdminUsers = () => {
   const [userRoles, setUserRoles] = useState<Record<string, string[]>>({});
   const [searchTerm, setSearchTerm] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+  const [banDialogOpen, setBanDialogOpen] = useState(false);
+  const [userToBan, setUserToBan] = useState<Profile | null>(null);
 
   const fetchUsers = async () => {
     const { data: profiles, error } = await supabase
@@ -57,29 +60,52 @@ const AdminUsers = () => {
     fetchUsers();
   }, []);
 
-  const toggleBan = async (userId: string, currentStatus: boolean) => {
-    let banReason: string | null = null;
-    
-    // If banning (not currently banned), ask for reason
-    if (!currentStatus) {
-      banReason = prompt('Enter ban reason (optional):');
+  const handleBanClick = (user: Profile) => {
+    if (user.is_banned) {
+      // Unban directly
+      unbanUser(user.id);
+    } else {
+      // Open ban dialog
+      setUserToBan(user);
+      setBanDialogOpen(true);
     }
-    
-    const updateData: { is_banned: boolean; ban_reason: string | null; banned_at: string | null } = {
-      is_banned: !currentStatus,
-      ban_reason: !currentStatus ? (banReason || 'Violation of terms of service') : null,
-      banned_at: !currentStatus ? new Date().toISOString() : null,
-    };
+  };
+
+  const banUser = async (reason: string) => {
+    if (!userToBan) return;
     
     const { error } = await supabase
       .from('profiles')
-      .update(updateData)
+      .update({
+        is_banned: true,
+        ban_reason: reason,
+        banned_at: new Date().toISOString(),
+      })
+      .eq('id', userToBan.id);
+
+    if (error) {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    } else {
+      toast({ title: 'User Banned', description: `${userToBan.username || 'User'} has been banned successfully` });
+      fetchUsers();
+    }
+    setUserToBan(null);
+  };
+
+  const unbanUser = async (userId: string) => {
+    const { error } = await supabase
+      .from('profiles')
+      .update({
+        is_banned: false,
+        ban_reason: null,
+        banned_at: null,
+      })
       .eq('id', userId);
 
     if (error) {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
     } else {
-      toast({ title: 'Success', description: `User ${currentStatus ? 'unbanned' : 'banned'} successfully` });
+      toast({ title: 'User Unbanned', description: 'User has been unbanned successfully' });
       fetchUsers();
     }
   };
@@ -257,7 +283,7 @@ const AdminUsers = () => {
                             <Button
                               variant="ghost"
                               size="icon"
-                              onClick={() => toggleBan(user.id, user.is_banned)}
+                              onClick={() => handleBanClick(user)}
                               title={user.is_banned ? 'Unban user' : 'Ban user'}
                             >
                               {user.is_banned ? (
@@ -289,6 +315,13 @@ const AdminUsers = () => {
           </div>
         </CardContent>
       </Card>
+
+      <BanUserDialog
+        isOpen={banDialogOpen}
+        onClose={() => { setBanDialogOpen(false); setUserToBan(null); }}
+        onConfirm={banUser}
+        userName={userToBan?.username || 'Unknown User'}
+      />
     </div>
   );
 };

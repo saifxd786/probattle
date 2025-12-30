@@ -209,7 +209,7 @@ const AuthPage = () => {
         navigate('/');
       } else {
         // Login
-        const { error } = await supabase.auth.signInWithPassword({
+        const { data: loginData, error } = await supabase.auth.signInWithPassword({
           email,
           password: formData.password,
         });
@@ -226,6 +226,36 @@ const AuthPage = () => {
           });
           setIsLoading(false);
           return;
+        }
+
+        // Check if user is banned
+        if (loginData.user) {
+          const { data: profileData } = await supabase
+            .from('profiles')
+            .select('is_banned, ban_reason, banned_at')
+            .eq('id', loginData.user.id)
+            .maybeSingle();
+
+          if (profileData?.is_banned) {
+            // Sign out the banned user immediately
+            await supabase.auth.signOut();
+            
+            const banDate = profileData.banned_at 
+              ? new Date(profileData.banned_at).toLocaleDateString('en-IN', {
+                  day: 'numeric',
+                  month: 'short',
+                  year: 'numeric'
+                })
+              : 'Unknown date';
+            
+            toast({
+              title: '🚫 Account Banned',
+              description: `Your account was banned on ${banDate}. Reason: ${profileData.ban_reason || 'Violation of terms'}`,
+              variant: 'destructive',
+            });
+            setIsLoading(false);
+            return;
+          }
         }
 
         toast({
