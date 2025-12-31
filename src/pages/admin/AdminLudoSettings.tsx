@@ -158,7 +158,7 @@ const AdminLudoSettings = () => {
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <label className="text-sm font-medium">Difficulty Level</label>
+              <label className="text-sm font-medium">Bot Difficulty Level</label>
               <Select
                 value={settings.difficulty}
                 onValueChange={(value) => setSettings(s => ({ ...s, difficulty: value }))}
@@ -167,11 +167,29 @@ const AdminLudoSettings = () => {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="easy">Easy - Beginner Friendly</SelectItem>
-                  <SelectItem value="normal">Normal - Balanced</SelectItem>
-                  <SelectItem value="competitive">Competitive - Challenging</SelectItem>
+                  <SelectItem value="easy">
+                    <div className="flex items-center gap-2">
+                      <span className="text-green-500">●</span>
+                      Easy - Bots make mistakes, favor low dice rolls
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="normal">
+                    <div className="flex items-center gap-2">
+                      <span className="text-yellow-500">●</span>
+                      Normal - Balanced gameplay, fair dice
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="competitive">
+                    <div className="flex items-center gap-2">
+                      <span className="text-red-500">●</span>
+                      Impossible - Smart bots, higher dice probability
+                    </div>
+                  </SelectItem>
                 </SelectContent>
               </Select>
+              <p className="text-xs text-muted-foreground mt-2">
+                Controls bot intelligence and dice probability weighting
+              </p>
             </div>
             <div>
               <label className="text-sm font-medium">Dice Randomness ({(settings.diceRandomnessWeight * 100).toFixed(0)}%)</label>
