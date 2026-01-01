@@ -13,8 +13,8 @@ import ludoCard from '@/assets/ludo-card.jpg';
 const games = [
   { title: 'BGMI', image: bgmiCard, status: 'active' as const, path: '/bgmi' },
   { title: 'Ludo', image: ludoCard, status: 'active' as const, path: '/ludo' },
+  { title: 'Thimble', image: clashCard, status: 'active' as const, path: '/thimble' },
   { title: 'Free Fire', image: freefireCard, status: 'coming-soon' as const, path: '/freefire' },
-  { title: 'Clash Royale', image: clashCard, status: 'coming-soon' as const, path: '/clash' },
 ];
 
 const MatchesPage = () => {
