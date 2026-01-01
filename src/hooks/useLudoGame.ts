@@ -268,11 +268,12 @@ export const useLudoGame = () => {
 
     setGameState(prev => ({ ...prev, isRolling: true, canRoll: false }));
 
-    // Simulate dice roll animation
-    await new Promise(resolve => setTimeout(resolve, 800));
+    // Simulate dice roll animation - faster for bots
+    const currentPlayer = gameState.players[gameState.currentTurn];
+    const rollDuration = currentPlayer.isBot ? 300 : 800;
+    await new Promise(resolve => setTimeout(resolve, rollDuration));
 
     // Generate dice value (with difficulty weighting for bots)
-    const currentPlayer = gameState.players[gameState.currentTurn];
     let diceValue: number;
 
     if (currentPlayer.isBot) {
@@ -308,11 +309,11 @@ export const useLudoGame = () => {
     });
 
     if (!canMove) {
-      // No valid moves, skip to next player
-      setTimeout(() => nextTurn(), 1000);
+      // No valid moves, skip to next player - faster for bots
+      setTimeout(() => nextTurn(), currentPlayer.isBot ? 200 : 600);
     } else if (currentPlayer.isBot) {
-      // Bot makes move automatically
-      setTimeout(() => botMakeMove(diceValue), 1000);
+      // Bot makes move automatically - much faster
+      setTimeout(() => botMakeMove(diceValue), 250);
     } else {
       // User needs to select token
       setGameState(prev => ({ ...prev, canRoll: false }));
@@ -390,12 +391,18 @@ export const useLudoGame = () => {
     });
 
     // If rolled 6, player gets another turn
+    const isBot = gameState.players.find(p => p.color === color)?.isBot;
+    const delay = isBot ? 150 : 400;
+    
     if (diceValue === 6) {
       setTimeout(() => {
         setGameState(prev => ({ ...prev, canRoll: true }));
-      }, 500);
+        if (isBot) {
+          setTimeout(() => rollDice(), 200);
+        }
+      }, delay);
     } else {
-      setTimeout(() => nextTurn(), 500);
+      setTimeout(() => nextTurn(), delay);
     }
   }, []);
 
@@ -406,20 +413,17 @@ export const useLudoGame = () => {
       const nextPlayerIndex = (prev.currentTurn + 1) % prev.players.length;
       const isUserTurn = !prev.players[nextPlayerIndex].isBot;
 
+      // Trigger bot roll immediately in next tick
+      if (!isUserTurn) {
+        setTimeout(() => rollDice(), 300);
+      }
+
       return {
         ...prev,
         currentTurn: nextPlayerIndex,
         canRoll: isUserTurn,
         selectedToken: null
       };
-    });
-
-    // If next player is bot, auto-roll after delay
-    setGameState(prev => {
-      if (prev.players[prev.currentTurn].isBot) {
-        setTimeout(() => rollDice(), 1000 + Math.random() * 1500);
-      }
-      return prev;
     });
   }, [rollDice]);
 

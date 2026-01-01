@@ -496,6 +496,99 @@ export type Database = {
         }
         Relationships: []
       }
+      thimble_games: {
+        Row: {
+          ball_position: number
+          completed_at: string | null
+          created_at: string
+          difficulty: Database["public"]["Enums"]["thimble_difficulty"]
+          entry_amount: number
+          id: string
+          is_win: boolean | null
+          reward_amount: number
+          selected_position: number | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          ball_position: number
+          completed_at?: string | null
+          created_at?: string
+          difficulty: Database["public"]["Enums"]["thimble_difficulty"]
+          entry_amount: number
+          id?: string
+          is_win?: boolean | null
+          reward_amount: number
+          selected_position?: number | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          ball_position?: number
+          completed_at?: string | null
+          created_at?: string
+          difficulty?: Database["public"]["Enums"]["thimble_difficulty"]
+          entry_amount?: number
+          id?: string
+          is_win?: boolean | null
+          reward_amount?: number
+          selected_position?: number | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      thimble_settings: {
+        Row: {
+          created_at: string
+          difficulty: Database["public"]["Enums"]["thimble_difficulty"]
+          id: string
+          is_enabled: boolean
+          min_entry_amount: number
+          platform_commission: number
+          reward_multiplier: number
+          selection_time_easy: number
+          selection_time_hard: number
+          selection_time_impossible: number
+          shuffle_duration_easy: number
+          shuffle_duration_hard: number
+          shuffle_duration_impossible: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          difficulty?: Database["public"]["Enums"]["thimble_difficulty"]
+          id?: string
+          is_enabled?: boolean
+          min_entry_amount?: number
+          platform_commission?: number
+          reward_multiplier?: number
+          selection_time_easy?: number
+          selection_time_hard?: number
+          selection_time_impossible?: number
+          shuffle_duration_easy?: number
+          shuffle_duration_hard?: number
+          shuffle_duration_impossible?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          difficulty?: Database["public"]["Enums"]["thimble_difficulty"]
+          id?: string
+          is_enabled?: boolean
+          min_entry_amount?: number
+          platform_commission?: number
+          reward_multiplier?: number
+          selection_time_easy?: number
+          selection_time_hard?: number
+          selection_time_impossible?: number
+          shuffle_duration_easy?: number
+          shuffle_duration_hard?: number
+          shuffle_duration_impossible?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       transactions: {
         Row: {
           admin_note: string | null
@@ -594,6 +687,7 @@ export type Database = {
       ludo_match_status: "waiting" | "in_progress" | "completed" | "cancelled"
       match_status: "upcoming" | "pending" | "live" | "completed" | "cancelled"
       match_type: "tdm_1v1" | "tdm_2v2" | "tdm_4v4" | "classic"
+      thimble_difficulty: "easy" | "hard" | "impossible"
       transaction_status: "processing" | "pending" | "completed" | "cancelled"
       transaction_type:
         | "deposit"
@@ -736,6 +830,7 @@ export const Constants = {
       ludo_match_status: ["waiting", "in_progress", "completed", "cancelled"],
       match_status: ["upcoming", "pending", "live", "completed", "cancelled"],
       match_type: ["tdm_1v1", "tdm_2v2", "tdm_4v4", "classic"],
+      thimble_difficulty: ["easy", "hard", "impossible"],
       transaction_status: ["processing", "pending", "completed", "cancelled"],
       transaction_type: [
         "deposit",
