@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
 import { Dices, Save, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
@@ -82,158 +84,181 @@ const AdminLudoSettings = () => {
   }
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="p-2 rounded-lg bg-primary/10">
-            <Dices className="w-6 h-6 text-primary" />
-          </div>
-          <div>
-            <h1 className="font-display text-2xl font-bold">Ludo Settings</h1>
-            <p className="text-sm text-muted-foreground">Manage Ludo game configuration</p>
-          </div>
+    <div className="space-y-6">
+      {/* Header */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="flex items-center justify-between"
+      >
+        <div>
+          <h1 className="font-display text-2xl font-bold text-foreground">Ludo Settings</h1>
+          <p className="text-muted-foreground">Manage Ludo game configuration</p>
         </div>
         <Button onClick={handleSave} disabled={saving}>
-          {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
-          Save Settings
+          <Save className="w-4 h-4 mr-2" />
+          {saving ? 'Saving...' : 'Save Changes'}
         </Button>
-      </div>
+      </motion.div>
 
       <div className="grid gap-6 md:grid-cols-2">
         {/* Module Status */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Module Status</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="font-medium">Enable Ludo</p>
-                <p className="text-sm text-muted-foreground">Allow users to play Ludo</p>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+        >
+          <Card className="bg-card border-border">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-foreground">
+                <Dices className="w-5 h-5 text-primary" />
+                Module Status
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label className="text-foreground">Enable Ludo</Label>
+                  <p className="text-xs text-muted-foreground">Allow users to play Ludo</p>
+                </div>
+                <Switch
+                  checked={settings.isEnabled}
+                  onCheckedChange={(checked) => setSettings(s => ({ ...s, isEnabled: checked }))}
+                />
               </div>
-              <Switch
-                checked={settings.isEnabled}
-                onCheckedChange={(checked) => setSettings(s => ({ ...s, isEnabled: checked }))}
-              />
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </motion.div>
 
         {/* Entry & Rewards */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Entry & Rewards</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <label className="text-sm font-medium">Minimum Entry (₹)</label>
-              <Input
-                type="number"
-                value={settings.minEntryAmount}
-                onChange={(e) => setSettings(s => ({ ...s, minEntryAmount: Number(e.target.value) }))}
-                min={10}
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium">Reward Multiplier</label>
-              <Input
-                type="number"
-                step="0.1"
-                value={settings.rewardMultiplier}
-                onChange={(e) => setSettings(s => ({ ...s, rewardMultiplier: Number(e.target.value) }))}
-                min={1}
-                max={3}
-              />
-              <p className="text-xs text-muted-foreground mt-1">
-                Example: {settings.rewardMultiplier}x = ₹{settings.minEntryAmount} → ₹{(settings.minEntryAmount * settings.rewardMultiplier).toFixed(0)} reward
-              </p>
-            </div>
-          </CardContent>
-        </Card>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.15 }}
+        >
+          <Card className="bg-card border-border">
+            <CardHeader>
+              <CardTitle className="text-foreground">Entry & Rewards</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label className="text-foreground">Minimum Entry (₹)</Label>
+                <Input
+                  type="number"
+                  value={settings.minEntryAmount}
+                  onChange={(e) => setSettings(s => ({ ...s, minEntryAmount: Number(e.target.value) }))}
+                  min={10}
+                  className="bg-background border-border text-foreground"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-foreground">Reward Multiplier</Label>
+                <Input
+                  type="number"
+                  step="0.1"
+                  value={settings.rewardMultiplier}
+                  onChange={(e) => setSettings(s => ({ ...s, rewardMultiplier: Number(e.target.value) }))}
+                  min={1}
+                  max={3}
+                  className="bg-background border-border text-foreground"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Example: {settings.rewardMultiplier}x = ₹{settings.minEntryAmount} → ₹{(settings.minEntryAmount * settings.rewardMultiplier).toFixed(0)} reward
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
 
-        {/* Match Balance */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Match Balance</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <label className="text-sm font-medium">Bot Difficulty Level</label>
-              <Select
-                value={settings.difficulty}
-                onValueChange={(value) => setSettings(s => ({ ...s, difficulty: value }))}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="easy">
-                    <div className="flex items-center gap-2">
-                      <span className="text-green-500">●</span>
-                      Easy - Bots make mistakes, favor low dice rolls
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="normal">
-                    <div className="flex items-center gap-2">
-                      <span className="text-yellow-500">●</span>
-                      Normal - Balanced gameplay, fair dice
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="competitive">
-                    <div className="flex items-center gap-2">
-                      <span className="text-red-500">●</span>
-                      Impossible - Smart bots, higher dice probability
-                    </div>
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-muted-foreground mt-2">
-                Controls bot intelligence and dice probability weighting
-              </p>
-            </div>
-            <div>
-              <label className="text-sm font-medium">Dice Randomness ({(settings.diceRandomnessWeight * 100).toFixed(0)}%)</label>
-              <Input
-                type="range"
-                min={0}
-                max={1}
-                step={0.1}
-                value={settings.diceRandomnessWeight}
-                onChange={(e) => setSettings(s => ({ ...s, diceRandomnessWeight: Number(e.target.value) }))}
-                className="w-full"
-              />
-            </div>
-          </CardContent>
-        </Card>
+        {/* Bot Difficulty */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+        >
+          <Card className="bg-card border-border">
+            <CardHeader>
+              <CardTitle className="text-foreground">Bot Difficulty</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-3">
+                <Label className="text-foreground">Difficulty Level</Label>
+                <div className="grid gap-2">
+                  {[
+                    { value: 'easy', label: 'Easy', desc: 'Bots make mistakes, favor low dice', color: 'bg-green-500' },
+                    { value: 'normal', label: 'Normal', desc: 'Balanced gameplay, fair dice', color: 'bg-amber-500' },
+                    { value: 'competitive', label: 'Impossible', desc: 'Smart bots, higher dice probability', color: 'bg-red-500' }
+                  ].map((opt) => (
+                    <button
+                      key={opt.value}
+                      onClick={() => setSettings(s => ({ ...s, difficulty: opt.value }))}
+                      className={`p-3 rounded-lg border-2 text-left transition-all ${
+                        settings.difficulty === opt.value
+                          ? 'border-primary bg-primary/10'
+                          : 'border-border hover:border-primary/50'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className={`w-3 h-3 rounded-full ${opt.color}`} />
+                        <div>
+                          <p className="font-medium text-foreground">{opt.label}</p>
+                          <p className="text-xs text-muted-foreground">{opt.desc}</p>
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-foreground">Dice Randomness ({(settings.diceRandomnessWeight * 100).toFixed(0)}%)</Label>
+                <Input
+                  type="range"
+                  min={0}
+                  max={1}
+                  step={0.1}
+                  value={settings.diceRandomnessWeight}
+                  onChange={(e) => setSettings(s => ({ ...s, diceRandomnessWeight: Number(e.target.value) }))}
+                  className="w-full"
+                />
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
 
         {/* Fair Play Control */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Fair Play Control</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="font-medium">New User Boost</p>
-                <p className="text-sm text-muted-foreground">Smoother matches for new users</p>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.25 }}
+        >
+          <Card className="bg-card border-border">
+            <CardHeader>
+              <CardTitle className="text-foreground">Fair Play Control</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label className="text-foreground">New User Boost</Label>
+                  <p className="text-xs text-muted-foreground">Smoother matches for new users</p>
+                </div>
+                <Switch
+                  checked={settings.newUserBoost}
+                  onCheckedChange={(checked) => setSettings(s => ({ ...s, newUserBoost: checked }))}
+                />
               </div>
-              <Switch
-                checked={settings.newUserBoost}
-                onCheckedChange={(checked) => setSettings(s => ({ ...s, newUserBoost: checked }))}
-              />
-            </div>
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="font-medium">High Amount Competitive</p>
-                <p className="text-sm text-muted-foreground">Tougher matches for high stakes</p>
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label className="text-foreground">High Amount Competitive</Label>
+                  <p className="text-xs text-muted-foreground">Tougher matches for high stakes</p>
+                </div>
+                <Switch
+                  checked={settings.highAmountCompetitive}
+                  onCheckedChange={(checked) => setSettings(s => ({ ...s, highAmountCompetitive: checked }))}
+                />
               </div>
-              <Switch
-                checked={settings.highAmountCompetitive}
-                onCheckedChange={(checked) => setSettings(s => ({ ...s, highAmountCompetitive: checked }))}
-              />
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        </motion.div>
       </div>
     </div>
   );
