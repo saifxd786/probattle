@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
-import { motion, useAnimation } from 'framer-motion';
+import { motion } from 'framer-motion';
 
 interface ThimbleCupsProps {
   phase: 'showing' | 'shuffling' | 'selecting' | 'result';
@@ -11,13 +11,6 @@ interface ThimbleCupsProps {
   onSelectCup: (index: number) => void;
 }
 
-const CUP_COLORS = {
-  base: 'hsl(30 80% 45%)',
-  rim: 'hsl(30 80% 55%)',
-  highlight: 'hsl(30 80% 65%)',
-  shadow: 'hsl(30 80% 25%)'
-};
-
 const ThimbleCups = ({
   phase,
   ballPosition,
@@ -27,14 +20,14 @@ const ThimbleCups = ({
   shuffleDuration,
   onSelectCup
 }: ThimbleCupsProps) => {
-  const [cupPositions, setCupPositions] = useState([0, 1, 2]);
+  const [cupOrder, setCupOrder] = useState([0, 1, 2]);
   const [liftedCup, setLiftedCup] = useState<number | null>(null);
   const shuffleRef = useRef<NodeJS.Timeout[]>([]);
 
   const difficultyConfig = {
-    easy: { shuffles: 6, speed: 500 },
-    hard: { shuffles: 10, speed: 300 },
-    impossible: { shuffles: 16, speed: 150 }
+    easy: { shuffles: 5, speed: 600, pauseBetween: 150 },
+    hard: { shuffles: 8, speed: 350, pauseBetween: 100 },
+    impossible: { shuffles: 14, speed: 180, pauseBetween: 50 }
   };
 
   const config = difficultyConfig[difficulty];
@@ -43,18 +36,17 @@ const ThimbleCups = ({
   useEffect(() => {
     if (phase === 'showing') {
       setLiftedCup(ballPosition);
-      setCupPositions([0, 1, 2]);
+      setCupOrder([0, 1, 2]);
     } else if (phase === 'shuffling') {
       setLiftedCup(null);
     }
   }, [phase, ballPosition]);
 
-  // Shuffle animation
+  // Smooth shuffle animation
   useEffect(() => {
     if (phase !== 'shuffling') return;
 
-    const positions = [0, 1, 2];
-    let currentPositions = [...positions];
+    let currentOrder = [0, 1, 2];
     let shuffleCount = 0;
 
     const doShuffle = () => {
@@ -62,30 +54,29 @@ const ThimbleCups = ({
         return;
       }
 
-      // Random swap
+      // Swap two random adjacent or non-adjacent cups
       const i = Math.floor(Math.random() * 3);
-      let j = Math.floor(Math.random() * 3);
-      while (j === i) j = Math.floor(Math.random() * 3);
+      let j = (i + 1 + Math.floor(Math.random() * 2)) % 3;
+      
+      const newOrder = [...currentOrder];
+      [newOrder[i], newOrder[j]] = [newOrder[j], newOrder[i]];
+      currentOrder = newOrder;
 
-      const temp = currentPositions[i];
-      currentPositions[i] = currentPositions[j];
-      currentPositions[j] = temp;
-
-      setCupPositions([...currentPositions]);
+      setCupOrder([...currentOrder]);
       shuffleCount++;
 
-      const timeout = setTimeout(doShuffle, config.speed);
+      const timeout = setTimeout(doShuffle, config.speed + config.pauseBetween);
       shuffleRef.current.push(timeout);
     };
 
-    const startTimeout = setTimeout(doShuffle, 200);
+    const startTimeout = setTimeout(doShuffle, 300);
     shuffleRef.current.push(startTimeout);
 
     return () => {
       shuffleRef.current.forEach(clearTimeout);
       shuffleRef.current = [];
     };
-  }, [phase, config.shuffles, config.speed]);
+  }, [phase, config.shuffles, config.speed, config.pauseBetween]);
 
   // Show result - lift selected cup
   useEffect(() => {
@@ -94,11 +85,10 @@ const ThimbleCups = ({
     }
   }, [phase, selectedCup]);
 
-  // Get visual position from logical position
-  const getXPosition = (logicalPos: number) => {
-    const cupIndex = cupPositions.indexOf(logicalPos);
-    const positions = [-120, 0, 120];
-    return positions[cupIndex];
+  // Get X position based on cup's position in order array
+  const getXPosition = (cupIndex: number) => {
+    const orderIndex = cupOrder.indexOf(cupIndex);
+    return (orderIndex - 1) * 130;
   };
 
   const renderCup = (cupIndex: number) => {
@@ -111,88 +101,121 @@ const ThimbleCups = ({
       <motion.div
         key={cupIndex}
         className="relative cursor-pointer"
-        initial={{ x: (cupIndex - 1) * 120 }}
         animate={{
           x: getXPosition(cupIndex),
-          y: isLifted ? -80 : 0
+          y: isLifted ? -90 : 0,
+          rotateZ: isLifted ? -5 : 0
         }}
         transition={{
           type: 'spring',
-          stiffness: 300,
-          damping: 25
+          stiffness: 350,
+          damping: 28,
+          mass: 0.8
         }}
         onClick={() => canSelect && onSelectCup(cupIndex)}
-        whileHover={canSelect ? { scale: 1.05 } : {}}
+        whileHover={canSelect ? { scale: 1.08, y: -8 } : {}}
         whileTap={canSelect ? { scale: 0.95 } : {}}
       >
         {/* Ball */}
         <motion.div
-          className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-10 h-10 rounded-full z-0"
+          className="absolute -bottom-3 left-1/2 -translate-x-1/2 w-12 h-12 rounded-full z-0"
           initial={{ opacity: 0, scale: 0 }}
           animate={{
             opacity: hasBall && (phase === 'showing' || phase === 'result') ? 1 : 0,
             scale: hasBall && (phase === 'showing' || phase === 'result') ? 1 : 0
           }}
+          transition={{ type: 'spring', stiffness: 400, damping: 20 }}
           style={{
-            background: 'radial-gradient(circle at 30% 30%, #ff6b6b, #c92a2a)',
-            boxShadow: '0 4px 12px rgba(201, 42, 42, 0.5), inset 0 -4px 8px rgba(0,0,0,0.3)'
+            background: 'radial-gradient(circle at 30% 30%, #ff7b7b, #c92a2a 60%, #8b0000)',
+            boxShadow: '0 6px 20px rgba(201, 42, 42, 0.6), inset 0 -6px 12px rgba(0,0,0,0.4), inset 0 3px 6px rgba(255,255,255,0.3)'
           }}
         />
 
         {/* Cup */}
-        <svg width="100" height="80" viewBox="0 0 100 80" className="relative z-10">
+        <motion.svg 
+          width="110" 
+          height="95" 
+          viewBox="0 0 110 95" 
+          className="relative z-10 drop-shadow-lg"
+          animate={{
+            filter: canSelect ? 'drop-shadow(0 0 15px rgba(255, 215, 0, 0.4))' : 'drop-shadow(0 4px 8px rgba(0,0,0,0.3))'
+          }}
+        >
+          <defs>
+            <linearGradient id={`cupGrad${cupIndex}`} x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#D4A574" />
+              <stop offset="30%" stopColor="#8B5A2B" />
+              <stop offset="60%" stopColor="#6B4423" />
+              <stop offset="100%" stopColor="#4A2C17" />
+            </linearGradient>
+            <linearGradient id={`rimGrad${cupIndex}`} x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stopColor="#E8C99B" />
+              <stop offset="100%" stopColor="#A67B5B" />
+            </linearGradient>
+            <linearGradient id={`highlightGrad${cupIndex}`} x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stopColor="rgba(255,255,255,0.4)" />
+              <stop offset="100%" stopColor="rgba(255,255,255,0)" />
+            </linearGradient>
+          </defs>
+          
           {/* Cup body */}
           <path
-            d="M 15 0 L 85 0 L 75 70 C 75 75 70 80 50 80 C 30 80 25 75 25 70 L 15 0"
-            fill={CUP_COLORS.base}
+            d="M 15 8 L 95 8 L 82 85 C 80 92 65 95 55 95 C 45 95 30 92 28 85 L 15 8"
+            fill={`url(#cupGrad${cupIndex})`}
           />
-          {/* Rim highlight */}
-          <ellipse cx="50" cy="5" rx="35" ry="8" fill={CUP_COLORS.rim} />
+          
+          {/* Rim */}
+          <ellipse cx="55" cy="10" rx="42" ry="10" fill={`url(#rimGrad${cupIndex})`} />
+          
+          {/* Inner rim shadow */}
+          <ellipse cx="55" cy="10" rx="35" ry="7" fill="rgba(0,0,0,0.3)" />
+          
           {/* Left highlight */}
           <path
-            d="M 20 5 L 30 70 L 25 70 L 15 5"
-            fill={CUP_COLORS.highlight}
-            opacity={0.5}
+            d="M 22 15 L 32 80 L 25 80 L 18 15"
+            fill={`url(#highlightGrad${cupIndex})`}
           />
+          
           {/* Right shadow */}
           <path
-            d="M 70 5 L 75 70 L 80 70 L 85 5"
-            fill={CUP_COLORS.shadow}
-            opacity={0.5}
+            d="M 78 15 L 85 80 L 92 80 L 92 15"
+            fill="rgba(0,0,0,0.2)"
           />
-          {/* Decorative band */}
-          <path
-            d="M 22 25 L 78 25 L 76 35 L 24 35 Z"
-            fill={CUP_COLORS.highlight}
-            opacity={0.7}
-          />
-        </svg>
+          
+          {/* Decorative bands */}
+          <path d="M 23 30 L 87 30 L 85 38 L 25 38 Z" fill="rgba(255,255,255,0.15)" />
+          <path d="M 26 50 L 84 50 L 82 55 L 28 55 Z" fill="rgba(0,0,0,0.1)" />
+          
+          {/* Bottom edge */}
+          <ellipse cx="55" cy="88" rx="27" ry="5" fill="rgba(0,0,0,0.3)" />
+        </motion.svg>
 
         {/* Selection indicator */}
         {isSelected && phase === 'result' && (
           <motion.div
-            className={`absolute -bottom-8 left-1/2 -translate-x-1/2 text-2xl font-bold ${
+            className={`absolute -bottom-10 left-1/2 -translate-x-1/2 text-3xl font-bold ${
               isWin ? 'text-green-400' : 'text-red-400'
             }`}
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
+            initial={{ scale: 0, rotate: -180 }}
+            animate={{ scale: 1, rotate: 0 }}
+            transition={{ type: 'spring', stiffness: 300 }}
           >
             {isWin ? '✓' : '✗'}
           </motion.div>
         )}
 
-        {/* Hover glow */}
+        {/* Hover glow for selecting phase */}
         {canSelect && (
           <motion.div
             className="absolute inset-0 rounded-full pointer-events-none"
             animate={{
               boxShadow: [
-                '0 0 20px rgba(255, 215, 0, 0.3)',
-                '0 0 40px rgba(255, 215, 0, 0.5)',
-                '0 0 20px rgba(255, 215, 0, 0.3)'
+                '0 0 25px rgba(255, 215, 0, 0.3)',
+                '0 0 45px rgba(255, 215, 0, 0.6)',
+                '0 0 25px rgba(255, 215, 0, 0.3)'
               ]
             }}
-            transition={{ repeat: Infinity, duration: 1.5 }}
+            transition={{ repeat: Infinity, duration: 1.2, ease: 'easeInOut' }}
           />
         )}
       </motion.div>
@@ -200,18 +223,26 @@ const ThimbleCups = ({
   };
 
   return (
-    <div className="relative flex items-center justify-center h-40 w-full overflow-hidden">
+    <div className="relative flex items-center justify-center h-52 w-full overflow-hidden">
       {/* Table surface */}
       <div 
-        className="absolute bottom-0 left-0 right-0 h-8 rounded-t-3xl"
+        className="absolute bottom-0 left-0 right-0 h-12 rounded-t-3xl"
         style={{
-          background: 'linear-gradient(180deg, hsl(120 40% 30%) 0%, hsl(120 40% 20%) 100%)',
-          boxShadow: 'inset 0 2px 10px rgba(255,255,255,0.1)'
+          background: 'linear-gradient(180deg, hsl(140 45% 35%) 0%, hsl(140 45% 22%) 100%)',
+          boxShadow: 'inset 0 4px 15px rgba(255,255,255,0.15), inset 0 -4px 10px rgba(0,0,0,0.3)'
+        }}
+      />
+      
+      {/* Table felt texture effect */}
+      <div 
+        className="absolute bottom-0 left-0 right-0 h-12 rounded-t-3xl opacity-30"
+        style={{
+          background: 'url("data:image/svg+xml,%3Csvg viewBox=\'0 0 100 100\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cfilter id=\'noise\'%3E%3CfeTurbulence type=\'fractalNoise\' baseFrequency=\'0.8\' numOctaves=\'4\' stitchTiles=\'stitch\'/%3E%3C/filter%3E%3Crect width=\'100%25\' height=\'100%25\' filter=\'url(%23noise)\'/%3E%3C/svg%3E")'
         }}
       />
 
       {/* Cups container */}
-      <div className="relative flex items-end justify-center gap-2 pb-4">
+      <div className="relative flex items-end justify-center gap-2 pb-6">
         {[0, 1, 2].map(renderCup)}
       </div>
     </div>
