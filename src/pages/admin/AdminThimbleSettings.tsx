@@ -137,8 +137,8 @@ const AdminThimbleSettings = () => {
         className="flex items-center justify-between"
       >
         <div>
-          <h1 className="font-display text-2xl font-bold text-foreground">Thimble Game Settings</h1>
-          <p className="text-muted-foreground">Manage thimble game configuration</p>
+          <h1 className="font-display text-2xl font-bold text-foreground">Thimble Settings</h1>
+          <p className="text-muted-foreground">Manage Thimble game configuration</p>
         </div>
         <Button onClick={saveSettings} disabled={saving}>
           <Save className="w-4 h-4 mr-2" />
