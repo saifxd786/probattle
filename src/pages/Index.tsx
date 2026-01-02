@@ -16,13 +16,13 @@ import { usePullToRefresh } from '@/hooks/usePullToRefresh';
 import heroBanner from '@/assets/hero-banner.jpg';
 import bgmiCard from '@/assets/bgmi-card.jpg';
 import freefireCard from '@/assets/freefire-card.jpg';
-import clashCard from '@/assets/clash-card.jpg';
 import ludoCard from '@/assets/ludo-card.jpg';
+import thimbleCard from '@/assets/thimble-card.jpg';
 
 const games = [
   { title: 'BGMI', image: bgmiCard, status: 'active' as const, path: '/bgmi' },
   { title: 'Ludo', image: ludoCard, status: 'active' as const, path: '/ludo' },
-  { title: 'Thimble', image: clashCard, status: 'active' as const, path: '/thimble' },
+  { title: 'Thimble', image: thimbleCard, status: 'active' as const, path: '/thimble' },
   { title: 'Free Fire', image: freefireCard, status: 'coming-soon' as const, path: '/freefire' },
 ];
 

@@ -118,9 +118,9 @@ export const useLudoGame = () => {
     return available[Math.floor(Math.random() * available.length)] || BOT_NAMES[0];
   }, []);
 
-  const createInitialTokens = (color: string): Token[] => {
+  const createInitialTokens = useCallback((color: string): Token[] => {
     return [0, 1, 2, 3].map(id => ({ id, position: 0, color }));
-  };
+  }, []);
 
   const startMatchmaking = useCallback(async () => {
     if (!user) {
@@ -355,7 +355,7 @@ export const useLudoGame = () => {
 
           let newPosition = token.position;
           if (token.position === 0 && diceValue === 6) {
-            newPosition = 1; // Enter the board
+            newPosition = 1; // Enter the board - token keeps its assigned color
             soundManager.playTokenEnter();
             hapticManager.tokenEnter();
           } else if (token.position > 0) {
@@ -366,6 +366,7 @@ export const useLudoGame = () => {
             }
           }
 
+          // Token retains its original color - no color change
           return { ...token, position: newPosition };
         });
 
@@ -391,32 +392,37 @@ export const useLudoGame = () => {
     });
 
     // If rolled 6, player gets another turn
-    const isBot = gameState.players.find(p => p.color === color)?.isBot;
-    const delay = isBot ? 150 : 400;
+    const currentPlayer = gameState.players.find(p => p.color === color);
+    const isBot = currentPlayer?.isBot;
+    const delay = isBot ? 100 : 400;
     
     if (diceValue === 6) {
       setTimeout(() => {
         setGameState(prev => ({ ...prev, canRoll: true }));
+        // Bot gets another roll
         if (isBot) {
-          setTimeout(() => rollDice(), 200);
+          setTimeout(() => {
+            setGameState(prev => {
+              if (prev.players[prev.currentTurn]?.isBot && prev.canRoll) {
+                rollDice();
+              }
+              return prev;
+            });
+          }, 150);
         }
       }, delay);
     } else {
       setTimeout(() => nextTurn(), delay);
     }
-  }, []);
+  }, [gameState.players]);
 
   const nextTurn = useCallback(() => {
     soundManager.playTurnChange();
     
     setGameState(prev => {
       const nextPlayerIndex = (prev.currentTurn + 1) % prev.players.length;
-      const isUserTurn = !prev.players[nextPlayerIndex].isBot;
-
-      // Trigger bot roll immediately in next tick
-      if (!isUserTurn) {
-        setTimeout(() => rollDice(), 300);
-      }
+      const nextPlayer = prev.players[nextPlayerIndex];
+      const isUserTurn = !nextPlayer?.isBot;
 
       return {
         ...prev,
@@ -425,7 +431,22 @@ export const useLudoGame = () => {
         selectedToken: null
       };
     });
-  }, [rollDice]);
+  }, []);
+
+  // Effect to trigger bot roll when it's their turn
+  useEffect(() => {
+    if (gameState.phase !== 'playing') return;
+    
+    const currentPlayer = gameState.players[gameState.currentTurn];
+    if (currentPlayer?.isBot && !gameState.isRolling && !gameState.canRoll) {
+      // It's bot's turn, trigger roll
+      const timer = setTimeout(() => {
+        setGameState(prev => ({ ...prev, canRoll: true }));
+        setTimeout(() => rollDice(), 200);
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [gameState.currentTurn, gameState.phase, gameState.players, gameState.isRolling, gameState.canRoll]);
 
   const handleTokenClick = useCallback((color: string, tokenId: number) => {
     const currentPlayer = gameState.players[gameState.currentTurn];

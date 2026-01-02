@@ -10,7 +10,6 @@ const ThimbleGame = () => {
     settings,
     gameState,
     walletBalance,
-    opponentName,
     startGame,
     handleSelection,
     resetGame,
@@ -50,28 +49,6 @@ const ThimbleGame = () => {
             <span className="font-display font-bold text-destructive">{gameState.timeLeft}s</span>
           </div>
         )}
-      </motion.div>
-    );
-  };
-
-  const renderOpponentInfo = () => {
-    if (gameState.phase === 'idle') return null;
-
-    return (
-      <motion.div
-        initial={{ opacity: 0, x: 20 }}
-        animate={{ opacity: 1, x: 0 }}
-        className="absolute top-4 right-4 flex items-center gap-2 px-3 py-2 rounded-lg bg-card/80 border border-border"
-      >
-        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center">
-          <span className="text-xs font-bold text-black">
-            {opponentName.charAt(0).toUpperCase()}
-          </span>
-        </div>
-        <div>
-          <p className="text-xs text-muted-foreground">Playing against</p>
-          <p className="text-sm font-medium text-foreground">{opponentName}</p>
-        </div>
       </motion.div>
     );
   };
@@ -157,7 +134,6 @@ const ThimbleGame = () => {
 
   return (
     <div className="relative min-h-[500px]">
-      {renderOpponentInfo()}
       
       <AnimatePresence mode="wait">
         {gameState.phase === 'idle' ? (
