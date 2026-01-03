@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { Wallet, Plus, ArrowUpRight, ArrowDownLeft, History, Copy, Check, Loader2, Upload, Image as ImageIcon, MessageCircle, AlertCircle } from 'lucide-react';
+import { Wallet, Plus, ArrowUpRight, ArrowDownLeft, History, Copy, Check, Loader2, Upload, Image as ImageIcon, MessageCircle, AlertCircle, Gift } from 'lucide-react';
 import phonepeLogo from '@/assets/phonepe-logo.png';
 import gpayLogo from '@/assets/gpay-logo.png';
 import paytmLogo from '@/assets/paytm-logo.png';
@@ -59,6 +59,11 @@ const WalletPage = () => {
   const [screenshotPreview, setScreenshotPreview] = useState<string | null>(null);
   const [utrId, setUtrId] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Redeem code state
+  const [isRedeemOpen, setIsRedeemOpen] = useState(false);
+  const [redeemCode, setRedeemCode] = useState('');
+  const [isRedeeming, setIsRedeeming] = useState(false);
 
   const fetchData = async () => {
     if (!user) return;
@@ -235,6 +240,99 @@ const WalletPage = () => {
     setIsSubmitting(false);
   };
 
+  const handleRedeem = async () => {
+    if (!user || !redeemCode.trim()) return;
+
+    setIsRedeeming(true);
+
+    try {
+      // Find the code
+      const { data: codeData, error: codeError } = await supabase
+        .from('redeem_codes')
+        .select('*')
+        .eq('code', redeemCode.trim().toUpperCase())
+        .eq('is_active', true)
+        .single();
+
+      if (codeError || !codeData) {
+        toast({ title: 'Invalid Code', description: 'This code does not exist or is inactive', variant: 'destructive' });
+        setIsRedeeming(false);
+        return;
+      }
+
+      // Check if expired
+      if (codeData.expires_at && new Date(codeData.expires_at) < new Date()) {
+        toast({ title: 'Code Expired', description: 'This code has expired', variant: 'destructive' });
+        setIsRedeeming(false);
+        return;
+      }
+
+      // Check max uses
+      if (codeData.current_uses >= codeData.max_uses) {
+        toast({ title: 'Code Exhausted', description: 'This code has reached its maximum uses', variant: 'destructive' });
+        setIsRedeeming(false);
+        return;
+      }
+
+      // Check if user already used this code
+      const { data: existingUse } = await supabase
+        .from('redeem_code_uses')
+        .select('id')
+        .eq('code_id', codeData.id)
+        .eq('user_id', user.id)
+        .single();
+
+      if (existingUse) {
+        toast({ title: 'Already Redeemed', description: 'You have already used this code', variant: 'destructive' });
+        setIsRedeeming(false);
+        return;
+      }
+
+      // Record the use
+      const { error: useError } = await supabase.from('redeem_code_uses').insert({
+        code_id: codeData.id,
+        user_id: user.id,
+        amount: codeData.amount,
+      });
+
+      if (useError) throw useError;
+
+      // Increment uses count
+      await supabase
+        .from('redeem_codes')
+        .update({ current_uses: codeData.current_uses + 1 })
+        .eq('id', codeData.id);
+
+      // Credit wallet
+      await supabase
+        .from('profiles')
+        .update({ wallet_balance: (profile?.wallet_balance || 0) + codeData.amount })
+        .eq('id', user.id);
+
+      // Create transaction record
+      await supabase.from('transactions').insert({
+        user_id: user.id,
+        type: 'admin_credit',
+        amount: codeData.amount,
+        status: 'completed',
+        description: `Redeemed code: ${codeData.code}`,
+      });
+
+      toast({ 
+        title: '🎉 Code Redeemed!', 
+        description: `₹${codeData.amount} has been added to your wallet` 
+      });
+      
+      setIsRedeemOpen(false);
+      setRedeemCode('');
+      fetchData();
+    } catch (error: any) {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    }
+
+    setIsRedeeming(false);
+  };
+
   const copyUPI = () => {
     navigator.clipboard.writeText(UPI_ID);
     setCopied(true);
@@ -325,6 +423,17 @@ const WalletPage = () => {
                 Withdraw
               </Button>
             </div>
+            
+            {/* Redeem Code Button */}
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="w-full mt-2 border border-dashed border-primary/50 text-primary hover:bg-primary/10"
+              onClick={() => setIsRedeemOpen(true)}
+            >
+              <Gift className="w-4 h-4 mr-2" />
+              Redeem Code
+            </Button>
           </div>
         </motion.div>
 
@@ -642,6 +751,54 @@ const WalletPage = () => {
               disabled={isSubmitting || (profile?.wager_requirement || 0) > 0}
             >
               {isSubmitting ? 'Submitting...' : (profile?.wager_requirement || 0) > 0 ? 'Complete Wager First' : 'Request Withdrawal'}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Redeem Code Dialog */}
+      <Dialog open={isRedeemOpen} onOpenChange={setIsRedeemOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Gift className="w-5 h-5 text-primary" />
+              Redeem Code
+            </DialogTitle>
+            <DialogDescription>Enter your promo code to get bonus cash</DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 mt-4">
+            <div className="p-4 bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/30 rounded-xl text-center">
+              <Gift className="w-10 h-10 mx-auto text-primary mb-2" />
+              <p className="text-sm text-muted-foreground">
+                Enter a valid promo code to receive bonus cash in your wallet
+              </p>
+            </div>
+            
+            <div>
+              <Label>Promo Code</Label>
+              <Input
+                value={redeemCode}
+                onChange={(e) => setRedeemCode(e.target.value.toUpperCase())}
+                placeholder="Enter code (e.g., PROMO123ABC)"
+                className="text-center font-mono text-lg tracking-wider"
+              />
+            </div>
+
+            <Button 
+              variant="neon" 
+              className="w-full" 
+              onClick={handleRedeem} 
+              disabled={isRedeeming || !redeemCode.trim()}
+            >
+              {isRedeeming ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                  Redeeming...
+                </>
+              ) : (
+                'Redeem Code'
+              )}
             </Button>
           </div>
         </DialogContent>
