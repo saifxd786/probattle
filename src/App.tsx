@@ -37,6 +37,7 @@ import AdminLoginPage from "./pages/admin/AdminLoginPage";
 import AdminNotificationsPage from "./pages/admin/AdminNotificationsPage";
 import AdminLudoSettings from "./pages/admin/AdminLudoSettings";
 import AdminThimbleSettings from "./pages/admin/AdminThimbleSettings";
+import AdminRedeemCodes from "./pages/admin/AdminRedeemCodes";
 
 const queryClient = new QueryClient();
 
@@ -86,6 +87,7 @@ const App = () => {
                 <Route path="settings" element={<AdminSettings />} />
                 <Route path="ludo" element={<AdminLudoSettings />} />
                 <Route path="thimble" element={<AdminThimbleSettings />} />
+                <Route path="redeem-codes" element={<AdminRedeemCodes />} />
               </Route>
               <Route path="*" element={<NotFound />} />
             </Routes>

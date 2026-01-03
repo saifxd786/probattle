@@ -85,10 +85,12 @@ const ThimbleCups = ({
     }
   }, [phase, selectedCup]);
 
-  // Get X position based on cup's position in order array
+  // Get X position based on cup's position in order array - responsive
   const getXPosition = (cupIndex: number) => {
     const orderIndex = cupOrder.indexOf(cupIndex);
-    return (orderIndex - 1) * 130;
+    // Smaller spacing for mobile
+    const spacing = typeof window !== 'undefined' && window.innerWidth < 400 ? 85 : 110;
+    return (orderIndex - 1) * spacing;
   };
 
   const renderCup = (cupIndex: number) => {
@@ -118,7 +120,7 @@ const ThimbleCups = ({
       >
         {/* Ball */}
         <motion.div
-          className="absolute -bottom-3 left-1/2 -translate-x-1/2 w-12 h-12 rounded-full z-0"
+          className="absolute -bottom-2 sm:-bottom-3 left-1/2 -translate-x-1/2 w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 rounded-full z-0"
           initial={{ opacity: 0, scale: 0 }}
           animate={{
             opacity: hasBall && (phase === 'showing' || phase === 'result') ? 1 : 0,
@@ -133,10 +135,8 @@ const ThimbleCups = ({
 
         {/* Cup */}
         <motion.svg 
-          width="110" 
-          height="95" 
           viewBox="0 0 110 95" 
-          className="relative z-10 drop-shadow-lg"
+          className="relative z-10 drop-shadow-lg w-[70px] h-[60px] sm:w-[90px] sm:h-[78px] md:w-[110px] md:h-[95px]"
           animate={{
             filter: canSelect ? 'drop-shadow(0 0 15px rgba(255, 215, 0, 0.4))' : 'drop-shadow(0 4px 8px rgba(0,0,0,0.3))'
           }}
