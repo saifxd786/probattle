@@ -7,6 +7,8 @@ import { Button } from '@/components/ui/button';
 interface AdminSidebarProps {
   collapsed: boolean;
   onToggle: () => void;
+  onNavigate?: () => void;
+  isMobile?: boolean;
 }
 
 const navItems = [
@@ -22,7 +24,7 @@ const navItems = [
   { title: 'Settings', url: '/admin/settings', icon: Settings },
 ];
 
-const AdminSidebar = ({ collapsed, onToggle }: AdminSidebarProps) => {
+const AdminSidebar = ({ collapsed, onToggle, onNavigate, isMobile }: AdminSidebarProps) => {
   const { signOut } = useAuth();
   const navigate = useNavigate();
 
@@ -31,26 +33,35 @@ const AdminSidebar = ({ collapsed, onToggle }: AdminSidebarProps) => {
     navigate('/');
   };
 
+  const handleNavClick = () => {
+    if (onNavigate) {
+      onNavigate();
+    }
+  };
+
   return (
     <aside
       className={cn(
-        'fixed left-0 top-0 h-screen bg-card border-r border-border transition-all duration-300 z-50 flex flex-col',
-        collapsed ? 'w-16' : 'w-64'
+        'h-screen bg-card border-r border-border transition-all duration-300 flex flex-col',
+        isMobile ? 'w-full' : 'fixed left-0 top-0 z-50',
+        !isMobile && (collapsed ? 'w-16' : 'w-64')
       )}
     >
       {/* Header */}
       <div className="h-16 flex items-center justify-between px-4 border-b border-border">
-        {!collapsed && (
+        {(!collapsed || isMobile) && (
           <span className="font-display text-lg font-bold text-gradient">ProScims Admin</span>
         )}
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={onToggle}
-          className={cn('shrink-0', collapsed && 'mx-auto')}
-        >
-          <ChevronLeft className={cn('w-5 h-5 transition-transform', collapsed && 'rotate-180')} />
-        </Button>
+        {!isMobile && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onToggle}
+            className={cn('shrink-0', collapsed && 'mx-auto')}
+          >
+            <ChevronLeft className={cn('w-5 h-5 transition-transform', collapsed && 'rotate-180')} />
+          </Button>
+        )}
       </div>
 
       {/* Navigation */}
@@ -60,18 +71,19 @@ const AdminSidebar = ({ collapsed, onToggle }: AdminSidebarProps) => {
             key={item.url}
             to={item.url}
             end={item.url === '/admin'}
+            onClick={handleNavClick}
             className={({ isActive }) =>
               cn(
                 'flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200',
                 isActive
                   ? 'bg-primary text-primary-foreground'
                   : 'text-muted-foreground hover:bg-secondary hover:text-foreground',
-                collapsed && 'justify-center px-2'
+                collapsed && !isMobile && 'justify-center px-2'
               )
             }
           >
             <item.icon className="w-5 h-5 shrink-0" />
-            {!collapsed && <span className="text-sm font-medium">{item.title}</span>}
+            {(!collapsed || isMobile) && <span className="text-sm font-medium">{item.title}</span>}
           </NavLink>
         ))}
       </nav>
@@ -82,11 +94,11 @@ const AdminSidebar = ({ collapsed, onToggle }: AdminSidebarProps) => {
           onClick={handleSignOut}
           className={cn(
             'flex items-center gap-3 px-3 py-2.5 rounded-lg w-full text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-all duration-200',
-            collapsed && 'justify-center px-2'
+            collapsed && !isMobile && 'justify-center px-2'
           )}
         >
           <LogOut className="w-5 h-5 shrink-0" />
-          {!collapsed && <span className="text-sm font-medium">Logout</span>}
+          {(!collapsed || isMobile) && <span className="text-sm font-medium">Logout</span>}
         </button>
       </div>
     </aside>

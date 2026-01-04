@@ -615,6 +615,9 @@ export type Database = {
           min_entry_amount: number
           platform_commission: number
           reward_multiplier: number
+          reward_multiplier_easy: number | null
+          reward_multiplier_hard: number | null
+          reward_multiplier_impossible: number | null
           selection_time_easy: number
           selection_time_hard: number
           selection_time_impossible: number
@@ -631,6 +634,9 @@ export type Database = {
           min_entry_amount?: number
           platform_commission?: number
           reward_multiplier?: number
+          reward_multiplier_easy?: number | null
+          reward_multiplier_hard?: number | null
+          reward_multiplier_impossible?: number | null
           selection_time_easy?: number
           selection_time_hard?: number
           selection_time_impossible?: number
@@ -647,6 +653,9 @@ export type Database = {
           min_entry_amount?: number
           platform_commission?: number
           reward_multiplier?: number
+          reward_multiplier_easy?: number | null
+          reward_multiplier_hard?: number | null
+          reward_multiplier_impossible?: number | null
           selection_time_easy?: number
           selection_time_hard?: number
           selection_time_impossible?: number

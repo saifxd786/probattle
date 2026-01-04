@@ -1,27 +1,25 @@
 import { motion } from 'framer-motion';
-import { Wallet, Trophy, Zap } from 'lucide-react';
+import { Wallet, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 
 interface ThimbleEntrySelectorProps {
   minAmount: number;
   selectedAmount: number;
   walletBalance: number;
-  rewardMultiplier: number;
   onSelectAmount: (amount: number) => void;
-  onStartGame: () => void;
+  onProceed: () => void;
 }
 
-const ENTRY_AMOUNTS = [100, 200, 500, 1000, 2000, 5000];
+const ENTRY_AMOUNTS = [10, 20, 50, 100, 200, 500];
 
 const ThimbleEntrySelector = ({
   minAmount,
   selectedAmount,
   walletBalance,
-  rewardMultiplier,
   onSelectAmount,
-  onStartGame
+  onProceed,
 }: ThimbleEntrySelectorProps) => {
-  const rewardAmount = selectedAmount * rewardMultiplier;
   const canPlay = walletBalance >= selectedAmount && selectedAmount >= minAmount;
 
   return (
@@ -55,32 +53,31 @@ const ThimbleEntrySelector = ({
           {ENTRY_AMOUNTS.map((amount) => {
             const isSelected = selectedAmount === amount;
             const isAffordable = walletBalance >= amount;
+            const meetsMin = amount >= minAmount;
             
             return (
               <motion.button
                 key={amount}
-                onClick={() => isAffordable && onSelectAmount(amount)}
-                disabled={!isAffordable}
-                className={`relative p-4 rounded-xl border-2 transition-all ${
+                onClick={() => isAffordable && meetsMin && onSelectAmount(amount)}
+                disabled={!isAffordable || !meetsMin}
+                className={cn(
+                  'relative p-4 rounded-xl border-2 transition-all',
                   isSelected
                     ? 'border-primary bg-primary/20 shadow-lg shadow-primary/20'
-                    : isAffordable
+                    : isAffordable && meetsMin
                     ? 'border-border bg-card hover:border-primary/50 hover:bg-card/80'
                     : 'border-border/50 bg-card/50 opacity-50 cursor-not-allowed'
-                }`}
-                whileHover={isAffordable ? { scale: 1.02 } : {}}
-                whileTap={isAffordable ? { scale: 0.98 } : {}}
+                )}
+                whileHover={isAffordable && meetsMin ? { scale: 1.02 } : {}}
+                whileTap={isAffordable && meetsMin ? { scale: 0.98 } : {}}
               >
-                {amount === 500 && (
+                {amount === 50 && (
                   <span className="absolute -top-2 left-1/2 -translate-x-1/2 bg-amber-500 text-[10px] font-bold px-2 py-0.5 rounded-full text-black">
                     POPULAR
                   </span>
                 )}
-                <p className={`font-display text-lg font-bold ${isSelected ? 'text-primary' : 'text-foreground'}`}>
+                <p className={cn('font-display text-lg font-bold', isSelected ? 'text-primary' : 'text-foreground')}>
                   ₹{amount}
-                </p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Win ₹{(amount * rewardMultiplier).toFixed(0)}
                 </p>
               </motion.button>
             );
@@ -88,40 +85,16 @@ const ThimbleEntrySelector = ({
         </div>
       </motion.div>
 
-      {/* Reward Preview */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.2 }}
-        className="glass-card p-4 border border-primary/30 bg-primary/5"
-      >
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-amber-500/20">
-              <Trophy className="w-5 h-5 text-amber-400" />
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground">Win Amount ({rewardMultiplier}x)</p>
-              <p className="font-display text-xl font-bold text-gradient">₹{rewardAmount.toFixed(0)}</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-1 text-primary">
-            <Zap className="w-4 h-4" />
-            <span className="text-xs font-medium">Instant</span>
-          </div>
-        </div>
-      </motion.div>
-
       {/* Play Button */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.3 }}
+        transition={{ delay: 0.2 }}
       >
         <Button
-          onClick={onStartGame}
+          onClick={onProceed}
           disabled={!canPlay}
-          className="w-full h-14 text-lg font-display font-bold relative overflow-hidden"
+          className="w-full h-14 text-lg font-display font-bold relative overflow-hidden gap-2"
           style={{
             background: canPlay 
               ? 'linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(185 100% 40%) 100%)'
@@ -132,8 +105,9 @@ const ThimbleEntrySelector = ({
             animate={canPlay ? { scale: [1, 1.02, 1] } : {}}
             transition={{ repeat: Infinity, duration: 1.5 }}
           >
-            {canPlay ? `Play for ₹${selectedAmount}` : 'Insufficient Balance'}
+            {canPlay ? 'Continue' : 'Insufficient Balance'}
           </motion.span>
+          {canPlay && <ArrowRight className="w-5 h-5" />}
           {canPlay && (
             <motion.div
               className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent"

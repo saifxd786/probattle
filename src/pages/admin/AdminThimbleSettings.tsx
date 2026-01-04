@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Settings, Save, Eye, Shuffle, Clock, DollarSign, Percent, History } from 'lucide-react';
+import { Settings, Save, DollarSign, Percent, History, Clock, Zap } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
+import { Badge } from '@/components/ui/badge';
 import {
   Table,
   TableBody,
@@ -16,15 +17,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 
 interface ThimbleSettings {
   id: string;
   is_enabled: boolean;
-  difficulty: 'easy' | 'hard' | 'impossible';
   min_entry_amount: number;
-  reward_multiplier: number;
   platform_commission: number;
   shuffle_duration_easy: number;
   shuffle_duration_hard: number;
@@ -32,6 +30,9 @@ interface ThimbleSettings {
   selection_time_easy: number;
   selection_time_hard: number;
   selection_time_impossible: number;
+  reward_multiplier_easy: number;
+  reward_multiplier_hard: number;
+  reward_multiplier_impossible: number;
 }
 
 interface ThimbleGame {
@@ -43,7 +44,6 @@ interface ThimbleGame {
   difficulty: string;
   status: string;
   created_at: string;
-  profiles?: { username: string; email: string };
 }
 
 const AdminThimbleSettings = () => {
@@ -68,7 +68,12 @@ const AdminThimbleSettings = () => {
     if (error) {
       toast({ title: 'Failed to load settings', variant: 'destructive' });
     } else {
-      setSettings(data);
+      setSettings({
+        ...data,
+        reward_multiplier_easy: data.reward_multiplier_easy ?? 1.5,
+        reward_multiplier_hard: data.reward_multiplier_hard ?? 2,
+        reward_multiplier_impossible: data.reward_multiplier_impossible ?? 3,
+      });
     }
     setLoading(false);
   };
@@ -93,16 +98,17 @@ const AdminThimbleSettings = () => {
       .from('thimble_settings')
       .update({
         is_enabled: settings.is_enabled,
-        difficulty: settings.difficulty,
         min_entry_amount: settings.min_entry_amount,
-        reward_multiplier: settings.reward_multiplier,
         platform_commission: settings.platform_commission,
         shuffle_duration_easy: settings.shuffle_duration_easy,
         shuffle_duration_hard: settings.shuffle_duration_hard,
         shuffle_duration_impossible: settings.shuffle_duration_impossible,
         selection_time_easy: settings.selection_time_easy,
         selection_time_hard: settings.selection_time_hard,
-        selection_time_impossible: settings.selection_time_impossible
+        selection_time_impossible: settings.selection_time_impossible,
+        reward_multiplier_easy: settings.reward_multiplier_easy,
+        reward_multiplier_hard: settings.reward_multiplier_hard,
+        reward_multiplier_impossible: settings.reward_multiplier_impossible,
       })
       .eq('id', settings.id);
 
@@ -122,19 +128,13 @@ const AdminThimbleSettings = () => {
     );
   }
 
-  const difficultyOptions = [
-    { value: 'easy', label: 'Easy', desc: 'Slow shuffle, 10s to select', color: 'bg-green-500' },
-    { value: 'hard', label: 'Hard', desc: 'Medium shuffle, 6s to select', color: 'bg-amber-500' },
-    { value: 'impossible', label: 'Impossible', desc: 'Fast shuffle, 3s to select', color: 'bg-red-500' }
-  ];
-
   return (
-    <div className="space-y-6">
+    <div className="p-4 lg:p-6 space-y-6">
       {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="flex items-center justify-between"
+        className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
       >
         <div>
           <h1 className="font-display text-2xl font-bold text-foreground">Thimble Settings</h1>
@@ -191,23 +191,6 @@ const AdminThimbleSettings = () => {
                 />
               </div>
 
-              {/* Reward Multiplier */}
-              <div className="space-y-2">
-                <Label className="text-foreground flex items-center gap-2">
-                  <Eye className="w-4 h-4 text-primary" />
-                  Reward Multiplier (x)
-                </Label>
-                <Input
-                  type="number"
-                  step="0.1"
-                  value={settings.reward_multiplier}
-                  onChange={(e) =>
-                    setSettings({ ...settings, reward_multiplier: Number(e.target.value) })
-                  }
-                  className="bg-background border-border text-foreground"
-                />
-              </div>
-
               {/* Commission */}
               <div className="space-y-2">
                 <Label className="text-foreground flex items-center gap-2">
@@ -239,115 +222,126 @@ const AdminThimbleSettings = () => {
           <Card className="bg-card border-border">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-foreground">
-                <Shuffle className="w-5 h-5 text-primary" />
+                <Zap className="w-5 h-5 text-primary" />
                 Difficulty Settings
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
-              {/* Global Difficulty */}
-              <div className="space-y-3">
-                <Label className="text-foreground">Global Difficulty</Label>
-                <div className="grid gap-2">
-                  {difficultyOptions.map((opt) => (
-                    <button
-                      key={opt.value}
-                      onClick={() => setSettings({ ...settings, difficulty: opt.value as any })}
-                      className={`p-3 rounded-lg border-2 text-left transition-all ${
-                        settings.difficulty === opt.value
-                          ? 'border-primary bg-primary/10'
-                          : 'border-border hover:border-primary/50'
-                      }`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className={`w-3 h-3 rounded-full ${opt.color}`} />
-                        <div>
-                          <p className="font-medium text-foreground">{opt.label}</p>
-                          <p className="text-xs text-muted-foreground">{opt.desc}</p>
-                        </div>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Shuffle Durations */}
-              <div className="space-y-3">
-                <Label className="text-foreground flex items-center gap-2">
-                  <Clock className="w-4 h-4 text-primary" />
-                  Shuffle Duration (ms)
-                </Label>
-                <div className="grid gap-2">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-muted-foreground w-20">Easy:</span>
-                    <Input
-                      type="number"
-                      value={settings.shuffle_duration_easy}
-                      onChange={(e) =>
-                        setSettings({ ...settings, shuffle_duration_easy: Number(e.target.value) })
-                      }
-                      className="bg-background border-border text-foreground"
-                    />
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-muted-foreground w-20">Hard:</span>
-                    <Input
-                      type="number"
-                      value={settings.shuffle_duration_hard}
-                      onChange={(e) =>
-                        setSettings({ ...settings, shuffle_duration_hard: Number(e.target.value) })
-                      }
-                      className="bg-background border-border text-foreground"
-                    />
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-muted-foreground w-20">Impossible:</span>
-                    <Input
-                      type="number"
-                      value={settings.shuffle_duration_impossible}
-                      onChange={(e) =>
-                        setSettings({ ...settings, shuffle_duration_impossible: Number(e.target.value) })
-                      }
-                      className="bg-background border-border text-foreground"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Selection Times */}
-              <div className="space-y-3">
-                <Label className="text-foreground">Selection Time (seconds)</Label>
-                <div className="grid gap-2">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-muted-foreground w-20">Easy:</span>
+              {/* Easy Mode */}
+              <div className="space-y-3 p-3 bg-green-500/10 rounded-lg border border-green-500/20">
+                <Badge variant="outline" className="bg-green-500/20 text-green-400 border-green-500/30">
+                  Easy Mode
+                </Badge>
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs">Time (sec)</Label>
                     <Input
                       type="number"
                       value={settings.selection_time_easy}
                       onChange={(e) =>
                         setSettings({ ...settings, selection_time_easy: Number(e.target.value) })
                       }
-                      className="bg-background border-border text-foreground"
                     />
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-muted-foreground w-20">Hard:</span>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Shuffle (ms)</Label>
+                    <Input
+                      type="number"
+                      value={settings.shuffle_duration_easy}
+                      onChange={(e) =>
+                        setSettings({ ...settings, shuffle_duration_easy: Number(e.target.value) })
+                      }
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Win (x)</Label>
+                    <Input
+                      type="number"
+                      step="0.1"
+                      value={settings.reward_multiplier_easy}
+                      onChange={(e) =>
+                        setSettings({ ...settings, reward_multiplier_easy: Number(e.target.value) })
+                      }
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Normal/Hard Mode */}
+              <div className="space-y-3 p-3 bg-yellow-500/10 rounded-lg border border-yellow-500/20">
+                <Badge variant="outline" className="bg-yellow-500/20 text-yellow-400 border-yellow-500/30">
+                  Normal Mode
+                </Badge>
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs">Time (sec)</Label>
                     <Input
                       type="number"
                       value={settings.selection_time_hard}
                       onChange={(e) =>
                         setSettings({ ...settings, selection_time_hard: Number(e.target.value) })
                       }
-                      className="bg-background border-border text-foreground"
                     />
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-muted-foreground w-20">Impossible:</span>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Shuffle (ms)</Label>
+                    <Input
+                      type="number"
+                      value={settings.shuffle_duration_hard}
+                      onChange={(e) =>
+                        setSettings({ ...settings, shuffle_duration_hard: Number(e.target.value) })
+                      }
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Win (x)</Label>
+                    <Input
+                      type="number"
+                      step="0.1"
+                      value={settings.reward_multiplier_hard}
+                      onChange={(e) =>
+                        setSettings({ ...settings, reward_multiplier_hard: Number(e.target.value) })
+                      }
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Hard/Impossible Mode */}
+              <div className="space-y-3 p-3 bg-red-500/10 rounded-lg border border-red-500/20">
+                <Badge variant="outline" className="bg-red-500/20 text-red-400 border-red-500/30">
+                  Hard Mode
+                </Badge>
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="space-y-1">
+                    <Label className="text-xs">Time (sec)</Label>
                     <Input
                       type="number"
                       value={settings.selection_time_impossible}
                       onChange={(e) =>
                         setSettings({ ...settings, selection_time_impossible: Number(e.target.value) })
                       }
-                      className="bg-background border-border text-foreground"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Shuffle (ms)</Label>
+                    <Input
+                      type="number"
+                      value={settings.shuffle_duration_impossible}
+                      onChange={(e) =>
+                        setSettings({ ...settings, shuffle_duration_impossible: Number(e.target.value) })
+                      }
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Win (x)</Label>
+                    <Input
+                      type="number"
+                      step="0.1"
+                      value={settings.reward_multiplier_impossible}
+                      onChange={(e) =>
+                        setSettings({ ...settings, reward_multiplier_impossible: Number(e.target.value) })
+                      }
                     />
                   </div>
                 </div>
@@ -392,8 +386,8 @@ const AdminThimbleSettings = () => {
                   ) : (
                     games.map((game) => (
                       <TableRow key={game.id} className="border-border">
-                        <TableCell className="text-foreground">
-                          {game.profiles?.username || game.profiles?.email || 'Unknown'}
+                        <TableCell className="text-foreground font-mono text-xs">
+                          {game.user_id.slice(0, 8)}...
                         </TableCell>
                         <TableCell className="text-foreground">₹{game.entry_amount}</TableCell>
                         <TableCell>
