@@ -1,12 +1,13 @@
 import { useEffect, useState, useRef } from 'react';
 import { motion } from 'framer-motion';
+import { ThimbleDifficulty } from '@/hooks/useThimbleGame';
 
 interface ThimbleCupsProps {
   phase: 'showing' | 'shuffling' | 'selecting' | 'result';
   ballPosition: number;
   selectedCup: number | null;
   isWin: boolean | null;
-  difficulty: 'easy' | 'hard' | 'impossible';
+  difficulty: ThimbleDifficulty;
   shuffleDuration: number;
   onSelectCup: (index: number) => void;
 }
@@ -89,7 +90,7 @@ const ThimbleCups = ({
   const getXPosition = (cupIndex: number) => {
     const orderIndex = cupOrder.indexOf(cupIndex);
     // Smaller spacing for mobile
-    const spacing = typeof window !== 'undefined' && window.innerWidth < 400 ? 85 : 110;
+    const spacing = typeof window !== 'undefined' && window.innerWidth < 400 ? 75 : 100;
     return (orderIndex - 1) * spacing;
   };
 
@@ -120,7 +121,7 @@ const ThimbleCups = ({
       >
         {/* Ball */}
         <motion.div
-          className="absolute -bottom-2 sm:-bottom-3 left-1/2 -translate-x-1/2 w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 rounded-full z-0"
+          className="absolute -bottom-2 sm:-bottom-3 left-1/2 -translate-x-1/2 w-7 h-7 sm:w-9 sm:h-9 md:w-11 md:h-11 rounded-full z-0"
           initial={{ opacity: 0, scale: 0 }}
           animate={{
             opacity: hasBall && (phase === 'showing' || phase === 'result') ? 1 : 0,
@@ -136,7 +137,7 @@ const ThimbleCups = ({
         {/* Cup */}
         <motion.svg 
           viewBox="0 0 110 95" 
-          className="relative z-10 drop-shadow-lg w-[70px] h-[60px] sm:w-[90px] sm:h-[78px] md:w-[110px] md:h-[95px]"
+          className="relative z-10 drop-shadow-lg w-[60px] h-[52px] sm:w-[80px] sm:h-[70px] md:w-[100px] md:h-[88px]"
           animate={{
             filter: canSelect ? 'drop-shadow(0 0 15px rgba(255, 215, 0, 0.4))' : 'drop-shadow(0 4px 8px rgba(0,0,0,0.3))'
           }}
@@ -223,7 +224,7 @@ const ThimbleCups = ({
   };
 
   return (
-    <div className="relative flex items-center justify-center h-52 w-full overflow-hidden">
+    <div className="relative flex items-center justify-center h-48 w-full overflow-hidden">
       {/* Table surface */}
       <div 
         className="absolute bottom-0 left-0 right-0 h-12 rounded-t-3xl"

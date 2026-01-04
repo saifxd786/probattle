@@ -5,18 +5,25 @@ import { useToast } from '@/hooks/use-toast';
 import { soundManager } from '@/utils/soundManager';
 import { hapticManager } from '@/utils/hapticManager';
 
+export type ThimbleDifficulty = 'easy' | 'hard' | 'impossible';
+
 interface ThimbleSettings {
   isEnabled: boolean;
-  difficulty: 'easy' | 'hard' | 'impossible';
   minEntryAmount: number;
-  rewardMultiplier: number;
   platformCommission: number;
-  shuffleDuration: number;
-  selectionTime: number;
+  shuffleDurationEasy: number;
+  shuffleDurationHard: number;
+  shuffleDurationImpossible: number;
+  selectionTimeEasy: number;
+  selectionTimeHard: number;
+  selectionTimeImpossible: number;
+  rewardMultiplierEasy: number;
+  rewardMultiplierHard: number;
+  rewardMultiplierImpossible: number;
 }
 
 interface GameState {
-  phase: 'idle' | 'betting' | 'showing' | 'shuffling' | 'selecting' | 'result';
+  phase: 'idle' | 'mode-select' | 'showing' | 'shuffling' | 'selecting' | 'result';
   gameId: string | null;
   ballPosition: number;
   selectedCup: number | null;
@@ -26,25 +33,26 @@ interface GameState {
   entryAmount: number;
 }
 
-const INDIAN_OPPONENT_NAMES = [
-  'Arjun_Pro', 'Priya_Queen', 'Rahul_King', 'Ananya_Star', 'Vikram_Beast',
-  'Sneha_Fire', 'Karan_Master', 'Pooja_Devi', 'Aditya_Champ', 'Neha_Queen',
-  'Rohan_Tiger', 'Sakshi_Pro', 'Amit_Warrior', 'Divya_Star', 'Raj_Legend'
-];
-
 export const useThimbleGame = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   
   const [settings, setSettings] = useState<ThimbleSettings>({
     isEnabled: true,
-    difficulty: 'easy',
-    minEntryAmount: 100,
-    rewardMultiplier: 1.5,
+    minEntryAmount: 10,
     platformCommission: 0.1,
-    shuffleDuration: 3000,
-    selectionTime: 10
+    shuffleDurationEasy: 3000,
+    shuffleDurationHard: 2000,
+    shuffleDurationImpossible: 1200,
+    selectionTimeEasy: 10,
+    selectionTimeHard: 5,
+    selectionTimeImpossible: 2,
+    rewardMultiplierEasy: 1.5,
+    rewardMultiplierHard: 2,
+    rewardMultiplierImpossible: 3,
   });
+  
+  const [selectedDifficulty, setSelectedDifficulty] = useState<ThimbleDifficulty>('easy');
   
   const [gameState, setGameState] = useState<GameState>({
     phase: 'idle',
@@ -54,11 +62,34 @@ export const useThimbleGame = () => {
     isWin: null,
     cupPositions: [0, 1, 2],
     timeLeft: 10,
-    entryAmount: 100
+    entryAmount: 10
   });
   
   const [walletBalance, setWalletBalance] = useState(0);
-  const [opponentName, setOpponentName] = useState('');
+
+  // Get settings for current difficulty
+  const getDifficultySettings = useCallback((difficulty: ThimbleDifficulty) => {
+    switch (difficulty) {
+      case 'easy':
+        return {
+          shuffleDuration: settings.shuffleDurationEasy,
+          selectionTime: settings.selectionTimeEasy,
+          rewardMultiplier: settings.rewardMultiplierEasy,
+        };
+      case 'hard':
+        return {
+          shuffleDuration: settings.shuffleDurationHard,
+          selectionTime: settings.selectionTimeHard,
+          rewardMultiplier: settings.rewardMultiplierHard,
+        };
+      case 'impossible':
+        return {
+          shuffleDuration: settings.shuffleDurationImpossible,
+          selectionTime: settings.selectionTimeImpossible,
+          rewardMultiplier: settings.rewardMultiplierImpossible,
+        };
+    }
+  }, [settings]);
 
   // Fetch settings
   useEffect(() => {
@@ -70,32 +101,25 @@ export const useThimbleGame = () => {
         .single();
       
       if (data) {
-        const difficulty = data.difficulty as 'easy' | 'hard' | 'impossible';
-        const shuffleDurations = {
-          easy: data.shuffle_duration_easy,
-          hard: data.shuffle_duration_hard,
-          impossible: data.shuffle_duration_impossible
-        };
-        const selectionTimes = {
-          easy: data.selection_time_easy,
-          hard: data.selection_time_hard,
-          impossible: data.selection_time_impossible
-        };
-        
         setSettings({
           isEnabled: data.is_enabled,
-          difficulty,
           minEntryAmount: Number(data.min_entry_amount),
-          rewardMultiplier: Number(data.reward_multiplier),
           platformCommission: Number(data.platform_commission),
-          shuffleDuration: shuffleDurations[difficulty],
-          selectionTime: selectionTimes[difficulty]
+          shuffleDurationEasy: data.shuffle_duration_easy,
+          shuffleDurationHard: data.shuffle_duration_hard,
+          shuffleDurationImpossible: data.shuffle_duration_impossible,
+          selectionTimeEasy: data.selection_time_easy,
+          selectionTimeHard: data.selection_time_hard,
+          selectionTimeImpossible: data.selection_time_impossible,
+          rewardMultiplierEasy: data.reward_multiplier_easy ?? 1.5,
+          rewardMultiplierHard: data.reward_multiplier_hard ?? 2,
+          rewardMultiplierImpossible: data.reward_multiplier_impossible ?? 3,
         });
         
         setGameState(prev => ({ 
           ...prev, 
           entryAmount: Number(data.min_entry_amount),
-          timeLeft: selectionTimes[difficulty]
+          timeLeft: data.selection_time_easy
         }));
       }
     };
@@ -122,25 +146,33 @@ export const useThimbleGame = () => {
     fetchBalance();
   }, [user]);
 
-  const getRandomOpponent = useCallback(() => {
-    return INDIAN_OPPONENT_NAMES[Math.floor(Math.random() * INDIAN_OPPONENT_NAMES.length)];
-  }, []);
-
-  const startGame = useCallback(async (entryAmount: number) => {
+  const proceedToModeSelect = useCallback(() => {
     if (!user) {
       toast({ title: 'Please login to play', variant: 'destructive' });
       return;
     }
 
-    if (entryAmount < settings.minEntryAmount) {
+    if (gameState.entryAmount < settings.minEntryAmount) {
       toast({ title: `Minimum entry is ₹${settings.minEntryAmount}`, variant: 'destructive' });
       return;
     }
 
-    if (walletBalance < entryAmount) {
+    if (walletBalance < gameState.entryAmount) {
       toast({ title: 'Insufficient balance', description: 'Please add funds to your wallet', variant: 'destructive' });
       return;
     }
+
+    setGameState(prev => ({ ...prev, phase: 'mode-select' }));
+  }, [user, gameState.entryAmount, settings.minEntryAmount, walletBalance, toast]);
+
+  const startGame = useCallback(async () => {
+    if (!user) {
+      toast({ title: 'Please login to play', variant: 'destructive' });
+      return;
+    }
+
+    const diffSettings = getDifficultySettings(selectedDifficulty);
+    const entryAmount = gameState.entryAmount;
 
     // Deduct entry from wallet
     const { error: deductError } = await supabase
@@ -157,7 +189,7 @@ export const useThimbleGame = () => {
 
     // Random ball position (0, 1, or 2)
     const ballPosition = Math.floor(Math.random() * 3);
-    const rewardAmount = entryAmount * settings.rewardMultiplier;
+    const rewardAmount = Math.floor(entryAmount * diffSettings.rewardMultiplier);
 
     // Create game record
     const { data: game, error: gameError } = await supabase
@@ -167,7 +199,7 @@ export const useThimbleGame = () => {
         entry_amount: entryAmount,
         reward_amount: rewardAmount,
         ball_position: ballPosition,
-        difficulty: settings.difficulty,
+        difficulty: selectedDifficulty,
         status: 'in_progress'
       })
       .select()
@@ -179,18 +211,15 @@ export const useThimbleGame = () => {
       return;
     }
 
-    setOpponentName(getRandomOpponent());
-
     setGameState(prev => ({
       ...prev,
       phase: 'showing',
       gameId: game.id,
       ballPosition,
-      entryAmount,
       selectedCup: null,
       isWin: null,
       cupPositions: [0, 1, 2],
-      timeLeft: settings.selectionTime
+      timeLeft: diffSettings.selectionTime
     }));
 
     // Show ball for 2 seconds, then shuffle
@@ -200,9 +229,9 @@ export const useThimbleGame = () => {
       // After shuffle complete, start selection phase
       setTimeout(() => {
         setGameState(prev => ({ ...prev, phase: 'selecting' }));
-      }, settings.shuffleDuration);
+      }, diffSettings.shuffleDuration);
     }, 2000);
-  }, [user, walletBalance, settings, toast, getRandomOpponent]);
+  }, [user, walletBalance, selectedDifficulty, gameState.entryAmount, getDifficultySettings, toast]);
 
   // Selection timer
   useEffect(() => {
@@ -253,7 +282,8 @@ export const useThimbleGame = () => {
       .eq('id', gameState.gameId);
 
     if (isWin && user) {
-      const rewardAmount = gameState.entryAmount * settings.rewardMultiplier;
+      const diffSettings = getDifficultySettings(selectedDifficulty);
+      const rewardAmount = Math.floor(gameState.entryAmount * diffSettings.rewardMultiplier);
       
       // Credit reward
       await supabase
@@ -282,9 +312,10 @@ export const useThimbleGame = () => {
         variant: 'destructive'
       });
     }
-  }, [gameState, user, settings, walletBalance, toast]);
+  }, [gameState, user, selectedDifficulty, walletBalance, getDifficultySettings, toast]);
 
   const resetGame = useCallback(() => {
+    const diffSettings = getDifficultySettings(selectedDifficulty);
     setGameState({
       phase: 'idle',
       gameId: null,
@@ -292,24 +323,29 @@ export const useThimbleGame = () => {
       selectedCup: null,
       isWin: null,
       cupPositions: [0, 1, 2],
-      timeLeft: settings.selectionTime,
+      timeLeft: diffSettings.selectionTime,
       entryAmount: settings.minEntryAmount
     });
-  }, [settings]);
+  }, [settings, selectedDifficulty, getDifficultySettings]);
 
   const setEntryAmount = useCallback((amount: number) => {
     setGameState(prev => ({ ...prev, entryAmount: amount }));
   }, []);
 
+  const rewardAmount = gameState.entryAmount * getDifficultySettings(selectedDifficulty).rewardMultiplier;
+
   return {
     settings,
     gameState,
     walletBalance,
-    opponentName,
+    selectedDifficulty,
+    setSelectedDifficulty,
+    proceedToModeSelect,
     startGame,
     handleSelection,
     resetGame,
     setEntryAmount,
-    rewardAmount: gameState.entryAmount * settings.rewardMultiplier
+    rewardAmount,
+    getDifficultySettings
   };
 };
