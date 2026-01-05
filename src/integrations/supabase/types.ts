@@ -14,6 +14,33 @@ export type Database = {
   }
   public: {
     Tables: {
+      device_bans: {
+        Row: {
+          banned_at: string
+          banned_by: string | null
+          created_at: string
+          device_fingerprint: string
+          id: string
+          reason: string | null
+        }
+        Insert: {
+          banned_at?: string
+          banned_by?: string | null
+          created_at?: string
+          device_fingerprint: string
+          id?: string
+          reason?: string | null
+        }
+        Update: {
+          banned_at?: string
+          banned_by?: string | null
+          created_at?: string
+          device_fingerprint?: string
+          id?: string
+          reason?: string | null
+        }
+        Relationships: []
+      }
       ludo_match_players: {
         Row: {
           bot_avatar_url: string | null
@@ -417,7 +444,9 @@ export type Database = {
           avatar_url: string | null
           ban_reason: string | null
           banned_at: string | null
+          banned_games: string[] | null
           created_at: string | null
+          device_fingerprint: string | null
           email: string | null
           id: string
           is_banned: boolean | null
@@ -434,7 +463,9 @@ export type Database = {
           avatar_url?: string | null
           ban_reason?: string | null
           banned_at?: string | null
+          banned_games?: string[] | null
           created_at?: string | null
+          device_fingerprint?: string | null
           email?: string | null
           id: string
           is_banned?: boolean | null
@@ -451,7 +482,9 @@ export type Database = {
           avatar_url?: string | null
           ban_reason?: string | null
           banned_at?: string | null
+          banned_games?: string[] | null
           created_at?: string | null
+          device_fingerprint?: string | null
           email?: string | null
           id?: string
           is_banned?: boolean | null

@@ -12,22 +12,25 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-
-const stats = [
-  { icon: Trophy, label: 'Winners Today', value: '1,245' },
-  { icon: Users, label: 'Playing Now', value: '89' },
-  { icon: Coins, label: 'Distributed Today', value: '₹45,000' },
-];
+import { useDynamicStats, formatNumber, formatCurrency } from '@/hooks/useDynamicStats';
+import thimbleBanner from '@/assets/thimble-banner.jpg';
 
 const howToPlay = [
-  { step: 1, title: 'Watch the Ball', description: 'A ball is placed under one of the three cups' },
-  { step: 2, title: 'Track the Shuffle', description: 'Cups will shuffle - keep your eyes on the ball!' },
-  { step: 3, title: 'Pick the Cup', description: 'Select the cup you think has the ball' },
-  { step: 4, title: 'Win 1.5x', description: 'Correct guess wins 1.5x your entry!' },
+  { step: 1, title: 'Select Amount', description: 'Choose how much you want to play with (₹10 - ₹500)' },
+  { step: 2, title: 'Pick Difficulty', description: 'Easy (10s, 1.5x) • Normal (5s, 2x) • Hard (2s, 3x)' },
+  { step: 3, title: 'Track the Shuffle', description: 'Watch carefully as the cups shuffle!' },
+  { step: 4, title: 'Pick & Win!', description: 'Select the cup with the ball to win!' },
 ];
 
 const ThimblePage = () => {
   const navigate = useNavigate();
+  const dynamicStats = useDynamicStats();
+
+  const stats = [
+    { icon: Trophy, label: 'Winners Today', value: formatNumber(dynamicStats.winnersToday) },
+    { icon: Users, label: 'Playing Now', value: formatNumber(dynamicStats.playingNow) },
+    { icon: Coins, label: 'Distributed Today', value: formatCurrency(dynamicStats.distributedToday) },
+  ];
 
   return (
     <div className="min-h-screen bg-background pb-20">
@@ -50,29 +53,24 @@ const ThimblePage = () => {
           </Button>
         </motion.div>
 
-        {/* Hero Section */}
+        {/* Hero Banner */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="relative glass-card p-6 mb-6 overflow-hidden"
+          className="relative rounded-2xl overflow-hidden mb-6"
         >
-          {/* Background decoration */}
-          <div className="absolute top-0 right-0 w-32 h-32 opacity-10">
-            <svg viewBox="0 0 100 80" className="w-full h-full">
-              <path
-                d="M 15 0 L 85 0 L 75 70 C 75 75 70 80 50 80 C 30 80 25 75 25 70 L 15 0"
-                fill="currentColor"
-                className="text-primary"
-              />
-            </svg>
-          </div>
-
-          <div className="relative z-10">
-            <h1 className="font-display text-2xl md:text-3xl font-bold mb-2">
+          <img 
+            src={thimbleBanner} 
+            alt="Thimble Game" 
+            className="w-full h-40 md:h-56 object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent" />
+          <div className="absolute bottom-0 left-0 right-0 p-4 md:p-6">
+            <h1 className="font-display text-2xl md:text-4xl font-bold mb-1">
               <span className="text-gradient">Thimble</span> Game
             </h1>
-            <p className="text-muted-foreground text-sm md:text-base">
-              Track the ball, pick the right cup, win 1.5x instantly!
+            <p className="text-sm md:text-base text-muted-foreground">
+              Track the ball, pick the right cup, win up to 3x instantly!
             </p>
           </div>
         </motion.div>
@@ -87,7 +85,14 @@ const ThimblePage = () => {
           {stats.map((stat, i) => (
             <div key={i} className="glass-card p-3 text-center">
               <stat.icon className="w-5 h-5 mx-auto mb-1 text-primary" />
-              <p className="font-display text-lg font-bold text-foreground">{stat.value}</p>
+              <motion.p 
+                key={stat.value}
+                initial={{ scale: 1.1 }}
+                animate={{ scale: 1 }}
+                className="font-display text-lg font-bold text-foreground"
+              >
+                {stat.value}
+              </motion.p>
               <p className="text-xs text-muted-foreground">{stat.label}</p>
             </div>
           ))}
@@ -162,7 +167,7 @@ const ThimblePage = () => {
                 How does difficulty affect the game?
               </AccordionTrigger>
               <AccordionContent className="text-muted-foreground">
-                Difficulty only affects shuffle speed and selection time. It does NOT affect the outcome - if you track correctly, you win regardless of difficulty.
+                Difficulty affects shuffle speed, selection time, and reward multiplier. Easy gives you 10 seconds with 1.5x reward, Normal gives 5 seconds with 2x, and Hard gives 2 seconds with 3x reward.
               </AccordionContent>
             </AccordionItem>
             <AccordionItem value="fair-3" className="border-border">

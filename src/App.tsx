@@ -25,6 +25,7 @@ import FAQsPage from "./pages/FAQsPage";
 import LudoPage from "./pages/LudoPage";
 import LudoRulesPage from "./pages/LudoRulesPage";
 import ThimblePage from "./pages/ThimblePage";
+import GameHistoryPage from "./pages/GameHistoryPage";
 import NotFound from "./pages/NotFound";
 import AdminLayout from "./components/admin/AdminLayout";
 import AdminDashboard from "./pages/admin/AdminDashboard";
@@ -75,6 +76,7 @@ const App = () => {
               <Route path="/ludo" element={<LudoPage />} />
               <Route path="/ludo/rules" element={<LudoRulesPage />} />
               <Route path="/thimble" element={<ThimblePage />} />
+              <Route path="/game-history" element={<GameHistoryPage />} />
               {/* Admin Routes */}
               <Route path="/admin/login" element={<AdminLoginPage />} />
               <Route path="/admin" element={<AdminLayout />}>
