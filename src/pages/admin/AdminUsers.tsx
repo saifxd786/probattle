@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Search, Ban, CheckCircle, Shield, ShieldOff } from 'lucide-react';
+import { Search, Ban, CheckCircle, Shield, ShieldOff, Gamepad2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -16,6 +16,8 @@ type Profile = {
   is_banned: boolean;
   ban_reason: string | null;
   banned_at: string | null;
+  banned_games: string[] | null;
+  device_fingerprint: string | null;
   created_at: string;
 };
 
@@ -71,24 +73,61 @@ const AdminUsers = () => {
     }
   };
 
-  const banUser = async (reason: string) => {
+  const banUser = async (
+    reason: string, 
+    banType: 'full' | 'game', 
+    selectedGames?: string[],
+    deviceBan?: boolean
+  ) => {
     if (!userToBan) return;
-    
+
+    const updateData: Record<string, any> = {
+      ban_reason: reason,
+      banned_at: new Date().toISOString(),
+    };
+
+    if (banType === 'full') {
+      updateData.is_banned = true;
+      updateData.banned_games = [];
+    } else if (banType === 'game' && selectedGames) {
+      updateData.is_banned = false;
+      updateData.banned_games = selectedGames;
+    }
+
     const { error } = await supabase
       .from('profiles')
-      .update({
-        is_banned: true,
-        ban_reason: reason,
-        banned_at: new Date().toISOString(),
-      })
+      .update(updateData)
       .eq('id', userToBan.id);
 
     if (error) {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
-    } else {
-      toast({ title: 'User Banned', description: `${userToBan.username || 'User'} has been banned successfully` });
-      fetchUsers();
+      return;
     }
+
+    // Device ban if enabled
+    if (deviceBan && userToBan.device_fingerprint) {
+      const { error: deviceError } = await supabase
+        .from('device_bans')
+        .upsert({
+          device_fingerprint: userToBan.device_fingerprint,
+          reason: reason,
+        }, { onConflict: 'device_fingerprint' });
+
+      if (deviceError) {
+        console.error('Device ban error:', deviceError);
+      }
+    }
+
+    const banDescription = banType === 'full' 
+      ? `${userToBan.username || 'User'} has been fully banned`
+      : `${userToBan.username || 'User'} has been banned from: ${selectedGames?.join(', ')}`;
+
+    toast({ 
+      title: deviceBan ? 'User & Device Banned' : 'User Banned', 
+      description: banDescription 
+    });
+    
+    fetchUsers();
     setUserToBan(null);
   };
 
@@ -99,6 +138,7 @@ const AdminUsers = () => {
         is_banned: false,
         ban_reason: null,
         banned_at: null,
+        banned_games: [],
       })
       .eq('id', userId);
 
@@ -112,7 +152,6 @@ const AdminUsers = () => {
 
   const toggleAdminRole = async (userId: string, isAdmin: boolean) => {
     if (isAdmin) {
-      // Remove admin role
       const { error } = await supabase
         .from('user_roles')
         .delete()
@@ -126,7 +165,6 @@ const AdminUsers = () => {
         fetchUsers();
       }
     } else {
-      // Add admin role
       const { error } = await supabase
         .from('user_roles')
         .insert({ user_id: userId, role: 'admin' });
@@ -164,6 +202,16 @@ const AdminUsers = () => {
       user.username?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.email?.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const getBanStatus = (user: Profile) => {
+    if (user.is_banned) {
+      return { text: 'Banned', color: 'bg-red-500/20 text-red-500' };
+    }
+    if (user.banned_games && user.banned_games.length > 0) {
+      return { text: `Game Ban (${user.banned_games.length})`, color: 'bg-yellow-500/20 text-yellow-500' };
+    }
+    return { text: 'Active', color: 'bg-green-500/20 text-green-500' };
+  };
 
   return (
     <div className="p-6 space-y-6">
@@ -211,6 +259,7 @@ const AdminUsers = () => {
                 ) : (
                   filteredUsers.map((user) => {
                     const isAdmin = userRoles[user.id]?.includes('admin');
+                    const banStatus = getBanStatus(user);
                     return (
                       <tr key={user.id} className="border-b border-border/50 hover:bg-secondary/20">
                         <td className="p-4">
@@ -257,15 +306,20 @@ const AdminUsers = () => {
                           {format(new Date(user.created_at), 'MMM dd, yyyy')}
                         </td>
                         <td className="p-4">
-                          <span
-                            className={`text-xs px-2 py-1 rounded-full ${
-                              user.is_banned
-                                ? 'bg-red-500/20 text-red-500'
-                                : 'bg-green-500/20 text-green-500'
-                            }`}
-                          >
-                            {user.is_banned ? 'Banned' : 'Active'}
-                          </span>
+                          <div className="space-y-1">
+                            <span className={`text-xs px-2 py-1 rounded-full ${banStatus.color}`}>
+                              {banStatus.text}
+                            </span>
+                            {user.banned_games && user.banned_games.length > 0 && (
+                              <div className="flex flex-wrap gap-1 mt-1">
+                                {user.banned_games.map(game => (
+                                  <span key={game} className="text-[10px] px-1.5 py-0.5 rounded bg-red-500/10 text-red-400">
+                                    {game}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                          </div>
                         </td>
                         <td className="p-4">
                           <span
@@ -288,6 +342,8 @@ const AdminUsers = () => {
                             >
                               {user.is_banned ? (
                                 <CheckCircle className="w-4 h-4 text-green-500" />
+                              ) : user.banned_games && user.banned_games.length > 0 ? (
+                                <Gamepad2 className="w-4 h-4 text-yellow-500" />
                               ) : (
                                 <Ban className="w-4 h-4 text-destructive" />
                               )}

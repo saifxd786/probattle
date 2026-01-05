@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { User, Edit2, Save, X, History, Trophy, Calendar, Loader2, Copy, Check, Ban, AlertTriangle } from 'lucide-react';
+import { User, Edit2, Save, X, History, Trophy, Calendar, Loader2, Copy, Check, Ban, AlertTriangle, Camera, Image } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import Header from '@/components/Header';
 import BottomNav from '@/components/BottomNav';
@@ -21,6 +21,7 @@ type Profile = {
   phone: string | null;
   user_code: string | null;
   wallet_balance: number;
+  avatar_url: string | null;
   is_banned: boolean;
   ban_reason: string | null;
   banned_at: string | null;
@@ -47,12 +48,14 @@ type MatchRegistration = {
 const ProfilePage = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [matchHistory, setMatchHistory] = useState<MatchRegistration[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [newUsername, setNewUsername] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [copied, setCopied] = useState(false);
 
   const fetchData = async () => {
@@ -137,6 +140,66 @@ const ProfilePage = () => {
     }
 
     setIsSaving(false);
+  };
+
+  const handleAvatarClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast({ title: 'Error', description: 'Please select an image file', variant: 'destructive' });
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast({ title: 'Error', description: 'Image must be less than 5MB', variant: 'destructive' });
+      return;
+    }
+
+    setIsUploadingAvatar(true);
+
+    try {
+      // Upload to Supabase Storage
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Date.now()}.${fileExt}`;
+      const filePath = `${user.id}/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(filePath, file, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(filePath);
+
+      // Update profile with new avatar URL
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({ avatar_url: publicUrl })
+        .eq('id', user.id);
+
+      if (updateError) throw updateError;
+
+      toast({ title: 'Success', description: 'Profile photo updated!' });
+      fetchData();
+    } catch (error: any) {
+      toast({ 
+        title: 'Error', 
+        description: error.message || 'Failed to upload photo', 
+        variant: 'destructive' 
+      });
+    } finally {
+      setIsUploadingAvatar(false);
+    }
   };
 
   const copyUserCode = () => {
@@ -226,13 +289,44 @@ const ProfilePage = () => {
               <Card className="glass-card overflow-hidden">
                 <div className="h-20 bg-gradient-to-r from-primary/20 to-primary/5" />
                 <CardContent className="relative pt-0">
-                  {/* Avatar */}
+                  {/* Avatar with upload */}
                   <div className="absolute -top-10 left-6">
-                    <div className="w-20 h-20 rounded-full bg-primary/20 border-4 border-background flex items-center justify-center">
-                      <span className="font-display text-2xl font-bold text-primary">
-                        {profile?.username?.[0]?.toUpperCase() || 'U'}
-                      </span>
+                    <div 
+                      className="relative w-20 h-20 rounded-full border-4 border-background overflow-hidden cursor-pointer group"
+                      onClick={handleAvatarClick}
+                    >
+                      {profile?.avatar_url ? (
+                        <img 
+                          src={profile.avatar_url} 
+                          alt="Profile" 
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full bg-primary/20 flex items-center justify-center">
+                          <span className="font-display text-2xl font-bold text-primary">
+                            {profile?.username?.[0]?.toUpperCase() || 'U'}
+                          </span>
+                        </div>
+                      )}
+                      
+                      {/* Upload overlay */}
+                      <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                        {isUploadingAvatar ? (
+                          <Loader2 className="w-5 h-5 animate-spin text-white" />
+                        ) : (
+                          <Camera className="w-5 h-5 text-white" />
+                        )}
+                      </div>
                     </div>
+                    
+                    {/* Hidden file input */}
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={handleFileChange}
+                      className="hidden"
+                    />
                   </div>
 
                   <div className="pt-12 space-y-4">
@@ -298,6 +392,22 @@ const ProfilePage = () => {
                   </div>
                 </CardContent>
               </Card>
+            </motion.div>
+
+            {/* Game History Link */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.05 }}
+            >
+              <Button 
+                variant="outline" 
+                className="w-full gap-2"
+                onClick={() => navigate('/game-history')}
+              >
+                <History className="w-4 h-4" />
+                View Ludo & Thimble History
+              </Button>
             </motion.div>
 
             {/* Account Details */}
