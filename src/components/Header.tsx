@@ -1,4 +1,4 @@
-import { Menu, User, LogOut, Download, Smartphone } from 'lucide-react';
+import { Menu, User, LogOut, Download, Smartphone, RefreshCw } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useState, useEffect } from 'react';
@@ -11,12 +11,14 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { useUpdateAvailable } from '@/hooks/useUpdateAvailable';
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showInstallPrompt, setShowInstallPrompt] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const { user, signOut } = useAuth();
+  const { updateAvailable, applyUpdate } = useUpdateAvailable();
 
   useEffect(() => {
     // Check if mobile device
@@ -49,7 +51,7 @@ const Header = () => {
           {/* Logo */}
           <Link to="/" className="flex items-center gap-2">
             <span className="font-display text-xl font-bold text-gradient tracking-wider">
-              ProScims
+              ProBattle
             </span>
           </Link>
 
@@ -99,6 +101,19 @@ const Header = () => {
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
+            )}
+
+            {/* Update Available Button */}
+            {updateAvailable && (
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={applyUpdate}
+                className="flex gap-2 border-primary/50 text-primary hover:bg-primary/10 animate-pulse"
+              >
+                <RefreshCw className="w-4 h-4" />
+                <span className="hidden sm:inline">Update</span>
+              </Button>
             )}
             
             <NotificationBell />
