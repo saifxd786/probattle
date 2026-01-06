@@ -94,7 +94,7 @@ const FairPlayPage = () => {
             <div>
               <h3 className="font-semibold mb-2">Important Notice</h3>
               <p className="text-sm text-muted-foreground">
-                By participating in any tournament on ProScrims, you agree to abide by our Fair Play Policy. 
+                By participating in any tournament on ProBattle, you agree to abide by our Fair Play Policy. 
                 Violations will result in penalties ranging from warnings to permanent bans. 
                 All admin decisions are final and non-negotiable.
               </p>

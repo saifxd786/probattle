@@ -9,7 +9,7 @@ const termsData = [
     id: 'acceptance',
     icon: FileText,
     title: '1. Acceptance of Terms',
-    content: `By accessing or using the ProScrims platform, you agree to be bound by these Terms of Service. If you do not agree to these terms, please do not use our services.
+    content: `By accessing or using the ProBattle platform, you agree to be bound by these Terms of Service. If you do not agree to these terms, please do not use our services.
 
 • These terms apply to all users, including players, viewers, and administrators.
 • We reserve the right to modify these terms at any time without prior notice.
@@ -32,7 +32,7 @@ const termsData = [
     id: 'payments',
     icon: CreditCard,
     title: '3. Payments & Transactions',
-    content: `All financial transactions on ProScrims are subject to the following terms:
+    content: `All financial transactions on ProBattle are subject to the following terms:
 
 • Deposits: Users can add funds to their wallet using approved payment methods.
 • Withdrawals: Minimum withdrawal amount may apply. Processing time is 24-48 hours.
@@ -58,7 +58,7 @@ const termsData = [
     id: 'liability',
     icon: AlertTriangle,
     title: '5. Limitation of Liability',
-    content: `ProScrims shall not be liable for:
+    content: `ProBattle shall not be liable for:
 
 • Technical issues, server downtime, or connectivity problems.
 • Any losses incurred due to unauthorized access to your account.
@@ -139,8 +139,8 @@ const TermsPage = () => {
           className="glass-card p-6 mb-6"
         >
           <p className="text-sm text-muted-foreground">
-            Welcome to ProScrims. These Terms of Service govern your use of our platform and services. 
-            Please read them carefully before using our services. By using ProScrims, you agree to these terms.
+            Welcome to ProBattle. These Terms of Service govern your use of our platform and services. 
+            Please read them carefully before using our services. By using ProBattle, you agree to these terms.
           </p>
         </motion.div>
 
@@ -191,10 +191,10 @@ const TermsPage = () => {
             If you have any questions about these Terms of Service, please contact us.
           </p>
           <a 
-            href="mailto:support@proscims.com"
+            href="mailto:support@probattle.com"
             className="text-primary text-sm hover:underline"
           >
-            support@proscims.com
+            support@probattle.com
           </a>
         </motion.div>
       </main>

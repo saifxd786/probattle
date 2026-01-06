@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Dices, Wallet, Info, Trophy, Users, Zap } from 'lucide-react';
+import { Dices, Wallet, Info, Trophy, Users, Zap, Ban } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import Header from '@/components/Header';
 import BottomNav from '@/components/BottomNav';
@@ -14,11 +14,13 @@ import GameResult from '@/components/ludo/GameResult';
 import { useLudoGame } from '@/hooks/useLudoGame';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePullToRefresh } from '@/hooks/usePullToRefresh';
+import { useGameBan } from '@/hooks/useGameBan';
 
 const LudoPage = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { handleRefresh } = usePullToRefresh();
+  const { isBanned, isLoading: isBanLoading } = useGameBan('ludo');
   const {
     settings,
     gameState,
@@ -35,6 +37,32 @@ const LudoPage = () => {
   } = useLudoGame();
 
   const ENTRY_AMOUNTS = [100, 200, 500, 1000];
+
+  // Show banned message
+  if (isBanned && !isBanLoading) {
+    return (
+      <PullToRefresh onRefresh={handleRefresh}>
+        <div className="min-h-screen bg-background pb-20">
+          <Header />
+          <main className="container mx-auto px-4 pt-20 text-center">
+            <div className="glass-card p-8 max-w-md mx-auto">
+              <div className="w-16 h-16 rounded-full bg-destructive/20 flex items-center justify-center mx-auto mb-4">
+                <Ban className="w-8 h-8 text-destructive" />
+              </div>
+              <h1 className="font-display text-2xl font-bold mb-2 text-destructive">Access Restricted</h1>
+              <p className="text-muted-foreground mb-4">
+                You have been banned from playing Ludo. Please contact support if you believe this is an error.
+              </p>
+              <Link to="/" className="text-primary hover:underline text-sm">
+                ← Back to Home
+              </Link>
+            </div>
+          </main>
+          <BottomNav />
+        </div>
+      </PullToRefresh>
+    );
+  }
 
   if (!settings.isEnabled) {
     return (

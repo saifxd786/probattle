@@ -39,7 +39,7 @@ type Profile = {
   wager_requirement: number;
 };
 
-const TELEGRAM_SUPPORT = 'https://t.me/ProScrimsSupport';
+const TELEGRAM_SUPPORT = 'https://t.me/ProBattleSupport';
 
 const WalletPage = () => {
   const { user } = useAuth();

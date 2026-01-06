@@ -93,7 +93,7 @@ const AdminLoginPage = () => {
             <div>
               <CardTitle className="text-2xl font-display">Admin Access</CardTitle>
               <CardDescription>
-                Secure login for ProScrims administrators
+                Secure login for ProBattle administrators
               </CardDescription>
             </div>
           </CardHeader>

@@ -28,7 +28,7 @@ export const usePushNotifications = () => {
       const notification = new Notification(title, {
         body,
         icon: icon || '/pwa-192x192.png',
-        tag: 'proscrims-notification',
+        tag: 'probattle-notification',
       });
 
       notification.onclick = () => {
