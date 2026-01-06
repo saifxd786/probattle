@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 const TelegramFloat = () => {
   return (
     <motion.a
-      href="https://t.me/ProScrimsTournament"
+      href="https://t.me/ProBattleTournament"
       target="_blank"
       rel="noopener noreferrer"
       className="fixed bottom-20 right-4 z-50 md:bottom-6 group"

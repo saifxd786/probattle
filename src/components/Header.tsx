@@ -91,7 +91,7 @@ const Header = () => {
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem 
-                    onClick={() => window.open('/apk/proscrims.apk', '_blank')}
+                    onClick={() => window.open('/apk/probattle.apk', '_blank')}
                     className="flex items-center gap-2 cursor-pointer"
                   >
                     <Download className="w-4 h-4" />

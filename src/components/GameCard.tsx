@@ -48,15 +48,18 @@ const GameCard = ({ title, image, status, path, delay = 0 }: GameCardProps) => {
             {/* Status Badge */}
             <div className="absolute top-3 right-3">
               <div className={cn(
-                'px-3 py-1 rounded-full text-xs font-display font-bold uppercase tracking-wider',
+                'px-3 py-1.5 rounded-full text-xs font-display font-bold uppercase tracking-wider backdrop-blur-sm',
                 isActive 
-                  ? 'bg-primary/20 text-primary border border-primary/30'
-                  : 'bg-muted/80 text-muted-foreground border border-border'
+                  ? 'bg-gradient-to-r from-green-500/90 to-emerald-500/90 text-white shadow-lg shadow-green-500/25'
+                  : 'bg-muted/90 text-muted-foreground border border-border'
               )}>
                 {isActive ? (
                   <span className="flex items-center gap-1.5">
-                    <span className="w-1.5 h-1.5 bg-primary rounded-full animate-pulse" />
-                    Active
+                    <span className="relative flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75" />
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-white" />
+                    </span>
+                    Live
                   </span>
                 ) : (
                   <span className="flex items-center gap-1.5">

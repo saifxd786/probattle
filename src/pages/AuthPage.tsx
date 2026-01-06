@@ -8,6 +8,7 @@ import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { z } from 'zod';
+import { generateDeviceFingerprint } from '@/utils/deviceFingerprint';
 
 type AuthMode = 'login' | 'signup';
 
@@ -51,13 +52,45 @@ const AuthPage = () => {
   }, [user, navigate]);
 
   // Generate email from phone number for Supabase auth
-  const phoneToEmail = (phone: string) => `${phone}@proscims.app`;
+  const phoneToEmail = (phone: string) => `${phone}@probattle.app`;
+
+  // Check device ban
+  const checkDeviceBan = async () => {
+    const fingerprint = await generateDeviceFingerprint();
+    const { data: banData } = await supabase
+      .from('device_bans')
+      .select('*')
+      .eq('device_fingerprint', fingerprint)
+      .maybeSingle();
+    return banData;
+  };
+
+  // Save device fingerprint to profile
+  const saveDeviceFingerprint = async (userId: string) => {
+    const fingerprint = await generateDeviceFingerprint();
+    await supabase
+      .from('profiles')
+      .update({ device_fingerprint: fingerprint })
+      .eq('id', userId);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
     try {
+      // Check device ban first
+      const deviceBan = await checkDeviceBan();
+      if (deviceBan) {
+        toast({
+          title: '🚫 Device Banned',
+          description: `This device has been banned. Reason: ${deviceBan.reason || 'Policy violation'}`,
+          variant: 'destructive',
+        });
+        setIsLoading(false);
+        return;
+      }
+
       // Validate phone
       const phoneResult = phoneSchema.safeParse(formData.phone);
       if (!phoneResult.success) {
@@ -202,9 +235,14 @@ const AuthPage = () => {
           }
         }
 
+        // Save device fingerprint
+        if (signupData.user) {
+          await saveDeviceFingerprint(signupData.user.id);
+        }
+
         toast({
           title: 'Account created!',
-          description: 'Welcome to ProScims! You are now logged in.',
+          description: 'Welcome to ProBattle! You are now logged in.',
         });
         navigate('/');
       } else {
@@ -258,6 +296,11 @@ const AuthPage = () => {
           }
         }
 
+        // Update device fingerprint on login
+        if (loginData.user) {
+          await saveDeviceFingerprint(loginData.user.id);
+        }
+
         toast({
           title: 'Welcome back!',
           description: 'You have successfully logged in.',
@@ -290,7 +333,7 @@ const AuthPage = () => {
       >
         {/* Logo */}
         <Link to="/" className="block text-center mb-8">
-          <h1 className="font-display text-3xl font-bold text-gradient">ProScims</h1>
+          <h1 className="font-display text-3xl font-bold text-gradient">ProBattle</h1>
           <p className="text-xs text-muted-foreground mt-1">Play. Compete. Win.</p>
         </Link>
 

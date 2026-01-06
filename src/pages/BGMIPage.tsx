@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Loader2 } from 'lucide-react';
+import { ArrowLeft, Loader2, Ban } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import Header from '@/components/Header';
 import BottomNav from '@/components/BottomNav';
@@ -9,6 +9,7 @@ import MatchCard from '@/components/MatchCard';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNow } from '@/hooks/useNow';
+import { useGameBan } from '@/hooks/useGameBan';
 import { Database } from '@/integrations/supabase/types';
 
 import bgmiCard from '@/assets/bgmi-card.jpg';
@@ -24,10 +25,35 @@ const tabs = ['TDM Matches', 'Classic Matches'] as const;
 const BGMIPage = () => {
   const { user } = useAuth();
   const nowMs = useNow(1000);
+  const { isBanned, isLoading: isBanLoading } = useGameBan('bgmi');
   const [activeTab, setActiveTab] = useState<typeof tabs[number]>('TDM Matches');
   const [matches, setMatches] = useState<Match[]>([]);
   const [userRegistrations, setUserRegistrations] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Show banned message
+  if (isBanned && !isBanLoading) {
+    return (
+      <div className="min-h-screen bg-background pb-20">
+        <Header />
+        <main className="container mx-auto px-4 pt-20 text-center">
+          <div className="glass-card p-8 max-w-md mx-auto">
+            <div className="w-16 h-16 rounded-full bg-destructive/20 flex items-center justify-center mx-auto mb-4">
+              <Ban className="w-8 h-8 text-destructive" />
+            </div>
+            <h1 className="font-display text-2xl font-bold mb-2 text-destructive">Access Restricted</h1>
+            <p className="text-muted-foreground mb-4">
+              You have been banned from playing BGMI matches. Please contact support if you believe this is an error.
+            </p>
+            <Link to="/" className="text-primary hover:underline text-sm">
+              ← Back to Home
+            </Link>
+          </div>
+        </main>
+        <BottomNav />
+      </div>
+    );
+  }
 
   const fetchMatches = async () => {
     setIsLoading(true);

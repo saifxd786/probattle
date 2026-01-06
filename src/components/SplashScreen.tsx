@@ -33,7 +33,7 @@ const SplashScreen = ({ onComplete }: SplashScreenProps) => {
             className="text-center"
           >
             <h1 className="font-display text-5xl md:text-7xl font-bold tracking-wider text-primary">
-              ProScrims
+              ProBattle
             </h1>
             <motion.p
               initial={{ opacity: 0 }}

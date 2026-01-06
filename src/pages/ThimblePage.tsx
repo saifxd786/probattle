@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
-import { ArrowLeft, Trophy, Users, Coins, HelpCircle, Shield } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { ArrowLeft, Trophy, Users, Coins, HelpCircle, Shield, Ban } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
 import Header from '@/components/Header';
 import BottomNav from '@/components/BottomNav';
 import TelegramFloat from '@/components/TelegramFloat';
@@ -13,6 +13,7 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { useDynamicStats, formatNumber, formatCurrency } from '@/hooks/useDynamicStats';
+import { useGameBan } from '@/hooks/useGameBan';
 import thimbleBanner from '@/assets/thimble-banner.jpg';
 
 const howToPlay = [
@@ -25,12 +26,37 @@ const howToPlay = [
 const ThimblePage = () => {
   const navigate = useNavigate();
   const dynamicStats = useDynamicStats();
+  const { isBanned, isLoading: isBanLoading } = useGameBan('thimble');
 
   const stats = [
     { icon: Trophy, label: 'Winners Today', value: formatNumber(dynamicStats.winnersToday) },
     { icon: Users, label: 'Playing Now', value: formatNumber(dynamicStats.playingNow) },
     { icon: Coins, label: 'Distributed Today', value: formatCurrency(dynamicStats.distributedToday) },
   ];
+
+  // Show banned message
+  if (isBanned && !isBanLoading) {
+    return (
+      <div className="min-h-screen bg-background pb-20">
+        <Header />
+        <main className="container mx-auto px-4 pt-20 text-center">
+          <div className="glass-card p-8 max-w-md mx-auto">
+            <div className="w-16 h-16 rounded-full bg-destructive/20 flex items-center justify-center mx-auto mb-4">
+              <Ban className="w-8 h-8 text-destructive" />
+            </div>
+            <h1 className="font-display text-2xl font-bold mb-2 text-destructive">Access Restricted</h1>
+            <p className="text-muted-foreground mb-4">
+              You have been banned from playing Thimble. Please contact support if you believe this is an error.
+            </p>
+            <Link to="/" className="text-primary hover:underline text-sm">
+              ← Back to Home
+            </Link>
+          </div>
+        </main>
+        <BottomNav />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background pb-20">

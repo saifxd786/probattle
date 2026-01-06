@@ -59,7 +59,7 @@ const InstallPage = () => {
           <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
             <ArrowLeft className="w-5 h-5" />
           </Button>
-          <h1 className="text-xl font-bold">Install ProScrims</h1>
+          <h1 className="text-xl font-bold">Install ProBattle</h1>
         </div>
       </div>
 
@@ -77,7 +77,7 @@ const InstallPage = () => {
             </div>
             <h2 className="text-2xl font-bold">Get the App Experience</h2>
             <p className="text-muted-foreground">
-              Install ProScrims on your device for faster access, offline support, and a native app feel
+              Install ProBattle on your device for faster access, offline support, and a native app feel
             </p>
           </div>
 
@@ -90,7 +90,7 @@ const InstallPage = () => {
                   <div>
                     <h3 className="font-semibold text-green-500">Already Installed!</h3>
                     <p className="text-sm text-muted-foreground">
-                      ProScrims is installed on your device
+                      ProBattle is installed on your device
                     </p>
                   </div>
                 </div>
@@ -107,7 +107,7 @@ const InstallPage = () => {
                   Install App
                 </CardTitle>
                 <CardDescription>
-                  Add ProScrims to your home screen
+                  Add ProBattle to your home screen
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -147,7 +147,7 @@ const InstallPage = () => {
                       <div>
                         <p className="font-medium">Tap "Add"</p>
                         <p className="text-sm text-muted-foreground">
-                          ProScrims will appear on your home screen
+                          ProBattle will appear on your home screen
                         </p>
                       </div>
                     </div>
