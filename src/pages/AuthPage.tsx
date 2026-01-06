@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Phone, Lock, User, ArrowRight, Eye, EyeOff, Gift } from 'lucide-react';
+import { Phone, Lock, User, ArrowRight, Eye, EyeOff, Gift, ArrowLeft } from 'lucide-react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,7 +10,176 @@ import { useAuth } from '@/contexts/AuthContext';
 import { z } from 'zod';
 import { generateDeviceFingerprint } from '@/utils/deviceFingerprint';
 
-type AuthMode = 'login' | 'signup';
+// Forgot Password Form Component
+const ForgotPasswordForm = ({ onBack }: { onBack: () => void }) => {
+  const [phone, setPhone] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const navigate = useNavigate();
+
+  const phoneToEmail = (phone: string) => `${phone}@probattle.app`;
+
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+
+    try {
+      // Validate phone
+      if (phone.length < 10) {
+        toast({
+          title: 'Invalid Phone',
+          description: 'Please enter a valid phone number',
+          variant: 'destructive',
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      // Validate passwords
+      if (newPassword.length < 6) {
+        toast({
+          title: 'Weak Password',
+          description: 'Password must be at least 6 characters',
+          variant: 'destructive',
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      if (newPassword !== confirmPassword) {
+        toast({
+          title: 'Password Mismatch',
+          description: 'Passwords do not match',
+          variant: 'destructive',
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      const email = phoneToEmail(phone);
+
+      // Check if user exists
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('id, phone')
+        .eq('phone', phone)
+        .maybeSingle();
+
+      if (!profile) {
+        toast({
+          title: 'Account Not Found',
+          description: 'No account found with this phone number. Please sign up.',
+          variant: 'destructive',
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      // Use admin API to update password (requires user to be logged in)
+      // For now, we'll use a workaround - sign in with magic link concept
+      // Since we're using phone-based auth, we need to contact support or use OTP
+      
+      toast({
+        title: 'Contact Support',
+        description: 'To reset your password, please contact our support team on Telegram with your registered phone number.',
+      });
+
+      // Open Telegram support
+      window.open('https://t.me/probattle_support', '_blank');
+      
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'An error occurred. Please try again.',
+        variant: 'destructive',
+      });
+    }
+
+    setIsLoading(false);
+  };
+
+  return (
+    <form onSubmit={handleResetPassword} className="space-y-4">
+      {/* Phone */}
+      <div className="relative">
+        <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+        <Input
+          type="tel"
+          placeholder="Registered Phone Number"
+          value={phone}
+          onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))}
+          className="pl-10 bg-secondary/50 border-border/50 focus:border-primary"
+          required
+        />
+      </div>
+
+      {/* New Password */}
+      <div className="relative">
+        <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+        <Input
+          type={showPassword ? 'text' : 'password'}
+          placeholder="New Password"
+          value={newPassword}
+          onChange={(e) => setNewPassword(e.target.value)}
+          className="pl-10 pr-10 bg-secondary/50 border-border/50 focus:border-primary"
+          required
+        />
+        <button
+          type="button"
+          onClick={() => setShowPassword(!showPassword)}
+          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+        >
+          {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+        </button>
+      </div>
+
+      {/* Confirm New Password */}
+      <div className="relative">
+        <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+        <Input
+          type={showPassword ? 'text' : 'password'}
+          placeholder="Confirm New Password"
+          value={confirmPassword}
+          onChange={(e) => setConfirmPassword(e.target.value)}
+          className="pl-10 bg-secondary/50 border-border/50 focus:border-primary"
+          required
+        />
+      </div>
+
+      <Button 
+        type="submit" 
+        variant="neon" 
+        className="w-full" 
+        size="lg"
+        disabled={isLoading}
+      >
+        {isLoading ? (
+          <div className="w-5 h-5 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
+        ) : (
+          <>
+            Reset Password
+            <ArrowRight className="w-4 h-4" />
+          </>
+        )}
+      </Button>
+
+      <Button 
+        type="button" 
+        variant="ghost" 
+        className="w-full" 
+        size="sm"
+        onClick={onBack}
+      >
+        <ArrowLeft className="w-4 h-4 mr-2" />
+        Back to Login
+      </Button>
+    </form>
+  );
+};
+
+type AuthMode = 'login' | 'signup' | 'forgot';
 
 // Validation schemas
 const phoneSchema = z.string().trim().min(10, { message: 'Phone number must be at least 10 digits' }).max(15).regex(/^[0-9]+$/, { message: 'Phone number must contain only digits' });
@@ -340,22 +509,34 @@ const AuthPage = () => {
         {/* Card */}
         <div className="glass-card p-6 md:p-8">
           {/* Toggle */}
-          <div className="flex gap-1 p-1 bg-secondary/50 rounded-lg mb-6">
-            {(['login', 'signup'] as AuthMode[]).map((m) => (
-              <button
-                key={m}
-                onClick={() => setMode(m)}
-                className={`flex-1 py-2.5 rounded-md font-display text-xs uppercase tracking-wider transition-all duration-300 ${
-                  mode === m
-                    ? 'bg-primary text-primary-foreground shadow-lg'
-                    : 'text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                {m === 'login' ? 'Sign In' : 'Sign Up'}
-              </button>
-            ))}
-          </div>
+          {mode !== 'forgot' ? (
+            <div className="flex gap-1 p-1 bg-secondary/50 rounded-lg mb-6">
+              {(['login', 'signup'] as AuthMode[]).map((m) => (
+                <button
+                  key={m}
+                  onClick={() => setMode(m)}
+                  className={`flex-1 py-2.5 rounded-md font-display text-xs uppercase tracking-wider transition-all duration-300 ${
+                    mode === m
+                      ? 'bg-primary text-primary-foreground shadow-lg'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  {m === 'login' ? 'Sign In' : 'Sign Up'}
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className="mb-6">
+              <h2 className="font-display text-lg font-bold text-center">Reset Password</h2>
+              <p className="text-xs text-muted-foreground text-center mt-1">
+                Enter your phone number and new password
+              </p>
+            </div>
+          )}
 
+          {mode === 'forgot' ? (
+            <ForgotPasswordForm onBack={() => setMode('login')} />
+          ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Name (signup only - compulsory) */}
             {mode === 'signup' && (
@@ -437,7 +618,11 @@ const AuthPage = () => {
             {/* Forgot password */}
             {mode === 'login' && (
               <div className="text-right">
-                <button type="button" className="text-xs text-primary hover:underline">
+                <button 
+                  type="button" 
+                  onClick={() => setMode('forgot')}
+                  className="text-xs text-primary hover:underline"
+                >
                   Forgot password?
                 </button>
               </div>
@@ -461,6 +646,7 @@ const AuthPage = () => {
               )}
             </Button>
           </form>
+          )}
 
           {/* Terms */}
           {mode === 'signup' && (
