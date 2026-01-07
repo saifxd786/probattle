@@ -14,6 +14,7 @@ const games = [
   { title: 'BGMI', image: bgmiCard, status: 'active' as const, path: '/bgmi' },
   { title: 'Ludo', image: ludoCard, status: 'active' as const, path: '/ludo' },
   { title: 'Thimble', image: thimbleCard, status: 'active' as const, path: '/thimble' },
+  { title: 'Mines', image: thimbleCard, status: 'active' as const, path: '/mines' },
   { title: 'Free Fire', image: freefireCard, status: 'coming-soon' as const, path: '/freefire' },
 ];
 

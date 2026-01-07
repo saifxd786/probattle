@@ -406,6 +406,99 @@ export type Database = {
         }
         Relationships: []
       }
+      mines_games: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          current_multiplier: number
+          entry_amount: number
+          final_amount: number | null
+          id: string
+          is_cashed_out: boolean | null
+          is_mine_hit: boolean | null
+          mine_positions: number[]
+          mines_count: number
+          potential_win: number
+          revealed_positions: number[]
+          status: string
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          current_multiplier?: number
+          entry_amount: number
+          final_amount?: number | null
+          id?: string
+          is_cashed_out?: boolean | null
+          is_mine_hit?: boolean | null
+          mine_positions: number[]
+          mines_count: number
+          potential_win?: number
+          revealed_positions?: number[]
+          status?: string
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          current_multiplier?: number
+          entry_amount?: number
+          final_amount?: number | null
+          id?: string
+          is_cashed_out?: boolean | null
+          is_mine_hit?: boolean | null
+          mine_positions?: number[]
+          mines_count?: number
+          potential_win?: number
+          revealed_positions?: number[]
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      mines_settings: {
+        Row: {
+          base_multiplier: number
+          created_at: string
+          difficulty: string
+          grid_size: number
+          id: string
+          is_enabled: boolean
+          max_mines: number
+          min_entry_amount: number
+          min_mines: number
+          platform_commission: number
+          updated_at: string
+        }
+        Insert: {
+          base_multiplier?: number
+          created_at?: string
+          difficulty?: string
+          grid_size?: number
+          id?: string
+          is_enabled?: boolean
+          max_mines?: number
+          min_entry_amount?: number
+          min_mines?: number
+          platform_commission?: number
+          updated_at?: string
+        }
+        Update: {
+          base_multiplier?: number
+          created_at?: string
+          difficulty?: string
+          grid_size?: number
+          id?: string
+          is_enabled?: boolean
+          max_mines?: number
+          min_entry_amount?: number
+          min_mines?: number
+          platform_commission?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       notifications: {
         Row: {
           created_at: string
