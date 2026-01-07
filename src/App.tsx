@@ -25,6 +25,7 @@ import FAQsPage from "./pages/FAQsPage";
 import LudoPage from "./pages/LudoPage";
 import LudoRulesPage from "./pages/LudoRulesPage";
 import ThimblePage from "./pages/ThimblePage";
+import MinesPage from "./pages/MinesPage";
 import GameHistoryPage from "./pages/GameHistoryPage";
 import NotFound from "./pages/NotFound";
 import AdminLayout from "./components/admin/AdminLayout";
@@ -38,6 +39,7 @@ import AdminLoginPage from "./pages/admin/AdminLoginPage";
 import AdminNotificationsPage from "./pages/admin/AdminNotificationsPage";
 import AdminLudoSettings from "./pages/admin/AdminLudoSettings";
 import AdminThimbleSettings from "./pages/admin/AdminThimbleSettings";
+import AdminMinesSettings from "./pages/admin/AdminMinesSettings";
 import AdminRedeemCodes from "./pages/admin/AdminRedeemCodes";
 
 const queryClient = new QueryClient();
@@ -76,6 +78,7 @@ const App = () => {
               <Route path="/ludo" element={<LudoPage />} />
               <Route path="/ludo/rules" element={<LudoRulesPage />} />
               <Route path="/thimble" element={<ThimblePage />} />
+              <Route path="/mines" element={<MinesPage />} />
               <Route path="/game-history" element={<GameHistoryPage />} />
               {/* Admin Routes */}
               <Route path="/admin/login" element={<AdminLoginPage />} />
@@ -89,6 +92,7 @@ const App = () => {
                 <Route path="settings" element={<AdminSettings />} />
                 <Route path="ludo" element={<AdminLudoSettings />} />
                 <Route path="thimble" element={<AdminThimbleSettings />} />
+                <Route path="mines" element={<AdminMinesSettings />} />
                 <Route path="redeem-codes" element={<AdminRedeemCodes />} />
               </Route>
               <Route path="*" element={<NotFound />} />

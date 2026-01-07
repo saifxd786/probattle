@@ -1,4 +1,4 @@
-import { LayoutDashboard, Gamepad2, Users, CreditCard, Settings, LogOut, ChevronLeft, ArrowLeftRight, Bell, Dices, Trophy, Ticket } from 'lucide-react';
+import { LayoutDashboard, Gamepad2, Users, CreditCard, Settings, LogOut, ChevronLeft, ArrowLeftRight, Bell, Dices, Trophy, Ticket, Gem } from 'lucide-react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
@@ -16,6 +16,7 @@ const navItems = [
   { title: 'Matches', url: '/admin/matches', icon: Gamepad2 },
   { title: 'Ludo', url: '/admin/ludo', icon: Dices },
   { title: 'Thimble', url: '/admin/thimble', icon: Trophy },
+  { title: 'Mines', url: '/admin/mines', icon: Gem },
   { title: 'Redeem Codes', url: '/admin/redeem-codes', icon: Ticket },
   { title: 'Users', url: '/admin/users', icon: Users },
   { title: 'Payments', url: '/admin/payments', icon: CreditCard },
@@ -50,7 +51,7 @@ const AdminSidebar = ({ collapsed, onToggle, onNavigate, isMobile }: AdminSideba
       {/* Header */}
       <div className="h-16 flex items-center justify-between px-4 border-b border-border">
         {(!collapsed || isMobile) && (
-          <span className="font-display text-lg font-bold text-gradient">ProScims Admin</span>
+          <span className="font-display text-lg font-bold text-gradient">ProBattle Admin</span>
         )}
         {!isMobile && (
           <Button

@@ -85,7 +85,7 @@ const AdminLayout = () => {
             />
           </SheetContent>
         </Sheet>
-        <span className="font-display text-lg font-bold text-gradient ml-3">ProScims Admin</span>
+        <span className="font-display text-lg font-bold text-gradient ml-3">ProBattle Admin</span>
       </div>
 
       {/* Desktop Sidebar */}
