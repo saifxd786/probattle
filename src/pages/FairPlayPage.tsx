@@ -169,8 +169,8 @@ const FairPlayPage = () => {
             If you suspect any player of violating our Fair Play Policy, please report them immediately.
           </p>
           <a 
-            href="https://t.me/ProScimstournament" 
-            target="_blank" 
+            href="https://t.me/ProBattleTournament" 
+            target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium"
           >

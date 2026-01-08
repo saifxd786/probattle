@@ -41,7 +41,7 @@ const Index = () => {
         <div className="absolute inset-0">
           <img 
             src={heroBanner} 
-            alt="ProScims Gaming" 
+            alt="ProBattle Gaming" 
             className="w-full h-full object-cover opacity-40"
           />
           <div className="absolute inset-0 bg-gradient-to-b from-background/50 via-background/80 to-background" />

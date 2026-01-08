@@ -107,7 +107,7 @@ const faqCategories = [
     faqs: [
       {
         question: 'How do I contact support?',
-        answer: 'You can reach us on Telegram @ProScimstournament or email us at support@proscims.com. Response time is usually within a few hours.'
+        answer: 'You can reach us on Telegram @ProBattleTournament or email us at support@probattle.in. Response time is usually within a few hours.'
       },
       {
         question: 'Can I change my username?',
@@ -196,8 +196,8 @@ const FAQsPage = () => {
             Can't find the answer you're looking for? Contact our support team.
           </p>
           <a 
-            href="https://t.me/ProScimstournament" 
-            target="_blank" 
+            href="https://t.me/ProBattleTournament" 
+            target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-2 px-6 py-3 bg-primary text-primary-foreground rounded-xl text-sm font-medium hover:bg-primary/90 transition-colors"
           >

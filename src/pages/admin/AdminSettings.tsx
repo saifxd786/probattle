@@ -15,14 +15,14 @@ const AdminSettings = () => {
     freefireEnabled: false,
     clashEnabled: false,
     ludoEnabled: false,
-    telegramLink: 'https://t.me/ProScimstournament',
+    telegramLink: 'https://t.me/ProBattleTournament',
   });
 
   const [isSaving, setIsSaving] = useState(false);
 
   // Load settings from localStorage
   useEffect(() => {
-    const saved = localStorage.getItem('proscims_settings');
+    const saved = localStorage.getItem('probattle_settings');
     if (saved) {
       setSettings(JSON.parse(saved));
     }
@@ -32,7 +32,7 @@ const AdminSettings = () => {
     setIsSaving(true);
     
     // Save to localStorage (in production, this would be a database)
-    localStorage.setItem('proscims_settings', JSON.stringify(settings));
+    localStorage.setItem('probattle_settings', JSON.stringify(settings));
     
     await new Promise((resolve) => setTimeout(resolve, 500));
     
