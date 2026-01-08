@@ -539,6 +539,7 @@ export type Database = {
           banned_at: string | null
           banned_games: string[] | null
           created_at: string | null
+          date_of_birth: string | null
           device_fingerprint: string | null
           email: string | null
           id: string
@@ -546,6 +547,8 @@ export type Database = {
           phone: string | null
           referral_code: string | null
           referred_by: string | null
+          security_answer: string | null
+          security_question: string | null
           updated_at: string | null
           user_code: string | null
           username: string | null
@@ -558,6 +561,7 @@ export type Database = {
           banned_at?: string | null
           banned_games?: string[] | null
           created_at?: string | null
+          date_of_birth?: string | null
           device_fingerprint?: string | null
           email?: string | null
           id: string
@@ -565,6 +569,8 @@ export type Database = {
           phone?: string | null
           referral_code?: string | null
           referred_by?: string | null
+          security_answer?: string | null
+          security_question?: string | null
           updated_at?: string | null
           user_code?: string | null
           username?: string | null
@@ -577,6 +583,7 @@ export type Database = {
           banned_at?: string | null
           banned_games?: string[] | null
           created_at?: string | null
+          date_of_birth?: string | null
           device_fingerprint?: string | null
           email?: string | null
           id?: string
@@ -584,6 +591,8 @@ export type Database = {
           phone?: string | null
           referral_code?: string | null
           referred_by?: string | null
+          security_answer?: string | null
+          security_question?: string | null
           updated_at?: string | null
           user_code?: string | null
           username?: string | null

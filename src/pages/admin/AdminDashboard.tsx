@@ -192,7 +192,7 @@ const AdminDashboard = () => {
     <div className="p-6 space-y-6">
       <div>
         <h1 className="text-2xl font-display font-bold">Dashboard</h1>
-        <p className="text-muted-foreground">Welcome to ProScims Admin Panel</p>
+        <p className="text-muted-foreground">Welcome to ProBattle Admin Panel</p>
       </div>
 
       {/* Stats Grid */}

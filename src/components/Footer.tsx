@@ -28,7 +28,7 @@ const Footer = () => {
         
         {/* Copyright */}
         <p className="text-xs text-muted-foreground/50 text-center">
-          © {new Date().getFullYear()} ProScims Platform. All rights reserved.
+          © {new Date().getFullYear()} ProBattle Platform. All rights reserved.
         </p>
       </div>
     </footer>

@@ -11,14 +11,14 @@ const supportLinks = [
     icon: MessageCircle,
     title: 'Telegram Support',
     description: 'Get instant help from our team',
-    href: 'https://t.me/ProScimstournament',
+    href: 'https://t.me/ProBattleTournament',
     external: true,
   },
   {
     icon: Mail,
     title: 'Email Support',
-    description: 'support@proscims.com',
-    href: 'mailto:support@proscims.com',
+    description: 'support@probattle.in',
+    href: 'mailto:support@probattle.in',
     external: true,
   },
 ];

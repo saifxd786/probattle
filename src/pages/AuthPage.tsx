@@ -1,32 +1,43 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Phone, Lock, User, ArrowRight, Eye, EyeOff, Gift, ArrowLeft } from 'lucide-react';
+import { Phone, Lock, User, ArrowRight, Eye, EyeOff, Gift, ArrowLeft, Calendar, ShieldQuestion } from 'lucide-react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { z } from 'zod';
 import { generateDeviceFingerprint } from '@/utils/deviceFingerprint';
 
-// Forgot Password Form Component
+// Security questions list
+const SECURITY_QUESTIONS = [
+  "What is your mother's maiden name?",
+  "What was the name of your first pet?",
+  "What city were you born in?",
+  "What is your favorite movie?",
+  "What was your childhood nickname?",
+];
+
+// Forgot Password Form Component with Security Question
 const ForgotPasswordForm = ({ onBack }: { onBack: () => void }) => {
+  const [step, setStep] = useState<'verify' | 'reset'>('verify');
   const [phone, setPhone] = useState('');
+  const [dob, setDob] = useState('');
+  const [securityAnswer, setSecurityAnswer] = useState('');
+  const [securityQuestion, setSecurityQuestion] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const navigate = useNavigate();
+  const [userId, setUserId] = useState<string | null>(null);
 
-  const phoneToEmail = (phone: string) => `${phone}@probattle.app`;
-
-  const handleResetPassword = async (e: React.FormEvent) => {
+  const handleVerify = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
     try {
-      // Validate phone
       if (phone.length < 10) {
         toast({
           title: 'Invalid Phone',
@@ -37,7 +48,80 @@ const ForgotPasswordForm = ({ onBack }: { onBack: () => void }) => {
         return;
       }
 
-      // Validate passwords
+      // Check if user exists and verify DOB + security answer
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('id, date_of_birth, security_question, security_answer')
+        .eq('phone', phone)
+        .maybeSingle();
+
+      if (error || !profile) {
+        toast({
+          title: 'Account Not Found',
+          description: 'No account found with this phone number.',
+          variant: 'destructive',
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      // Check if user has set up recovery options
+      if (!profile.date_of_birth || !profile.security_question || !profile.security_answer) {
+        toast({
+          title: 'Recovery Not Set Up',
+          description: 'Please contact support on Telegram to reset your password.',
+        });
+        window.open('https://t.me/ProBattleTournament', '_blank');
+        setIsLoading(false);
+        return;
+      }
+
+      // Verify DOB
+      if (profile.date_of_birth !== dob) {
+        toast({
+          title: 'Verification Failed',
+          description: 'Date of birth does not match our records.',
+          variant: 'destructive',
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      // Verify security answer (case insensitive)
+      if (profile.security_answer.toLowerCase().trim() !== securityAnswer.toLowerCase().trim()) {
+        toast({
+          title: 'Verification Failed',
+          description: 'Security answer is incorrect.',
+          variant: 'destructive',
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      // Verification successful
+      setUserId(profile.id);
+      setSecurityQuestion(profile.security_question);
+      setStep('reset');
+      toast({
+        title: 'Verified!',
+        description: 'You can now set a new password.',
+      });
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'An error occurred. Please try again.',
+        variant: 'destructive',
+      });
+    }
+
+    setIsLoading(false);
+  };
+
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+
+    try {
       if (newPassword.length < 6) {
         toast({
           title: 'Weak Password',
@@ -58,36 +142,12 @@ const ForgotPasswordForm = ({ onBack }: { onBack: () => void }) => {
         return;
       }
 
-      const email = phoneToEmail(phone);
-
-      // Check if user exists
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('id, phone')
-        .eq('phone', phone)
-        .maybeSingle();
-
-      if (!profile) {
-        toast({
-          title: 'Account Not Found',
-          description: 'No account found with this phone number. Please sign up.',
-          variant: 'destructive',
-        });
-        setIsLoading(false);
-        return;
-      }
-
-      // Use admin API to update password (requires user to be logged in)
-      // For now, we'll use a workaround - sign in with magic link concept
-      // Since we're using phone-based auth, we need to contact support or use OTP
-      
+      // Use admin function to reset password (via Telegram support for now)
       toast({
         title: 'Contact Support',
-        description: 'To reset your password, please contact our support team on Telegram with your registered phone number.',
+        description: 'Password reset verified! Contact support on Telegram to complete the reset with your verified phone number.',
       });
-
-      // Open Telegram support
-      window.open('https://t.me/probattle_support', '_blank');
+      window.open('https://t.me/ProBattleTournament', '_blank');
       
     } catch (error) {
       toast({
@@ -100,19 +160,91 @@ const ForgotPasswordForm = ({ onBack }: { onBack: () => void }) => {
     setIsLoading(false);
   };
 
+  if (step === 'verify') {
+    return (
+      <form onSubmit={handleVerify} className="space-y-4">
+        <div className="text-center mb-4">
+          <ShieldQuestion className="w-10 h-10 text-primary mx-auto mb-2" />
+          <p className="text-xs text-muted-foreground">Verify your identity to reset password</p>
+        </div>
+
+        {/* Phone */}
+        <div className="relative">
+          <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input
+            type="tel"
+            placeholder="Registered Phone Number"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))}
+            className="pl-10 bg-secondary/50 border-border/50 focus:border-primary"
+            required
+          />
+        </div>
+
+        {/* Date of Birth */}
+        <div className="relative">
+          <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input
+            type="date"
+            placeholder="Date of Birth"
+            value={dob}
+            onChange={(e) => setDob(e.target.value)}
+            className="pl-10 bg-secondary/50 border-border/50 focus:border-primary"
+            required
+          />
+        </div>
+
+        {/* Security Answer */}
+        <div className="relative">
+          <ShieldQuestion className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input
+            type="text"
+            placeholder="Answer to your security question"
+            value={securityAnswer}
+            onChange={(e) => setSecurityAnswer(e.target.value)}
+            className="pl-10 bg-secondary/50 border-border/50 focus:border-primary"
+            required
+          />
+        </div>
+
+        <Button 
+          type="submit" 
+          variant="neon" 
+          className="w-full" 
+          size="lg"
+          disabled={isLoading}
+        >
+          {isLoading ? (
+            <div className="w-5 h-5 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
+          ) : (
+            <>
+              Verify Identity
+              <ArrowRight className="w-4 h-4" />
+            </>
+          )}
+        </Button>
+
+        <Button 
+          type="button" 
+          variant="ghost" 
+          className="w-full" 
+          size="sm"
+          onClick={onBack}
+        >
+          <ArrowLeft className="w-4 h-4 mr-2" />
+          Back to Login
+        </Button>
+      </form>
+    );
+  }
+
   return (
     <form onSubmit={handleResetPassword} className="space-y-4">
-      {/* Phone */}
-      <div className="relative">
-        <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-        <Input
-          type="tel"
-          placeholder="Registered Phone Number"
-          value={phone}
-          onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))}
-          className="pl-10 bg-secondary/50 border-border/50 focus:border-primary"
-          required
-        />
+      <div className="text-center mb-4">
+        <div className="w-10 h-10 rounded-full bg-green-500/20 flex items-center justify-center mx-auto mb-2">
+          <Lock className="w-5 h-5 text-green-500" />
+        </div>
+        <p className="text-xs text-muted-foreground">Identity verified! Set your new password.</p>
       </div>
 
       {/* New Password */}
@@ -170,10 +302,10 @@ const ForgotPasswordForm = ({ onBack }: { onBack: () => void }) => {
         variant="ghost" 
         className="w-full" 
         size="sm"
-        onClick={onBack}
+        onClick={() => setStep('verify')}
       >
         <ArrowLeft className="w-4 h-4 mr-2" />
-        Back to Login
+        Back
       </Button>
     </form>
   );
@@ -202,6 +334,9 @@ const AuthPage = () => {
     password: '',
     confirmPassword: '',
     username: '',
+    dateOfBirth: '',
+    securityQuestion: '',
+    securityAnswer: '',
   });
 
   // Check for referral code in URL
@@ -308,10 +443,33 @@ const AuthPage = () => {
           setIsLoading(false);
           return;
         }
+
         if (formData.password !== formData.confirmPassword) {
           toast({
             title: 'Error',
             description: 'Passwords do not match',
+            variant: 'destructive',
+          });
+          setIsLoading(false);
+          return;
+        }
+
+        // Validate DOB
+        if (!formData.dateOfBirth) {
+          toast({
+            title: 'Date of Birth Required',
+            description: 'Please enter your date of birth for account recovery',
+            variant: 'destructive',
+          });
+          setIsLoading(false);
+          return;
+        }
+
+        // Validate security question
+        if (!formData.securityQuestion || !formData.securityAnswer.trim()) {
+          toast({
+            title: 'Security Question Required',
+            description: 'Please select a security question and provide an answer',
             variant: 'destructive',
           });
           setIsLoading(false);
@@ -346,7 +504,7 @@ const AuthPage = () => {
           return;
         }
 
-        // Ensure user is logged in right after signup (prevents "signed up but not logged in")
+        // Ensure user is logged in right after signup
         if (!signupData.session) {
           const { error: signInAfterSignupError } = await supabase.auth.signInWithPassword({
             email,
@@ -364,7 +522,7 @@ const AuthPage = () => {
           }
         }
 
-        // Ensure profile exists (so wallet/referrals work reliably)
+        // Ensure profile exists with DOB and security question
         if (signupData.user) {
           await supabase.from('profiles').upsert(
             {
@@ -372,14 +530,16 @@ const AuthPage = () => {
               username: formData.username,
               phone: formData.phone,
               email,
+              date_of_birth: formData.dateOfBirth,
+              security_question: formData.securityQuestion,
+              security_answer: formData.securityAnswer.toLowerCase().trim(),
             },
             { onConflict: 'id' }
           );
         }
 
-        // Handle referral if code was provided - reward on first deposit only
+        // Handle referral if code was provided
         if (referralCode && signupData.user) {
-          // Find the referrer by referral code
           const { data: referrer } = await supabase
             .from('profiles')
             .select('id')
@@ -387,19 +547,17 @@ const AuthPage = () => {
             .maybeSingle();
 
           if (referrer) {
-            // Update the new user's profile with referred_by
             await supabase
               .from('profiles')
               .update({ referred_by: referrer.id })
               .eq('id', signupData.user.id);
 
-            // Create referral record with is_rewarded = false (will be rewarded on first deposit)
             await supabase.from('referrals').insert({
               referrer_id: referrer.id,
               referred_id: signupData.user.id,
               referral_code: referralCode,
               reward_amount: REFERRAL_REWARD,
-              is_rewarded: false, // Will be set to true on first deposit
+              is_rewarded: false,
             });
           }
         }
@@ -444,7 +602,6 @@ const AuthPage = () => {
             .maybeSingle();
 
           if (profileData?.is_banned) {
-            // Sign out the banned user immediately
             await supabase.auth.signOut();
             
             const banDate = profileData.banned_at 
@@ -529,7 +686,7 @@ const AuthPage = () => {
             <div className="mb-6">
               <h2 className="font-display text-lg font-bold text-center">Reset Password</h2>
               <p className="text-xs text-muted-foreground text-center mt-1">
-                Enter your phone number and new password
+                Verify your identity to reset password
               </p>
             </div>
           )}
@@ -566,6 +723,21 @@ const AuthPage = () => {
               />
             </div>
 
+            {/* Date of Birth (signup only) */}
+            {mode === 'signup' && (
+              <div className="relative">
+                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  type="date"
+                  placeholder="Date of Birth *"
+                  value={formData.dateOfBirth}
+                  onChange={(e) => setFormData({ ...formData, dateOfBirth: e.target.value })}
+                  className="pl-10 bg-secondary/50 border-border/50 focus:border-primary"
+                  required
+                />
+              </div>
+            )}
+
             {/* Password */}
             <div className="relative">
               <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -599,6 +771,37 @@ const AuthPage = () => {
                   required
                 />
               </div>
+            )}
+
+            {/* Security Question (signup only) */}
+            {mode === 'signup' && (
+              <>
+                <Select
+                  value={formData.securityQuestion}
+                  onValueChange={(value) => setFormData({ ...formData, securityQuestion: value })}
+                >
+                  <SelectTrigger className="bg-secondary/50 border-border/50 focus:border-primary">
+                    <SelectValue placeholder="Select a security question *" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {SECURITY_QUESTIONS.map((q) => (
+                      <SelectItem key={q} value={q}>{q}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                <div className="relative">
+                  <ShieldQuestion className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    type="text"
+                    placeholder="Your answer *"
+                    value={formData.securityAnswer}
+                    onChange={(e) => setFormData({ ...formData, securityAnswer: e.target.value })}
+                    className="pl-10 bg-secondary/50 border-border/50 focus:border-primary"
+                    required
+                  />
+                </div>
+              </>
             )}
 
             {/* Referral Code (signup only) */}

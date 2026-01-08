@@ -18,7 +18,7 @@ const AdminLoginPage = () => {
 
   const phoneToEmail = (phone: string) => {
     const cleanPhone = phone.replace(/\D/g, '');
-    return `${cleanPhone}@proscims.app`;
+    return `${cleanPhone}@probattle.app`;
   };
 
   const handleLogin = async (e: React.FormEvent) => {

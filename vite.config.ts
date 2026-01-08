@@ -17,8 +17,8 @@ export default defineConfig(({ mode }) => ({
       registerType: "prompt",
       includeAssets: ["favicon.ico", "apple-touch-icon.png", "mask-icon.svg"],
       manifest: {
-        name: "ProScrims - Esports Tournament Platform",
-        short_name: "ProScrims",
+        name: "ProBattle - Esports Tournament Platform",
+        short_name: "ProBattle",
         description: "Join BGMI tournaments, compete with players, and win real prizes!",
         theme_color: "#8B5CF6",
         background_color: "#0F0F23",
