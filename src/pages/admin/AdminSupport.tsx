@@ -1,0 +1,402 @@
+import { useState, useEffect, useRef } from 'react';
+import { motion } from 'framer-motion';
+import { MessageCircle, Send, Loader2, User, Clock, CheckCircle, AlertCircle } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { toast } from '@/hooks/use-toast';
+import { format } from 'date-fns';
+
+interface Ticket {
+  id: string;
+  user_id: string;
+  subject: string;
+  status: string;
+  priority: string;
+  created_at: string;
+  updated_at: string;
+  user?: {
+    username: string;
+    phone: string;
+  };
+  unread_count?: number;
+}
+
+interface Message {
+  id: string;
+  sender_type: 'user' | 'admin';
+  message: string;
+  created_at: string;
+  is_read: boolean;
+}
+
+const AdminSupport = () => {
+  const { user } = useAuth();
+  const [tickets, setTickets] = useState<Ticket[]>([]);
+  const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [newMessage, setNewMessage] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSending, setIsSending] = useState(false);
+  const [filter, setFilter] = useState<string>('all');
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    fetchTickets();
+  }, [filter]);
+
+  useEffect(() => {
+    if (selectedTicket) {
+      fetchMessages(selectedTicket.id);
+      
+      // Subscribe to new messages
+      const channel = supabase
+        .channel(`admin-support-${selectedTicket.id}`)
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'support_messages',
+            filter: `ticket_id=eq.${selectedTicket.id}`,
+          },
+          (payload) => {
+            const newMsg = payload.new as Message;
+            setMessages((prev) => [...prev, newMsg]);
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }
+  }, [selectedTicket]);
+
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [messages]);
+
+  const fetchTickets = async () => {
+    setIsLoading(true);
+
+    let query = supabase
+      .from('support_tickets')
+      .select('*')
+      .order('updated_at', { ascending: false });
+
+    if (filter !== 'all') {
+      query = query.eq('status', filter);
+    }
+
+    const { data: ticketsData } = await query;
+
+    if (ticketsData) {
+      // Fetch user info and unread counts for each ticket
+      const ticketsWithInfo = await Promise.all(
+        ticketsData.map(async (ticket) => {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('username, phone')
+            .eq('id', ticket.user_id)
+            .maybeSingle();
+
+          const { count } = await supabase
+            .from('support_messages')
+            .select('*', { count: 'exact', head: true })
+            .eq('ticket_id', ticket.id)
+            .eq('sender_type', 'user')
+            .eq('is_read', false);
+
+          return {
+            ...ticket,
+            user: profile || undefined,
+            unread_count: count || 0,
+          };
+        })
+      );
+
+      setTickets(ticketsWithInfo);
+    }
+
+    setIsLoading(false);
+  };
+
+  const fetchMessages = async (ticketId: string) => {
+    const { data } = await supabase
+      .from('support_messages')
+      .select('*')
+      .eq('ticket_id', ticketId)
+      .order('created_at', { ascending: true });
+
+    setMessages((data || []) as Message[]);
+
+    // Mark user messages as read
+    await supabase
+      .from('support_messages')
+      .update({ is_read: true })
+      .eq('ticket_id', ticketId)
+      .eq('sender_type', 'user')
+      .eq('is_read', false);
+
+    // Update ticket list
+    setTickets((prev) =>
+      prev.map((t) =>
+        t.id === ticketId ? { ...t, unread_count: 0 } : t
+      )
+    );
+  };
+
+  const sendMessage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newMessage.trim() || !selectedTicket || !user) return;
+
+    setIsSending(true);
+
+    const { error } = await supabase.from('support_messages').insert({
+      ticket_id: selectedTicket.id,
+      sender_id: user.id,
+      sender_type: 'admin',
+      message: newMessage.trim(),
+    });
+
+    if (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to send message.',
+        variant: 'destructive',
+      });
+    } else {
+      setNewMessage('');
+      
+      // Update ticket status to in_progress if it was open
+      if (selectedTicket.status === 'open') {
+        await supabase
+          .from('support_tickets')
+          .update({ status: 'in_progress', updated_at: new Date().toISOString() })
+          .eq('id', selectedTicket.id);
+        
+        setSelectedTicket({ ...selectedTicket, status: 'in_progress' });
+        fetchTickets();
+      }
+    }
+
+    setIsSending(false);
+  };
+
+  const updateTicketStatus = async (ticketId: string, status: string) => {
+    await supabase
+      .from('support_tickets')
+      .update({ 
+        status, 
+        updated_at: new Date().toISOString(),
+        closed_at: status === 'closed' || status === 'resolved' ? new Date().toISOString() : null
+      })
+      .eq('id', ticketId);
+
+    fetchTickets();
+    if (selectedTicket?.id === ticketId) {
+      setSelectedTicket({ ...selectedTicket, status });
+    }
+
+    toast({ title: 'Status Updated', description: `Ticket marked as ${status}` });
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'open': return 'bg-yellow-500/20 text-yellow-500';
+      case 'in_progress': return 'bg-blue-500/20 text-blue-500';
+      case 'resolved': return 'bg-green-500/20 text-green-500';
+      case 'closed': return 'bg-gray-500/20 text-gray-500';
+      default: return 'bg-gray-500/20 text-gray-500';
+    }
+  };
+
+  return (
+    <div className="p-6 h-[calc(100vh-4rem)]">
+      <div className="mb-6">
+        <h1 className="text-2xl font-display font-bold">Support Chat</h1>
+        <p className="text-muted-foreground">Manage customer support tickets</p>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100%-5rem)]">
+        {/* Tickets List */}
+        <Card className="glass-card lg:col-span-1 flex flex-col">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-lg">Tickets</CardTitle>
+              <Select value={filter} onValueChange={setFilter}>
+                <SelectTrigger className="w-32">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All</SelectItem>
+                  <SelectItem value="open">Open</SelectItem>
+                  <SelectItem value="in_progress">In Progress</SelectItem>
+                  <SelectItem value="resolved">Resolved</SelectItem>
+                  <SelectItem value="closed">Closed</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </CardHeader>
+          <CardContent className="flex-1 overflow-hidden p-0">
+            <ScrollArea className="h-full">
+              {isLoading ? (
+                <div className="flex items-center justify-center h-32">
+                  <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                </div>
+              ) : tickets.length === 0 ? (
+                <div className="text-center py-8 px-4">
+                  <MessageCircle className="w-10 h-10 text-muted-foreground/30 mx-auto mb-2" />
+                  <p className="text-sm text-muted-foreground">No tickets found</p>
+                </div>
+              ) : (
+                <div className="divide-y divide-border">
+                  {tickets.map((ticket) => (
+                    <motion.button
+                      key={ticket.id}
+                      onClick={() => setSelectedTicket(ticket)}
+                      className={`w-full p-4 text-left hover:bg-secondary/30 transition-colors ${
+                        selectedTicket?.id === ticket.id ? 'bg-secondary/50' : ''
+                      }`}
+                      whileTap={{ scale: 0.98 }}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <User className="w-4 h-4 text-muted-foreground" />
+                            <span className="font-medium text-sm truncate">
+                              {ticket.user?.username || ticket.user?.phone || 'Unknown User'}
+                            </span>
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-1 truncate">
+                            {ticket.subject}
+                          </p>
+                          <div className="flex items-center gap-2 mt-2">
+                            <Badge className={getStatusColor(ticket.status)} variant="secondary">
+                              {ticket.status}
+                            </Badge>
+                            <span className="text-[10px] text-muted-foreground">
+                              {format(new Date(ticket.updated_at), 'MMM d, HH:mm')}
+                            </span>
+                          </div>
+                        </div>
+                        {ticket.unread_count && ticket.unread_count > 0 && (
+                          <span className="w-5 h-5 rounded-full bg-primary text-primary-foreground text-xs flex items-center justify-center font-bold">
+                            {ticket.unread_count}
+                          </span>
+                        )}
+                      </div>
+                    </motion.button>
+                  ))}
+                </div>
+              )}
+            </ScrollArea>
+          </CardContent>
+        </Card>
+
+        {/* Chat Area */}
+        <Card className="glass-card lg:col-span-2 flex flex-col">
+          {selectedTicket ? (
+            <>
+              {/* Chat Header */}
+              <CardHeader className="pb-3 border-b border-border">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-lg">
+                      {selectedTicket.user?.username || selectedTicket.user?.phone || 'Unknown User'}
+                    </CardTitle>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {selectedTicket.user?.phone}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Select
+                      value={selectedTicket.status}
+                      onValueChange={(value) => updateTicketStatus(selectedTicket.id, value)}
+                    >
+                      <SelectTrigger className="w-32">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="open">Open</SelectItem>
+                        <SelectItem value="in_progress">In Progress</SelectItem>
+                        <SelectItem value="resolved">Resolved</SelectItem>
+                        <SelectItem value="closed">Closed</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </CardHeader>
+
+              {/* Messages */}
+              <CardContent className="flex-1 overflow-hidden p-0">
+                <ScrollArea className="h-full p-4" ref={scrollRef}>
+                  <div className="space-y-3">
+                    {messages.map((msg) => (
+                      <motion.div
+                        key={msg.id}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className={`flex ${msg.sender_type === 'admin' ? 'justify-end' : 'justify-start'}`}
+                      >
+                        <div
+                          className={`max-w-[70%] rounded-2xl px-4 py-2 ${
+                            msg.sender_type === 'admin'
+                              ? 'bg-primary text-primary-foreground rounded-br-md'
+                              : 'bg-secondary text-foreground rounded-bl-md'
+                          }`}
+                        >
+                          <p className="text-sm whitespace-pre-wrap">{msg.message}</p>
+                          <p className={`text-[10px] mt-1 ${msg.sender_type === 'admin' ? 'text-primary-foreground/70' : 'text-muted-foreground'}`}>
+                            {format(new Date(msg.created_at), 'HH:mm')}
+                          </p>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </div>
+                </ScrollArea>
+              </CardContent>
+
+              {/* Input */}
+              <div className="p-4 border-t border-border">
+                <form onSubmit={sendMessage} className="flex gap-2">
+                  <Input
+                    value={newMessage}
+                    onChange={(e) => setNewMessage(e.target.value)}
+                    placeholder="Type your reply..."
+                    className="flex-1"
+                    disabled={isSending}
+                  />
+                  <Button type="submit" disabled={isSending || !newMessage.trim()}>
+                    {isSending ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Send className="w-4 h-4" />
+                    )}
+                  </Button>
+                </form>
+              </div>
+            </>
+          ) : (
+            <div className="flex-1 flex items-center justify-center">
+              <div className="text-center">
+                <MessageCircle className="w-16 h-16 text-muted-foreground/20 mx-auto mb-4" />
+                <p className="text-muted-foreground">Select a ticket to view conversation</p>
+              </div>
+            </div>
+          )}
+        </Card>
+      </div>
+    </div>
+  );
+};
+
+export default AdminSupport;
