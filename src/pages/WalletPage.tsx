@@ -218,23 +218,50 @@ const WalletPage = () => {
 
     setIsSubmitting(true);
 
-    const { error } = await supabase.from('transactions').insert({
-      user_id: user.id,
-      type: 'withdrawal',
-      amount,
-      status: 'pending',
-      upi_id: upiId.trim(),
-      description: `Withdrawal request of ₹${amount}`,
-    });
+    try {
+      // First deduct balance immediately
+      const newBalance = profile.wallet_balance - amount;
+      const { error: deductError } = await supabase
+        .from('profiles')
+        .update({ wallet_balance: newBalance })
+        .eq('id', user.id);
 
-    if (error) {
+      if (deductError) {
+        toast({ title: 'Error', description: 'Failed to process withdrawal', variant: 'destructive' });
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Update local state
+      setProfile({ ...profile, wallet_balance: newBalance });
+
+      // Create withdrawal transaction
+      const { error } = await supabase.from('transactions').insert({
+        user_id: user.id,
+        type: 'withdrawal',
+        amount,
+        status: 'pending',
+        upi_id: upiId.trim(),
+        description: `Withdrawal request of ₹${amount}`,
+      });
+
+      if (error) {
+        // Rollback balance if transaction creation fails
+        await supabase
+          .from('profiles')
+          .update({ wallet_balance: profile.wallet_balance })
+          .eq('id', user.id);
+        setProfile({ ...profile });
+        toast({ title: 'Error', description: error.message, variant: 'destructive' });
+      } else {
+        toast({ title: 'Withdrawal Request Submitted', description: 'Amount deducted. Your request is being processed.' });
+        setIsWithdrawOpen(false);
+        setWithdrawAmount('');
+        setUpiId('');
+        fetchData();
+      }
+    } catch (error: any) {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
-    } else {
-      toast({ title: 'Withdrawal Request Submitted', description: 'Your request is being processed.' });
-      setIsWithdrawOpen(false);
-      setWithdrawAmount('');
-      setUpiId('');
-      fetchData();
     }
 
     setIsSubmitting(false);

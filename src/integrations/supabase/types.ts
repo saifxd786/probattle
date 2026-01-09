@@ -940,6 +940,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      generate_5digit_user_code: { Args: never; Returns: string }
       get_match_room_credentials: {
         Args: { _match_id: string }
         Returns: {

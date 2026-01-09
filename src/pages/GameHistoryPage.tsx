@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { History, Trophy, XCircle, Gamepad2, Loader2, Calendar, TrendingUp, TrendingDown } from 'lucide-react';
+import { History, Trophy, XCircle, Gamepad2, Loader2, Calendar, TrendingUp, TrendingDown, Gem, Bomb } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import Header from '@/components/Header';
 import BottomNav from '@/components/BottomNav';
-import TelegramFloat from '@/components/TelegramFloat';
+import SupportFloat from '@/components/SupportFloat';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
@@ -32,11 +32,26 @@ type ThimbleGame = {
   completed_at: string | null;
 };
 
+type MinesGame = {
+  id: string;
+  entry_amount: number;
+  mines_count: number;
+  revealed_positions: number[];
+  current_multiplier: number;
+  final_amount: number | null;
+  status: string;
+  is_mine_hit: boolean | null;
+  is_cashed_out: boolean | null;
+  created_at: string;
+  completed_at: string | null;
+};
+
 const GameHistoryPage = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [ludoGames, setLudoGames] = useState<LudoGame[]>([]);
   const [thimbleGames, setThimbleGames] = useState<ThimbleGame[]>([]);
+  const [minesGames, setMinesGames] = useState<MinesGame[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -89,6 +104,19 @@ const GameHistoryPage = () => {
       setThimbleGames(thimbleData);
     }
 
+    // Fetch Mines games
+    const { data: minesData } = await supabase
+      .from('mines_games')
+      .select('*')
+      .eq('user_id', user.id)
+      .in('status', ['won', 'lost'])
+      .order('created_at', { ascending: false })
+      .limit(50);
+
+    if (minesData) {
+      setMinesGames(minesData as MinesGame[]);
+    }
+
     setIsLoading(false);
   };
 
@@ -109,6 +137,13 @@ const GameHistoryPage = () => {
     wins: thimbleGames.filter(g => g.is_win).length,
     totalWon: thimbleGames.filter(g => g.is_win).reduce((sum, g) => sum + Number(g.reward_amount), 0),
     totalLost: thimbleGames.filter(g => !g.is_win).reduce((sum, g) => sum + Number(g.entry_amount), 0),
+  };
+
+  const minesStats = {
+    total: minesGames.length,
+    wins: minesGames.filter(g => g.status === 'won').length,
+    totalWon: minesGames.filter(g => g.status === 'won').reduce((sum, g) => sum + Number(g.final_amount || 0), 0),
+    totalLost: minesGames.filter(g => g.status === 'lost').reduce((sum, g) => sum + Number(g.entry_amount), 0),
   };
 
   const getDifficultyColor = (difficulty: string) => {
@@ -138,7 +173,7 @@ const GameHistoryPage = () => {
             <h1 className="font-display text-2xl font-bold">Game History</h1>
           </div>
           <p className="text-sm text-muted-foreground">
-            View your Ludo and Thimble game history with stats
+            View your Ludo, Thimble and Mines game history with stats
           </p>
         </motion.div>
 
@@ -148,7 +183,7 @@ const GameHistoryPage = () => {
           </div>
         ) : (
           <Tabs defaultValue="ludo" className="space-y-4">
-            <TabsList className="grid w-full grid-cols-2">
+            <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="ludo" className="gap-2">
                 <Gamepad2 className="w-4 h-4" />
                 Ludo
@@ -156,6 +191,10 @@ const GameHistoryPage = () => {
               <TabsTrigger value="thimble" className="gap-2">
                 🎩
                 Thimble
+              </TabsTrigger>
+              <TabsTrigger value="mines" className="gap-2">
+                <Gem className="w-4 h-4" />
+                Mines
               </TabsTrigger>
             </TabsList>
 
@@ -366,12 +405,132 @@ const GameHistoryPage = () => {
                 </CardContent>
               </Card>
             </TabsContent>
+
+            {/* Mines Tab */}
+            <TabsContent value="mines" className="space-y-4">
+              {/* Mines Stats */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="grid grid-cols-2 md:grid-cols-4 gap-3"
+              >
+                <Card className="glass-card">
+                  <CardContent className="p-4 text-center">
+                    <Gem className="w-5 h-5 mx-auto mb-1 text-emerald-500" />
+                    <p className="font-display text-xl font-bold">{minesStats.total}</p>
+                    <p className="text-xs text-muted-foreground">Total Games</p>
+                  </CardContent>
+                </Card>
+                <Card className="glass-card">
+                  <CardContent className="p-4 text-center">
+                    <Trophy className="w-5 h-5 mx-auto mb-1 text-yellow-500" />
+                    <p className="font-display text-xl font-bold">{minesStats.wins}</p>
+                    <p className="text-xs text-muted-foreground">Wins</p>
+                  </CardContent>
+                </Card>
+                <Card className="glass-card">
+                  <CardContent className="p-4 text-center">
+                    <TrendingUp className="w-5 h-5 mx-auto mb-1 text-green-500" />
+                    <p className="font-display text-xl font-bold text-green-500">₹{minesStats.totalWon}</p>
+                    <p className="text-xs text-muted-foreground">Total Won</p>
+                  </CardContent>
+                </Card>
+                <Card className="glass-card">
+                  <CardContent className="p-4 text-center">
+                    <TrendingDown className="w-5 h-5 mx-auto mb-1 text-red-500" />
+                    <p className="font-display text-xl font-bold text-red-500">₹{minesStats.totalLost}</p>
+                    <p className="text-xs text-muted-foreground">Total Lost</p>
+                  </CardContent>
+                </Card>
+              </motion.div>
+
+              {/* Win Rate */}
+              {minesStats.total > 0 && (
+                <Card className="glass-card">
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm text-muted-foreground">Win Rate</span>
+                      <span className="font-display font-bold text-primary">
+                        {((minesStats.wins / minesStats.total) * 100).toFixed(1)}%
+                      </span>
+                    </div>
+                    <div className="h-2 bg-secondary rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-gradient-to-r from-emerald-500 to-green-500"
+                        style={{ width: `${(minesStats.wins / minesStats.total) * 100}%` }}
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Mines Games List */}
+              <Card className="glass-card">
+                <CardHeader>
+                  <CardTitle className="text-lg">Mines Games</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {minesGames.length === 0 ? (
+                    <div className="text-center py-8">
+                      <Gem className="w-12 h-12 mx-auto text-muted-foreground/50 mb-3" />
+                      <p className="text-muted-foreground">No Mines games played yet</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {minesGames.map((game, index) => {
+                        const isWin = game.status === 'won';
+                        return (
+                          <motion.div
+                            key={game.id}
+                            initial={{ opacity: 0, x: -20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: index * 0.05 }}
+                            className="p-4 bg-secondary/30 rounded-lg flex items-center justify-between"
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className={`p-2 rounded-full ${isWin ? 'bg-green-500/20' : 'bg-red-500/20'}`}>
+                                {isWin ? (
+                                  <Gem className="w-4 h-4 text-green-500" />
+                                ) : (
+                                  <Bomb className="w-4 h-4 text-red-500" />
+                                )}
+                              </div>
+                              <div>
+                                <div className="flex items-center gap-2">
+                                  <p className="font-medium">{isWin ? 'Cashed Out' : 'Boom!'}</p>
+                                  <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/20 text-primary">
+                                    {game.mines_count} mines
+                                  </span>
+                                </div>
+                                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                  <Calendar className="w-3 h-3" />
+                                  {format(new Date(game.created_at), 'MMM dd, hh:mm a')}
+                                  <span>• {game.revealed_positions?.length || 0} gems revealed</span>
+                                </div>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <p className={`font-display font-bold ${isWin ? 'text-green-500' : 'text-red-500'}`}>
+                                {isWin ? `+₹${game.final_amount}` : `-₹${game.entry_amount}`}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                {isWin ? `${game.current_multiplier.toFixed(2)}x` : `Entry: ₹${game.entry_amount}`}
+                              </p>
+                            </div>
+                          </motion.div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
           </Tabs>
         )}
       </main>
 
       <BottomNav />
-      <TelegramFloat />
+      <SupportFloat />
     </div>
   );
 };

@@ -127,6 +127,45 @@ class SoundManager {
   playError() {
     this.playTone(200, 0.15, 'square', 0.2);
   }
+
+  // Mines - Gem reveal celebration
+  playGemReveal() {
+    const notes = [880, 1100, 1320]; // High sparkly tones
+    notes.forEach((freq, i) => {
+      setTimeout(() => this.playTone(freq, 0.08, 'sine', 0.2), i * 50);
+    });
+  }
+
+  // Mines - Bomb explosion
+  playBombExplosion() {
+    // Low rumble followed by high crash
+    this.playTone(80, 0.3, 'sawtooth', 0.4);
+    setTimeout(() => this.playTone(150, 0.2, 'square', 0.3), 50);
+    setTimeout(() => this.playTone(60, 0.4, 'sawtooth', 0.35), 100);
+    setTimeout(() => {
+      // White noise-like effect
+      for (let i = 0; i < 5; i++) {
+        setTimeout(() => this.playTone(100 + Math.random() * 100, 0.05, 'sawtooth', 0.15), i * 30);
+      }
+    }, 150);
+  }
+
+  // Mines - Cash out success
+  playCashOut() {
+    const melody = [
+      { freq: 523, dur: 0.1 },  // C5
+      { freq: 659, dur: 0.1 },  // E5
+      { freq: 784, dur: 0.1 },  // G5
+      { freq: 1047, dur: 0.15 }, // C6
+      { freq: 1319, dur: 0.2 }, // E6
+    ];
+    
+    let time = 0;
+    melody.forEach(({ freq, dur }) => {
+      setTimeout(() => this.playTone(freq, dur, 'sine', 0.25), time);
+      time += dur * 600;
+    });
+  }
 }
 
 export const soundManager = new SoundManager();
