@@ -356,7 +356,9 @@ const AuthPage = () => {
   }, [user, navigate]);
 
   // Generate email from phone number for Supabase auth
+  // Support both old domain (proscims.app) and new domain (probattle.app)
   const phoneToEmail = (phone: string) => `${phone}@probattle.app`;
+  const phoneToOldEmail = (phone: string) => `${phone}@proscims.app`;
 
   // Check device ban
   const checkDeviceBan = async () => {
@@ -573,15 +575,34 @@ const AuthPage = () => {
         });
         navigate('/');
       } else {
-        // Login
-        const { data: loginData, error } = await supabase.auth.signInWithPassword({
+        // Login - try new domain first, then old domain for backwards compatibility
+        let loginData;
+        let loginError;
+        
+        // Try new domain first
+        const { data: newDomainData, error: newDomainError } = await supabase.auth.signInWithPassword({
           email,
           password: formData.password,
         });
+        
+        if (newDomainError && newDomainError.message.includes('Invalid login credentials')) {
+          // Try old domain (proscims.app) for backwards compatibility
+          const oldEmail = phoneToOldEmail(formData.phone);
+          const { data: oldDomainData, error: oldDomainError } = await supabase.auth.signInWithPassword({
+            email: oldEmail,
+            password: formData.password,
+          });
+          
+          loginData = oldDomainData;
+          loginError = oldDomainError;
+        } else {
+          loginData = newDomainData;
+          loginError = newDomainError;
+        }
 
-        if (error) {
-          let errorMessage = error.message;
-          if (error.message.includes('Invalid login credentials')) {
+        if (loginError) {
+          let errorMessage = loginError.message;
+          if (loginError.message.includes('Invalid login credentials')) {
             errorMessage = 'Invalid phone number or password. Please try again.';
           }
           toast({

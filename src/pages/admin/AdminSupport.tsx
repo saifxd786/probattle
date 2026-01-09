@@ -1,16 +1,29 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { MessageCircle, Send, Loader2, User, Clock, CheckCircle, AlertCircle } from 'lucide-react';
+import { MessageCircle, Send, Loader2, User, Clock, CheckCircle, AlertCircle, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
+
+// Canned responses for quick replies
+const CANNED_RESPONSES = [
+  { label: 'Greeting', message: 'Hello! Thank you for contacting ProBattle support. How can I help you today?' },
+  { label: 'Processing', message: 'Your request is being processed. Please wait 24-48 hours for resolution.' },
+  { label: 'Withdrawal', message: 'Withdrawals are processed within 24 hours. Please ensure your UPI ID is correct.' },
+  { label: 'Deposit Issue', message: 'If your deposit is not reflected, please share the transaction UTR number for verification.' },
+  { label: 'Game Rules', message: 'Please check our Rules & FAQs section for detailed game rules and guidelines.' },
+  { label: 'Account Ban', message: 'Your account has been reviewed. Please ensure you follow our fair play policies.' },
+  { label: 'Resolved', message: 'Your issue has been resolved. Is there anything else I can help you with?' },
+  { label: 'Closing', message: 'Thank you for contacting us. If you have any more questions, feel free to reach out!' },
+];
 
 interface Ticket {
   id: string;
@@ -23,6 +36,7 @@ interface Ticket {
   user?: {
     username: string;
     phone: string;
+    email: string;
   };
   unread_count?: number;
 }
@@ -104,7 +118,7 @@ const AdminSupport = () => {
         ticketsData.map(async (ticket) => {
           const { data: profile } = await supabase
             .from('profiles')
-            .select('username, phone')
+            .select('username, phone, email')
             .eq('id', ticket.user_id)
             .maybeSingle();
 
@@ -127,6 +141,10 @@ const AdminSupport = () => {
     }
 
     setIsLoading(false);
+  };
+
+  const useCannedResponse = (message: string) => {
+    setNewMessage(message);
   };
 
   const fetchMessages = async (ticketId: string) => {
@@ -366,7 +384,37 @@ const AdminSupport = () => {
               </CardContent>
 
               {/* Input */}
-              <div className="p-4 border-t border-border">
+              <div className="p-4 border-t border-border space-y-2">
+                {/* Canned Responses */}
+                <div className="flex items-center gap-2">
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" size="sm" className="gap-2">
+                        <Zap className="w-4 h-4" />
+                        Quick Replies
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-80 p-2" align="start">
+                      <div className="grid gap-1">
+                        {CANNED_RESPONSES.map((response, idx) => (
+                          <Button
+                            key={idx}
+                            variant="ghost"
+                            size="sm"
+                            className="justify-start text-left h-auto py-2 px-3"
+                            onClick={() => useCannedResponse(response.message)}
+                          >
+                            <div>
+                              <p className="font-medium text-xs text-primary">{response.label}</p>
+                              <p className="text-xs text-muted-foreground truncate max-w-60">{response.message}</p>
+                            </div>
+                          </Button>
+                        ))}
+                      </div>
+                    </PopoverContent>
+                  </Popover>
+                </div>
+                
                 <form onSubmit={sendMessage} className="flex gap-2">
                   <Input
                     value={newMessage}

@@ -23,10 +23,10 @@ const MinesGame = () => {
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="grid md:grid-cols-[1fr_320px] gap-6"
+      className="space-y-6"
     >
-      {/* Game Grid */}
-      <div className="order-2 md:order-1">
+      {/* Game Grid - TOP */}
+      <div>
         <MinesGrid
           minePositions={gameState.minePositions}
           revealedPositions={gameState.revealedPositions}
@@ -48,8 +48,8 @@ const MinesGame = () => {
         </div>
       </div>
 
-      {/* Game Panel */}
-      <div className="order-1 md:order-2">
+      {/* Game Panel - BOTTOM */}
+      <div className="max-w-md mx-auto">
         <MinesGamePanel
           phase={gameState.phase}
           entryAmount={gameState.entryAmount}
