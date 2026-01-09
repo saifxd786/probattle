@@ -239,6 +239,7 @@ export const useMinesGame = () => {
     
     if (isMine) {
       // Hit a mine - game over
+      soundManager.playBombExplosion();
       hapticManager.tokenHome();
       
       setGameState(prev => ({
@@ -268,7 +269,7 @@ export const useMinesGame = () => {
       });
     } else {
       // Safe tile - gem found
-      soundManager.playTokenMove();
+      soundManager.playGemReveal();
       hapticManager.tokenMove();
       
       const newRevealed = [...gameState.revealedPositions, position];
@@ -307,7 +308,7 @@ export const useMinesGame = () => {
 
     const winAmount = gameState.potentialWin;
     
-    soundManager.playTokenHome();
+    soundManager.playCashOut();
     hapticManager.tokenHome();
 
     setGameState(prev => ({
