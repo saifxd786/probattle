@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Search, Ban, CheckCircle, Shield, ShieldOff, Gamepad2 } from 'lucide-react';
+import { Search, Ban, CheckCircle, Shield, ShieldOff, Gamepad2, Trash2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -7,6 +7,16 @@ import { Input } from '@/components/ui/input';
 import { toast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import BanUserDialog from '@/components/admin/BanUserDialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 type Profile = {
   id: string;
@@ -33,6 +43,9 @@ const AdminUsers = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [banDialogOpen, setBanDialogOpen] = useState(false);
   const [userToBan, setUserToBan] = useState<Profile | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<Profile | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const fetchUsers = async () => {
     const { data: profiles, error } = await supabase
@@ -195,6 +208,44 @@ const AdminUsers = () => {
       toast({ title: 'Success', description: `Wallet ${amount > 0 ? 'credited' : 'debited'} successfully` });
       fetchUsers();
     }
+  };
+
+  const deleteUser = async () => {
+    if (!userToDelete) return;
+    
+    setIsDeleting(true);
+    
+    try {
+      // Delete related data first
+      await supabase.from('notifications').delete().eq('user_id', userToDelete.id);
+      await supabase.from('support_messages').delete().eq('sender_id', userToDelete.id);
+      await supabase.from('support_tickets').delete().eq('user_id', userToDelete.id);
+      await supabase.from('transactions').delete().eq('user_id', userToDelete.id);
+      await supabase.from('match_registrations').delete().eq('user_id', userToDelete.id);
+      await supabase.from('match_results').delete().eq('user_id', userToDelete.id);
+      await supabase.from('mines_games').delete().eq('user_id', userToDelete.id);
+      await supabase.from('thimble_games').delete().eq('user_id', userToDelete.id);
+      await supabase.from('redeem_code_uses').delete().eq('user_id', userToDelete.id);
+      await supabase.from('user_roles').delete().eq('user_id', userToDelete.id);
+      await supabase.from('referrals').delete().eq('referrer_id', userToDelete.id);
+      await supabase.from('referrals').delete().eq('referred_id', userToDelete.id);
+      
+      // Delete the profile
+      const { error } = await supabase.from('profiles').delete().eq('id', userToDelete.id);
+      
+      if (error) {
+        toast({ title: 'Error', description: error.message, variant: 'destructive' });
+      } else {
+        toast({ title: 'User Deleted', description: `${userToDelete.username || 'User'} has been permanently deleted.` });
+        fetchUsers();
+      }
+    } catch (error: any) {
+      toast({ title: 'Error', description: error.message || 'Failed to delete user', variant: 'destructive' });
+    }
+    
+    setIsDeleting(false);
+    setDeleteDialogOpen(false);
+    setUserToDelete(null);
   };
 
   const filteredUsers = users.filter(
@@ -360,6 +411,17 @@ const AdminUsers = () => {
                                 <Shield className="w-4 h-4 text-primary" />
                               )}
                             </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => {
+                                setUserToDelete(user);
+                                setDeleteDialogOpen(true);
+                              }}
+                              title="Delete user"
+                            >
+                              <Trash2 className="w-4 h-4 text-destructive" />
+                            </Button>
                           </div>
                         </td>
                       </tr>
@@ -378,6 +440,27 @@ const AdminUsers = () => {
         onConfirm={banUser}
         userName={userToBan?.username || 'Unknown User'}
       />
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete User Permanently?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete <strong>{userToDelete?.username || userToDelete?.email}</strong> and all their data including game history, transactions, and registrations. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={deleteUser}
+              disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeleting ? 'Deleting...' : 'Delete Permanently'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

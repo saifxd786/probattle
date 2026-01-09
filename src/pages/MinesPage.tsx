@@ -1,14 +1,15 @@
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Gem, Bomb, Shield, Zap } from 'lucide-react';
+import { ArrowLeft, Gem, Bomb, Shield, Zap, Trophy, Users, Coins } from 'lucide-react';
 import Header from '@/components/Header';
 import BottomNav from '@/components/BottomNav';
 import TelegramFloat from '@/components/TelegramFloat';
 import MinesGame from '@/components/mines/MinesGame';
 import { Button } from '@/components/ui/button';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { useDynamicStats } from '@/hooks/useDynamicStats';
+import { useDynamicStats, formatNumber, formatCurrency } from '@/hooks/useDynamicStats';
 import { useGameBan } from '@/hooks/useGameBan';
+import minesBanner from '@/assets/mines-banner.jpg';
 
 const howToPlay = [
   'Select your bet amount and number of mines (1-24)',
@@ -64,34 +65,45 @@ const MinesPage = () => {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="relative rounded-2xl overflow-hidden mb-6 bg-gradient-to-br from-emerald-600/30 via-emerald-500/20 to-background border border-emerald-500/20"
+          className="relative rounded-2xl overflow-hidden mb-6"
         >
-          <div className="absolute inset-0 bg-[url('/grid-pattern.svg')] opacity-10" />
-          <div className="relative p-6 md:p-8">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="p-2 rounded-xl bg-emerald-500/20 border border-emerald-500/30">
-                <Gem className="w-6 h-6 text-emerald-400" />
-              </div>
-              <h1 className="font-display text-3xl md:text-4xl font-bold">Mines</h1>
-            </div>
-            <p className="text-muted-foreground max-w-md">
-              Navigate the minefield to find gems! The more gems you reveal, the higher your multiplier. 
-              But watch out for mines!
+          <img 
+            src={minesBanner} 
+            alt="Mines Game" 
+            className="w-full h-40 md:h-56 object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent" />
+          <div className="absolute bottom-0 left-0 right-0 p-4 md:p-6">
+            <h1 className="font-display text-2xl md:text-4xl font-bold mb-1">
+              <span className="text-gradient">Mines</span> Game
+            </h1>
+            <p className="text-sm md:text-base text-muted-foreground">
+              Navigate the minefield to find gems! Cash out before you hit a mine!
             </p>
-            
-            {/* Stats */}
-            <div className="flex flex-wrap gap-4 mt-4">
-              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20">
-                <Zap className="w-4 h-4 text-emerald-400" />
-                <span className="text-sm font-medium">{winnersToday} Winners Today</span>
-              </div>
-              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20">
-                <span className="text-sm font-medium">{playingNow} Playing Now</span>
-              </div>
-              <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/20">
-                <span className="text-sm font-medium">₹{distributedToday} Won Today</span>
-              </div>
-            </div>
+          </div>
+        </motion.div>
+
+        {/* Stats */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="grid grid-cols-3 gap-3 mb-6"
+        >
+          <div className="glass-card p-3 text-center">
+            <Trophy className="w-5 h-5 mx-auto mb-1 text-primary" />
+            <p className="font-display text-lg font-bold text-foreground">{formatNumber(winnersToday)}</p>
+            <p className="text-xs text-muted-foreground">Winners Today</p>
+          </div>
+          <div className="glass-card p-3 text-center">
+            <Users className="w-5 h-5 mx-auto mb-1 text-primary" />
+            <p className="font-display text-lg font-bold text-foreground">{formatNumber(playingNow)}</p>
+            <p className="text-xs text-muted-foreground">Playing Now</p>
+          </div>
+          <div className="glass-card p-3 text-center">
+            <Coins className="w-5 h-5 mx-auto mb-1 text-primary" />
+            <p className="font-display text-lg font-bold text-foreground">{formatCurrency(distributedToday)}</p>
+            <p className="text-xs text-muted-foreground">Won Today</p>
           </div>
         </motion.div>
 
