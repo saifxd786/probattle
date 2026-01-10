@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
+import { usePushNotifications } from '@/hooks/usePushNotifications';
 
 interface AuthContextType {
   user: User | null;
@@ -10,6 +11,12 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+// Component to initialize push notifications
+const PushNotificationInitializer = () => {
+  usePushNotifications();
+  return null;
+};
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -42,6 +49,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   return (
     <AuthContext.Provider value={{ user, session, isLoading, signOut }}>
+      <PushNotificationInitializer />
       {children}
     </AuthContext.Provider>
   );

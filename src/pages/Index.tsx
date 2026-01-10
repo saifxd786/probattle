@@ -4,7 +4,6 @@ import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import Header from '@/components/Header';
 import BottomNav from '@/components/BottomNav';
-import SupportFloat from '@/components/SupportFloat';
 import Footer from '@/components/Footer';
 import GameCard from '@/components/GameCard';
 import HowItWorks from '@/components/HowItWorks';
@@ -139,7 +138,6 @@ const Index = () => {
       <TrustSection />
       <Footer />
       <BottomNav />
-      <SupportFloat />
       {user && <SupportChat />}
     </div>
     </PullToRefresh>

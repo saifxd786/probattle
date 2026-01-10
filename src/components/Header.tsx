@@ -77,12 +77,12 @@ const Header = () => {
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button 
-                    variant="neon" 
+                    variant="outline" 
                     size="sm" 
-                    className="flex gap-2"
+                    className="flex gap-1 px-2 h-8 text-xs"
                   >
-                    <Download className="w-4 h-4" />
-                    <span>Install</span>
+                    <Download className="w-3 h-3" />
+                    <span className="hidden xs:inline">Install</span>
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-48">
