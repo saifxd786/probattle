@@ -18,7 +18,15 @@ const AdminLoginPage = () => {
 
   const phoneToEmail = (phone: string) => {
     const cleanPhone = phone.replace(/\D/g, '');
-    return `${cleanPhone}@probattle.app`;
+    return cleanPhone; // Return just the phone number, we'll try both domains
+  };
+
+  const tryLogin = async (email: string, password: string) => {
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+    return { data, error };
   };
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -26,11 +34,23 @@ const AdminLoginPage = () => {
     setIsLoading(true);
 
     try {
-      // First authenticate
-      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-        email: phoneToEmail(phone),
-        password,
-      });
+      const cleanPhone = phoneToEmail(phone);
+      
+      // Try probattle.app first, then proscims.app for legacy users
+      let authData, authError;
+      
+      const result1 = await tryLogin(`${cleanPhone}@probattle.app`, password);
+      if (!result1.error) {
+        authData = result1.data;
+      } else {
+        // Try legacy domain
+        const result2 = await tryLogin(`${cleanPhone}@proscims.app`, password);
+        if (!result2.error) {
+          authData = result2.data;
+        } else {
+          authError = result1.error; // Show first error
+        }
+      }
 
       if (authError) throw authError;
 
