@@ -4,7 +4,7 @@ import { History, Trophy, XCircle, Gamepad2, Loader2, Calendar, TrendingUp, Tren
 import { useNavigate } from 'react-router-dom';
 import Header from '@/components/Header';
 import BottomNav from '@/components/BottomNav';
-import SupportFloat from '@/components/SupportFloat';
+import SupportChat from '@/components/SupportChat';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
@@ -530,7 +530,7 @@ const GameHistoryPage = () => {
       </main>
 
       <BottomNav />
-      <SupportFloat />
+      <SupportChat />
     </div>
   );
 };

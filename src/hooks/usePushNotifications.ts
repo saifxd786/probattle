@@ -48,7 +48,7 @@ export const usePushNotifications = () => {
     requestPermission();
 
     // Subscribe to realtime notifications
-    const channel = supabase
+    const notificationChannel = supabase
       .channel('push-notifications')
       .on(
         'postgres_changes',
@@ -71,8 +71,46 @@ export const usePushNotifications = () => {
       )
       .subscribe();
 
+    // Subscribe to support message replies
+    const supportChannel = supabase
+      .channel('support-push-notifications')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'support_messages',
+        },
+        async (payload) => {
+          const message = payload.new as {
+            ticket_id: string;
+            sender_type: string;
+            message: string;
+          };
+
+          // Only notify if it's an admin reply
+          if (message.sender_type === 'admin') {
+            // Check if this ticket belongs to the current user
+            const { data: ticket } = await supabase
+              .from('support_tickets')
+              .select('user_id')
+              .eq('id', message.ticket_id)
+              .single();
+
+            if (ticket && ticket.user_id === user.id) {
+              showNotification(
+                '💬 Support Reply',
+                message.message.substring(0, 100) + (message.message.length > 100 ? '...' : '')
+              );
+            }
+          }
+        }
+      )
+      .subscribe();
+
     return () => {
-      supabase.removeChannel(channel);
+      supabase.removeChannel(notificationChannel);
+      supabase.removeChannel(supportChannel);
     };
   }, [user, requestPermission, showNotification]);
 

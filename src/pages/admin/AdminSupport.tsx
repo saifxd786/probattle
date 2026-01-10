@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { MessageCircle, Send, Loader2, User, Clock, CheckCircle, AlertCircle, Zap } from 'lucide-react';
+import { MessageCircle, Send, Loader2, User, Clock, CheckCircle, AlertCircle, Zap, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -12,6 +12,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
+import UserDetailDialog from '@/components/admin/UserDetailDialog';
 
 // Canned responses for quick replies
 const CANNED_RESPONSES = [
@@ -59,6 +60,8 @@ const AdminSupport = () => {
   const [isSending, setIsSending] = useState(false);
   const [filter, setFilter] = useState<string>('all');
   const scrollRef = useRef<HTMLDivElement>(null);
+  const [viewUserId, setViewUserId] = useState<string | null>(null);
+  const [viewDialogOpen, setViewDialogOpen] = useState(false);
 
   useEffect(() => {
     fetchTickets();
@@ -327,13 +330,27 @@ const AdminSupport = () => {
               {/* Chat Header */}
               <CardHeader className="pb-3 border-b border-border">
                 <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle className="text-lg">
-                      {selectedTicket.user?.username || selectedTicket.user?.phone || 'Unknown User'}
-                    </CardTitle>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {selectedTicket.user?.phone}
-                    </p>
+                  <div className="flex items-center gap-3">
+                    <div>
+                      <CardTitle className="text-lg">
+                        {selectedTicket.user?.username || selectedTicket.user?.phone || 'Unknown User'}
+                      </CardTitle>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {selectedTicket.user?.phone}
+                      </p>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-1"
+                      onClick={() => {
+                        setViewUserId(selectedTicket.user_id);
+                        setViewDialogOpen(true);
+                      }}
+                    >
+                      <Eye className="w-4 h-4" />
+                      View
+                    </Button>
                   </div>
                   <div className="flex items-center gap-2">
                     <Select
@@ -443,6 +460,12 @@ const AdminSupport = () => {
           )}
         </Card>
       </div>
+
+      <UserDetailDialog
+        isOpen={viewDialogOpen}
+        onClose={() => setViewDialogOpen(false)}
+        userId={viewUserId}
+      />
     </div>
   );
 };
