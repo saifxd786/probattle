@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      daily_login_bonus: {
+        Row: {
+          coins: number
+          created_at: string
+          id: string
+          last_claim_date: string | null
+          streak: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          coins?: number
+          created_at?: string
+          id?: string
+          last_claim_date?: string | null
+          streak?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          coins?: number
+          created_at?: string
+          id?: string
+          last_claim_date?: string | null
+          streak?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       device_bans: {
         Row: {
           banned_at: string
@@ -940,6 +970,11 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      claim_daily_bonus: { Args: never; Returns: Json }
+      convert_coins_to_wallet: {
+        Args: { coins_to_convert: number }
+        Returns: Json
+      }
       generate_5digit_user_code: { Args: never; Returns: string }
       get_match_room_credentials: {
         Args: { _match_id: string }
