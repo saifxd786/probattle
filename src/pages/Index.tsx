@@ -9,6 +9,7 @@ import GameCard from '@/components/GameCard';
 import HowItWorks from '@/components/HowItWorks';
 import TrustSection from '@/components/TrustSection';
 import PullToRefresh from '@/components/PullToRefresh';
+import ReferralSection from '@/components/ReferralSection';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePullToRefresh } from '@/hooks/usePullToRefresh';
 
@@ -133,6 +134,15 @@ const Index = () => {
           </div>
         </div>
       </section>
+
+      {/* Referral Section - Only show for logged in users */}
+      {user && (
+        <section className="py-8 px-4">
+          <div className="container mx-auto max-w-md">
+            <ReferralSection />
+          </div>
+        </section>
+      )}
 
       <HowItWorks />
       <TrustSection />

@@ -53,6 +53,7 @@ const WalletPage = () => {
   const [customAmount, setCustomAmount] = useState('');
   const [withdrawAmount, setWithdrawAmount] = useState('');
   const [upiId, setUpiId] = useState('');
+  const [accountName, setAccountName] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [copied, setCopied] = useState(false);
   const [screenshot, setScreenshot] = useState<File | null>(null);
@@ -211,6 +212,11 @@ const WalletPage = () => {
       return;
     }
 
+    if (!accountName.trim()) {
+      toast({ title: 'Error', description: 'Please enter your account name', variant: 'destructive' });
+      return;
+    }
+
     if (!upiId.trim()) {
       toast({ title: 'Error', description: 'Please enter your UPI ID', variant: 'destructive' });
       return;
@@ -242,7 +248,7 @@ const WalletPage = () => {
         amount,
         status: 'pending',
         upi_id: upiId.trim(),
-        description: `Withdrawal request of ₹${amount}`,
+        description: `Withdrawal of ₹${amount} | Name: ${accountName.trim()}`,
       });
 
       if (error) {
@@ -258,6 +264,7 @@ const WalletPage = () => {
         setIsWithdrawOpen(false);
         setWithdrawAmount('');
         setUpiId('');
+        setAccountName('');
         fetchData();
       }
     } catch (error: any) {
@@ -413,7 +420,7 @@ const WalletPage = () => {
           >
             <span className="inline-flex items-center gap-2 px-3 py-1.5 bg-primary/10 border border-primary/30 rounded-full text-sm">
               <span className="text-muted-foreground">Your ID:</span>
-              <span className="font-display font-bold text-primary">{profile.user_code}</span>
+              <span className="font-display font-bold text-primary">#{profile.user_code}</span>
             </span>
           </motion.div>
         )}
@@ -441,11 +448,19 @@ const WalletPage = () => {
             </div>
             
             <div className="flex gap-3">
-              <Button variant="neon" size="sm" className="flex-1" onClick={() => setIsDepositOpen(true)}>
+              <Button 
+                size="sm" 
+                className="flex-1 bg-green-600 hover:bg-green-700 text-white border-none" 
+                onClick={() => setIsDepositOpen(true)}
+              >
                 <Plus className="w-4 h-4 mr-1" />
                 Add Money
               </Button>
-              <Button variant="outline" size="sm" className="flex-1" onClick={() => setIsWithdrawOpen(true)}>
+              <Button 
+                size="sm" 
+                className="flex-1 bg-red-600 hover:bg-red-700 text-white border-none" 
+                onClick={() => setIsWithdrawOpen(true)}
+              >
                 <ArrowUpRight className="w-4 h-4 mr-1" />
                 Withdraw
               </Button>
@@ -453,9 +468,8 @@ const WalletPage = () => {
             
             {/* Redeem Code Button */}
             <Button 
-              variant="ghost" 
               size="sm" 
-              className="w-full mt-2 border border-dashed border-primary/50 text-primary hover:bg-primary/10"
+              className="w-full mt-2 bg-yellow-600 hover:bg-yellow-700 text-white border-none"
               onClick={() => setIsRedeemOpen(true)}
             >
               <Gift className="w-4 h-4 mr-2" />
@@ -583,36 +597,52 @@ const WalletPage = () => {
               />
             </div>
 
-            {/* UPI Payment Methods */}
+            {/* UPI Payment Methods with Deep Links */}
             <div className="p-4 bg-primary/10 border border-primary/20 rounded-lg space-y-3">
               <div className="flex items-center justify-center gap-4 pb-3 border-b border-border/30">
-                <div className="flex flex-col items-center gap-1">
+                <a 
+                  href={`phonepe://pay?pa=${UPI_ID}&pn=ProBattle&am=${customAmount || depositAmount}&cu=INR`}
+                  className="flex flex-col items-center gap-1 cursor-pointer hover:opacity-80 transition-opacity"
+                >
                   <div className="w-12 h-12 rounded-lg bg-white flex items-center justify-center shadow-sm overflow-hidden p-1">
                     <img src={phonepeLogo} alt="PhonePe" className="w-full h-full object-contain" />
                   </div>
                   <span className="text-[10px] text-muted-foreground">PhonePe</span>
-                </div>
-                <div className="flex flex-col items-center gap-1">
+                </a>
+                <a 
+                  href={`gpay://upi/pay?pa=${UPI_ID}&pn=ProBattle&am=${customAmount || depositAmount}&cu=INR`}
+                  className="flex flex-col items-center gap-1 cursor-pointer hover:opacity-80 transition-opacity"
+                >
                   <div className="w-12 h-12 rounded-lg bg-white flex items-center justify-center shadow-sm overflow-hidden p-1">
                     <img src={gpayLogo} alt="GPay" className="w-full h-full object-contain" />
                   </div>
                   <span className="text-[10px] text-muted-foreground">GPay</span>
-                </div>
-                <div className="flex flex-col items-center gap-1">
+                </a>
+                <a 
+                  href={`paytmmp://pay?pa=${UPI_ID}&pn=ProBattle&am=${customAmount || depositAmount}&cu=INR`}
+                  className="flex flex-col items-center gap-1 cursor-pointer hover:opacity-80 transition-opacity"
+                >
                   <div className="w-12 h-12 rounded-lg bg-white flex items-center justify-center shadow-sm overflow-hidden p-1">
                     <img src={paytmLogo} alt="Paytm" className="w-full h-full object-contain" />
                   </div>
                   <span className="text-[10px] text-muted-foreground">Paytm</span>
-                </div>
-                <div className="flex flex-col items-center gap-1">
+                </a>
+                <a 
+                  href={`upi://pay?pa=${UPI_ID}&pn=ProBattle&am=${customAmount || depositAmount}&cu=INR`}
+                  className="flex flex-col items-center gap-1 cursor-pointer hover:opacity-80 transition-opacity"
+                >
                   <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-orange-500 to-green-600 flex items-center justify-center shadow-sm">
                     <span className="text-white font-bold text-sm">UPI</span>
                   </div>
                   <span className="text-[10px] text-muted-foreground">Any UPI</span>
-                </div>
+                </a>
               </div>
               
-              <p className="text-sm font-medium">Pay to UPI ID:</p>
+              <p className="text-xs text-center text-muted-foreground">
+                Tap any app icon to pay directly
+              </p>
+              
+              <p className="text-sm font-medium">Or pay manually to UPI ID:</p>
               <div className="flex items-center gap-2">
                 <code className="flex-1 p-2 bg-background rounded text-sm font-mono">{UPI_ID}</code>
                 <Button variant="outline" size="icon" onClick={copyUPI}>
@@ -673,7 +703,7 @@ const WalletPage = () => {
               </div>
             </div>
 
-            <Button variant="neon" className="w-full" onClick={handleDeposit} disabled={isSubmitting || !utrId.trim()}>
+            <Button className="w-full bg-green-600 hover:bg-green-700 text-white" onClick={handleDeposit} disabled={isSubmitting || !utrId.trim()}>
               {isSubmitting ? 'Submitting...' : `Request Deposit of ₹${customAmount || depositAmount}`}
             </Button>
           </div>
@@ -761,7 +791,17 @@ const WalletPage = () => {
               </div>
               
               <div>
-                <Label>Your UPI ID</Label>
+                <Label>Account Holder Name *</Label>
+                <Input
+                  type="text"
+                  placeholder="Enter your name"
+                  value={accountName}
+                  onChange={(e) => setAccountName(e.target.value)}
+                />
+              </div>
+              
+              <div>
+                <Label>Your UPI ID *</Label>
                 <Input
                   type="text"
                   placeholder="yourname@upi"
@@ -772,10 +812,9 @@ const WalletPage = () => {
             </div>
 
             <Button 
-              variant="neon" 
-              className="w-full" 
+              className="w-full bg-red-600 hover:bg-red-700 text-white" 
               onClick={handleWithdraw} 
-              disabled={isSubmitting || (profile?.wager_requirement || 0) > 0}
+              disabled={isSubmitting || (profile?.wager_requirement || 0) > 0 || !accountName.trim() || !upiId.trim()}
             >
               {isSubmitting ? 'Submitting...' : (profile?.wager_requirement || 0) > 0 ? 'Complete Wager First' : 'Request Withdrawal'}
             </Button>
@@ -813,8 +852,7 @@ const WalletPage = () => {
             </div>
 
             <Button 
-              variant="neon" 
-              className="w-full" 
+              className="w-full bg-yellow-600 hover:bg-yellow-700 text-white" 
               onClick={handleRedeem} 
               disabled={isRedeeming || !redeemCode.trim()}
             >

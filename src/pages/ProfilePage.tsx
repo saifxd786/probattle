@@ -204,7 +204,7 @@ const ProfilePage = () => {
 
   const copyUserCode = () => {
     if (profile?.user_code) {
-      navigator.clipboard.writeText(profile.user_code);
+      navigator.clipboard.writeText(`#${profile.user_code}`);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     }
@@ -361,7 +361,7 @@ const ProfilePage = () => {
                     <div className="flex items-center gap-2">
                       <span className="text-sm text-muted-foreground">User ID:</span>
                       <code className="px-2 py-1 bg-primary/10 rounded font-mono text-primary">
-                        {profile?.user_code}
+                        #{profile?.user_code}
                       </code>
                       <Button size="icon" variant="ghost" className="h-6 w-6" onClick={copyUserCode}>
                         {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}

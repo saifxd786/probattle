@@ -198,7 +198,7 @@ const UserDetailDialog = ({ isOpen, onClose, userId }: UserDetailDialogProps) =>
                     </div>
                     <div className="space-y-1">
                       <p className="text-xs text-muted-foreground flex items-center gap-1"><Shield className="w-3 h-3" />User ID</p>
-                      <p className="font-medium font-mono text-xs">{profile.user_code || 'N/A'}</p>
+                      <p className="font-medium font-mono text-xs">#{profile.user_code || 'N/A'}</p>
                     </div>
                     <div className="space-y-1">
                       <p className="text-xs text-muted-foreground flex items-center gap-1"><Wallet className="w-3 h-3" />Wallet Balance</p>
