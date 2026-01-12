@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Wallet, Plus, ArrowUpRight, ArrowDownLeft, History, Copy, Check, Loader2, Upload, Image as ImageIcon, MessageCircle, AlertCircle, Gift } from 'lucide-react';
+import { Wallet, Plus, ArrowUpRight, ArrowDownLeft, History, Loader2, MessageCircle, AlertCircle, Gift, Copy, Check } from 'lucide-react';
 import phonepeLogo from '@/assets/phonepe-logo.png';
 import gpayLogo from '@/assets/gpay-logo.png';
 import paytmLogo from '@/assets/paytm-logo.png';
@@ -8,6 +8,7 @@ import { useNavigate } from 'react-router-dom';
 import Header from '@/components/Header';
 import BottomNav from '@/components/BottomNav';
 import TelegramFloat from '@/components/TelegramFloat';
+import DepositPaymentGateway from '@/components/DepositPaymentGateway';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -17,10 +18,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 
-const DEPOSIT_AMOUNTS = [100, 200, 500, 1000, 5000];
-const MIN_DEPOSIT = 100;
 const MIN_WITHDRAWAL = 110;
-const UPI_ID = 'mohdqureshi807@naviaxis';
 
 type Transaction = {
   id: string;
@@ -49,17 +47,10 @@ const WalletPage = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isDepositOpen, setIsDepositOpen] = useState(false);
   const [isWithdrawOpen, setIsWithdrawOpen] = useState(false);
-  const [depositAmount, setDepositAmount] = useState<number>(100);
-  const [customAmount, setCustomAmount] = useState('');
   const [withdrawAmount, setWithdrawAmount] = useState('');
   const [upiId, setUpiId] = useState('');
   const [accountName, setAccountName] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [copied, setCopied] = useState(false);
-  const [screenshot, setScreenshot] = useState<File | null>(null);
-  const [screenshotPreview, setScreenshotPreview] = useState<string | null>(null);
-  const [utrId, setUtrId] = useState('');
-  const fileInputRef = useRef<HTMLInputElement>(null);
   
   // Redeem code state
   const [isRedeemOpen, setIsRedeemOpen] = useState(false);
@@ -71,7 +62,6 @@ const WalletPage = () => {
 
     setIsLoading(true);
 
-    // Fetch profile
     const { data: profileData } = await supabase
       .from('profiles')
       .select('wallet_balance, user_code, wager_requirement')
@@ -86,7 +76,6 @@ const WalletPage = () => {
       });
     }
 
-    // Fetch transactions
     const { data: txData } = await supabase
       .from('transactions')
       .select('id, type, amount, status, description, created_at, screenshot_url, utr_id')
@@ -109,42 +98,14 @@ const WalletPage = () => {
     fetchData();
   }, [user, navigate]);
 
-  const handleScreenshotChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      if (file.size > 5 * 1024 * 1024) {
-        toast({ title: 'Error', description: 'File size must be less than 5MB', variant: 'destructive' });
-        return;
-      }
-      setScreenshot(file);
-      const reader = new FileReader();
-      reader.onloadend = () => setScreenshotPreview(reader.result as string);
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const handleDeposit = async () => {
+  const handleDeposit = async (amount: number, utrId: string, screenshot: File | null) => {
     if (!user) return;
-
-    const amount = customAmount ? Number(customAmount) : depositAmount;
-
-    if (amount < MIN_DEPOSIT) {
-      toast({ title: 'Error', description: `Minimum deposit is ₹${MIN_DEPOSIT}`, variant: 'destructive' });
-      return;
-    }
-
-    // UTR is required
-    if (!utrId.trim()) {
-      toast({ title: 'Error', description: 'Please enter your UTR/Transaction ID', variant: 'destructive' });
-      return;
-    }
 
     setIsSubmitting(true);
 
     try {
       let screenshotUrl = null;
       
-      // Upload screenshot if provided (now optional)
       if (screenshot) {
         const fileExt = screenshot.name.split('.').pop();
         const fileName = `${user.id}/${Date.now()}.${fileExt}`;
@@ -157,7 +118,6 @@ const WalletPage = () => {
         screenshotUrl = fileName;
       }
 
-      // Create transaction with UTR
       const { error } = await supabase.from('transactions').insert({
         user_id: user.id,
         type: 'deposit',
@@ -172,13 +132,8 @@ const WalletPage = () => {
 
       toast({ 
         title: 'Deposit Request Submitted', 
-        description: 'Your payment screenshot has been uploaded. Wait for admin approval.' 
+        description: 'Your payment is being verified. Wait for admin approval.' 
       });
-      setIsDepositOpen(false);
-      setCustomAmount('');
-      setScreenshot(null);
-      setScreenshotPreview(null);
-      setUtrId('');
       fetchData();
     } catch (error: any) {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
@@ -202,7 +157,6 @@ const WalletPage = () => {
       return;
     }
 
-    // Check wager requirement
     if (profile.wager_requirement > 0) {
       toast({ 
         title: 'Wager Requirement Not Met', 
@@ -225,7 +179,6 @@ const WalletPage = () => {
     setIsSubmitting(true);
 
     try {
-      // First deduct balance immediately
       const newBalance = profile.wallet_balance - amount;
       const { error: deductError } = await supabase
         .from('profiles')
@@ -238,10 +191,8 @@ const WalletPage = () => {
         return;
       }
 
-      // Update local state
       setProfile({ ...profile, wallet_balance: newBalance });
 
-      // Create withdrawal transaction
       const { error } = await supabase.from('transactions').insert({
         user_id: user.id,
         type: 'withdrawal',
@@ -252,7 +203,6 @@ const WalletPage = () => {
       });
 
       if (error) {
-        // Rollback balance if transaction creation fails
         await supabase
           .from('profiles')
           .update({ wallet_balance: profile.wallet_balance })
@@ -280,7 +230,6 @@ const WalletPage = () => {
     setIsRedeeming(true);
 
     try {
-      // Find the code
       const { data: codeData, error: codeError } = await supabase
         .from('redeem_codes')
         .select('*')
@@ -294,21 +243,18 @@ const WalletPage = () => {
         return;
       }
 
-      // Check if expired
       if (codeData.expires_at && new Date(codeData.expires_at) < new Date()) {
         toast({ title: 'Code Expired', description: 'This code has expired', variant: 'destructive' });
         setIsRedeeming(false);
         return;
       }
 
-      // Check max uses
       if (codeData.current_uses >= codeData.max_uses) {
         toast({ title: 'Code Exhausted', description: 'This code has reached its maximum uses', variant: 'destructive' });
         setIsRedeeming(false);
         return;
       }
 
-      // Check if user already used this code
       const { data: existingUse } = await supabase
         .from('redeem_code_uses')
         .select('id')
@@ -322,7 +268,6 @@ const WalletPage = () => {
         return;
       }
 
-      // Record the use
       const { error: useError } = await supabase.from('redeem_code_uses').insert({
         code_id: codeData.id,
         user_id: user.id,
@@ -331,19 +276,16 @@ const WalletPage = () => {
 
       if (useError) throw useError;
 
-      // Increment uses count
       await supabase
         .from('redeem_codes')
         .update({ current_uses: codeData.current_uses + 1 })
         .eq('id', codeData.id);
 
-      // Credit wallet
       await supabase
         .from('profiles')
         .update({ wallet_balance: (profile?.wallet_balance || 0) + codeData.amount })
         .eq('id', user.id);
 
-      // Create transaction record
       await supabase.from('transactions').insert({
         user_id: user.id,
         type: 'admin_credit',
@@ -365,12 +307,6 @@ const WalletPage = () => {
     }
 
     setIsRedeeming(false);
-  };
-
-  const copyUPI = () => {
-    navigator.clipboard.writeText(UPI_ID);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
   };
 
   const getStatusColor = (status: string) => {
@@ -466,7 +402,6 @@ const WalletPage = () => {
               </Button>
             </div>
             
-            {/* Redeem Code Button */}
             <Button 
               size="sm" 
               className="w-full mt-2 bg-yellow-600 hover:bg-yellow-700 text-white border-none"
@@ -548,7 +483,6 @@ const WalletPage = () => {
                     </div>
                   </div>
                   
-                  {/* Contact Support for Pending Deposits */}
                   {tx.type === 'deposit' && tx.status === 'pending' && (
                     <button
                       onClick={() => handleContactSupport(tx)}
@@ -565,150 +499,13 @@ const WalletPage = () => {
         </motion.div>
       </main>
 
-      {/* Deposit Dialog */}
-      <Dialog open={isDepositOpen} onOpenChange={setIsDepositOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Add Money</DialogTitle>
-            <DialogDescription>Minimum deposit: ₹{MIN_DEPOSIT}</DialogDescription>
-          </DialogHeader>
-          
-          <div className="space-y-4 mt-4">
-            <div className="grid grid-cols-3 gap-2">
-              {DEPOSIT_AMOUNTS.map((amount) => (
-                <Button
-                  key={amount}
-                  variant={depositAmount === amount && !customAmount ? 'default' : 'outline'}
-                  onClick={() => { setDepositAmount(amount); setCustomAmount(''); }}
-                  className="font-display"
-                >
-                  ₹{amount}
-                </Button>
-              ))}
-            </div>
-
-            <div>
-              <Label>Custom Amount</Label>
-              <Input
-                type="number"
-                placeholder={`Min ₹${MIN_DEPOSIT}`}
-                value={customAmount}
-                onChange={(e) => setCustomAmount(e.target.value)}
-              />
-            </div>
-
-            {/* UPI Payment Methods with Deep Links */}
-            <div className="p-4 bg-primary/10 border border-primary/20 rounded-lg space-y-3">
-              <div className="flex items-center justify-center gap-4 pb-3 border-b border-border/30">
-                <a 
-                  href={`phonepe://pay?pa=${UPI_ID}&pn=ProBattle&am=${customAmount || depositAmount}&cu=INR`}
-                  className="flex flex-col items-center gap-1 cursor-pointer hover:opacity-80 transition-opacity"
-                >
-                  <div className="w-12 h-12 rounded-lg bg-white flex items-center justify-center shadow-sm overflow-hidden p-1">
-                    <img src={phonepeLogo} alt="PhonePe" className="w-full h-full object-contain" />
-                  </div>
-                  <span className="text-[10px] text-muted-foreground">PhonePe</span>
-                </a>
-                <a 
-                  href={`gpay://upi/pay?pa=${UPI_ID}&pn=ProBattle&am=${customAmount || depositAmount}&cu=INR`}
-                  className="flex flex-col items-center gap-1 cursor-pointer hover:opacity-80 transition-opacity"
-                >
-                  <div className="w-12 h-12 rounded-lg bg-white flex items-center justify-center shadow-sm overflow-hidden p-1">
-                    <img src={gpayLogo} alt="GPay" className="w-full h-full object-contain" />
-                  </div>
-                  <span className="text-[10px] text-muted-foreground">GPay</span>
-                </a>
-                <a 
-                  href={`paytmmp://pay?pa=${UPI_ID}&pn=ProBattle&am=${customAmount || depositAmount}&cu=INR`}
-                  className="flex flex-col items-center gap-1 cursor-pointer hover:opacity-80 transition-opacity"
-                >
-                  <div className="w-12 h-12 rounded-lg bg-white flex items-center justify-center shadow-sm overflow-hidden p-1">
-                    <img src={paytmLogo} alt="Paytm" className="w-full h-full object-contain" />
-                  </div>
-                  <span className="text-[10px] text-muted-foreground">Paytm</span>
-                </a>
-                <a 
-                  href={`upi://pay?pa=${UPI_ID}&pn=ProBattle&am=${customAmount || depositAmount}&cu=INR`}
-                  className="flex flex-col items-center gap-1 cursor-pointer hover:opacity-80 transition-opacity"
-                >
-                  <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-orange-500 to-green-600 flex items-center justify-center shadow-sm">
-                    <span className="text-white font-bold text-sm">UPI</span>
-                  </div>
-                  <span className="text-[10px] text-muted-foreground">Any UPI</span>
-                </a>
-              </div>
-              
-              <p className="text-xs text-center text-muted-foreground">
-                Tap any app icon to pay directly
-              </p>
-              
-              <p className="text-sm font-medium">Or pay manually to UPI ID:</p>
-              <div className="flex items-center gap-2">
-                <code className="flex-1 p-2 bg-background rounded text-sm font-mono">{UPI_ID}</code>
-                <Button variant="outline" size="icon" onClick={copyUPI}>
-                  {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                </Button>
-              </div>
-            </div>
-
-            {/* UTR ID Field */}
-            <div>
-              <Label>UTR / Transaction ID *</Label>
-              <Input
-                value={utrId}
-                onChange={(e) => setUtrId(e.target.value)}
-                placeholder="Enter 12-digit UTR number"
-              />
-              <p className="text-xs text-muted-foreground mt-1">
-                Find this in your UPI app payment history
-              </p>
-            </div>
-
-            {/* Screenshot Upload - Optional */}
-            <div>
-              <Label>Payment Screenshot (Optional)</Label>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                onChange={handleScreenshotChange}
-                className="hidden"
-              />
-              <div 
-                onClick={() => fileInputRef.current?.click()}
-                className="mt-2 border-2 border-dashed border-border rounded-lg p-4 cursor-pointer hover:border-primary/50 transition-colors"
-              >
-                {screenshotPreview ? (
-                  <div className="relative">
-                    <img 
-                      src={screenshotPreview} 
-                      alt="Screenshot preview" 
-                      className="w-full h-32 object-contain rounded"
-                    />
-                    <p className="text-xs text-center text-muted-foreground mt-2">
-                      Click to change
-                    </p>
-                  </div>
-                ) : (
-                  <div className="text-center py-4">
-                    <Upload className="w-8 h-8 mx-auto text-muted-foreground mb-2" />
-                    <p className="text-sm text-muted-foreground">
-                      Upload payment screenshot (optional)
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Max 5MB, PNG/JPG
-                    </p>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <Button className="w-full bg-green-600 hover:bg-green-700 text-white" onClick={handleDeposit} disabled={isSubmitting || !utrId.trim()}>
-              {isSubmitting ? 'Submitting...' : `Request Deposit of ₹${customAmount || depositAmount}`}
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      {/* Professional Deposit Payment Gateway */}
+      <DepositPaymentGateway 
+        isOpen={isDepositOpen}
+        onClose={() => setIsDepositOpen(false)}
+        onSubmit={handleDeposit}
+        isSubmitting={isSubmitting}
+      />
 
       {/* Withdraw Dialog */}
       <Dialog open={isWithdrawOpen} onOpenChange={setIsWithdrawOpen}>
@@ -719,7 +516,6 @@ const WalletPage = () => {
           </DialogHeader>
           
           <div className="space-y-4 mt-4">
-            {/* Wager Requirement Progress */}
             {profile && profile.wager_requirement > 0 && (
               <div className="p-4 bg-orange-500/10 border border-orange-500/30 rounded-lg">
                 <div className="flex items-center gap-2 mb-2">
@@ -760,7 +556,6 @@ const WalletPage = () => {
               </p>
             </div>
 
-            {/* UPI Payment Methods */}
             <div className="p-4 bg-primary/10 border border-primary/20 rounded-lg space-y-3">
               <p className="text-sm font-medium text-center mb-2">Withdrawal via UPI</p>
               <div className="flex items-center justify-center gap-4 pb-3 border-b border-border/30">

@@ -1,5 +1,3 @@
-import { useState } from 'react';
-import SplashScreen from './components/SplashScreen';
 import UpdatePrompt from './components/UpdatePrompt';
 import OfflineIndicator from './components/OfflineIndicator';
 import { Toaster } from "@/components/ui/toaster";
@@ -46,12 +44,6 @@ import AdminSupport from "./pages/admin/AdminSupport";
 const queryClient = new QueryClient();
 
 const App = () => {
-  const [showSplash, setShowSplash] = useState(true);
-
-  if (showSplash) {
-    return <SplashScreen onComplete={() => setShowSplash(false)} />;
-  }
-
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
