@@ -4,7 +4,7 @@ import { ArrowLeft, Loader2, Ban } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import Header from '@/components/Header';
 import BottomNav from '@/components/BottomNav';
-import TelegramFloat from '@/components/TelegramFloat';
+
 import MatchCard from '@/components/MatchCard';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -14,8 +14,8 @@ import { Database } from '@/integrations/supabase/types';
 
 import bgmiCard from '@/assets/bgmi-card.jpg';
 import bgmiHeroBanner from '@/assets/bgmi-hero-banner.jpg';
-import tdmBanner from '@/assets/bgmi-tdm-banner.jpg';
-import classicBanner from '@/assets/bgmi-classic-banner.jpg';
+import tdmBanner from '@/assets/map-tdm.jpg';
+import classicBanner from '@/assets/map-erangel.jpg';
 
 type Match = Database['public']['Tables']['matches']['Row'];
 type MatchType = Database['public']['Enums']['match_type'];
@@ -257,7 +257,6 @@ const BGMIPage = () => {
       </section>
 
       <BottomNav />
-      <TelegramFloat />
     </div>
   );
 };

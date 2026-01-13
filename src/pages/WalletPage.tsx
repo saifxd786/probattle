@@ -7,7 +7,7 @@ import paytmLogo from '@/assets/paytm-logo.png';
 import { useNavigate } from 'react-router-dom';
 import Header from '@/components/Header';
 import BottomNav from '@/components/BottomNav';
-import TelegramFloat from '@/components/TelegramFloat';
+
 import DepositPaymentGateway from '@/components/DepositPaymentGateway';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
@@ -665,7 +665,6 @@ const WalletPage = () => {
       </Dialog>
 
       <BottomNav />
-      <TelegramFloat />
     </div>
   );
 };

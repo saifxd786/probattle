@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Gift, Copy, Check, Users, Wallet, Coins, Flame, Sparkles, ArrowRight, Loader2 } from 'lucide-react';
+import { Gift, Copy, Check, Users, Wallet, Coins, Flame, Sparkles, ArrowRight, Loader2, TrendingUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
@@ -15,6 +15,7 @@ type Referral = {
   id: string;
   referred_id: string;
   reward_amount: number;
+  pending_reward: number;
   is_rewarded: boolean;
   created_at: string;
   profiles: {
@@ -22,17 +23,17 @@ type Referral = {
   } | null;
 };
 
-const REFERRAL_REWARD = 10;
-
 const ReferralSection = () => {
   const { user } = useAuth();
   const [referralCode, setReferralCode] = useState<string | null>(null);
   const [referrals, setReferrals] = useState<Referral[]>([]);
   const [totalEarnings, setTotalEarnings] = useState(0);
+  const [pendingRewards, setPendingRewards] = useState(0);
   const [copied, setCopied] = useState(false);
+  const [isClaiming, setIsClaiming] = useState(false);
   
   // Daily bonus integration
-  const { bonusData, isLoading: isBonusLoading, isClaiming, isConverting, claimDailyBonus, convertCoins } = useDailyBonus();
+  const { bonusData, isLoading: isBonusLoading, isClaiming: isDailyClaiming, isConverting, claimDailyBonus, convertCoins } = useDailyBonus();
   const [isConvertOpen, setIsConvertOpen] = useState(false);
   const [coinsInput, setCoinsInput] = useState('');
   const [showClaimAnimation, setShowClaimAnimation] = useState(false);
@@ -73,7 +74,8 @@ const ReferralSection = () => {
         })
       );
       setReferrals(referralsWithProfiles);
-      setTotalEarnings(refData.filter(r => r.is_rewarded).reduce((sum, r) => sum + r.reward_amount, 0));
+      setTotalEarnings(refData.reduce((sum, r) => sum + (r.reward_amount || 0), 0));
+      setPendingRewards(refData.reduce((sum, r) => sum + ((r as any).pending_reward || 0), 0));
     }
   };
 
@@ -94,7 +96,45 @@ const ReferralSection = () => {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const handleClaim = async () => {
+  const handleClaimReferralRewards = async () => {
+    if (!user || isClaiming || pendingRewards <= 0) return;
+
+    setIsClaiming(true);
+    try {
+      const { data, error } = await supabase.rpc('claim_referral_rewards');
+
+      if (error) throw error;
+
+      const result = data as {
+        success: boolean;
+        message: string;
+        amount?: number;
+      };
+
+      if (result.success) {
+        toast({
+          title: '🎉 Rewards Claimed!',
+          description: `₹${result.amount?.toFixed(2)} added to your wallet!`,
+        });
+        await fetchReferralData();
+      } else {
+        toast({
+          title: 'Info',
+          description: result.message,
+        });
+      }
+    } catch (error: any) {
+      toast({
+        title: 'Error',
+        description: error.message,
+        variant: 'destructive',
+      });
+    } finally {
+      setIsClaiming(false);
+    }
+  };
+
+  const handleDailyClaim = async () => {
     setShowClaimAnimation(true);
     await claimDailyBonus();
     setTimeout(() => setShowClaimAnimation(false), 1500);
@@ -123,17 +163,127 @@ const ReferralSection = () => {
       className="space-y-4"
     >
       <Card className="glass-card overflow-hidden">
-        <Tabs defaultValue="daily" className="w-full">
+        <Tabs defaultValue="referral" className="w-full">
           <TabsList className="w-full grid grid-cols-2 bg-secondary/50">
-            <TabsTrigger value="daily" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-              <Coins className="w-4 h-4 mr-2" />
-              Daily Bonus
-            </TabsTrigger>
             <TabsTrigger value="referral" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
               <Gift className="w-4 h-4 mr-2" />
               Refer & Earn
             </TabsTrigger>
+            <TabsTrigger value="daily" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+              <Coins className="w-4 h-4 mr-2" />
+              Daily Bonus
+            </TabsTrigger>
           </TabsList>
+
+          {/* Referral Tab */}
+          <TabsContent value="referral" className="p-4 space-y-4">
+            <div className="text-center">
+              <p className="text-sm text-muted-foreground mb-1">
+                Earn <span className="text-primary font-bold">2.5%</span> of every deposit your referrals make!
+              </p>
+            </div>
+
+            {referralCode ? (
+              <>
+                <div className="p-3 bg-primary/10 border border-primary/20 rounded-lg">
+                  <p className="text-xs text-muted-foreground mb-1">Your Referral Code</p>
+                  <div className="flex items-center gap-2">
+                    <code className="flex-1 text-xl font-display font-bold text-primary">
+                      {referralCode}
+                    </code>
+                    <Button variant="outline" size="icon" onClick={copyReferralCode}>
+                      {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                    </Button>
+                  </div>
+                </div>
+
+                <Button variant="neon" className="w-full" onClick={copyReferralLink}>
+                  <Copy className="w-4 h-4 mr-2" />
+                  Copy Referral Link
+                </Button>
+              </>
+            ) : (
+              <p className="text-sm text-muted-foreground">Loading referral code...</p>
+            )}
+
+            {/* Pending Rewards - Claimable */}
+            {pendingRewards > 0 && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="p-4 bg-gradient-to-r from-green-500/20 to-emerald-500/20 border border-green-500/30 rounded-xl"
+              >
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <TrendingUp className="w-5 h-5 text-green-500" />
+                    <span className="font-medium text-green-500">Pending Rewards</span>
+                  </div>
+                  <span className="font-display text-xl font-bold text-green-500">
+                    ₹{pendingRewards.toFixed(2)}
+                  </span>
+                </div>
+                <Button
+                  onClick={handleClaimReferralRewards}
+                  disabled={isClaiming}
+                  className="w-full bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white border-none"
+                >
+                  {isClaiming ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <>
+                      <Sparkles className="w-4 h-4 mr-2" />
+                      Claim Rewards
+                    </>
+                  )}
+                </Button>
+              </motion.div>
+            )}
+
+            {/* Stats */}
+            <div className="grid grid-cols-2 gap-3 pt-2">
+              <div className="p-3 bg-secondary/30 rounded-lg text-center">
+                <Users className="w-5 h-5 mx-auto text-primary mb-1" />
+                <p className="text-2xl font-display font-bold">{referrals.length}</p>
+                <p className="text-xs text-muted-foreground">Friends Invited</p>
+              </div>
+              <div className="p-3 bg-secondary/30 rounded-lg text-center">
+                <Wallet className="w-5 h-5 mx-auto text-green-500 mb-1" />
+                <p className="text-2xl font-display font-bold text-green-500">₹{totalEarnings.toFixed(0)}</p>
+                <p className="text-xs text-muted-foreground">Total Earned</p>
+              </div>
+            </div>
+
+            {/* Recent Referrals */}
+            {referrals.length > 0 && (
+              <div className="pt-2">
+                <p className="text-sm font-medium mb-2">Recent Referrals</p>
+                <div className="space-y-2">
+                  {referrals.slice(0, 5).map((ref) => (
+                    <div
+                      key={ref.id}
+                      className="flex items-center justify-between p-2 rounded-lg bg-secondary/20"
+                    >
+                      <span className="text-sm">{ref.profiles?.username || 'User'}</span>
+                      <div className="flex items-center gap-2">
+                        {(ref as any).pending_reward > 0 && (
+                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-yellow-500/20 text-yellow-500">
+                            +₹{((ref as any).pending_reward || 0).toFixed(2)} pending
+                          </span>
+                        )}
+                        <span className={`text-xs px-2 py-0.5 rounded-full ${
+                          ref.reward_amount > 0
+                            ? 'bg-green-500/20 text-green-500' 
+                            : 'bg-muted text-muted-foreground'
+                        }`}>
+                          {ref.reward_amount > 0 ? `₹${ref.reward_amount.toFixed(0)} earned` : 'Waiting'}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </TabsContent>
           
           {/* Daily Bonus Tab */}
           <TabsContent value="daily" className="p-4 space-y-4 relative">
@@ -206,12 +356,12 @@ const ReferralSection = () => {
                 <div className="flex gap-2">
                   {bonusData?.canClaim ? (
                     <Button
-                      onClick={handleClaim}
-                      disabled={isClaiming}
+                      onClick={handleDailyClaim}
+                      disabled={isDailyClaiming}
                       className="flex-1 bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white border-none"
                       size="sm"
                     >
-                      {isClaiming ? (
+                      {isDailyClaiming ? (
                         <Loader2 className="w-4 h-4 animate-spin" />
                       ) : (
                         <>
@@ -239,74 +389,6 @@ const ReferralSection = () => {
                   >
                     <ArrowRight className="w-4 h-4" />
                   </Button>
-                </div>
-              </div>
-            )}
-          </TabsContent>
-
-          {/* Referral Tab */}
-          <TabsContent value="referral" className="p-4 space-y-4">
-            <p className="text-sm text-muted-foreground">
-              Invite friends and earn ₹{REFERRAL_REWARD} for each successful signup!
-            </p>
-
-            {referralCode ? (
-              <>
-                <div className="p-3 bg-primary/10 border border-primary/20 rounded-lg">
-                  <p className="text-xs text-muted-foreground mb-1">Your Referral Code</p>
-                  <div className="flex items-center gap-2">
-                    <code className="flex-1 text-xl font-display font-bold text-primary">
-                      {referralCode}
-                    </code>
-                    <Button variant="outline" size="icon" onClick={copyReferralCode}>
-                      {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                    </Button>
-                  </div>
-                </div>
-
-                <Button variant="neon" className="w-full" onClick={copyReferralLink}>
-                  <Copy className="w-4 h-4 mr-2" />
-                  Copy Referral Link
-                </Button>
-              </>
-            ) : (
-              <p className="text-sm text-muted-foreground">Loading referral code...</p>
-            )}
-
-            {/* Stats */}
-            <div className="grid grid-cols-2 gap-3 pt-2">
-              <div className="p-3 bg-secondary/30 rounded-lg text-center">
-                <Users className="w-5 h-5 mx-auto text-primary mb-1" />
-                <p className="text-2xl font-display font-bold">{referrals.length}</p>
-                <p className="text-xs text-muted-foreground">Friends Invited</p>
-              </div>
-              <div className="p-3 bg-secondary/30 rounded-lg text-center">
-                <Wallet className="w-5 h-5 mx-auto text-green-500 mb-1" />
-                <p className="text-2xl font-display font-bold text-green-500">₹{totalEarnings}</p>
-                <p className="text-xs text-muted-foreground">Total Earned</p>
-              </div>
-            </div>
-
-            {/* Recent Referrals */}
-            {referrals.length > 0 && (
-              <div className="pt-2">
-                <p className="text-sm font-medium mb-2">Recent Referrals</p>
-                <div className="space-y-2">
-                  {referrals.slice(0, 3).map((ref) => (
-                    <div
-                      key={ref.id}
-                      className="flex items-center justify-between p-2 rounded-lg bg-secondary/20"
-                    >
-                      <span className="text-sm">{ref.profiles?.username || 'User'}</span>
-                      <span className={`text-xs px-2 py-0.5 rounded-full ${
-                        ref.is_rewarded 
-                          ? 'bg-green-500/20 text-green-500' 
-                          : 'bg-yellow-500/20 text-yellow-500'
-                      }`}>
-                        {ref.is_rewarded ? `+₹${ref.reward_amount}` : 'Pending'}
-                      </span>
-                    </div>
-                  ))}
                 </div>
               </div>
             )}

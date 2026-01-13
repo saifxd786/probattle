@@ -704,6 +704,7 @@ export type Database = {
           created_at: string
           id: string
           is_rewarded: boolean
+          pending_reward: number | null
           referral_code: string
           referred_id: string
           referrer_id: string
@@ -713,6 +714,7 @@ export type Database = {
           created_at?: string
           id?: string
           is_rewarded?: boolean
+          pending_reward?: number | null
           referral_code: string
           referred_id: string
           referrer_id: string
@@ -722,6 +724,7 @@ export type Database = {
           created_at?: string
           id?: string
           is_rewarded?: boolean
+          pending_reward?: number | null
           referral_code?: string
           referred_id?: string
           referrer_id?: string
@@ -971,6 +974,7 @@ export type Database = {
     }
     Functions: {
       claim_daily_bonus: { Args: never; Returns: Json }
+      claim_referral_rewards: { Args: never; Returns: Json }
       convert_coins_to_wallet: {
         Args: { coins_to_convert: number }
         Returns: Json
