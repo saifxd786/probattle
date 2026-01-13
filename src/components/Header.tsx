@@ -1,10 +1,11 @@
-import { Menu, User, LogOut, Download, Smartphone, RefreshCw, Headset } from 'lucide-react';
+import { Menu, User, LogOut, Download, Smartphone, RefreshCw, Headset, MessageCircle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import NotificationBell from '@/components/NotificationBell';
+import SupportChat from '@/components/SupportChat';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -117,14 +118,19 @@ const Header = () => {
             )}
 
 
-            {/* Customer Support */}
-            <Link
-              to="/support"
+            {/* Telegram Support */}
+            <a
+              href="https://t.me/probattleofficial"
+              target="_blank"
+              rel="noopener noreferrer"
               className="p-2 rounded-lg hover:bg-secondary/50 transition-colors"
-              title="Customer Support"
+              title="Telegram Support"
             >
               <Headset className="w-5 h-5 text-primary" />
-            </Link>
+            </a>
+
+            {/* Live Chat Support */}
+            <SupportChat />
             
             <NotificationBell />
             
