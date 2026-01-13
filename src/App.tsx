@@ -14,7 +14,7 @@ import WalletPage from "./pages/WalletPage";
 import SupportPage from "./pages/SupportPage";
 import AuthPage from "./pages/AuthPage";
 import ProfilePage from "./pages/ProfilePage";
-import LeaderboardPage from "./pages/LeaderboardPage";
+import ActivityPage from "./pages/ActivityPage";
 import InstallPage from "./pages/InstallPage";
 import RulesPage from "./pages/RulesPage";
 import FairPlayPage from "./pages/FairPlayPage";
@@ -62,7 +62,7 @@ const App = () => {
               <Route path="/support" element={<SupportPage />} />
               <Route path="/auth" element={<AuthPage />} />
               <Route path="/profile" element={<ProfilePage />} />
-              <Route path="/leaderboard" element={<LeaderboardPage />} />
+              <Route path="/activity" element={<ActivityPage />} />
               <Route path="/install" element={<InstallPage />} />
               <Route path="/rules" element={<RulesPage />} />
               <Route path="/fair-play" element={<FairPlayPage />} />

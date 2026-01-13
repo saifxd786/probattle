@@ -1,10 +1,10 @@
-import { Gamepad2, Trophy, Wallet, Crown, User } from 'lucide-react';
+import { Gamepad2, Trophy, Wallet, Activity, User } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 
 const navItems = [
   { icon: Gamepad2, label: 'Matches', path: '/matches' },
-  { icon: Crown, label: 'Leaders', path: '/leaderboard' },
+  { icon: Activity, label: 'Activity', path: '/activity' },
   { icon: Trophy, label: 'My Games', path: '/my-games' },
   { icon: Wallet, label: 'Wallet', path: '/wallet' },
   { icon: User, label: 'Account', path: '/profile' },
