@@ -1,4 +1,4 @@
-import { Menu, User, LogOut, Download, Smartphone, RefreshCw, Headset, MessageCircle } from 'lucide-react';
+import { Menu, User, LogOut, Download, Smartphone, RefreshCw, MessageCircle, Send } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useState, useEffect } from 'react';
@@ -118,15 +118,15 @@ const Header = () => {
             )}
 
 
-            {/* Telegram Support */}
+            {/* Telegram */}
             <a
               href="https://t.me/probattleofficial"
               target="_blank"
               rel="noopener noreferrer"
               className="p-2 rounded-lg hover:bg-secondary/50 transition-colors"
-              title="Telegram Support"
+              title="Join Telegram"
             >
-              <Headset className="w-5 h-5 text-primary" />
+              <Send className="w-5 h-5 text-primary" />
             </a>
 
             {/* Live Chat Support */}
