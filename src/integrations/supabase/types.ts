@@ -732,6 +732,54 @@ export type Database = {
         }
         Relationships: []
       }
+      spin_wheel: {
+        Row: {
+          created_at: string
+          id: string
+          reward_amount: number
+          spun_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          reward_amount: number
+          spun_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          reward_amount?: number
+          spun_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      spin_wheel_settings: {
+        Row: {
+          cooldown_hours: number
+          created_at: string
+          id: string
+          is_enabled: boolean
+          updated_at: string
+        }
+        Insert: {
+          cooldown_hours?: number
+          created_at?: string
+          id?: string
+          is_enabled?: boolean
+          updated_at?: string
+        }
+        Update: {
+          cooldown_hours?: number
+          created_at?: string
+          id?: string
+          is_enabled?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
       support_messages: {
         Row: {
           created_at: string
@@ -968,13 +1016,45 @@ export type Database = {
         }
         Relationships: []
       }
+      weekly_login_rewards: {
+        Row: {
+          claimed_at: string
+          created_at: string
+          day_of_week: number
+          id: string
+          reward_amount: number
+          user_id: string
+          week_start: string
+        }
+        Insert: {
+          claimed_at?: string
+          created_at?: string
+          day_of_week: number
+          id?: string
+          reward_amount?: number
+          user_id: string
+          week_start: string
+        }
+        Update: {
+          claimed_at?: string
+          created_at?: string
+          day_of_week?: number
+          id?: string
+          reward_amount?: number
+          user_id?: string
+          week_start?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      check_spin_availability: { Args: never; Returns: Json }
       claim_daily_bonus: { Args: never; Returns: Json }
       claim_referral_rewards: { Args: never; Returns: Json }
+      claim_weekly_login_reward: { Args: never; Returns: Json }
       convert_coins_to_wallet: {
         Args: { coins_to_convert: number }
         Returns: Json
@@ -987,6 +1067,7 @@ export type Database = {
           room_password: string
         }[]
       }
+      get_weekly_login_status: { Args: never; Returns: Json }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -1002,6 +1083,7 @@ export type Database = {
         Args: { _match_id: string; _user_id: string }
         Returns: boolean
       }
+      spin_wheel: { Args: never; Returns: Json }
     }
     Enums: {
       app_role: "admin" | "moderator" | "user"

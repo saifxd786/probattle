@@ -1,3 +1,5 @@
+import { useState, useEffect } from 'react';
+import SplashScreen from './components/SplashScreen';
 import UpdatePrompt from './components/UpdatePrompt';
 import OfflineIndicator from './components/OfflineIndicator';
 import { Toaster } from "@/components/ui/toaster";
@@ -44,10 +46,31 @@ import AdminSupport from "./pages/admin/AdminSupport";
 const queryClient = new QueryClient();
 
 const App = () => {
+  const [showSplash, setShowSplash] = useState(true);
+  const [hasShownSplash, setHasShownSplash] = useState(false);
+
+  useEffect(() => {
+    // Check if splash was already shown this session
+    const splashShown = sessionStorage.getItem('splashShown');
+    if (splashShown) {
+      setShowSplash(false);
+      setHasShownSplash(true);
+    }
+  }, []);
+
+  const handleSplashComplete = () => {
+    setShowSplash(false);
+    setHasShownSplash(true);
+    sessionStorage.setItem('splashShown', 'true');
+  };
+
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <TooltipProvider>
+          {showSplash && !hasShownSplash && (
+            <SplashScreen onComplete={handleSplashComplete} />
+          )}
           <Toaster />
           <Sonner />
           <UpdatePrompt />
