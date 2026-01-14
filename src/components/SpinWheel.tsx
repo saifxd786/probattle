@@ -7,6 +7,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
 
+// Segments arranged in order on the wheel
 const SEGMENTS = [
   { value: 10, color: 'hsl(200, 100%, 50%)', label: '₹10' },
   { value: 20, color: 'hsl(185, 100%, 45%)', label: '₹20' },
@@ -37,6 +38,8 @@ const SpinWheel = () => {
   const [result, setResult] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const wheelRef = useRef<HTMLDivElement>(null);
+
+  const segmentAngle = 360 / SEGMENTS.length;
 
   useEffect(() => {
     if (user) {
@@ -98,18 +101,43 @@ const SpinWheel = () => {
       
       const spinResult = data as { success: boolean; reward_amount?: number; message: string };
       
-      if (spinResult.success && spinResult.reward_amount) {
-        // Find segment index for the reward
-        const segmentIndex = SEGMENTS.findIndex(s => s.value === spinResult.reward_amount);
-        const segmentAngle = 360 / SEGMENTS.length;
-        const targetAngle = segmentIndex * segmentAngle;
+      if (spinResult.success && spinResult.reward_amount !== undefined) {
+        const rewardAmount = spinResult.reward_amount;
         
-        // Calculate rotation (multiple full spins + target)
-        const spins = 5 + Math.random() * 3;
-        const newRotation = rotation + (spins * 360) + (360 - targetAngle) + (segmentAngle / 2);
+        // Find the FIRST segment that matches the reward (in case of duplicates)
+        let targetSegmentIndex = SEGMENTS.findIndex(s => s.value === rewardAmount);
+        
+        // If multiple segments have the same value, pick a random one
+        const matchingIndices = SEGMENTS.map((s, i) => s.value === rewardAmount ? i : -1).filter(i => i !== -1);
+        if (matchingIndices.length > 1) {
+          targetSegmentIndex = matchingIndices[Math.floor(Math.random() * matchingIndices.length)];
+        }
+        
+        // Calculate the rotation needed to land on this segment
+        // The pointer is at the top (12 o'clock position)
+        // Segments are drawn starting from 3 o'clock going clockwise
+        // So we need to account for this offset
+        
+        // The segment at index 0 starts at angle 0 (3 o'clock)
+        // To make segment at targetSegmentIndex land at the top (pointer at 12 o'clock = 270 degrees from 3 o'clock)
+        // We need to rotate so that the middle of the target segment is at 270 degrees
+        
+        const segmentMiddleAngle = targetSegmentIndex * segmentAngle + segmentAngle / 2;
+        
+        // To bring this to the top (270 degrees position in CSS where 0 is 3 o'clock)
+        // But wait, the pointer is at the top which is -90 degrees from 3 o'clock
+        // So we need the segment to be at 270 degrees from the 3 o'clock position
+        
+        // The wheel rotates clockwise with positive values
+        // We want the target segment's middle to align with the top
+        const targetRotation = 360 - segmentMiddleAngle + 270;
+        
+        // Add multiple full spins for effect
+        const spins = 5 + Math.floor(Math.random() * 3);
+        const newRotation = rotation + (spins * 360) + targetRotation - (rotation % 360);
         
         setRotation(newRotation);
-        setResult(spinResult.reward_amount);
+        setResult(rewardAmount);
         
         // Show result after animation
         setTimeout(() => {
@@ -120,7 +148,7 @@ const SpinWheel = () => {
           
           toast({
             title: '🎉 Congratulations!',
-            description: `You won ₹${spinResult.reward_amount}!`,
+            description: `You won ₹${rewardAmount}!`,
           });
         }, 5000);
       } else {
@@ -140,8 +168,6 @@ const SpinWheel = () => {
       setIsSpinning(false);
     }
   };
-
-  const segmentAngle = 360 / SEGMENTS.length;
 
   if (isLoading) {
     return (
