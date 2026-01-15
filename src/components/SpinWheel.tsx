@@ -1,30 +1,21 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { useState, useEffect, useRef } from 'react';
-import { Loader2, Gift } from 'lucide-react';
+import { Loader2, Gift, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
 
-// Segments arranged in order on the wheel
+// Only 7 segments as requested
 const SEGMENTS = [
   { value: 10, color: 'hsl(200, 100%, 50%)', label: '₹10' },
-  { value: 20, color: 'hsl(185, 100%, 45%)', label: '₹20' },
-  { value: 100, color: 'hsl(270, 100%, 60%)', label: '₹100' },
-  { value: 20, color: 'hsl(185, 100%, 45%)', label: '₹20' },
-  { value: 10, color: 'hsl(200, 100%, 50%)', label: '₹10' },
+  { value: 20, color: 'hsl(170, 100%, 45%)', label: '₹20' },
+  { value: 100, color: 'hsl(270, 100%, 55%)', label: '₹100' },
   { value: 300, color: 'hsl(45, 100%, 50%)', label: '₹300' },
-  { value: 20, color: 'hsl(185, 100%, 45%)', label: '₹20' },
-  { value: 10, color: 'hsl(200, 100%, 50%)', label: '₹10' },
-  { value: 500, color: 'hsl(0, 100%, 60%)', label: '₹500' },
-  { value: 20, color: 'hsl(185, 100%, 45%)', label: '₹20' },
-  { value: 10, color: 'hsl(200, 100%, 50%)', label: '₹10' },
+  { value: 500, color: 'hsl(0, 100%, 55%)', label: '₹500' },
   { value: 1000, color: 'hsl(320, 100%, 50%)', label: '₹1000' },
-  { value: 20, color: 'hsl(185, 100%, 45%)', label: '₹20' },
-  { value: 10, color: 'hsl(200, 100%, 50%)', label: '₹10' },
   { value: 5000, color: 'hsl(50, 100%, 50%)', label: '₹5000' },
-  { value: 10, color: 'hsl(200, 100%, 50%)', label: '₹10' },
 ];
 
 const SpinWheel = () => {
@@ -32,64 +23,59 @@ const SpinWheel = () => {
   const [isSpinning, setIsSpinning] = useState(false);
   const [rotation, setRotation] = useState(0);
   const [canSpin, setCanSpin] = useState(false);
-  const [nextSpinAt, setNextSpinAt] = useState<Date | null>(null);
-  const [countdown, setCountdown] = useState('');
+  const [isLocked, setIsLocked] = useState(true);
+  const [totalDeposits, setTotalDeposits] = useState(0);
   const [showResult, setShowResult] = useState(false);
   const [result, setResult] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const wheelRef = useRef<HTMLDivElement>(null);
 
   const segmentAngle = 360 / SEGMENTS.length;
+  const REQUIRED_DEPOSIT = 1000;
 
   useEffect(() => {
     if (user) {
-      checkSpinAvailability();
+      checkEligibility();
     }
   }, [user]);
 
-  useEffect(() => {
-    if (!canSpin && nextSpinAt) {
-      const interval = setInterval(() => {
-        const now = new Date();
-        const diff = nextSpinAt.getTime() - now.getTime();
-        
-        if (diff <= 0) {
-          setCanSpin(true);
-          setCountdown('');
-          clearInterval(interval);
-        } else {
-          const hours = Math.floor(diff / (1000 * 60 * 60));
-          const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-          const seconds = Math.floor((diff % (1000 * 60)) / 1000);
-          setCountdown(`${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`);
-        }
-      }, 1000);
-      
-      return () => clearInterval(interval);
-    }
-  }, [canSpin, nextSpinAt]);
-
-  const checkSpinAvailability = async () => {
+  const checkEligibility = async () => {
     setIsLoading(true);
     try {
-      const { data, error } = await supabase.rpc('check_spin_availability');
-      
-      if (error) throw error;
-      
-      const result = data as { can_spin: boolean; next_spin_at: string | null };
-      setCanSpin(result.can_spin);
-      if (result.next_spin_at) {
-        setNextSpinAt(new Date(result.next_spin_at));
+      // Check total deposits
+      const { data: deposits, error: depositError } = await supabase
+        .from('transactions')
+        .select('amount')
+        .eq('user_id', user!.id)
+        .eq('type', 'deposit')
+        .eq('status', 'completed');
+
+      if (depositError) throw depositError;
+
+      const totalDep = deposits?.reduce((sum, d) => sum + Number(d.amount), 0) || 0;
+      setTotalDeposits(totalDep);
+
+      if (totalDep < REQUIRED_DEPOSIT) {
+        setIsLocked(true);
+        setCanSpin(false);
+      } else {
+        setIsLocked(false);
+        // Check spin availability from server
+        const { data, error } = await supabase.rpc('check_spin_availability');
+        if (error) throw error;
+        
+        const spinResult = data as { can_spin: boolean; next_spin_at: string | null };
+        setCanSpin(spinResult.can_spin);
       }
     } catch (error) {
-      console.error('Error checking spin availability:', error);
+      console.error('Error checking eligibility:', error);
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleSpin = async () => {
-    if (!canSpin || isSpinning) return;
+    if (!canSpin || isSpinning || isLocked) return;
     
     setIsSpinning(true);
     setShowResult(false);
@@ -104,32 +90,12 @@ const SpinWheel = () => {
       if (spinResult.success && spinResult.reward_amount !== undefined) {
         const rewardAmount = spinResult.reward_amount;
         
-        // Find the FIRST segment that matches the reward (in case of duplicates)
-        let targetSegmentIndex = SEGMENTS.findIndex(s => s.value === rewardAmount);
+        // Find the segment index that matches the reward
+        const targetSegmentIndex = SEGMENTS.findIndex(s => s.value === rewardAmount);
         
-        // If multiple segments have the same value, pick a random one
-        const matchingIndices = SEGMENTS.map((s, i) => s.value === rewardAmount ? i : -1).filter(i => i !== -1);
-        if (matchingIndices.length > 1) {
-          targetSegmentIndex = matchingIndices[Math.floor(Math.random() * matchingIndices.length)];
-        }
-        
-        // Calculate the rotation needed to land on this segment
-        // The pointer is at the top (12 o'clock position)
-        // Segments are drawn starting from 3 o'clock going clockwise
-        // So we need to account for this offset
-        
-        // The segment at index 0 starts at angle 0 (3 o'clock)
-        // To make segment at targetSegmentIndex land at the top (pointer at 12 o'clock = 270 degrees from 3 o'clock)
-        // We need to rotate so that the middle of the target segment is at 270 degrees
-        
+        // Calculate rotation to land on target segment
+        // The pointer is at the top (12 o'clock)
         const segmentMiddleAngle = targetSegmentIndex * segmentAngle + segmentAngle / 2;
-        
-        // To bring this to the top (270 degrees position in CSS where 0 is 3 o'clock)
-        // But wait, the pointer is at the top which is -90 degrees from 3 o'clock
-        // So we need the segment to be at 270 degrees from the 3 o'clock position
-        
-        // The wheel rotates clockwise with positive values
-        // We want the target segment's middle to align with the top
         const targetRotation = 360 - segmentMiddleAngle + 270;
         
         // Add multiple full spins for effect
@@ -144,7 +110,6 @@ const SpinWheel = () => {
           setShowResult(true);
           setIsSpinning(false);
           setCanSpin(false);
-          setNextSpinAt(new Date(Date.now() + 24 * 60 * 60 * 1000));
           
           toast({
             title: '🎉 Congratulations!',
@@ -188,6 +153,19 @@ const SpinWheel = () => {
         </CardTitle>
       </CardHeader>
       <CardContent className="flex flex-col items-center pb-6">
+        {/* Locked State */}
+        {isLocked && (
+          <div className="absolute inset-0 bg-background/80 backdrop-blur-sm flex flex-col items-center justify-center z-10 rounded-xl">
+            <Lock className="w-12 h-12 text-muted-foreground mb-3" />
+            <p className="text-sm text-muted-foreground text-center px-4">
+              Deposit ₹{REQUIRED_DEPOSIT}+ to unlock
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Your deposits: ₹{totalDeposits}
+            </p>
+          </div>
+        )}
+
         {/* Wheel Container */}
         <div className="relative w-64 h-64 my-4">
           {/* Pointer */}
@@ -241,7 +219,7 @@ const SpinWheel = () => {
                       textAnchor="middle"
                       dominantBaseline="middle"
                       fill="white"
-                      fontSize="4"
+                      fontSize="5"
                       fontWeight="bold"
                       transform={`rotate(${midAngle + 90}, ${textX}, ${textY})`}
                       style={{ textShadow: '0 1px 2px rgba(0,0,0,0.5)' }}
@@ -252,7 +230,7 @@ const SpinWheel = () => {
                 );
               })}
               {/* Center circle */}
-              <circle cx="50" cy="50" r="8" fill="hsl(220 30% 10%)" stroke="hsl(200 100% 50%)" strokeWidth="1" />
+              <circle cx="50" cy="50" r="10" fill="hsl(220 30% 10%)" stroke="hsl(200 100% 50%)" strokeWidth="1" />
               <text x="50" y="50" textAnchor="middle" dominantBaseline="middle" fill="white" fontSize="4" fontWeight="bold">
                 SPIN
               </text>
@@ -287,29 +265,29 @@ const SpinWheel = () => {
           )}
         </AnimatePresence>
 
-        {/* Spin Button / Countdown */}
-        {canSpin ? (
-          <Button
-            onClick={handleSpin}
-            disabled={isSpinning}
-            className="w-full bg-gradient-to-r from-primary to-accent hover:opacity-90 font-display"
-          >
-            {isSpinning ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Spinning...
-              </>
-            ) : (
-              'SPIN NOW'
-            )}
-          </Button>
-        ) : (
-          <div className="text-center w-full">
-            <p className="text-sm text-muted-foreground mb-2">Next spin available in</p>
-            <div className="bg-secondary/50 rounded-lg py-3 px-4">
-              <span className="font-display text-xl font-bold text-primary">{countdown || '--:--:--'}</span>
+        {/* Spin Button */}
+        {!isLocked && (
+          canSpin ? (
+            <Button
+              onClick={handleSpin}
+              disabled={isSpinning}
+              className="w-full bg-gradient-to-r from-primary to-accent hover:opacity-90 font-display"
+            >
+              {isSpinning ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Spinning...
+                </>
+              ) : (
+                'SPIN NOW'
+              )}
+            </Button>
+          ) : (
+            <div className="text-center w-full">
+              <p className="text-sm text-green-500 mb-2">✓ Already spun today!</p>
+              <p className="text-xs text-muted-foreground">Deposit ₹1000+ to unlock next spin</p>
             </div>
-          </div>
+          )
         )}
       </CardContent>
     </Card>

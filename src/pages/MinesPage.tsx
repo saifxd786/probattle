@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Gem, Bomb, Shield, Zap, Trophy, Users, Coins } from 'lucide-react';
 import Header from '@/components/Header';
 import BottomNav from '@/components/BottomNav';
-import TelegramFloat from '@/components/TelegramFloat';
 import MinesGame from '@/components/mines/MinesGame';
 import { Button } from '@/components/ui/button';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
@@ -168,7 +167,6 @@ const MinesPage = () => {
       </main>
 
       <BottomNav />
-      <TelegramFloat />
     </div>
   );
 };

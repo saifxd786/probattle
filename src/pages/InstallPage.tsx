@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Download, Smartphone, Apple, Share, Plus, CheckCircle2, ArrowLeft } from 'lucide-react';
+import { Download, Smartphone, Share, Plus, CheckCircle2, ArrowLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import probattleLogo from '@/assets/probattle-logo.jpg';
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -70,11 +71,20 @@ const InstallPage = () => {
           transition={{ duration: 0.5 }}
           className="space-y-6"
         >
-          {/* Hero Section */}
+          {/* Hero Section with Logo Image */}
           <div className="text-center space-y-4 mb-8">
-            <div className="w-20 h-20 mx-auto bg-primary rounded-2xl flex items-center justify-center shadow-lg shadow-primary/30">
-              <span className="text-2xl font-bold text-primary-foreground">PS</span>
-            </div>
+            <motion.div
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ duration: 0.5, delay: 0.2 }}
+              className="mx-auto overflow-hidden rounded-2xl shadow-xl shadow-primary/20 max-w-xs"
+            >
+              <img 
+                src={probattleLogo} 
+                alt="ProBattle" 
+                className="w-full h-auto object-cover"
+              />
+            </motion.div>
             <h2 className="text-2xl font-bold">Get the App Experience</h2>
             <p className="text-muted-foreground">
               Install ProBattle on your device for faster access, offline support, and a native app feel

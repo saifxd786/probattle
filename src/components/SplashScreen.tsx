@@ -26,9 +26,10 @@ const SplashScreen = ({ onComplete }: SplashScreenProps) => {
           initial={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.5 }}
-          className="fixed inset-0 z-[9999] flex items-center justify-center bg-background"
+          className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-[#1a1f2e]"
         >
-          <div className="flex items-center">
+          {/* ProBattle Text */}
+          <div className="flex items-center mb-4">
             {letters.map((letter, index) => (
               <motion.span
                 key={index}
@@ -36,25 +37,32 @@ const SplashScreen = ({ onComplete }: SplashScreenProps) => {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{
                   duration: 0.5,
-                  delay: index * 0.1,
+                  delay: index * 0.08,
                   ease: "easeOut",
                 }}
-                className={`text-5xl md:text-7xl font-display font-bold ${
-                  index < 3 ? 'text-primary' : 'text-foreground'
-                }`}
+                className="text-5xl md:text-7xl font-display font-bold text-[#00d4ff]"
+                style={{
+                  textShadow: '0 0 20px rgba(0, 212, 255, 0.5)',
+                }}
               >
                 {letter}
               </motion.span>
             ))}
           </div>
           
-          {/* Animated underline */}
+          {/* READY • SET • DROP tagline */}
           <motion.div
-            initial={{ scaleX: 0 }}
-            animate={{ scaleX: 1 }}
-            transition={{ duration: 0.8, delay: 1.2, ease: "easeOut" }}
-            className="absolute bottom-1/2 mt-16 translate-y-12 w-48 h-1 bg-gradient-to-r from-primary to-accent origin-left"
-          />
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 1.2, ease: "easeOut" }}
+            className="flex items-center gap-3 text-[#5a7a9a] text-sm md:text-base tracking-[0.3em] font-medium"
+          >
+            <span>READY</span>
+            <span className="w-1.5 h-1.5 rounded-full bg-[#5a7a9a]" />
+            <span>SET</span>
+            <span className="w-1.5 h-1.5 rounded-full bg-[#5a7a9a]" />
+            <span>DROP</span>
+          </motion.div>
         </motion.div>
       )}
     </AnimatePresence>
