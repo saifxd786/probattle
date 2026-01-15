@@ -13,7 +13,7 @@ interface MinesSettings {
   minMines: number;
   maxMines: number;
   baseMultiplier: number;
-  difficulty: 'easy' | 'normal' | 'hard';
+  difficulty: 'easy' | 'medium' | 'hard';
 }
 
 interface GameState {
@@ -41,7 +41,7 @@ export const useMinesGame = () => {
     minMines: 1,
     maxMines: 24,
     baseMultiplier: 1.03,
-    difficulty: 'normal'
+    difficulty: 'medium'
   });
   
   const [gameState, setGameState] = useState<GameState>({
@@ -67,11 +67,14 @@ export const useMinesGame = () => {
     const totalTiles = 25;
     const safeTiles = totalTiles - minesCount;
     
-    // Difficulty modifiers - harder = less payout
+    // Difficulty modifiers
+    // Easy: Normal luck - bombs appear randomly
+    // Medium: Bomb likely after 2-4 safe boxes  
+    // Hard: Bomb likely after 1-2 safe boxes
     const difficultyModifier: Record<string, number> = {
-      easy: 0.75,    // 25% house edge on multiplier
-      normal: 0.65,  // 35% house edge on multiplier
-      hard: 0.55     // 45% house edge on multiplier
+      easy: 0.80,    // Normal randomness
+      medium: 0.65,  // Bombs more frequent after 2-4 reveals
+      hard: 0.50     // Bombs very frequent after 1-2 reveals
     };
     
     // Calculate true probability-based multiplier

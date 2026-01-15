@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MessageCircle, X, Send, Loader2, ChevronDown } from 'lucide-react';
+import { MessageCircle, X, Send, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -221,24 +221,19 @@ const SupportChat = () => {
 
   return (
     <>
-      {/* Chat Button */}
-      <motion.button
+      {/* Chat Button in Header - Small Icon */}
+      <button
         onClick={() => setIsOpen(true)}
-        className="fixed top-20 right-4 z-40 p-3 rounded-full bg-primary text-primary-foreground shadow-lg hover:shadow-xl transition-shadow"
-        whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.95 }}
+        className="relative p-2 rounded-lg hover:bg-secondary/50 transition-colors"
+        title="Live Support"
       >
-        <MessageCircle className="w-5 h-5" />
+        <MessageCircle className="w-5 h-5 text-primary" />
         {unreadCount > 0 && (
-          <motion.span
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            className="absolute -top-1 -right-1 w-5 h-5 bg-destructive text-destructive-foreground text-xs rounded-full flex items-center justify-center font-bold"
-          >
+          <span className="absolute -top-1 -right-1 w-4 h-4 bg-destructive text-destructive-foreground text-[10px] rounded-full flex items-center justify-center font-bold">
             {unreadCount > 9 ? '9+' : unreadCount}
-          </motion.span>
+          </span>
         )}
-      </motion.button>
+      </button>
 
       {/* Chat Window */}
       <AnimatePresence>

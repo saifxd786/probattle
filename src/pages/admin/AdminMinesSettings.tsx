@@ -19,7 +19,7 @@ interface MinesSettings {
   min_mines: number;
   max_mines: number;
   base_multiplier: number;
-  difficulty: 'easy' | 'normal' | 'hard';
+  difficulty: 'easy' | 'medium' | 'hard';
 }
 
 interface MinesGame {
@@ -33,6 +33,24 @@ interface MinesGame {
   status: string;
   created_at: string;
 }
+
+const DIFFICULTY_INFO = {
+  easy: {
+    label: 'Easy',
+    description: 'Normal luck - bombs appear randomly',
+    color: 'text-green-400 border-green-400',
+  },
+  medium: {
+    label: 'Medium',
+    description: 'Bomb likely after 2-4 safe boxes',
+    color: 'text-yellow-400 border-yellow-400',
+  },
+  hard: {
+    label: 'Hard',
+    description: 'Bomb likely after 1-2 safe boxes',
+    color: 'text-red-400 border-red-400',
+  },
+};
 
 const AdminMinesSettings = () => {
   const { toast } = useToast();
@@ -50,7 +68,9 @@ const AdminMinesSettings = () => {
       .single();
     
     if (data && !error) {
-      setSettings(data as MinesSettings);
+      // Map 'normal' to 'medium' for backwards compatibility
+      const difficulty = data.difficulty === 'normal' ? 'medium' : data.difficulty;
+      setSettings({ ...data, difficulty } as MinesSettings);
     }
     setLoading(false);
   };
@@ -224,7 +244,7 @@ const AdminMinesSettings = () => {
                 <Bomb className="w-5 h-5" />
                 Mines Configuration
               </CardTitle>
-              <CardDescription>Set mine count limits</CardDescription>
+              <CardDescription>Set mine count limits and difficulty</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
@@ -257,27 +277,38 @@ const AdminMinesSettings = () => {
                 <p className="text-xs text-muted-foreground">Fixed at 25 (5x5 grid)</p>
               </div>
 
-              {/* Difficulty Mode */}
-              <div className="space-y-2">
-                <Label>Difficulty Mode</Label>
-                <div className="grid grid-cols-3 gap-2">
-                  {(['easy', 'normal', 'hard'] as const).map((diff) => (
-                    <Button
+              {/* Difficulty Mode - Updated with Easy/Medium/Hard */}
+              <div className="space-y-3">
+                <Label className="text-base font-semibold">Difficulty Mode</Label>
+                <div className="grid grid-cols-1 gap-3">
+                  {(['easy', 'medium', 'hard'] as const).map((diff) => (
+                    <button
                       key={diff}
-                      variant="outline"
-                      className={cn(
-                        'capitalize',
-                        settings.difficulty === diff && 'border-primary bg-primary/10 text-primary'
-                      )}
                       onClick={() => setSettings({ ...settings, difficulty: diff })}
+                      className={cn(
+                        'p-4 rounded-xl border-2 text-left transition-all',
+                        settings.difficulty === diff 
+                          ? `${DIFFICULTY_INFO[diff].color} bg-secondary/30` 
+                          : 'border-border hover:border-muted-foreground/50'
+                      )}
                     >
-                      {diff}
-                    </Button>
+                      <div className="flex items-center justify-between">
+                        <span className={cn(
+                          'font-bold text-lg',
+                          settings.difficulty === diff ? DIFFICULTY_INFO[diff].color.split(' ')[0] : ''
+                        )}>
+                          {DIFFICULTY_INFO[diff].label}
+                        </span>
+                        {settings.difficulty === diff && (
+                          <div className={cn('w-3 h-3 rounded-full', DIFFICULTY_INFO[diff].color.split(' ')[0].replace('text', 'bg'))} />
+                        )}
+                      </div>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        {DIFFICULTY_INFO[diff].description}
+                      </p>
+                    </button>
                   ))}
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  Easy: Lower house edge | Normal: Standard | Hard: Higher house edge
-                </p>
               </div>
             </CardContent>
           </Card>
