@@ -26,7 +26,8 @@ const SplashScreen = ({ onComplete }: SplashScreenProps) => {
           initial={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.5 }}
-          className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-[#1a1f2e]"
+          className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-background"
+          style={{ backgroundColor: 'hsl(220, 30%, 5%)' }}
         >
           {/* ProBattle Text */}
           <div className="flex items-center mb-4">
