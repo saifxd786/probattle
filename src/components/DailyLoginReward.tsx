@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
-import { useState, useEffect } from 'react';
-import { Calendar, Check, Lock, Loader2, Gift, Coins } from 'lucide-react';
+import { useState } from 'react';
+import { Calendar, Check, Lock, Loader2, Gift, Coins, Flame } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useDailyBonus } from '@/hooks/useDailyBonus';
@@ -13,7 +13,7 @@ const DAYS = [
   { day: 4, name: 'Thu', coins: 10 },
   { day: 5, name: 'Fri', coins: 10 },
   { day: 6, name: 'Sat', coins: 10 },
-  { day: 7, name: 'Sun', coins: 10 },
+  { day: 7, name: 'Sun', coins: 10, bonus: 50 },
 ];
 
 const DailyLoginReward = () => {
@@ -64,12 +64,30 @@ const DailyLoginReward = () => {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
+        {/* 7-Day Streak Bonus Info */}
+        {streak >= 6 && canClaim && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="bg-gradient-to-r from-orange-500/20 to-yellow-500/20 border border-orange-500/30 rounded-xl p-3 flex items-center gap-3"
+          >
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-orange-500 to-yellow-500 flex items-center justify-center">
+              <Flame className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <p className="text-sm font-bold text-orange-400">🔥 7-Day Streak Bonus!</p>
+              <p className="text-xs text-orange-300/80">Claim today for +50 bonus coins!</p>
+            </div>
+          </motion.div>
+        )}
+
         {/* 7-Day Streak Display */}
         <div className="grid grid-cols-7 gap-1.5">
           {DAYS.map((day, index) => {
             const dayNum = index + 1;
             const isClaimed = streak >= dayNum;
             const isNext = streak + 1 === dayNum && canClaim;
+            const isSundayBonus = dayNum === 7 && streak === 6 && canClaim;
             
             return (
               <motion.div
@@ -78,7 +96,9 @@ const DailyLoginReward = () => {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.05 }}
                 className={`relative flex flex-col items-center p-2 rounded-xl transition-all ${
-                  isNext
+                  isSundayBonus
+                    ? 'bg-gradient-to-br from-orange-500/20 to-yellow-500/20 border-2 border-orange-500 ring-2 ring-orange-500/30'
+                    : isNext
                     ? 'bg-primary/20 border-2 border-primary ring-2 ring-primary/30'
                     : isClaimed
                     ? 'bg-green-500/10 border border-green-500/30'
@@ -87,7 +107,7 @@ const DailyLoginReward = () => {
               >
                 {/* Day Name */}
                 <span className={`text-[10px] font-medium mb-1 ${
-                  isNext ? 'text-primary' : isClaimed ? 'text-green-500' : 'text-muted-foreground'
+                  isSundayBonus ? 'text-orange-400' : isNext ? 'text-primary' : isClaimed ? 'text-green-500' : 'text-muted-foreground'
                 }`}>
                   {day.name}
                 </span>
@@ -96,12 +116,16 @@ const DailyLoginReward = () => {
                 <div className={`w-8 h-8 rounded-lg flex items-center justify-center mb-1 ${
                   isClaimed
                     ? 'bg-green-500/20'
+                    : isSundayBonus
+                    ? 'bg-gradient-to-br from-orange-500/30 to-yellow-500/30'
                     : isNext
                     ? 'bg-gradient-to-br from-primary/30 to-accent/30'
                     : 'bg-secondary/50'
                 }`}>
                   {isClaimed ? (
                     <Check className="w-4 h-4 text-green-500" />
+                  ) : isSundayBonus ? (
+                    <Flame className="w-4 h-4 text-orange-500" />
                   ) : isNext ? (
                     <Gift className="w-4 h-4 text-primary" />
                   ) : (
@@ -111,18 +135,23 @@ const DailyLoginReward = () => {
                 
                 {/* Coins Amount */}
                 <span className={`text-[10px] font-bold flex items-center gap-0.5 ${
-                  isClaimed ? 'text-green-500' : isNext ? 'text-primary' : 'text-muted-foreground'
+                  isClaimed ? 'text-green-500' : isSundayBonus ? 'text-orange-400' : isNext ? 'text-primary' : 'text-muted-foreground'
                 }`}>
                   <Coins className="w-3 h-3" />
                   {day.coins}
                 </span>
                 
+                {/* Bonus Badge for Sunday */}
+                {day.bonus && (
+                  <span className="text-[8px] font-bold text-orange-400 mt-0.5">+{day.bonus}</span>
+                )}
+                
                 {/* Next Indicator */}
-                {isNext && (
+                {(isNext || isSundayBonus) && (
                   <motion.div
                     animate={{ scale: [1, 1.2, 1] }}
                     transition={{ duration: 1, repeat: Infinity }}
-                    className="absolute -top-1 -right-1 w-3 h-3 bg-primary rounded-full"
+                    className={`absolute -top-1 -right-1 w-3 h-3 rounded-full ${isSundayBonus ? 'bg-orange-500' : 'bg-primary'}`}
                   />
                 )}
               </motion.div>
@@ -199,10 +228,13 @@ const DailyLoginReward = () => {
         {/* Streak & Info */}
         <div className="flex items-center justify-between pt-2 border-t border-border/50">
           <div className="flex items-center gap-2">
-            <span className="text-xs text-muted-foreground">Current Streak</span>
-            <span className="text-sm font-bold text-primary">{streak} days</span>
+            <Flame className={`w-4 h-4 ${streak >= 5 ? 'text-orange-500' : 'text-muted-foreground'}`} />
+            <span className="text-xs text-muted-foreground">Streak</span>
+            <span className="text-sm font-bold text-primary">{streak}/7 days</span>
           </div>
-          <span className="text-xs text-muted-foreground">70 coins/week</span>
+          <span className="text-xs text-muted-foreground">
+            {streak === 7 ? '🎉 Max streak!' : `${7 - streak} days to bonus`}
+          </span>
         </div>
       </CardContent>
     </Card>
