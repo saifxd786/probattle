@@ -42,6 +42,8 @@ import AdminThimbleSettings from "./pages/admin/AdminThimbleSettings";
 import AdminMinesSettings from "./pages/admin/AdminMinesSettings";
 import AdminRedeemCodes from "./pages/admin/AdminRedeemCodes";
 import AdminSupport from "./pages/admin/AdminSupport";
+import AdminSpinWheelSettings from "./pages/admin/AdminSpinWheelSettings";
+import AdminDailyLoginSettings from "./pages/admin/AdminDailyLoginSettings";
 
 const queryClient = new QueryClient();
 
@@ -109,6 +111,8 @@ const App = () => {
                 <Route path="ludo" element={<AdminLudoSettings />} />
                 <Route path="thimble" element={<AdminThimbleSettings />} />
                 <Route path="mines" element={<AdminMinesSettings />} />
+                <Route path="spin-wheel" element={<AdminSpinWheelSettings />} />
+                <Route path="daily-login" element={<AdminDailyLoginSettings />} />
                 <Route path="redeem-codes" element={<AdminRedeemCodes />} />
                 <Route path="support" element={<AdminSupport />} />
               </Route>

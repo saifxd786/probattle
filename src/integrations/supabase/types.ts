@@ -44,6 +44,39 @@ export type Database = {
         }
         Relationships: []
       }
+      daily_login_settings: {
+        Row: {
+          coins_to_rupees_ratio: number
+          created_at: string
+          daily_coins: number
+          id: string
+          is_enabled: boolean
+          min_coins_to_convert: number
+          streak_bonus_coins: number
+          updated_at: string
+        }
+        Insert: {
+          coins_to_rupees_ratio?: number
+          created_at?: string
+          daily_coins?: number
+          id?: string
+          is_enabled?: boolean
+          min_coins_to_convert?: number
+          streak_bonus_coins?: number
+          updated_at?: string
+        }
+        Update: {
+          coins_to_rupees_ratio?: number
+          created_at?: string
+          daily_coins?: number
+          id?: string
+          is_enabled?: boolean
+          min_coins_to_convert?: number
+          streak_bonus_coins?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       device_bans: {
         Row: {
           banned_at: string
@@ -762,6 +795,8 @@ export type Database = {
           created_at: string
           id: string
           is_enabled: boolean
+          required_deposit: number
+          segment_values: number[]
           updated_at: string
         }
         Insert: {
@@ -769,6 +804,8 @@ export type Database = {
           created_at?: string
           id?: string
           is_enabled?: boolean
+          required_deposit?: number
+          segment_values?: number[]
           updated_at?: string
         }
         Update: {
@@ -776,6 +813,8 @@ export type Database = {
           created_at?: string
           id?: string
           is_enabled?: boolean
+          required_deposit?: number
+          segment_values?: number[]
           updated_at?: string
         }
         Relationships: []

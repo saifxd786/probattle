@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useDailyBonus } from '@/hooks/useDailyBonus';
 import { useAuth } from '@/contexts/AuthContext';
+import ConfettiCelebration from './ConfettiCelebration';
 
 const DAYS = [
   { day: 1, name: 'Mon', coins: 10 },
@@ -20,6 +21,7 @@ const DailyLoginReward = () => {
   const { user } = useAuth();
   const { bonusData, isLoading, isClaiming, isConverting, claimDailyBonus, convertCoins } = useDailyBonus();
   const [convertAmount, setConvertAmount] = useState(100);
+  const [showConfetti, setShowConfetti] = useState(false);
 
   if (!user) {
     return (
@@ -49,8 +51,18 @@ const DailyLoginReward = () => {
     await convertCoins(convertAmount);
   };
 
+  const handleClaimBonus = async () => {
+    const isStreakBonus = streak === 6 && canClaim; // Will be day 7 after claiming
+    await claimDailyBonus();
+    if (isStreakBonus) {
+      setShowConfetti(true);
+    }
+  };
+
   return (
-    <Card className="glass-card overflow-hidden">
+    <>
+      <ConfettiCelebration isActive={showConfetti} onComplete={() => setShowConfetti(false)} />
+      <Card className="glass-card overflow-hidden">
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center justify-between text-lg">
           <div className="flex items-center gap-2">
@@ -162,14 +174,23 @@ const DailyLoginReward = () => {
         {/* Claim Button */}
         {canClaim && (
           <Button
-            onClick={claimDailyBonus}
+            onClick={handleClaimBonus}
             disabled={isClaiming}
-            className="w-full bg-gradient-to-r from-primary to-accent hover:opacity-90 font-display"
+            className={`w-full font-display ${
+              streak === 6 
+                ? 'bg-gradient-to-r from-orange-500 to-yellow-500 hover:opacity-90' 
+                : 'bg-gradient-to-r from-primary to-accent hover:opacity-90'
+            }`}
           >
             {isClaiming ? (
               <>
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                 Claiming...
+              </>
+            ) : streak === 6 ? (
+              <>
+                <Flame className="w-4 h-4 mr-2" />
+                Claim 10 + 50 Bonus Coins!
               </>
             ) : (
               <>
@@ -238,6 +259,7 @@ const DailyLoginReward = () => {
         </div>
       </CardContent>
     </Card>
+    </>
   );
 };
 

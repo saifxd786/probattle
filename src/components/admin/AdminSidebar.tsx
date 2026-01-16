@@ -1,4 +1,4 @@
-import { LayoutDashboard, Gamepad2, Users, CreditCard, Settings, LogOut, ChevronLeft, ArrowLeftRight, Bell, Dices, Trophy, Ticket, Gem, MessageCircle } from 'lucide-react';
+import { LayoutDashboard, Gamepad2, Users, CreditCard, Settings, LogOut, ChevronLeft, ArrowLeftRight, Bell, Dices, Trophy, Ticket, Gem, MessageCircle, RotateCcw, Calendar } from 'lucide-react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
@@ -17,6 +17,8 @@ const navItems = [
   { title: 'Ludo', url: '/admin/ludo', icon: Dices },
   { title: 'Thimble', url: '/admin/thimble', icon: Trophy },
   { title: 'Mines', url: '/admin/mines', icon: Gem },
+  { title: 'Spin Wheel', url: '/admin/spin-wheel', icon: RotateCcw },
+  { title: 'Daily Login', url: '/admin/daily-login', icon: Calendar },
   { title: 'Redeem Codes', url: '/admin/redeem-codes', icon: Ticket },
   { title: 'Support', url: '/admin/support', icon: MessageCircle },
   { title: 'Users', url: '/admin/users', icon: Users },
