@@ -106,6 +106,7 @@ const BGMIPage = () => {
   };
 
   const currentBanner = activeTab === 'TDM Matches' ? tdmBanner : classicBanner;
+  const currentBannerTitle = activeTab === 'TDM Matches' ? 'TDM Matches' : 'Classic Erangel';
 
   const getMatchMode = (match: Match) => {
     switch (match.match_type) {
@@ -207,8 +208,36 @@ const BGMIPage = () => {
         </div>
       </section>
 
+      {/* Map Banner Section */}
+      <section className="container mx-auto px-4 py-4">
+        <motion.div
+          key={activeTab}
+          initial={{ opacity: 0, scale: 0.98 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.3 }}
+          className="relative h-40 md:h-52 rounded-2xl overflow-hidden"
+        >
+          <img 
+            src={currentBanner}
+            alt={currentBannerTitle}
+            className="w-full h-full object-cover"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/30 to-transparent" />
+          <div className="absolute bottom-4 left-4 right-4">
+            <h2 className="font-display text-xl md:text-2xl font-bold text-foreground drop-shadow-lg">
+              {currentBannerTitle}
+            </h2>
+            <p className="text-sm text-foreground/80 mt-1">
+              {activeTab === 'TDM Matches' 
+                ? 'Fast-paced close combat action' 
+                : 'Battle royale survival mode'}
+            </p>
+          </div>
+        </motion.div>
+      </section>
+
       {/* Matches Grid */}
-      <section className="container mx-auto px-4 py-6">
+      <section className="container mx-auto px-4 pb-6">
         {isLoading ? (
           <div className="flex items-center justify-center py-12">
             <Loader2 className="w-6 h-6 animate-spin text-primary" />
