@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Save, Loader2, RotateCcw, Gift, Palette } from 'lucide-react';
+import { useState, useEffect, useMemo } from 'react';
+import { Save, Loader2, RotateCcw, Gift, Palette, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import SpinWheelPreview from '@/components/admin/SpinWheelPreview';
 
 interface SpinWheelSettings {
   id: string;
@@ -144,6 +145,23 @@ const AdminSpinWheelSettings = () => {
     );
   }
 
+  // Parse current values for preview
+  const previewValues = useMemo(() => {
+    const values = segmentInput
+      .split(',')
+      .map(v => parseInt(v.trim()))
+      .filter(v => !isNaN(v) && v > 0);
+    return values.length >= 3 ? values : [10, 20, 100, 300, 500, 1000, 5000];
+  }, [segmentInput]);
+
+  const previewColors = useMemo(() => {
+    const colors = colorsInput
+      .split(',')
+      .map(c => c.trim())
+      .filter(c => c.length > 0);
+    return colors.length > 0 ? colors : DEFAULT_COLORS;
+  }, [colorsInput]);
+
   return (
     <div className="p-6 space-y-6">
       <div className="flex items-center gap-3">
@@ -156,7 +174,8 @@ const AdminSpinWheelSettings = () => {
         </div>
       </div>
 
-      <div className="grid gap-6 max-w-2xl">
+      <div className="grid gap-6 lg:grid-cols-[1fr_300px]">
+        <div className="space-y-6">
         {/* Enable/Disable */}
         <Card className="glass-card">
           <CardHeader>
@@ -339,6 +358,32 @@ const AdminSpinWheelSettings = () => {
           <Save className="w-4 h-4 mr-2" />
           {isSaving ? 'Saving...' : 'Save Settings'}
         </Button>
+        </div>
+
+        {/* Live Preview */}
+        <div className="lg:sticky lg:top-6">
+          <Card className="glass-card">
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Eye className="w-5 h-5 text-primary" />
+                Live Preview
+              </CardTitle>
+              <CardDescription>See how your wheel will look</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <SpinWheelPreview
+                segmentValues={previewValues}
+                segmentColors={previewColors}
+                pointerColor={settings.pointer_color}
+                centerColor={settings.center_color}
+                borderColor={settings.border_color}
+              />
+              <p className="text-xs text-muted-foreground text-center mt-4">
+                Wheel rotates slowly in preview
+              </p>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   );
