@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MessageCircle, X, Send, Loader2, Image, Video, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -8,6 +8,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
+import ImageLightbox from '@/components/ImageLightbox';
 
 interface Attachment {
   url: string;
@@ -45,9 +46,34 @@ const SupportChat = () => {
   const [unreadCount, setUnreadCount] = useState(0);
   const [attachments, setAttachments] = useState<File[]>([]);
   const [isUploading, setIsUploading] = useState(false);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxImages, setLightboxImages] = useState<string[]>([]);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const videoInputRef = useRef<HTMLInputElement>(null);
+
+  // Collect all images from messages for lightbox
+  const allImages = useMemo(() => {
+    const images: string[] = [];
+    messages.forEach(msg => {
+      if (msg.attachments) {
+        msg.attachments.forEach(att => {
+          if (att.type === 'image') {
+            images.push(att.url);
+          }
+        });
+      }
+    });
+    return images;
+  }, [messages]);
+
+  const openLightbox = (imageUrl: string) => {
+    const index = allImages.indexOf(imageUrl);
+    setLightboxImages(allImages);
+    setLightboxIndex(index >= 0 ? index : 0);
+    setLightboxOpen(true);
+  };
 
   // Fetch or create active ticket
   useEffect(() => {
@@ -440,8 +466,8 @@ const SupportChat = () => {
                                   <img 
                                     src={att.url} 
                                     alt={att.name}
-                                    className="rounded-lg max-w-full cursor-pointer hover:opacity-80"
-                                    onClick={() => window.open(att.url, '_blank')}
+                                    className="rounded-lg max-w-full cursor-pointer hover:opacity-80 transition-opacity"
+                                    onClick={() => openLightbox(att.url)}
                                   />
                                 ) : (
                                   <video 
@@ -543,6 +569,14 @@ const SupportChat = () => {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Image Lightbox */}
+      <ImageLightbox
+        images={lightboxImages}
+        initialIndex={lightboxIndex}
+        isOpen={lightboxOpen}
+        onClose={() => setLightboxOpen(false)}
+      />
     </>
   );
 };
