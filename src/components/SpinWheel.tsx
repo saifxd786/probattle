@@ -7,16 +7,31 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
 
-// Only 7 segments as requested
-const SEGMENTS = [
-  { value: 10, color: 'hsl(200, 100%, 50%)', label: '₹10' },
-  { value: 20, color: 'hsl(170, 100%, 45%)', label: '₹20' },
-  { value: 100, color: 'hsl(270, 100%, 55%)', label: '₹100' },
-  { value: 300, color: 'hsl(45, 100%, 50%)', label: '₹300' },
-  { value: 500, color: 'hsl(0, 100%, 55%)', label: '₹500' },
-  { value: 1000, color: 'hsl(320, 100%, 50%)', label: '₹1000' },
-  { value: 5000, color: 'hsl(50, 100%, 50%)', label: '₹5000' },
-];
+interface WheelSettings {
+  segment_values: number[];
+  segment_colors: string[];
+  pointer_color: string;
+  center_color: string;
+  border_color: string;
+  required_deposit: number;
+}
+
+const DEFAULT_SETTINGS: WheelSettings = {
+  segment_values: [10, 20, 100, 300, 500, 1000, 5000],
+  segment_colors: [
+    'hsl(200, 100%, 50%)',
+    'hsl(170, 100%, 45%)',
+    'hsl(270, 100%, 55%)',
+    'hsl(45, 100%, 50%)',
+    'hsl(0, 100%, 55%)',
+    'hsl(320, 100%, 50%)',
+    'hsl(50, 100%, 50%)',
+  ],
+  pointer_color: 'hsl(45, 100%, 50%)',
+  center_color: 'hsl(220, 30%, 10%)',
+  border_color: 'hsl(200, 100%, 50%)',
+  required_deposit: 1000,
+};
 
 const SpinWheel = () => {
   const { user } = useAuth();
@@ -28,16 +43,44 @@ const SpinWheel = () => {
   const [showResult, setShowResult] = useState(false);
   const [result, setResult] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [wheelSettings, setWheelSettings] = useState<WheelSettings>(DEFAULT_SETTINGS);
   const wheelRef = useRef<HTMLDivElement>(null);
 
-  const segmentAngle = 360 / SEGMENTS.length;
-  const REQUIRED_DEPOSIT = 1000;
+  const segmentAngle = 360 / wheelSettings.segment_values.length;
+
+  useEffect(() => {
+    fetchWheelSettings();
+  }, []);
 
   useEffect(() => {
     if (user) {
       checkEligibility();
     }
-  }, [user]);
+  }, [user, wheelSettings.required_deposit]);
+
+  const fetchWheelSettings = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('spin_wheel_settings')
+        .select('segment_values, segment_colors, pointer_color, center_color, border_color, required_deposit')
+        .single();
+
+      if (error) throw error;
+
+      if (data) {
+        setWheelSettings({
+          segment_values: data.segment_values || DEFAULT_SETTINGS.segment_values,
+          segment_colors: data.segment_colors || DEFAULT_SETTINGS.segment_colors,
+          pointer_color: data.pointer_color || DEFAULT_SETTINGS.pointer_color,
+          center_color: data.center_color || DEFAULT_SETTINGS.center_color,
+          border_color: data.border_color || DEFAULT_SETTINGS.border_color,
+          required_deposit: data.required_deposit || DEFAULT_SETTINGS.required_deposit,
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching wheel settings:', error);
+    }
+  };
 
   const checkEligibility = async () => {
     setIsLoading(true);
@@ -55,7 +98,7 @@ const SpinWheel = () => {
       const totalDep = deposits?.reduce((sum, d) => sum + Number(d.amount), 0) || 0;
       setTotalDeposits(totalDep);
 
-      if (totalDep < REQUIRED_DEPOSIT) {
+      if (totalDep < wheelSettings.required_deposit) {
         setIsLocked(true);
         setCanSpin(false);
       } else {
@@ -91,7 +134,7 @@ const SpinWheel = () => {
         const rewardAmount = spinResult.reward_amount;
         
         // Find the segment index that matches the reward
-        const targetSegmentIndex = SEGMENTS.findIndex(s => s.value === rewardAmount);
+        const targetSegmentIndex = wheelSettings.segment_values.findIndex(v => v === rewardAmount);
         
         // Calculate rotation to land on target segment
         // The pointer is at the top (12 o'clock)
@@ -134,6 +177,10 @@ const SpinWheel = () => {
     }
   };
 
+  const getSegmentColor = (index: number) => {
+    return wheelSettings.segment_colors[index % wheelSettings.segment_colors.length];
+  };
+
   if (isLoading) {
     return (
       <Card className="glass-card">
@@ -158,7 +205,7 @@ const SpinWheel = () => {
           <div className="absolute inset-0 bg-background/80 backdrop-blur-sm flex flex-col items-center justify-center z-10 rounded-xl">
             <Lock className="w-12 h-12 text-muted-foreground mb-3" />
             <p className="text-sm text-muted-foreground text-center px-4">
-              Deposit ₹{REQUIRED_DEPOSIT}+ to unlock
+              Deposit ₹{wheelSettings.required_deposit}+ to unlock
             </p>
             <p className="text-xs text-muted-foreground mt-1">
               Your deposits: ₹{totalDeposits}
@@ -170,7 +217,10 @@ const SpinWheel = () => {
         <div className="relative w-64 h-64 my-4">
           {/* Pointer */}
           <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1 z-20">
-            <div className="w-0 h-0 border-l-[12px] border-r-[12px] border-t-[20px] border-l-transparent border-r-transparent border-t-yellow-500 drop-shadow-lg" />
+            <div 
+              className="w-0 h-0 border-l-[12px] border-r-[12px] border-t-[20px] border-l-transparent border-r-transparent drop-shadow-lg"
+              style={{ borderTopColor: wheelSettings.pointer_color }}
+            />
           </div>
           
           {/* Wheel */}
@@ -181,13 +231,14 @@ const SpinWheel = () => {
               duration: 5,
               ease: [0.17, 0.67, 0.12, 0.99],
             }}
-            className="w-full h-full rounded-full relative overflow-hidden border-4 border-primary/50"
+            className="w-full h-full rounded-full relative overflow-hidden"
             style={{
-              boxShadow: '0 0 30px hsl(200 100% 50% / 0.3), inset 0 0 20px hsl(0 0% 0% / 0.5)',
+              border: `4px solid ${wheelSettings.border_color}`,
+              boxShadow: `0 0 30px ${wheelSettings.border_color}33, inset 0 0 20px hsl(0 0% 0% / 0.5)`,
             }}
           >
             <svg viewBox="0 0 100 100" className="w-full h-full">
-              {SEGMENTS.map((segment, index) => {
+              {wheelSettings.segment_values.map((value, index) => {
                 const startAngle = index * segmentAngle;
                 const endAngle = startAngle + segmentAngle;
                 const startRad = (startAngle - 90) * (Math.PI / 180);
@@ -209,7 +260,7 @@ const SpinWheel = () => {
                   <g key={index}>
                     <path
                       d={`M 50 50 L ${x1} ${y1} A 50 50 0 ${largeArc} 1 ${x2} ${y2} Z`}
-                      fill={segment.color}
+                      fill={getSegmentColor(index)}
                       stroke="hsl(0 0% 0% / 0.3)"
                       strokeWidth="0.5"
                     />
@@ -224,13 +275,20 @@ const SpinWheel = () => {
                       transform={`rotate(${midAngle + 90}, ${textX}, ${textY})`}
                       style={{ textShadow: '0 1px 2px rgba(0,0,0,0.5)' }}
                     >
-                      {segment.label}
+                      ₹{value}
                     </text>
                   </g>
                 );
               })}
               {/* Center circle */}
-              <circle cx="50" cy="50" r="10" fill="hsl(220 30% 10%)" stroke="hsl(200 100% 50%)" strokeWidth="1" />
+              <circle 
+                cx="50" 
+                cy="50" 
+                r="10" 
+                fill={wheelSettings.center_color} 
+                stroke={wheelSettings.border_color} 
+                strokeWidth="1" 
+              />
               <text x="50" y="50" textAnchor="middle" dominantBaseline="middle" fill="white" fontSize="4" fontWeight="bold">
                 SPIN
               </text>
@@ -241,8 +299,8 @@ const SpinWheel = () => {
           <motion.div
             animate={{ 
               boxShadow: isSpinning 
-                ? ['0 0 30px hsl(200 100% 50% / 0.5)', '0 0 60px hsl(200 100% 50% / 0.8)', '0 0 30px hsl(200 100% 50% / 0.5)']
-                : '0 0 20px hsl(200 100% 50% / 0.3)'
+                ? [`0 0 30px ${wheelSettings.border_color}88`, `0 0 60px ${wheelSettings.border_color}cc`, `0 0 30px ${wheelSettings.border_color}88`]
+                : `0 0 20px ${wheelSettings.border_color}55`
             }}
             transition={{ duration: 0.5, repeat: isSpinning ? Infinity : 0 }}
             className="absolute inset-0 rounded-full pointer-events-none"
@@ -285,7 +343,7 @@ const SpinWheel = () => {
           ) : (
             <div className="text-center w-full">
               <p className="text-sm text-green-500 mb-2">✓ Already spun today!</p>
-              <p className="text-xs text-muted-foreground">Deposit ₹1000+ to unlock next spin</p>
+              <p className="text-xs text-muted-foreground">Deposit ₹{wheelSettings.required_deposit}+ to unlock next spin</p>
             </div>
           )
         )}

@@ -791,29 +791,41 @@ export type Database = {
       }
       spin_wheel_settings: {
         Row: {
+          border_color: string | null
+          center_color: string | null
           cooldown_hours: number
           created_at: string
           id: string
           is_enabled: boolean
+          pointer_color: string | null
           required_deposit: number
+          segment_colors: string[] | null
           segment_values: number[]
           updated_at: string
         }
         Insert: {
+          border_color?: string | null
+          center_color?: string | null
           cooldown_hours?: number
           created_at?: string
           id?: string
           is_enabled?: boolean
+          pointer_color?: string | null
           required_deposit?: number
+          segment_colors?: string[] | null
           segment_values?: number[]
           updated_at?: string
         }
         Update: {
+          border_color?: string | null
+          center_color?: string | null
           cooldown_hours?: number
           created_at?: string
           id?: string
           is_enabled?: boolean
+          pointer_color?: string | null
           required_deposit?: number
+          segment_colors?: string[] | null
           segment_values?: number[]
           updated_at?: string
         }
@@ -821,6 +833,7 @@ export type Database = {
       }
       support_messages: {
         Row: {
+          attachments: Json | null
           created_at: string
           id: string
           is_read: boolean
@@ -830,6 +843,7 @@ export type Database = {
           ticket_id: string
         }
         Insert: {
+          attachments?: Json | null
           created_at?: string
           id?: string
           is_read?: boolean
@@ -839,6 +853,7 @@ export type Database = {
           ticket_id: string
         }
         Update: {
+          attachments?: Json | null
           created_at?: string
           id?: string
           is_read?: boolean

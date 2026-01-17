@@ -42,12 +42,19 @@ interface Ticket {
   unread_count?: number;
 }
 
+interface Attachment {
+  url: string;
+  type: 'image' | 'video';
+  name: string;
+}
+
 interface Message {
   id: string;
   sender_type: 'user' | 'admin';
   message: string;
   created_at: string;
   is_read: boolean;
+  attachments?: Attachment[];
 }
 
 const AdminSupport = () => {
@@ -157,7 +164,13 @@ const AdminSupport = () => {
       .eq('ticket_id', ticketId)
       .order('created_at', { ascending: true });
 
-    setMessages((data || []) as Message[]);
+    // Cast properly since attachments is jsonb
+    const parsedMessages = (data || []).map(msg => ({
+      ...msg,
+      sender_type: msg.sender_type as 'user' | 'admin',
+      attachments: (msg.attachments as unknown as Attachment[]) || [],
+    }));
+    setMessages(parsedMessages);
 
     // Mark user messages as read
     await supabase
@@ -389,7 +402,32 @@ const AdminSupport = () => {
                               : 'bg-secondary text-foreground rounded-bl-md'
                           }`}
                         >
-                          <p className="text-sm whitespace-pre-wrap">{msg.message}</p>
+                          {/* Attachments */}
+                          {msg.attachments && msg.attachments.length > 0 && (
+                            <div className="space-y-2 mb-2">
+                              {msg.attachments.map((att, idx) => (
+                                <div key={idx}>
+                                  {att.type === 'image' ? (
+                                    <img 
+                                      src={att.url} 
+                                      alt={att.name}
+                                      className="rounded-lg max-w-full cursor-pointer hover:opacity-80"
+                                      onClick={() => window.open(att.url, '_blank')}
+                                    />
+                                  ) : (
+                                    <video 
+                                      src={att.url} 
+                                      controls 
+                                      className="rounded-lg max-w-full"
+                                    />
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                          {msg.message !== '[Attachments]' && (
+                            <p className="text-sm whitespace-pre-wrap">{msg.message}</p>
+                          )}
                           <p className={`text-[10px] mt-1 ${msg.sender_type === 'admin' ? 'text-primary-foreground/70' : 'text-muted-foreground'}`}>
                             {format(new Date(msg.created_at), 'HH:mm')}
                           </p>

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Save, Loader2, RotateCcw, Gift } from 'lucide-react';
+import { Save, Loader2, RotateCcw, Gift, Palette } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -14,13 +14,28 @@ interface SpinWheelSettings {
   cooldown_hours: number;
   required_deposit: number;
   segment_values: number[];
+  segment_colors: string[];
+  pointer_color: string;
+  center_color: string;
+  border_color: string;
 }
+
+const DEFAULT_COLORS = [
+  'hsl(200, 100%, 50%)',
+  'hsl(170, 100%, 45%)',
+  'hsl(270, 100%, 55%)',
+  'hsl(45, 100%, 50%)',
+  'hsl(0, 100%, 55%)',
+  'hsl(320, 100%, 50%)',
+  'hsl(50, 100%, 50%)',
+];
 
 const AdminSpinWheelSettings = () => {
   const [settings, setSettings] = useState<SpinWheelSettings | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [segmentInput, setSegmentInput] = useState('');
+  const [colorsInput, setColorsInput] = useState('');
 
   useEffect(() => {
     fetchSettings();
@@ -38,6 +53,7 @@ const AdminSpinWheelSettings = () => {
 
       setSettings(data);
       setSegmentInput(data.segment_values?.join(', ') || '10, 20, 100, 300, 500, 1000, 5000');
+      setColorsInput(data.segment_colors?.join(', ') || DEFAULT_COLORS.join(', '));
     } catch (error) {
       console.error('Error fetching settings:', error);
       toast({
@@ -71,6 +87,17 @@ const AdminSpinWheelSettings = () => {
         return;
       }
 
+      // Parse colors
+      const segmentColors = colorsInput
+        .split(',')
+        .map(c => c.trim())
+        .filter(c => c.length > 0);
+
+      // Ensure we have enough colors for segments
+      while (segmentColors.length < segmentValues.length) {
+        segmentColors.push(DEFAULT_COLORS[segmentColors.length % DEFAULT_COLORS.length]);
+      }
+
       const { error } = await supabase
         .from('spin_wheel_settings')
         .update({
@@ -78,6 +105,10 @@ const AdminSpinWheelSettings = () => {
           cooldown_hours: settings.cooldown_hours,
           required_deposit: settings.required_deposit,
           segment_values: segmentValues,
+          segment_colors: segmentColors.slice(0, segmentValues.length),
+          pointer_color: settings.pointer_color,
+          center_color: settings.center_color,
+          border_color: settings.border_color,
           updated_at: new Date().toISOString(),
         })
         .eq('id', settings.id);
@@ -219,16 +250,86 @@ const AdminSpinWheelSettings = () => {
             <div className="flex flex-wrap gap-2">
               {segmentInput.split(',').map((val, idx) => {
                 const num = parseInt(val.trim());
+                const colors = colorsInput.split(',').map(c => c.trim());
                 if (isNaN(num)) return null;
                 return (
                   <span
                     key={idx}
-                    className="px-3 py-1 bg-primary/20 text-primary rounded-full text-sm font-medium"
+                    className="px-3 py-1 rounded-full text-sm font-medium text-white"
+                    style={{ backgroundColor: colors[idx] || DEFAULT_COLORS[idx % DEFAULT_COLORS.length] }}
                   >
                     ₹{num}
                   </span>
                 );
               })}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Color Customization */}
+        <Card className="glass-card">
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Palette className="w-5 h-5 text-primary" />
+              Wheel Colors
+            </CardTitle>
+            <CardDescription>Customize wheel appearance</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <Label>Segment Colors (HSL format)</Label>
+              <Input
+                value={colorsInput}
+                onChange={(e) => setColorsInput(e.target.value)}
+                placeholder="hsl(200, 100%, 50%), hsl(170, 100%, 45%)..."
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Comma-separated HSL colors (will cycle if fewer than segments)
+              </p>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Pointer Color</Label>
+                <div className="flex gap-2 mt-1">
+                  <Input
+                    value={settings.pointer_color}
+                    onChange={(e) => setSettings({ ...settings, pointer_color: e.target.value })}
+                    placeholder="hsl(45, 100%, 50%)"
+                  />
+                  <div 
+                    className="w-10 h-10 rounded border border-border shrink-0"
+                    style={{ backgroundColor: settings.pointer_color }}
+                  />
+                </div>
+              </div>
+              <div>
+                <Label>Center Color</Label>
+                <div className="flex gap-2 mt-1">
+                  <Input
+                    value={settings.center_color}
+                    onChange={(e) => setSettings({ ...settings, center_color: e.target.value })}
+                    placeholder="hsl(220, 30%, 10%)"
+                  />
+                  <div 
+                    className="w-10 h-10 rounded border border-border shrink-0"
+                    style={{ backgroundColor: settings.center_color }}
+                  />
+                </div>
+              </div>
+              <div className="col-span-2">
+                <Label>Border Color</Label>
+                <div className="flex gap-2 mt-1">
+                  <Input
+                    value={settings.border_color}
+                    onChange={(e) => setSettings({ ...settings, border_color: e.target.value })}
+                    placeholder="hsl(200, 100%, 50%)"
+                  />
+                  <div 
+                    className="w-10 h-10 rounded border border-border shrink-0"
+                    style={{ backgroundColor: settings.border_color }}
+                  />
+                </div>
+              </div>
             </div>
           </CardContent>
         </Card>
