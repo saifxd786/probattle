@@ -137,17 +137,119 @@ export const useMinesGame = () => {
     fetchBalance();
   }, [user]);
 
-  // Generate random mine positions
-  const generateMinePositions = useCallback((count: number): number[] => {
+  // Generate mine positions with difficulty-based weighting
+  // Difficulty affects bomb placement probability near revealed tiles
+  const generateMinePositions = useCallback((count: number, revealedPositions: number[] = []): number[] => {
     const positions: number[] = [];
+    const totalTiles = 25;
+    
+    // Get adjacent positions for a given tile
+    const getAdjacentPositions = (pos: number): number[] => {
+      const adjacent: number[] = [];
+      const row = Math.floor(pos / 5);
+      const col = pos % 5;
+      
+      // Check all 8 directions
+      const directions = [
+        [-1, -1], [-1, 0], [-1, 1],
+        [0, -1],          [0, 1],
+        [1, -1], [1, 0], [1, 1]
+      ];
+      
+      for (const [dr, dc] of directions) {
+        const newRow = row + dr;
+        const newCol = col + dc;
+        if (newRow >= 0 && newRow < 5 && newCol >= 0 && newCol < 5) {
+          adjacent.push(newRow * 5 + newCol);
+        }
+      }
+      return adjacent;
+    };
+    
+    // Calculate weighted probabilities based on difficulty
+    const calculateWeights = (): number[] => {
+      const weights = new Array(totalTiles).fill(1);
+      
+      if (revealedPositions.length === 0 || settings.difficulty === 'easy') {
+        // Easy mode: completely random placement
+        return weights;
+      }
+      
+      // Get all adjacent positions to revealed tiles
+      const adjacentToRevealed = new Set<number>();
+      revealedPositions.forEach(pos => {
+        getAdjacentPositions(pos).forEach(adj => {
+          if (!revealedPositions.includes(adj)) {
+            adjacentToRevealed.add(adj);
+          }
+        });
+      });
+      
+      // Apply difficulty-based weighting
+      // Higher weight = more likely to place a mine there
+      if (settings.difficulty === 'medium') {
+        // Medium: slight bias towards tiles adjacent to revealed ones
+        adjacentToRevealed.forEach(pos => {
+          weights[pos] = 1.5;
+        });
+      } else if (settings.difficulty === 'hard') {
+        // Hard: strong bias towards tiles adjacent to revealed ones
+        adjacentToRevealed.forEach(pos => {
+          weights[pos] = 2.5;
+        });
+        // Also increase weight for tiles 2 steps away
+        revealedPositions.forEach(revealed => {
+          getAdjacentPositions(revealed).forEach(adj => {
+            getAdjacentPositions(adj).forEach(secondAdj => {
+              if (!revealedPositions.includes(secondAdj) && !adjacentToRevealed.has(secondAdj)) {
+                weights[secondAdj] = Math.max(weights[secondAdj], 1.8);
+              }
+            });
+          });
+        });
+      }
+      
+      // Remove revealed positions from consideration
+      revealedPositions.forEach(pos => {
+        weights[pos] = 0;
+      });
+      
+      return weights;
+    };
+    
+    // Weighted random selection
+    const selectWeightedRandom = (weights: number[], excluded: number[]): number => {
+      const availableWeights = weights.map((w, i) => excluded.includes(i) ? 0 : w);
+      const totalWeight = availableWeights.reduce((sum, w) => sum + w, 0);
+      
+      if (totalWeight === 0) {
+        // Fallback to uniform random if no weights available
+        const available = Array.from({ length: totalTiles }, (_, i) => i)
+          .filter(i => !excluded.includes(i));
+        return available[Math.floor(Math.random() * available.length)];
+      }
+      
+      let random = Math.random() * totalWeight;
+      for (let i = 0; i < totalTiles; i++) {
+        random -= availableWeights[i];
+        if (random <= 0) return i;
+      }
+      
+      // Fallback
+      return Math.floor(Math.random() * totalTiles);
+    };
+    
+    const weights = calculateWeights();
+    
     while (positions.length < count) {
-      const pos = Math.floor(Math.random() * 25);
-      if (!positions.includes(pos)) {
+      const pos = selectWeightedRandom(weights, positions);
+      if (!positions.includes(pos) && !revealedPositions.includes(pos)) {
         positions.push(pos);
       }
     }
+    
     return positions;
-  }, []);
+  }, [settings.difficulty]);
 
   const startGame = useCallback(async () => {
     if (!user) {
