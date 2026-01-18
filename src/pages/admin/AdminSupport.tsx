@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { MessageCircle, Send, Loader2, User, Clock, CheckCircle, AlertCircle, Zap, Eye } from 'lucide-react';
+import { MessageCircle, Send, Loader2, User, Clock, CheckCircle, AlertCircle, Zap, Eye, Download, Archive } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -14,6 +14,7 @@ import { toast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import UserDetailDialog from '@/components/admin/UserDetailDialog';
 import ImageLightbox from '@/components/ImageLightbox';
+import JSZip from 'jszip';
 
 // Canned responses for quick replies
 const CANNED_RESPONSES = [
@@ -89,12 +90,82 @@ const AdminSupport = () => {
     return images;
   }, [messages]);
 
+  // Count all attachments (images + videos) for download button
+  const totalAttachments = useMemo(() => {
+    let count = 0;
+    messages.forEach(msg => {
+      if (msg.attachments) {
+        count += msg.attachments.length;
+      }
+    });
+    return count;
+  }, [messages]);
+
   const openLightbox = (imageUrl: string) => {
     const index = allImages.indexOf(imageUrl);
     setLightboxImages(allImages);
     setLightboxIndex(index >= 0 ? index : 0);
     setLightboxOpen(true);
   };
+
+  const [isDownloadingZip, setIsDownloadingZip] = useState(false);
+
+  // Download all attachments as zip
+  const downloadAllAttachments = useCallback(async () => {
+    if (!selectedTicket) return;
+    
+    // Collect all attachments from messages
+    const attachments: Attachment[] = [];
+    messages.forEach(msg => {
+      if (msg.attachments && msg.attachments.length > 0) {
+        attachments.push(...msg.attachments);
+      }
+    });
+
+    if (attachments.length === 0) {
+      toast({ title: 'No attachments', description: 'This ticket has no attachments to download.' });
+      return;
+    }
+
+    setIsDownloadingZip(true);
+    
+    try {
+      const zip = new JSZip();
+      
+      // Download each attachment and add to zip
+      await Promise.all(
+        attachments.map(async (att, index) => {
+          try {
+            const response = await fetch(att.url);
+            const blob = await response.blob();
+            const extension = att.type === 'image' ? (att.name.split('.').pop() || 'jpg') : (att.name.split('.').pop() || 'mp4');
+            const filename = att.name || `attachment_${index + 1}.${extension}`;
+            zip.file(filename, blob);
+          } catch (err) {
+            console.error('Failed to fetch attachment:', att.url, err);
+          }
+        })
+      );
+
+      // Generate zip and download
+      const content = await zip.generateAsync({ type: 'blob' });
+      const url = URL.createObjectURL(content);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `ticket_${selectedTicket.id.slice(0, 8)}_attachments.zip`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      toast({ title: 'Downloaded', description: `${attachments.length} attachments downloaded as zip.` });
+    } catch (error) {
+      console.error('Zip download error:', error);
+      toast({ title: 'Error', description: 'Failed to create zip file.', variant: 'destructive' });
+    }
+    
+    setIsDownloadingZip(false);
+  }, [selectedTicket, messages]);
 
   useEffect(() => {
     fetchTickets();
@@ -392,6 +463,23 @@ const AdminSupport = () => {
                     </Button>
                   </div>
                   <div className="flex items-center gap-2">
+                    {/* Download all attachments button */}
+                    {totalAttachments > 0 && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-1"
+                        onClick={downloadAllAttachments}
+                        disabled={isDownloadingZip}
+                      >
+                        {isDownloadingZip ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Archive className="w-4 h-4" />
+                        )}
+                        {isDownloadingZip ? 'Zipping...' : 'Download All'}
+                      </Button>
+                    )}
                     <Select
                       value={selectedTicket.status}
                       onValueChange={(value) => updateTicketStatus(selectedTicket.id, value)}

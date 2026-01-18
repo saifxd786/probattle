@@ -60,43 +60,32 @@ export const useMinesGame = () => {
   const [walletBalance, setWalletBalance] = useState(0);
 
   // Calculate multiplier based on mines and revealed gems
-  // Designed to favor the house with aggressive difficulty scaling
+  // Standard Mines probability-based multiplier (like Stake.com)
   const calculateMultiplier = useCallback((minesCount: number, revealedCount: number) => {
     if (revealedCount === 0) return 1;
     
     const totalTiles = 25;
     const safeTiles = totalTiles - minesCount;
     
-    // Difficulty modifiers
-    // Easy: Normal luck - bombs appear randomly
-    // Medium: Bomb likely after 2-4 safe boxes  
-    // Hard: Bomb likely after 1-2 safe boxes
-    const difficultyModifier: Record<string, number> = {
-      easy: 0.80,    // Normal randomness
-      medium: 0.65,  // Bombs more frequent after 2-4 reveals
-      hard: 0.50     // Bombs very frequent after 1-2 reveals
-    };
-    
-    // Calculate true probability-based multiplier
-    let probabilityMultiplier = 1;
+    // Standard probability-based multiplier calculation
+    // For each reveal, multiply by (total remaining / safe remaining)
+    // This gives the true odds of successfully picking safe tiles
+    let multiplier = 1;
     for (let i = 0; i < revealedCount; i++) {
-      const remainingSafe = safeTiles - i;
       const remainingTiles = totalTiles - i;
-      // Probability of next tile being safe
-      const probSafe = remainingSafe / remainingTiles;
-      probabilityMultiplier *= (1 / probSafe);
+      const remainingSafe = safeTiles - i;
+      // Each successful pick multiplies by 1/probability
+      multiplier *= (remainingTiles / remainingSafe);
     }
     
-    // Apply house edge (platform commission) and difficulty modifier
+    // Apply only platform commission (house edge)
+    // Difficulty only affects bomb placement randomness (handled elsewhere), not the payout
     const houseEdge = 1 - settings.platformCommission;
-    const diffMod = difficultyModifier[settings.difficulty] || 0.65;
+    const finalMultiplier = multiplier * houseEdge;
     
-    // Final multiplier with aggressive house advantage
-    const finalMultiplier = probabilityMultiplier * houseEdge * diffMod;
-    
-    // Ensure minimum multiplier of 1.01 to give player something
+    // Round to 2 decimal places
     return Math.max(1.01, Math.round(finalMultiplier * 100) / 100);
-  }, [settings]);
+  }, [settings.platformCommission]);
 
   // Fetch settings
   useEffect(() => {
