@@ -15,6 +15,7 @@ import { format } from 'date-fns';
 import UserDetailDialog from '@/components/admin/UserDetailDialog';
 import ImageLightbox from '@/components/ImageLightbox';
 import JSZip from 'jszip';
+import { resolveSupportAttachments, SupportAttachmentResolved } from '@/utils/supportAttachments';
 
 // Canned responses for quick replies
 const CANNED_RESPONSES = [
@@ -186,8 +187,14 @@ const AdminSupport = () => {
             table: 'support_messages',
             filter: `ticket_id=eq.${selectedTicket.id}`,
           },
-          (payload) => {
-            const newMsg = payload.new as Message;
+          async (payload) => {
+            const rawMsg = payload.new as Message;
+            // Resolve attachments for realtime messages
+            const resolvedAttachments = await resolveSupportAttachments(rawMsg.attachments);
+            const newMsg = {
+              ...rawMsg,
+              attachments: resolvedAttachments,
+            };
             setMessages((prev) => [...prev, newMsg]);
           }
         )
@@ -261,12 +268,17 @@ const AdminSupport = () => {
       .eq('ticket_id', ticketId)
       .order('created_at', { ascending: true });
 
-    // Cast properly since attachments is jsonb
-    const parsedMessages = (data || []).map(msg => ({
-      ...msg,
-      sender_type: msg.sender_type as 'user' | 'admin',
-      attachments: (msg.attachments as unknown as Attachment[]) || [],
-    }));
+    // Resolve attachments with signed URLs
+    const parsedMessages = await Promise.all(
+      (data || []).map(async (msg) => {
+        const resolvedAttachments = await resolveSupportAttachments(msg.attachments);
+        return {
+          ...msg,
+          sender_type: msg.sender_type as 'user' | 'admin',
+          attachments: resolvedAttachments,
+        };
+      })
+    );
     setMessages(parsedMessages);
 
     // Mark user messages as read
