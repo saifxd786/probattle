@@ -4,11 +4,14 @@ import { MessageCircle, X, Send, Loader2, Image, Video, Trash2 } from 'lucide-re
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Progress } from '@/components/ui/progress';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import ImageLightbox from '@/components/ImageLightbox';
+import { uploadResumableToBucket } from '@/utils/resumableUpload';
+import { SUPPORT_ATTACHMENTS_BUCKET } from '@/utils/supportAttachments';
 
 interface Attachment {
   url: string;
@@ -46,6 +49,8 @@ const SupportChat = () => {
   const [unreadCount, setUnreadCount] = useState(0);
   const [attachments, setAttachments] = useState<File[]>([]);
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [currentUploadName, setCurrentUploadName] = useState<string>('');
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxImages, setLightboxImages] = useState<string[]>([]);
   const [lightboxIndex, setLightboxIndex] = useState(0);
@@ -281,31 +286,62 @@ const SupportChat = () => {
     if (!user || attachments.length === 0) return [];
 
     const uploaded: Attachment[] = [];
+    const totalFiles = attachments.length;
     
-    for (const file of attachments) {
+    for (let i = 0; i < attachments.length; i++) {
+      const file = attachments[i];
       const fileExt = file.name.split('.').pop();
       const fileName = `${user.id}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
       
-      const { error: uploadError } = await supabase.storage
-        .from('support-attachments')
-        .upload(fileName, file);
+      setCurrentUploadName(`${file.name} (${i + 1}/${totalFiles})`);
+      setUploadProgress(0);
 
-      if (uploadError) {
-        console.error('Upload error:', uploadError);
-        continue;
+      const isLargeFile = file.size > 10 * 1024 * 1024; // 10MB threshold
+      
+      try {
+        if (isLargeFile) {
+          // Use resumable upload for large files
+          await uploadResumableToBucket({
+            bucketName: SUPPORT_ATTACHMENTS_BUCKET,
+            objectName: fileName,
+            file,
+            onProgress: ({ percent }) => {
+              setUploadProgress(percent);
+            },
+          });
+        } else {
+          // Standard upload for small files
+          const { error: uploadError } = await supabase.storage
+            .from(SUPPORT_ATTACHMENTS_BUCKET)
+            .upload(fileName, file);
+
+          if (uploadError) {
+            console.error('Upload error:', uploadError);
+            continue;
+          }
+          setUploadProgress(100);
+        }
+
+        // Store bucket + path (not the public URL) for signed URL resolution
+        uploaded.push({
+          url: '', // Will be resolved via signed URL on fetch
+          type: file.type.startsWith('image/') ? 'image' : 'video',
+          name: file.name,
+          bucket: SUPPORT_ATTACHMENTS_BUCKET,
+          path: fileName,
+        } as Attachment & { bucket: string; path: string });
+      } catch (err) {
+        console.error('Upload failed:', err);
+        toast({
+          title: 'Upload Failed',
+          description: `Failed to upload ${file.name}`,
+          variant: 'destructive',
+        });
       }
-
-      const { data: urlData } = supabase.storage
-        .from('support-attachments')
-        .getPublicUrl(fileName);
-
-      uploaded.push({
-        url: urlData.publicUrl,
-        type: file.type.startsWith('image/') ? 'image' : 'video',
-        name: file.name,
-      });
     }
 
+    setCurrentUploadName('');
+    setUploadProgress(0);
     return uploaded;
   };
 
@@ -562,8 +598,14 @@ const SupportChat = () => {
                   )}
                 </Button>
               </div>
-              {isUploading && (
-                <p className="text-xs text-muted-foreground mt-2">Uploading files...</p>
+            {isUploading && (
+                <div className="mt-2 space-y-1">
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <span className="truncate max-w-[200px]">{currentUploadName || 'Uploading...'}</span>
+                    <span>{uploadProgress}%</span>
+                  </div>
+                  <Progress value={uploadProgress} className="h-1.5" />
+                </div>
               )}
             </form>
           </motion.div>
