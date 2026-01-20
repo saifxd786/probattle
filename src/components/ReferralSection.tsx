@@ -1,15 +1,12 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Gift, Copy, Check, Users, Wallet, Coins, Flame, Sparkles, ArrowRight, Loader2, TrendingUp } from 'lucide-react';
+import { Gift, Copy, Check, Users, Wallet, Sparkles, Loader2, TrendingUp, Share2, ChevronDown, ChevronUp, IndianRupee, Clock, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
-import { useDailyBonus } from '@/hooks/useDailyBonus';
+import { format } from 'date-fns';
 
 type Referral = {
   id: string;
@@ -31,12 +28,8 @@ const ReferralSection = () => {
   const [pendingRewards, setPendingRewards] = useState(0);
   const [copied, setCopied] = useState(false);
   const [isClaiming, setIsClaiming] = useState(false);
-  
-  // Daily bonus integration
-  const { bonusData, isLoading: isBonusLoading, isClaiming: isDailyClaiming, isConverting, claimDailyBonus, convertCoins } = useDailyBonus();
-  const [isConvertOpen, setIsConvertOpen] = useState(false);
-  const [coinsInput, setCoinsInput] = useState('');
-  const [showClaimAnimation, setShowClaimAnimation] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [showAllReferrals, setShowAllReferrals] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -45,37 +38,44 @@ const ReferralSection = () => {
 
   const fetchReferralData = async () => {
     if (!user) return;
+    setIsLoading(true);
 
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('referral_code')
-      .eq('id', user.id)
-      .single();
+    try {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('referral_code')
+        .eq('id', user.id)
+        .single();
 
-    if (profile?.referral_code) {
-      setReferralCode(profile.referral_code);
-    }
+      if (profile?.referral_code) {
+        setReferralCode(profile.referral_code);
+      }
 
-    const { data: refData } = await supabase
-      .from('referrals')
-      .select('*')
-      .eq('referrer_id', user.id)
-      .order('created_at', { ascending: false });
+      const { data: refData } = await supabase
+        .from('referrals')
+        .select('*')
+        .eq('referrer_id', user.id)
+        .order('created_at', { ascending: false });
 
-    if (refData) {
-      const referralsWithProfiles = await Promise.all(
-        refData.map(async (ref) => {
-          const { data: refProfile } = await supabase
-            .from('profiles')
-            .select('username')
-            .eq('id', ref.referred_id)
-            .maybeSingle();
-          return { ...ref, profiles: refProfile } as Referral;
-        })
-      );
-      setReferrals(referralsWithProfiles);
-      setTotalEarnings(refData.reduce((sum, r) => sum + (r.reward_amount || 0), 0));
-      setPendingRewards(refData.reduce((sum, r) => sum + ((r as any).pending_reward || 0), 0));
+      if (refData) {
+        const referralsWithProfiles = await Promise.all(
+          refData.map(async (ref) => {
+            const { data: refProfile } = await supabase
+              .from('profiles')
+              .select('username')
+              .eq('id', ref.referred_id)
+              .maybeSingle();
+            return { ...ref, profiles: refProfile } as Referral;
+          })
+        );
+        setReferrals(referralsWithProfiles);
+        setTotalEarnings(refData.reduce((sum, r) => sum + (r.reward_amount || 0), 0));
+        setPendingRewards(refData.reduce((sum, r) => sum + ((r as any).pending_reward || 0), 0));
+      }
+    } catch (error) {
+      console.error('Error fetching referral data:', error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -92,8 +92,28 @@ const ReferralSection = () => {
     const link = `${window.location.origin}/auth?ref=${referralCode}`;
     navigator.clipboard.writeText(link);
     setCopied(true);
-    toast({ title: 'Copied!', description: 'Referral link copied to clipboard' });
+    toast({ title: 'Link Copied!', description: 'Share this link with friends to earn rewards' });
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const shareReferralLink = async () => {
+    if (!referralCode) return;
+    const link = `${window.location.origin}/auth?ref=${referralCode}`;
+    const shareData = {
+      title: 'Join ProBattle',
+      text: `Join me on ProBattle and get rewarded! Use my referral code: ${referralCode}`,
+      url: link,
+    };
+
+    try {
+      if (navigator.share) {
+        await navigator.share(shareData);
+      } else {
+        copyReferralLink();
+      }
+    } catch (err) {
+      copyReferralLink();
+    }
   };
 
   const handleClaimReferralRewards = async () => {
@@ -134,337 +154,252 @@ const ReferralSection = () => {
     }
   };
 
-  const handleDailyClaim = async () => {
-    setShowClaimAnimation(true);
-    await claimDailyBonus();
-    setTimeout(() => setShowClaimAnimation(false), 1500);
-  };
-
-  const handleConvert = async () => {
-    const coins = parseInt(coinsInput);
-    if (isNaN(coins)) return;
-    
-    const success = await convertCoins(coins);
-    if (success) {
-      setIsConvertOpen(false);
-      setCoinsInput('');
-    }
-  };
-
-  const convertibleCoins = bonusData ? Math.floor(bonusData.coins / 100) * 100 : 0;
-  const rupeesWorth = convertibleCoins / 10;
-
   if (!user) return null;
 
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="space-y-4"
-    >
-      <Card className="glass-card overflow-hidden">
-        <Tabs defaultValue="referral" className="w-full">
-          <TabsList className="w-full grid grid-cols-2 bg-secondary/50">
-            <TabsTrigger value="referral" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-              <Gift className="w-4 h-4 mr-2" />
-              Refer & Earn
-            </TabsTrigger>
-            <TabsTrigger value="daily" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-              <Coins className="w-4 h-4 mr-2" />
-              Daily Bonus
-            </TabsTrigger>
-          </TabsList>
+  const displayedReferrals = showAllReferrals ? referrals : referrals.slice(0, 5);
 
-          {/* Referral Tab */}
-          <TabsContent value="referral" className="p-4 space-y-4">
-            <div className="text-center">
-              <p className="text-sm text-muted-foreground mb-1">
-                Earn <span className="text-primary font-bold">2.5%</span> of every deposit your referrals make!
-              </p>
+  return (
+    <Card className="glass-card overflow-hidden">
+      <CardHeader className="pb-2">
+        <CardTitle className="flex items-center gap-2 text-lg">
+          <Gift className="w-5 h-5 text-primary" />
+          Refer & Earn
+        </CardTitle>
+      </CardHeader>
+      
+      <CardContent className="space-y-4">
+        {isLoading ? (
+          <div className="flex justify-center py-8">
+            <Loader2 className="w-6 h-6 animate-spin text-primary" />
+          </div>
+        ) : (
+          <>
+            {/* Hero Section */}
+            <div className="relative p-4 bg-gradient-to-br from-primary/20 to-accent/20 rounded-xl border border-primary/30 overflow-hidden">
+              <div className="absolute -top-10 -right-10 w-32 h-32 bg-primary/20 rounded-full blur-3xl" />
+              
+              <div className="relative z-10">
+                <div className="text-center mb-3">
+                  <h3 className="font-display text-xl font-bold mb-1">
+                    Earn <span className="text-gradient">2.5%</span> Commission
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    On every deposit your friends make - forever!
+                  </p>
+                </div>
+
+                {/* How it works */}
+                <div className="grid grid-cols-3 gap-2 mb-4">
+                  <div className="text-center p-2 bg-background/50 rounded-lg">
+                    <div className="w-8 h-8 mx-auto mb-1 rounded-full bg-primary/20 flex items-center justify-center">
+                      <Share2 className="w-4 h-4 text-primary" />
+                    </div>
+                    <p className="text-[10px] text-muted-foreground">Share Code</p>
+                  </div>
+                  <div className="text-center p-2 bg-background/50 rounded-lg">
+                    <div className="w-8 h-8 mx-auto mb-1 rounded-full bg-green-500/20 flex items-center justify-center">
+                      <Users className="w-4 h-4 text-green-500" />
+                    </div>
+                    <p className="text-[10px] text-muted-foreground">Friend Joins</p>
+                  </div>
+                  <div className="text-center p-2 bg-background/50 rounded-lg">
+                    <div className="w-8 h-8 mx-auto mb-1 rounded-full bg-yellow-500/20 flex items-center justify-center">
+                      <IndianRupee className="w-4 h-4 text-yellow-500" />
+                    </div>
+                    <p className="text-[10px] text-muted-foreground">Earn 2.5%</p>
+                  </div>
+                </div>
+              </div>
             </div>
 
+            {/* Referral Code Section */}
             {referralCode ? (
-              <>
-                <div className="p-3 bg-primary/10 border border-primary/20 rounded-lg">
+              <div className="space-y-3">
+                <div className="p-3 bg-secondary/50 border border-border rounded-lg">
                   <p className="text-xs text-muted-foreground mb-1">Your Referral Code</p>
                   <div className="flex items-center gap-2">
-                    <code className="flex-1 text-xl font-display font-bold text-primary">
+                    <code className="flex-1 text-2xl font-display font-bold text-primary tracking-wider">
                       {referralCode}
                     </code>
-                    <Button variant="outline" size="icon" onClick={copyReferralCode}>
-                      {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                    <Button 
+                      variant="outline" 
+                      size="icon" 
+                      onClick={copyReferralCode}
+                      className="shrink-0"
+                    >
+                      {copied ? <Check className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
                     </Button>
                   </div>
                 </div>
 
-                <Button variant="neon" className="w-full" onClick={copyReferralLink}>
-                  <Copy className="w-4 h-4 mr-2" />
-                  Copy Referral Link
-                </Button>
-              </>
+                <div className="grid grid-cols-2 gap-2">
+                  <Button variant="outline" className="w-full gap-2" onClick={copyReferralLink}>
+                    <Copy className="w-4 h-4" />
+                    Copy Link
+                  </Button>
+                  <Button variant="neon" className="w-full gap-2" onClick={shareReferralLink}>
+                    <Share2 className="w-4 h-4" />
+                    Share
+                  </Button>
+                </div>
+              </div>
             ) : (
-              <p className="text-sm text-muted-foreground">Loading referral code...</p>
+              <div className="text-center py-4">
+                <Loader2 className="w-5 h-5 animate-spin mx-auto mb-2 text-muted-foreground" />
+                <p className="text-sm text-muted-foreground">Loading referral code...</p>
+              </div>
             )}
 
             {/* Pending Rewards - Claimable */}
-            {pendingRewards > 0 && (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                className="p-4 bg-gradient-to-r from-green-500/20 to-emerald-500/20 border border-green-500/30 rounded-xl"
-              >
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <TrendingUp className="w-5 h-5 text-green-500" />
-                    <span className="font-medium text-green-500">Pending Rewards</span>
-                  </div>
-                  <span className="font-display text-xl font-bold text-green-500">
-                    ₹{pendingRewards.toFixed(2)}
-                  </span>
-                </div>
-                <Button
-                  onClick={handleClaimReferralRewards}
-                  disabled={isClaiming}
-                  className="w-full bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white border-none"
+            <AnimatePresence>
+              {pendingRewards > 0 && (
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
+                  className="p-4 bg-gradient-to-r from-green-500/20 to-emerald-500/20 border border-green-500/30 rounded-xl"
                 >
-                  {isClaiming ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <>
-                      <Sparkles className="w-4 h-4 mr-2" />
-                      Claim Rewards
-                    </>
-                  )}
-                </Button>
-              </motion.div>
-            )}
-
-            {/* Stats */}
-            <div className="grid grid-cols-2 gap-3 pt-2">
-              <div className="p-3 bg-secondary/30 rounded-lg text-center">
-                <Users className="w-5 h-5 mx-auto text-primary mb-1" />
-                <p className="text-2xl font-display font-bold">{referrals.length}</p>
-                <p className="text-xs text-muted-foreground">Friends Invited</p>
-              </div>
-              <div className="p-3 bg-secondary/30 rounded-lg text-center">
-                <Wallet className="w-5 h-5 mx-auto text-green-500 mb-1" />
-                <p className="text-2xl font-display font-bold text-green-500">₹{totalEarnings.toFixed(0)}</p>
-                <p className="text-xs text-muted-foreground">Total Earned</p>
-              </div>
-            </div>
-
-            {/* Recent Referrals */}
-            {referrals.length > 0 && (
-              <div className="pt-2">
-                <p className="text-sm font-medium mb-2">Recent Referrals</p>
-                <div className="space-y-2">
-                  {referrals.slice(0, 5).map((ref) => (
-                    <div
-                      key={ref.id}
-                      className="flex items-center justify-between p-2 rounded-lg bg-secondary/20"
-                    >
-                      <span className="text-sm">{ref.profiles?.username || 'User'}</span>
-                      <div className="flex items-center gap-2">
-                        {(ref as any).pending_reward > 0 && (
-                          <span className="text-[10px] px-2 py-0.5 rounded-full bg-yellow-500/20 text-yellow-500">
-                            +₹{((ref as any).pending_reward || 0).toFixed(2)} pending
-                          </span>
-                        )}
-                        <span className={`text-xs px-2 py-0.5 rounded-full ${
-                          ref.reward_amount > 0
-                            ? 'bg-green-500/20 text-green-500' 
-                            : 'bg-muted text-muted-foreground'
-                        }`}>
-                          {ref.reward_amount > 0 ? `₹${ref.reward_amount.toFixed(0)} earned` : 'Waiting'}
-                        </span>
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-full bg-green-500/20 flex items-center justify-center">
+                        <TrendingUp className="w-4 h-4 text-green-500" />
+                      </div>
+                      <div>
+                        <p className="font-medium text-green-500">Pending Rewards</p>
+                        <p className="text-xs text-muted-foreground">Ready to claim</p>
                       </div>
                     </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </TabsContent>
-          
-          {/* Daily Bonus Tab */}
-          <TabsContent value="daily" className="p-4 space-y-4 relative">
-            {/* Background glow */}
-            <div className="absolute -top-10 -right-10 w-32 h-32 bg-yellow-500/20 rounded-full blur-3xl pointer-events-none" />
-            
-            {/* Claim animation overlay */}
-            <AnimatePresence>
-              {showClaimAnimation && (
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  className="absolute inset-0 bg-gradient-to-r from-yellow-500/30 to-orange-500/30 flex items-center justify-center z-10 rounded-lg"
-                >
-                  <motion.div
-                    initial={{ scale: 0 }}
-                    animate={{ scale: [0, 1.2, 1] }}
-                    className="text-4xl"
+                    <span className="font-display text-2xl font-bold text-green-500">
+                      ₹{pendingRewards.toFixed(2)}
+                    </span>
+                  </div>
+                  <Button
+                    onClick={handleClaimReferralRewards}
+                    disabled={isClaiming}
+                    className="w-full bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white border-none"
                   >
-                    🎉
-                  </motion.div>
+                    {isClaiming ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <>
+                        <Sparkles className="w-4 h-4 mr-2" />
+                        Claim ₹{pendingRewards.toFixed(2)}
+                      </>
+                    )}
+                  </Button>
                 </motion.div>
               )}
             </AnimatePresence>
 
-            {isBonusLoading ? (
-              <div className="flex justify-center py-8">
-                <Loader2 className="w-6 h-6 animate-spin text-primary" />
+            {/* Stats Cards */}
+            <div className="grid grid-cols-3 gap-2">
+              <div className="p-3 bg-secondary/30 rounded-lg text-center">
+                <Users className="w-5 h-5 mx-auto text-primary mb-1" />
+                <p className="font-display text-xl font-bold">{referrals.length}</p>
+                <p className="text-[10px] text-muted-foreground">Friends</p>
               </div>
-            ) : (
-              <div className="relative">
-                {/* Header with streak */}
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-yellow-400 to-orange-500 flex items-center justify-center">
-                      <Coins className="w-5 h-5 text-white" />
-                    </div>
-                    <div>
-                      <h3 className="font-display font-bold text-sm">Daily Login Bonus</h3>
-                      <p className="text-xs text-muted-foreground">100 coins = ₹10</p>
-                    </div>
-                  </div>
-                  
-                  {bonusData && bonusData.streak > 0 && (
-                    <div className="flex items-center gap-1 px-2 py-1 bg-orange-500/20 rounded-full">
-                      <Flame className="w-3 h-3 text-orange-500" />
-                      <span className="text-xs font-bold text-orange-500">{bonusData.streak} Day Streak</span>
-                    </div>
-                  )}
+              <div className="p-3 bg-secondary/30 rounded-lg text-center">
+                <Wallet className="w-5 h-5 mx-auto text-green-500 mb-1" />
+                <p className="font-display text-xl font-bold text-green-500">₹{totalEarnings.toFixed(0)}</p>
+                <p className="text-[10px] text-muted-foreground">Earned</p>
+              </div>
+              <div className="p-3 bg-secondary/30 rounded-lg text-center">
+                <Clock className="w-5 h-5 mx-auto text-yellow-500 mb-1" />
+                <p className="font-display text-xl font-bold text-yellow-500">₹{pendingRewards.toFixed(0)}</p>
+                <p className="text-[10px] text-muted-foreground">Pending</p>
+              </div>
+            </div>
+
+            {/* Referrals List */}
+            {referrals.length > 0 && (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-medium">Your Referrals</p>
+                  <span className="text-xs text-muted-foreground">{referrals.length} total</span>
+                </div>
+                
+                <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                  {displayedReferrals.map((ref, index) => (
+                    <motion.div
+                      key={ref.id}
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: index * 0.05 }}
+                      className="flex items-center justify-between p-3 rounded-lg bg-secondary/20 border border-border/50"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
+                          <span className="text-sm font-bold text-primary">
+                            {(ref.profiles?.username || 'U')[0].toUpperCase()}
+                          </span>
+                        </div>
+                        <div>
+                          <p className="font-medium text-sm">{ref.profiles?.username || 'User'}</p>
+                          <p className="text-[10px] text-muted-foreground">
+                            {format(new Date(ref.created_at), 'MMM d, yyyy')}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="flex items-center gap-2">
+                          {(ref as any).pending_reward > 0 && (
+                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-yellow-500/20 text-yellow-500">
+                              +₹{((ref as any).pending_reward || 0).toFixed(2)}
+                            </span>
+                          )}
+                          {ref.reward_amount > 0 ? (
+                            <span className="flex items-center gap-1 text-xs text-green-500">
+                              <CheckCircle2 className="w-3 h-3" />
+                              ₹{ref.reward_amount.toFixed(0)}
+                            </span>
+                          ) : (
+                            <span className="text-[10px] text-muted-foreground">
+                              Waiting for deposit
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </motion.div>
+                  ))}
                 </div>
 
-                {/* Stats */}
-                <div className="flex items-center justify-between bg-card/50 rounded-lg p-3 mb-3">
-                  <div>
-                    <p className="text-xs text-muted-foreground">Your Coins</p>
-                    <p className="font-display text-2xl font-bold text-yellow-500">
-                      {bonusData?.coins || 0}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-xs text-muted-foreground">Worth</p>
-                    <p className="font-display text-xl font-bold text-green-500">
-                      ₹{((bonusData?.coins || 0) / 10).toFixed(1)}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Action buttons */}
-                <div className="flex gap-2">
-                  {bonusData?.canClaim ? (
-                    <Button
-                      onClick={handleDailyClaim}
-                      disabled={isDailyClaiming}
-                      className="flex-1 bg-gradient-to-r from-yellow-500 to-orange-500 hover:from-yellow-600 hover:to-orange-600 text-white border-none"
-                      size="sm"
-                    >
-                      {isDailyClaiming ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <>
-                          <Sparkles className="w-4 h-4 mr-1" />
-                          Claim +10 Coins
-                        </>
-                      )}
-                    </Button>
-                  ) : (
-                    <Button
-                      disabled
-                      className="flex-1 bg-muted text-muted-foreground border-none"
-                      size="sm"
-                    >
-                      ✓ Claimed Today
-                    </Button>
-                  )}
-                  
+                {referrals.length > 5 && (
                   <Button
-                    onClick={() => setIsConvertOpen(true)}
-                    disabled={!bonusData || bonusData.coins < 100}
-                    variant="outline"
+                    variant="ghost"
                     size="sm"
-                    className="px-3"
+                    className="w-full"
+                    onClick={() => setShowAllReferrals(!showAllReferrals)}
                   >
-                    <ArrowRight className="w-4 h-4" />
+                    {showAllReferrals ? (
+                      <>
+                        <ChevronUp className="w-4 h-4 mr-1" />
+                        Show Less
+                      </>
+                    ) : (
+                      <>
+                        <ChevronDown className="w-4 h-4 mr-1" />
+                        Show All ({referrals.length})
+                      </>
+                    )}
                   </Button>
-                </div>
+                )}
               </div>
             )}
-          </TabsContent>
-        </Tabs>
-      </Card>
 
-      {/* Convert Dialog */}
-      <Dialog open={isConvertOpen} onOpenChange={setIsConvertOpen}>
-        <DialogContent className="bg-card border-primary/20">
-          <DialogHeader>
-            <DialogTitle className="font-display flex items-center gap-2">
-              <Coins className="w-5 h-5 text-yellow-500" />
-              Convert Coins to Wallet
-            </DialogTitle>
-            <DialogDescription>
-              Convert your coins to wallet balance (100 coins = ₹10)
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4 py-4">
-            <div className="bg-muted/50 rounded-lg p-4 text-center">
-              <p className="text-sm text-muted-foreground mb-1">Available Coins</p>
-              <p className="font-display text-3xl font-bold text-yellow-500">
-                {bonusData?.coins || 0}
-              </p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Convertible: {convertibleCoins} coins = ₹{rupeesWorth}
-              </p>
-            </div>
-
-            <div>
-              <label className="text-sm text-muted-foreground mb-2 block">
-                Coins to Convert (min 100)
-              </label>
-              <Input
-                type="number"
-                placeholder="Enter coins (multiples of 100)"
-                value={coinsInput}
-                onChange={(e) => setCoinsInput(e.target.value)}
-                min={100}
-                step={100}
-                max={bonusData?.coins || 0}
-              />
-              {coinsInput && parseInt(coinsInput) >= 100 && (
-                <p className="text-sm text-green-500 mt-2">
-                  You'll get ₹{(parseInt(coinsInput) / 10).toFixed(1)} in your wallet
+            {/* Empty State */}
+            {referrals.length === 0 && (
+              <div className="text-center py-6 px-4 bg-secondary/20 rounded-lg">
+                <Users className="w-10 h-10 mx-auto text-muted-foreground/30 mb-2" />
+                <p className="text-sm text-muted-foreground mb-1">No referrals yet</p>
+                <p className="text-xs text-muted-foreground">
+                  Share your code and start earning 2.5% on every deposit!
                 </p>
-              )}
-            </div>
-
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                onClick={() => setCoinsInput(String(convertibleCoins))}
-                disabled={convertibleCoins === 0}
-                className="flex-1"
-              >
-                Max ({convertibleCoins})
-              </Button>
-              <Button
-                onClick={handleConvert}
-                disabled={isConverting || !coinsInput || parseInt(coinsInput) < 100 || parseInt(coinsInput) > (bonusData?.coins || 0)}
-                className="flex-1 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white border-none"
-              >
-                {isConverting ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  'Convert'
-                )}
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-    </motion.div>
+              </div>
+            )}
+          </>
+        )}
+      </CardContent>
+    </Card>
   );
 };
 
