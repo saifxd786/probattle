@@ -38,6 +38,7 @@ const SpinWheel = () => {
   const [isSpinning, setIsSpinning] = useState(false);
   const [rotation, setRotation] = useState(0);
   const [canSpin, setCanSpin] = useState(false);
+  const [availableSpins, setAvailableSpins] = useState(0);
   const [isLocked, setIsLocked] = useState(true);
   const [totalDeposits, setTotalDeposits] = useState(0);
   const [showResult, setShowResult] = useState(false);
@@ -85,31 +86,23 @@ const SpinWheel = () => {
   const checkEligibility = async () => {
     setIsLoading(true);
     try {
-      // Check total deposits
-      const { data: deposits, error: depositError } = await supabase
-        .from('transactions')
-        .select('amount')
-        .eq('user_id', user!.id)
-        .eq('type', 'deposit')
-        .eq('status', 'completed');
-
-      if (depositError) throw depositError;
-
-      const totalDep = deposits?.reduce((sum, d) => sum + Number(d.amount), 0) || 0;
-      setTotalDeposits(totalDep);
-
-      if (totalDep < wheelSettings.required_deposit) {
-        setIsLocked(true);
-        setCanSpin(false);
-      } else {
-        setIsLocked(false);
-        // Check spin availability from server
-        const { data, error } = await supabase.rpc('check_spin_availability');
-        if (error) throw error;
-        
-        const spinResult = data as { can_spin: boolean; next_spin_at: string | null };
-        setCanSpin(spinResult.can_spin);
-      }
+      // Check spin availability from server (deposit-based)
+      const { data, error } = await supabase.rpc('check_spin_availability');
+      if (error) throw error;
+      
+      const spinResult = data as { 
+        can_spin: boolean; 
+        available_spins: number;
+        total_deposits: number;
+        required_per_spin: number;
+      };
+      
+      setTotalDeposits(spinResult.total_deposits || 0);
+      setAvailableSpins(spinResult.available_spins || 0);
+      setCanSpin(spinResult.can_spin);
+      
+      // Lock if total deposits are less than required for first spin
+      setIsLocked(spinResult.total_deposits < (spinResult.required_per_spin || wheelSettings.required_deposit));
     } catch (error) {
       console.error('Error checking eligibility:', error);
     } finally {
@@ -128,7 +121,12 @@ const SpinWheel = () => {
       
       if (error) throw error;
       
-      const spinResult = data as { success: boolean; reward_amount?: number; message: string };
+      const spinResult = data as { 
+        success: boolean; 
+        reward_amount?: number; 
+        message: string;
+        remaining_spins?: number;
+      };
       
       if (spinResult.success && spinResult.reward_amount !== undefined) {
         const rewardAmount = spinResult.reward_amount;
@@ -137,13 +135,28 @@ const SpinWheel = () => {
         const targetSegmentIndex = wheelSettings.segment_values.findIndex(v => v === rewardAmount);
         
         // Calculate rotation to land on target segment
-        // The pointer is at the top (12 o'clock)
-        const segmentMiddleAngle = targetSegmentIndex * segmentAngle + segmentAngle / 2;
-        const targetRotation = 360 - segmentMiddleAngle + 270;
+        // The pointer is at the top (12 o'clock position = 0 degrees in wheel space)
+        // Wheel is drawn starting from top (0 degrees), going clockwise
+        // We need to rotate the wheel so the target segment aligns with the pointer
         
-        // Add multiple full spins for effect
-        const spins = 5 + Math.floor(Math.random() * 3);
-        const newRotation = rotation + (spins * 360) + targetRotation - (rotation % 360);
+        // Each segment spans segmentAngle degrees
+        // Segment 0 starts at 0 degrees and ends at segmentAngle
+        // The middle of segment i is at: i * segmentAngle + segmentAngle/2
+        
+        const segmentMiddle = targetSegmentIndex * segmentAngle + segmentAngle / 2;
+        
+        // To make this segment align with the pointer at top (0 degrees),
+        // we need to rotate the wheel by (360 - segmentMiddle) degrees
+        const targetAngle = 360 - segmentMiddle;
+        
+        // Add multiple full spins for effect (5-7 spins)
+        const fullSpins = 5 + Math.floor(Math.random() * 3);
+        
+        // Add small random offset within the segment for natural feel
+        const randomOffset = (Math.random() - 0.5) * (segmentAngle * 0.6);
+        
+        // Calculate new rotation from current position
+        const newRotation = rotation + (fullSpins * 360) + targetAngle + randomOffset - (rotation % 360);
         
         setRotation(newRotation);
         setResult(rewardAmount);
@@ -152,7 +165,11 @@ const SpinWheel = () => {
         setTimeout(() => {
           setShowResult(true);
           setIsSpinning(false);
-          setCanSpin(false);
+          
+          // Update remaining spins
+          const remaining = spinResult.remaining_spins ?? (availableSpins - 1);
+          setAvailableSpins(remaining);
+          setCanSpin(remaining > 0);
           
           toast({
             title: '🎉 Congratulations!',
@@ -326,24 +343,26 @@ const SpinWheel = () => {
         {/* Spin Button */}
         {!isLocked && (
           canSpin ? (
-            <Button
-              onClick={handleSpin}
-              disabled={isSpinning}
-              className="w-full bg-gradient-to-r from-primary to-accent hover:opacity-90 font-display"
-            >
-              {isSpinning ? (
-                <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Spinning...
-                </>
-              ) : (
-                'SPIN NOW'
-              )}
-            </Button>
+            <div className="w-full">
+              <Button
+                onClick={handleSpin}
+                disabled={isSpinning}
+                className="w-full bg-gradient-to-r from-primary to-accent hover:opacity-90 font-display"
+              >
+                {isSpinning ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Spinning...
+                  </>
+                ) : (
+                  `SPIN NOW (${availableSpins} ${availableSpins === 1 ? 'spin' : 'spins'} left)`
+                )}
+              </Button>
+            </div>
           ) : (
             <div className="text-center w-full">
-              <p className="text-sm text-green-500 mb-2">✓ Already spun today!</p>
-              <p className="text-xs text-muted-foreground">Deposit ₹{wheelSettings.required_deposit}+ to unlock next spin</p>
+              <p className="text-sm text-green-500 mb-2">✓ No spins available</p>
+              <p className="text-xs text-muted-foreground">Deposit ₹{wheelSettings.required_deposit} to unlock 1 spin</p>
             </div>
           )
         )}
