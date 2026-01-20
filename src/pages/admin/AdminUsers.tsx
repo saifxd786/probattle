@@ -221,75 +221,31 @@ const AdminUsers = () => {
     try {
       const userId = userToDelete.id;
       
-      // Delete all related data in parallel where possible, but respect FK constraints
-      // First, delete child records that may have FK constraints
-      
-      // Delete support messages before tickets (FK constraint)
-      const { data: ticketIds } = await supabase
-        .from('support_tickets')
-        .select('id')
-        .eq('user_id', userId);
-      
-      if (ticketIds && ticketIds.length > 0) {
-        await Promise.all(
-          ticketIds.map(t => supabase.from('support_messages').delete().eq('ticket_id', t.id))
-        );
-      }
-      
-      // Delete ludo match players before matches (if user created matches)
-      const { data: ludoMatches } = await supabase
-        .from('ludo_matches')
-        .select('id')
-        .eq('created_by', userId);
-      
-      if (ludoMatches && ludoMatches.length > 0) {
-        await Promise.all(
-          ludoMatches.map(m => supabase.from('ludo_match_players').delete().eq('match_id', m.id))
-        );
-      }
-      
-      // Now delete all user-related data in parallel
-      const deletePromises = [
-        supabase.from('notifications').delete().eq('user_id', userId),
-        supabase.from('support_tickets').delete().eq('user_id', userId),
-        supabase.from('transactions').delete().eq('user_id', userId),
-        supabase.from('match_registrations').delete().eq('user_id', userId),
-        supabase.from('match_results').delete().eq('user_id', userId),
-        supabase.from('mines_games').delete().eq('user_id', userId),
-        supabase.from('thimble_games').delete().eq('user_id', userId),
-        supabase.from('redeem_code_uses').delete().eq('user_id', userId),
-        supabase.from('user_roles').delete().eq('user_id', userId),
-        supabase.from('referrals').delete().eq('referrer_id', userId),
-        supabase.from('referrals').delete().eq('referred_id', userId),
-        supabase.from('spin_wheel').delete().eq('user_id', userId),
-        supabase.from('daily_login_bonus').delete().eq('user_id', userId),
-        supabase.from('weekly_login_rewards').delete().eq('user_id', userId),
-        supabase.from('ludo_transactions').delete().eq('user_id', userId),
-        supabase.from('ludo_match_players').delete().eq('user_id', userId),
-        supabase.from('ludo_matches').delete().eq('created_by', userId),
-      ];
-      
-      const results = await Promise.allSettled(deletePromises);
-      
-      // Check for critical errors (log warnings but continue)
-      results.forEach((result, index) => {
-        if (result.status === 'rejected') {
-          console.warn(`Delete operation ${index} failed:`, result.reason);
-        }
+      // Call edge function to delete user completely
+      const { data, error } = await supabase.functions.invoke('delete-user', {
+        body: { userId },
       });
       
-      // Finally delete the profile
-      const { error } = await supabase.from('profiles').delete().eq('id', userId);
-      
       if (error) {
-        toast({ title: 'Error', description: error.message, variant: 'destructive' });
-      } else {
-        toast({ title: 'User Deleted', description: `${userToDelete.username || 'User'} has been permanently deleted.` });
-        fetchUsers();
+        throw error;
       }
+      
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to delete user');
+      }
+      
+      toast({ 
+        title: 'User Deleted', 
+        description: `${userToDelete.username || 'User'} has been permanently deleted.` 
+      });
+      fetchUsers();
     } catch (error: any) {
       console.error('Delete user error:', error);
-      toast({ title: 'Error', description: error.message || 'Failed to delete user', variant: 'destructive' });
+      toast({ 
+        title: 'Error', 
+        description: error.message || 'Failed to delete user', 
+        variant: 'destructive' 
+      });
     }
     
     setIsDeleting(false);

@@ -1,5 +1,6 @@
+import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Activity, ArrowLeft } from 'lucide-react';
+import { Activity, ArrowLeft, Users, Gift, Coins } from 'lucide-react';
 import { Link, Navigate } from 'react-router-dom';
 import Header from '@/components/Header';
 import BottomNav from '@/components/BottomNav';
@@ -7,9 +8,11 @@ import ReferralSection from '@/components/ReferralSection';
 import DailyLoginReward from '@/components/DailyLoginReward';
 import SpinWheel from '@/components/SpinWheel';
 import { useAuth } from '@/contexts/AuthContext';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 const ActivityPage = () => {
   const { user, isLoading } = useAuth();
+  const [activeTab, setActiveTab] = useState('referral');
 
   if (isLoading) {
     return (
@@ -28,12 +31,12 @@ const ActivityPage = () => {
       <Header />
       
       {/* Hero Section */}
-      <section className="pt-20 pb-6 px-4">
+      <section className="pt-20 pb-4 px-4">
         <div className="container mx-auto max-w-md">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="text-center mb-6"
+            className="text-center mb-4"
           >
             <Link to="/" className="inline-flex items-center text-muted-foreground hover:text-foreground mb-4">
               <ArrowLeft className="w-4 h-4 mr-1" />
@@ -50,41 +53,64 @@ const ActivityPage = () => {
               Your <span className="text-gradient">Activity</span>
             </h1>
             <p className="text-muted-foreground text-sm">
-              Daily rewards, spin wheel & referrals
+              Earn rewards, invite friends & spin to win
             </p>
           </motion.div>
         </div>
       </section>
 
-      {/* Main Content */}
+      {/* Main Tabs */}
       <section className="px-4 pb-8">
-        <div className="container mx-auto max-w-md space-y-6">
-          {/* Daily Login Reward */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-          >
-            <DailyLoginReward />
-          </motion.div>
+        <div className="container mx-auto max-w-md">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="grid w-full grid-cols-2 bg-secondary/50 mb-4">
+              <TabsTrigger 
+                value="referral" 
+                className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground gap-2"
+              >
+                <Users className="w-4 h-4" />
+                Refer & Earn
+              </TabsTrigger>
+              <TabsTrigger 
+                value="rewards" 
+                className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground gap-2"
+              >
+                <Gift className="w-4 h-4" />
+                Rewards
+              </TabsTrigger>
+            </TabsList>
 
-          {/* Spin Wheel */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-          >
-            <SpinWheel />
-          </motion.div>
+            {/* Referral Tab - Main Focus */}
+            <TabsContent value="referral" className="space-y-4 mt-0">
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+              >
+                <ReferralSection />
+              </motion.div>
+            </TabsContent>
 
-          {/* Referral Section */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-          >
-            <ReferralSection />
-          </motion.div>
+            {/* Rewards Tab - Daily Login & Spin */}
+            <TabsContent value="rewards" className="space-y-4 mt-0">
+              {/* Daily Login */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 }}
+              >
+                <DailyLoginReward />
+              </motion.div>
+
+              {/* Spin Wheel */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 }}
+              >
+                <SpinWheel />
+              </motion.div>
+            </TabsContent>
+          </Tabs>
         </div>
       </section>
 

@@ -18,6 +18,7 @@ const AVAILABLE_GAMES = [
   { id: 'bgmi', label: 'BGMI' },
   { id: 'ludo', label: 'Ludo' },
   { id: 'thimble', label: 'Thimble' },
+  { id: 'mines', label: 'Mines' },
   { id: 'freefire', label: 'Free Fire' },
 ];
 
