@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { MessageCircle, Send, Loader2, User, Clock, CheckCircle, AlertCircle, Zap, Eye, Download, Archive } from 'lucide-react';
+import { MessageCircle, Send, Loader2, User, Clock, CheckCircle, AlertCircle, Zap, Eye, Download, Archive, Bell } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -16,7 +16,7 @@ import UserDetailDialog from '@/components/admin/UserDetailDialog';
 import ImageLightbox from '@/components/ImageLightbox';
 import JSZip from 'jszip';
 import { resolveSupportAttachments, SupportAttachmentResolved } from '@/utils/supportAttachments';
-
+import { playNotificationSound, requestNotificationPermission, showBrowserNotification } from '@/utils/notificationSound';
 // Canned responses for quick replies
 const CANNED_RESPONSES = [
   { label: 'Greeting', message: 'Hello! Thank you for contacting ProBattle support. How can I help you today?' },
@@ -75,6 +75,16 @@ const AdminSupport = () => {
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxImages, setLightboxImages] = useState<string[]>([]);
   const [lightboxIndex, setLightboxIndex] = useState(0);
+  const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+
+  // Request notification permission on mount
+  useEffect(() => {
+    const setupNotifications = async () => {
+      const granted = await requestNotificationPermission();
+      setNotificationsEnabled(granted);
+    };
+    setupNotifications();
+  }, []);
 
   // Collect all images from messages for lightbox
   const allImages = useMemo(() => {
@@ -172,11 +182,67 @@ const AdminSupport = () => {
     fetchTickets();
   }, [filter]);
 
+  // Subscribe to ALL new support messages for notifications
+  useEffect(() => {
+    const globalChannel = supabase
+      .channel('admin-support-global-notifications')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'support_messages',
+        },
+        async (payload) => {
+          const rawMsg = payload.new as any;
+          
+          // Only notify for user messages, not admin messages
+          if (rawMsg.sender_type === 'user') {
+            // Play notification sound
+            playNotificationSound();
+            
+            // Get user info for notification
+            const { data: profile } = await supabase
+              .from('profiles')
+              .select('username, phone')
+              .eq('id', rawMsg.sender_id)
+              .maybeSingle();
+            
+            const userName = profile?.username || profile?.phone || 'User';
+            
+            // Show browser notification
+            showBrowserNotification(
+              'New Support Message',
+              `${userName}: ${rawMsg.message.substring(0, 100)}${rawMsg.message.length > 100 ? '...' : ''}`,
+              () => {
+                // Focus the ticket when notification is clicked
+                fetchTickets();
+              }
+            );
+            
+            // Also show toast
+            toast({
+              title: '📩 New Support Message',
+              description: `From ${userName}`,
+            });
+            
+            // Refresh tickets list to update unread counts
+            fetchTickets();
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(globalChannel);
+    };
+  }, []);
+
   useEffect(() => {
     if (selectedTicket) {
       fetchMessages(selectedTicket.id);
       
-      // Subscribe to new messages
+      // Subscribe to new messages for selected ticket
       const channel = supabase
         .channel(`admin-support-${selectedTicket.id}`)
         .on(
@@ -364,9 +430,29 @@ const AdminSupport = () => {
 
   return (
     <div className="p-6 h-[calc(100vh-4rem)]">
-      <div className="mb-6">
-        <h1 className="text-2xl font-display font-bold">Support Chat</h1>
-        <p className="text-muted-foreground">Manage customer support tickets</p>
+      <div className="mb-6 flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-display font-bold">Support Chat</h1>
+          <p className="text-muted-foreground">Manage customer support tickets</p>
+        </div>
+        <Button
+          variant={notificationsEnabled ? "outline" : "default"}
+          size="sm"
+          className="gap-2"
+          onClick={async () => {
+            const granted = await requestNotificationPermission();
+            setNotificationsEnabled(granted);
+            if (granted) {
+              playNotificationSound();
+              toast({ title: 'Notifications Enabled', description: 'You will receive sound and browser notifications for new messages.' });
+            } else {
+              toast({ title: 'Notifications Blocked', description: 'Please enable notifications in your browser settings.', variant: 'destructive' });
+            }
+          }}
+        >
+          <Bell className={`w-4 h-4 ${notificationsEnabled ? 'text-green-500' : ''}`} />
+          {notificationsEnabled ? 'Notifications On' : 'Enable Notifications'}
+        </Button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100%-5rem)]">
