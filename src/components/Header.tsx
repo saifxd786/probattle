@@ -1,4 +1,4 @@
-import { Menu, User, LogOut, Download, Smartphone, RefreshCw, MessageCircle, RotateCcw } from 'lucide-react';
+import { Menu, User, LogOut, Download, Smartphone, RefreshCw, RotateCcw, Info } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useState, useEffect } from 'react';
@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import NotificationBell from '@/components/NotificationBell';
 import SupportChat from '@/components/SupportChat';
+import ChangelogPopup, { APP_VERSION } from '@/components/ChangelogPopup';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,7 +14,6 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useUpdateAvailable } from '@/hooks/useUpdateAvailable';
-
 // Telegram SVG Icon
 const TelegramIcon = () => (
   <svg viewBox="0 0 24 24" className="w-5 h-5" fill="currentColor">
@@ -25,8 +25,22 @@ const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showInstallPrompt, setShowInstallPrompt] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [showChangelog, setShowChangelog] = useState(false);
   const { user, signOut } = useAuth();
   const { updateAvailable, applyUpdate, checkForUpdate, isChecking } = useUpdateAvailable();
+
+  // Check if changelog should be shown after update
+  useEffect(() => {
+    const lastSeenVersion = localStorage.getItem('lastSeenVersion');
+    if (lastSeenVersion !== APP_VERSION) {
+      // Show changelog for new version
+      const timer = setTimeout(() => {
+        setShowChangelog(true);
+        localStorage.setItem('lastSeenVersion', APP_VERSION);
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, []);
 
   useEffect(() => {
     // Check if mobile device
@@ -176,9 +190,26 @@ const Header = () => {
       {/* Mobile Menu */}
       <div className={cn(
         'absolute top-full left-0 right-0 bg-background/95 backdrop-blur-xl border-b border-border/50 md:hidden transition-all duration-300 overflow-hidden',
-        isMenuOpen ? 'max-h-80' : 'max-h-0'
+        isMenuOpen ? 'max-h-96' : 'max-h-0'
       )}>
         <div className="container mx-auto px-4 py-4 space-y-2">
+          {/* Version Info */}
+          <div className="flex items-center justify-between px-4 py-2 mb-2 rounded-lg bg-secondary/20 border border-border/30">
+            <div className="flex items-center gap-2">
+              <Info className="w-4 h-4 text-muted-foreground" />
+              <span className="text-sm text-muted-foreground">Version</span>
+            </div>
+            <button 
+              onClick={() => {
+                setShowChangelog(true);
+                setIsMenuOpen(false);
+              }}
+              className="text-sm font-semibold text-primary hover:underline"
+            >
+              v{APP_VERSION}
+            </button>
+          </div>
+
           {/* Check for Update Option */}
           <button 
             onClick={async () => {
@@ -252,6 +283,13 @@ const Header = () => {
           )}
         </div>
       </div>
+
+      {/* Changelog Popup */}
+      <ChangelogPopup 
+        isOpen={showChangelog} 
+        onClose={() => setShowChangelog(false)} 
+        version={APP_VERSION} 
+      />
     </header>
   );
 };

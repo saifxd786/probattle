@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
@@ -47,6 +47,8 @@ const COLORS = ['red', 'green', 'yellow', 'blue'];
 export const useLudoGame = () => {
   const { user } = useAuth();
   const { toast } = useToast();
+  const botTurnRef = useRef<boolean>(false);
+  const gameInProgressRef = useRef<boolean>(false);
   
   const [settings, setSettings] = useState<LudoSettings>({
     isEnabled: true,
@@ -243,12 +245,13 @@ export const useLudoGame = () => {
               p.id === botPlayer.id ? { ...p, status: 'ready' } : p
             )
           }));
-        }, 500 + Math.random() * 1000);
-      }, 1500 * i + Math.random() * 1000);
+        }, 500 + Math.random() * 500);
+      }, 1000 * i + Math.random() * 800);
     }
 
     // Start game after all players join
     setTimeout(() => {
+      gameInProgressRef.current = true;
       setGameState(prev => ({
         ...prev,
         phase: 'playing',
@@ -260,23 +263,12 @@ export const useLudoGame = () => {
         status: 'in_progress',
         started_at: new Date().toISOString()
       }).eq('id', match.id);
-    }, 2000 * playerMode);
-  }, [user, walletBalance, entryAmount, playerMode, settings, toast, getRandomBotName]);
+    }, 1500 * playerMode + 500);
+  }, [user, walletBalance, entryAmount, playerMode, settings, toast, getRandomBotName, createInitialTokens]);
 
-  const rollDice = useCallback(async () => {
-    if (!gameState.canRoll || gameState.isRolling) return;
-
-    setGameState(prev => ({ ...prev, isRolling: true, canRoll: false }));
-
-    // Simulate dice roll animation - faster for bots
-    const currentPlayer = gameState.players[gameState.currentTurn];
-    const rollDuration = currentPlayer.isBot ? 300 : 800;
-    await new Promise(resolve => setTimeout(resolve, rollDuration));
-
-    // Generate dice value (with difficulty weighting for bots)
-    let diceValue: number;
-
-    if (currentPlayer.isBot) {
+  // Generate dice value
+  const generateDiceValue = useCallback((isBot: boolean): number => {
+    if (isBot) {
       // Bot dice - weighted based on difficulty
       const weights = {
         easy: [0.2, 0.2, 0.2, 0.2, 0.1, 0.1],
@@ -286,99 +278,287 @@ export const useLudoGame = () => {
       const w = weights[settings.difficulty];
       const rand = Math.random();
       let cumulative = 0;
-      diceValue = 1;
       for (let i = 0; i < w.length; i++) {
         cumulative += w[i];
         if (rand < cumulative) {
-          diceValue = i + 1;
-          break;
+          return i + 1;
         }
       }
+      return 6;
     } else {
       // User dice - fair random
-      diceValue = Math.floor(Math.random() * 6) + 1;
+      return Math.floor(Math.random() * 6) + 1;
     }
+  }, [settings.difficulty]);
 
-    setGameState(prev => ({ ...prev, diceValue, isRolling: false }));
-
-    // Check if player can move any token
-    const canMove = currentPlayer.tokens.some(token => {
-      if (token.position === 0 && diceValue === 6) return true;
-      if (token.position > 0 && token.position + diceValue <= 57) return true;
-      return false;
-    });
-
-    if (!canMove) {
-      // No valid moves, skip to next player - faster for bots
-      setTimeout(() => nextTurn(), currentPlayer.isBot ? 200 : 600);
-    } else if (currentPlayer.isBot) {
-      // Bot makes move automatically - much faster
-      setTimeout(() => botMakeMove(diceValue), 250);
-    } else {
-      // User needs to select token
-      setGameState(prev => ({ ...prev, canRoll: false }));
-    }
-  }, [gameState, settings.difficulty]);
-
-  const botMakeMove = useCallback((diceValue: number) => {
-    const currentPlayer = gameState.players[gameState.currentTurn];
-    
-    // Simple bot AI: prefer moving tokens that are furthest along
-    const movableTokens = currentPlayer.tokens.filter(token => {
-      if (token.position === 0 && diceValue === 6) return true;
-      if (token.position > 0 && token.position + diceValue <= 57) return true;
-      return false;
-    });
-
-    if (movableTokens.length > 0) {
-      // Prefer moving out of home with 6, otherwise move furthest token
-      const tokenToMove = diceValue === 6 && movableTokens.find(t => t.position === 0)
-        ? movableTokens.find(t => t.position === 0)!
-        : movableTokens.reduce((prev, curr) => curr.position > prev.position ? curr : prev);
-
-      moveToken(currentPlayer.color, tokenToMove.id, diceValue);
-    } else {
-      nextTurn();
-    }
-  }, [gameState]);
-
-  const moveToken = useCallback((color: string, tokenId: number, diceValue: number) => {
+  // Move token function
+  const moveToken = useCallback((color: string, tokenId: number, diceValue: number, players: Player[]): { updatedPlayers: Player[]; winner: Player | null; gotSix: boolean } => {
     soundManager.playTokenMove();
     hapticManager.tokenMove();
     
-    setGameState(prev => {
-      const updatedPlayers = prev.players.map(player => {
-        if (player.color !== color) return player;
+    let winner: Player | null = null;
+    
+    const updatedPlayers = players.map(player => {
+      if (player.color !== color) return player;
 
-        const updatedTokens = player.tokens.map(token => {
-          if (token.id !== tokenId) return token;
+      const updatedTokens = player.tokens.map(token => {
+        if (token.id !== tokenId) return token;
 
-          let newPosition = token.position;
-          if (token.position === 0 && diceValue === 6) {
-            newPosition = 1; // Enter the board - token keeps its assigned color
-            soundManager.playTokenEnter();
-            hapticManager.tokenEnter();
-          } else if (token.position > 0) {
-            newPosition = Math.min(token.position + diceValue, 57);
-            if (newPosition === 57) {
-              soundManager.playTokenHome();
-              hapticManager.tokenHome();
-            }
+        let newPosition = token.position;
+        if (token.position === 0 && diceValue === 6) {
+          newPosition = 1;
+          soundManager.playTokenEnter();
+          hapticManager.tokenEnter();
+        } else if (token.position > 0) {
+          newPosition = Math.min(token.position + diceValue, 57);
+          if (newPosition === 57) {
+            soundManager.playTokenHome();
+            hapticManager.tokenHome();
           }
+        }
 
-          // Token retains its original color - no color change
-          return { ...token, position: newPosition };
-        });
-
-        // Check if token reached home
-        const tokensHome = updatedTokens.filter(t => t.position === 57).length;
-
-        return { ...player, tokens: updatedTokens, tokensHome };
+        return { ...token, position: newPosition };
       });
 
-      // Check for winner
-      const winner = updatedPlayers.find(p => p.tokensHome === 4);
+      const tokensHome = updatedTokens.filter(t => t.position === 57).length;
+      const updatedPlayer = { ...player, tokens: updatedTokens, tokensHome };
+      
+      if (tokensHome === 4) {
+        winner = updatedPlayer;
+      }
+
+      return updatedPlayer;
+    });
+
+    return { updatedPlayers, winner, gotSix: diceValue === 6 };
+  }, []);
+
+  // Bot AI to select best move
+  const selectBotMove = useCallback((player: Player, diceValue: number): number | null => {
+    const movableTokens = player.tokens.filter(token => {
+      if (token.position === 0 && diceValue === 6) return true;
+      if (token.position > 0 && token.position + diceValue <= 57) return true;
+      return false;
+    });
+
+    if (movableTokens.length === 0) return null;
+
+    // Priority: 1. Get token home if possible, 2. Move out with 6, 3. Move furthest token
+    const tokenToHome = movableTokens.find(t => t.position > 0 && t.position + diceValue === 57);
+    if (tokenToHome) return tokenToHome.id;
+
+    if (diceValue === 6) {
+      const tokenInHome = movableTokens.find(t => t.position === 0);
+      if (tokenInHome) return tokenInHome.id;
+    }
+
+    // Move the furthest token
+    const furthestToken = movableTokens.reduce((prev, curr) => 
+      curr.position > prev.position ? curr : prev
+    );
+    return furthestToken.id;
+  }, []);
+
+  // Bot turn execution
+  const executeBotTurn = useCallback(async () => {
+    if (!gameInProgressRef.current || botTurnRef.current) return;
+    
+    setGameState(prev => {
+      const currentPlayer = prev.players[prev.currentTurn];
+      if (!currentPlayer?.isBot || prev.phase !== 'playing' || prev.winner) {
+        return prev;
+      }
+      
+      botTurnRef.current = true;
+
+      // Start rolling animation
+      setTimeout(() => {
+        setGameState(inner => ({ ...inner, isRolling: true, canRoll: false }));
+        
+        // After roll animation
+        setTimeout(() => {
+          const diceValue = generateDiceValue(true);
+          
+          setGameState(rollState => {
+            const botPlayer = rollState.players[rollState.currentTurn];
+            if (!botPlayer?.isBot) {
+              botTurnRef.current = false;
+              return rollState;
+            }
+
+            const tokenId = selectBotMove(botPlayer, diceValue);
+            
+            if (tokenId !== null) {
+              // Bot can move
+              setTimeout(() => {
+                setGameState(moveState => {
+                  const { updatedPlayers, winner, gotSix } = moveToken(
+                    botPlayer.color, 
+                    tokenId, 
+                    diceValue, 
+                    moveState.players
+                  );
+
+                  if (winner) {
+                    gameInProgressRef.current = false;
+                    botTurnRef.current = false;
+                    return {
+                      ...moveState,
+                      players: updatedPlayers,
+                      diceValue,
+                      isRolling: false,
+                      phase: 'result',
+                      winner,
+                      canRoll: false
+                    };
+                  }
+
+                  if (gotSix) {
+                    // Bot gets another turn
+                    botTurnRef.current = false;
+                    setTimeout(() => executeBotTurn(), 500);
+                    return {
+                      ...moveState,
+                      players: updatedPlayers,
+                      diceValue,
+                      isRolling: false,
+                      canRoll: false
+                    };
+                  }
+
+                  // Next player's turn
+                  const nextTurn = (moveState.currentTurn + 1) % moveState.players.length;
+                  const isNextUser = !moveState.players[nextTurn]?.isBot;
+                  
+                  botTurnRef.current = false;
+                  soundManager.playTurnChange();
+                  
+                  // Schedule next bot turn if needed
+                  if (!isNextUser) {
+                    setTimeout(() => executeBotTurn(), 800);
+                  }
+                  
+                  return {
+                    ...moveState,
+                    players: updatedPlayers,
+                    diceValue,
+                    isRolling: false,
+                    currentTurn: nextTurn,
+                    canRoll: isNextUser,
+                    selectedToken: null
+                  };
+                });
+              }, 300);
+
+              return { ...rollState, diceValue, isRolling: false };
+            } else {
+              // No valid move, skip turn
+              setTimeout(() => {
+                const nextTurn = (rollState.currentTurn + 1) % rollState.players.length;
+                const isNextUser = !rollState.players[nextTurn]?.isBot;
+                
+                botTurnRef.current = false;
+                soundManager.playTurnChange();
+                
+                if (!isNextUser) {
+                  setTimeout(() => executeBotTurn(), 800);
+                }
+                
+                setGameState(skipState => ({
+                  ...skipState,
+                  currentTurn: nextTurn,
+                  canRoll: isNextUser,
+                  selectedToken: null
+                }));
+              }, 400);
+
+              return { ...rollState, diceValue, isRolling: false };
+            }
+          });
+        }, 500);
+      }, 300);
+
+      return prev;
+    });
+  }, [generateDiceValue, selectBotMove, moveToken]);
+
+  // Trigger bot turns
+  useEffect(() => {
+    if (gameState.phase !== 'playing' || gameState.winner || botTurnRef.current) return;
+    
+    const currentPlayer = gameState.players[gameState.currentTurn];
+    if (currentPlayer?.isBot && !gameState.isRolling) {
+      const timer = setTimeout(() => executeBotTurn(), 600);
+      return () => clearTimeout(timer);
+    }
+  }, [gameState.currentTurn, gameState.phase, gameState.winner, gameState.isRolling, executeBotTurn]);
+
+  // User roll dice
+  const rollDice = useCallback(async () => {
+    if (!gameState.canRoll || gameState.isRolling) return;
+    
+    const currentPlayer = gameState.players[gameState.currentTurn];
+    if (currentPlayer?.isBot) return;
+
+    setGameState(prev => ({ ...prev, isRolling: true, canRoll: false }));
+
+    await new Promise(resolve => setTimeout(resolve, 800));
+
+    const diceValue = generateDiceValue(false);
+    
+    setGameState(prev => {
+      const player = prev.players[prev.currentTurn];
+      
+      // Check if user can move any token
+      const canMove = player.tokens.some(token => {
+        if (token.position === 0 && diceValue === 6) return true;
+        if (token.position > 0 && token.position + diceValue <= 57) return true;
+        return false;
+      });
+
+      if (!canMove) {
+        // No valid moves, go to next turn after delay
+        setTimeout(() => {
+          const nextTurn = (prev.currentTurn + 1) % prev.players.length;
+          const isNextUser = !prev.players[nextTurn]?.isBot;
+          soundManager.playTurnChange();
+          
+          setGameState(inner => ({
+            ...inner,
+            currentTurn: nextTurn,
+            canRoll: isNextUser,
+            selectedToken: null
+          }));
+          
+          if (!isNextUser) {
+            setTimeout(() => executeBotTurn(), 800);
+          }
+        }, 600);
+      }
+
+      return { ...prev, diceValue, isRolling: false };
+    });
+  }, [gameState.canRoll, gameState.isRolling, gameState.players, gameState.currentTurn, generateDiceValue, executeBotTurn]);
+
+  // Handle user token click
+  const handleTokenClick = useCallback((color: string, tokenId: number) => {
+    setGameState(prev => {
+      const currentPlayer = prev.players[prev.currentTurn];
+      if (currentPlayer.color !== color || currentPlayer.isBot || prev.canRoll) return prev;
+
+      const token = currentPlayer.tokens.find(t => t.id === tokenId);
+      if (!token) return prev;
+
+      const canMove = 
+        (token.position === 0 && prev.diceValue === 6) ||
+        (token.position > 0 && token.position + prev.diceValue <= 57);
+
+      if (!canMove) return prev;
+
+      const { updatedPlayers, winner, gotSix } = moveToken(color, tokenId, prev.diceValue, prev.players);
+
       if (winner) {
+        gameInProgressRef.current = false;
         return {
           ...prev,
           players: updatedPlayers,
@@ -388,82 +568,33 @@ export const useLudoGame = () => {
         };
       }
 
-      return { ...prev, players: updatedPlayers };
-    });
+      if (gotSix) {
+        return {
+          ...prev,
+          players: updatedPlayers,
+          canRoll: true,
+          selectedToken: null
+        };
+      }
 
-    // If rolled 6, player gets another turn
-    const currentPlayer = gameState.players.find(p => p.color === color);
-    const isBot = currentPlayer?.isBot;
-    const delay = isBot ? 100 : 400;
-    
-    if (diceValue === 6) {
-      setTimeout(() => {
-        setGameState(prev => ({ ...prev, canRoll: true }));
-        // Bot gets another roll
-        if (isBot) {
-          setTimeout(() => {
-            setGameState(prev => {
-              if (prev.players[prev.currentTurn]?.isBot && prev.canRoll) {
-                rollDice();
-              }
-              return prev;
-            });
-          }, 150);
-        }
-      }, delay);
-    } else {
-      setTimeout(() => nextTurn(), delay);
-    }
-  }, [gameState.players]);
-
-  const nextTurn = useCallback(() => {
-    soundManager.playTurnChange();
-    
-    setGameState(prev => {
-      const nextPlayerIndex = (prev.currentTurn + 1) % prev.players.length;
-      const nextPlayer = prev.players[nextPlayerIndex];
-      const isUserTurn = !nextPlayer?.isBot;
+      const nextTurn = (prev.currentTurn + 1) % prev.players.length;
+      const isNextUser = !prev.players[nextTurn]?.isBot;
+      
+      soundManager.playTurnChange();
+      
+      if (!isNextUser) {
+        setTimeout(() => executeBotTurn(), 800);
+      }
 
       return {
         ...prev,
-        currentTurn: nextPlayerIndex,
-        canRoll: isUserTurn,
+        players: updatedPlayers,
+        currentTurn: nextTurn,
+        canRoll: isNextUser,
         selectedToken: null
       };
     });
-  }, []);
-
-  // Effect to trigger bot roll when it's their turn
-  useEffect(() => {
-    if (gameState.phase !== 'playing') return;
-    
-    const currentPlayer = gameState.players[gameState.currentTurn];
-    if (currentPlayer?.isBot && !gameState.isRolling && !gameState.canRoll) {
-      // It's bot's turn, trigger roll
-      const timer = setTimeout(() => {
-        setGameState(prev => ({ ...prev, canRoll: true }));
-        setTimeout(() => rollDice(), 200);
-      }, 300);
-      return () => clearTimeout(timer);
-    }
-  }, [gameState.currentTurn, gameState.phase, gameState.players, gameState.isRolling, gameState.canRoll]);
-
-  const handleTokenClick = useCallback((color: string, tokenId: number) => {
-    const currentPlayer = gameState.players[gameState.currentTurn];
-    if (currentPlayer.color !== color || currentPlayer.isBot) return;
-
-    const token = currentPlayer.tokens.find(t => t.id === tokenId);
-    if (!token) return;
-
-    // Check if token can move
-    const canMove = 
-      (token.position === 0 && gameState.diceValue === 6) ||
-      (token.position > 0 && token.position + gameState.diceValue <= 57);
-
-    if (canMove) {
-      moveToken(color, tokenId, gameState.diceValue);
-    }
-  }, [gameState, moveToken]);
+  }, [moveToken, executeBotTurn]);
 
   const handleGameEnd = useCallback(async (winner: Player) => {
     if (!user || !gameState.matchId) return;
@@ -505,6 +636,8 @@ export const useLudoGame = () => {
   }, [user, gameState.matchId, entryAmount, settings.rewardMultiplier, walletBalance]);
 
   const resetGame = useCallback(() => {
+    gameInProgressRef.current = false;
+    botTurnRef.current = false;
     setGameState({
       phase: 'idle',
       matchId: null,
