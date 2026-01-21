@@ -1,4 +1,4 @@
-import { Menu, User, LogOut, Download, Smartphone, RefreshCw, MessageCircle } from 'lucide-react';
+import { Menu, User, LogOut, Download, Smartphone, RefreshCw, MessageCircle, RotateCcw } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useState, useEffect } from 'react';
@@ -26,7 +26,7 @@ const Header = () => {
   const [showInstallPrompt, setShowInstallPrompt] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const { user, signOut } = useAuth();
-  const { updateAvailable, applyUpdate } = useUpdateAvailable();
+  const { updateAvailable, applyUpdate, checkForUpdate, isChecking } = useUpdateAvailable();
 
   useEffect(() => {
     // Check if mobile device
@@ -179,6 +179,42 @@ const Header = () => {
         isMenuOpen ? 'max-h-80' : 'max-h-0'
       )}>
         <div className="container mx-auto px-4 py-4 space-y-2">
+          {/* Check for Update Option */}
+          <button 
+            onClick={async () => {
+              await checkForUpdate();
+              if (!updateAvailable) {
+                setIsMenuOpen(false);
+              }
+            }}
+            disabled={isChecking}
+            className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-secondary/50 transition-colors w-full text-left"
+          >
+            <RotateCcw className={cn("w-5 h-5 text-primary", isChecking && "animate-spin")} />
+            <span className="font-medium">
+              {isChecking ? 'Checking...' : updateAvailable ? 'Update Available!' : 'Check for Update'}
+            </span>
+            {updateAvailable && (
+              <span className="ml-auto text-xs bg-primary text-primary-foreground px-2 py-0.5 rounded-full">
+                New
+              </span>
+            )}
+          </button>
+
+          {/* Apply Update if available */}
+          {updateAvailable && (
+            <button 
+              onClick={() => {
+                applyUpdate();
+                setIsMenuOpen(false);
+              }}
+              className="flex items-center gap-3 px-4 py-3 rounded-lg bg-primary/10 border border-primary/30 hover:bg-primary/20 transition-colors w-full text-left"
+            >
+              <RefreshCw className="w-5 h-5 text-primary" />
+              <span className="font-medium text-primary">Apply Update Now</span>
+            </button>
+          )}
+
           {user ? (
             <>
               <Link 
