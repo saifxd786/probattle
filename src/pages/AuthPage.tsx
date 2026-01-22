@@ -20,20 +20,21 @@ const SECURITY_QUESTIONS = [
   "What was your childhood nickname?",
 ];
 
-// Forgot Password Form Component with Security Question
+// Forgot Password Form Component with Security Question - Step by Step
 const ForgotPasswordForm = ({ onBack }: { onBack: () => void }) => {
-  const [step, setStep] = useState<'verify' | 'reset'>('verify');
+  const [step, setStep] = useState<'phone' | 'security' | 'reset' | 'success'>('phone');
   const [phone, setPhone] = useState('');
-  const [dob, setDob] = useState('');
   const [securityAnswer, setSecurityAnswer] = useState('');
   const [securityQuestion, setSecurityQuestion] = useState('');
+  const [storedAnswer, setStoredAnswer] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [userId, setUserId] = useState<string | null>(null);
+  const [userEmail, setUserEmail] = useState('');
 
-  const handleVerify = async (e: React.FormEvent) => {
+  // Step 1: Verify phone and fetch user data
+  const handlePhoneSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
@@ -41,17 +42,17 @@ const ForgotPasswordForm = ({ onBack }: { onBack: () => void }) => {
       if (phone.length < 10) {
         toast({
           title: 'Invalid Phone',
-          description: 'Please enter a valid phone number',
+          description: 'Please enter a valid 10-digit phone number',
           variant: 'destructive',
         });
         setIsLoading(false);
         return;
       }
 
-      // Check if user exists and verify DOB + security answer
+      // Fetch user profile with security question
       const { data: profile, error } = await supabase
         .from('profiles')
-        .select('id, date_of_birth, security_question, security_answer')
+        .select('id, email, security_question, security_answer')
         .eq('phone', phone)
         .maybeSingle();
 
@@ -65,47 +66,23 @@ const ForgotPasswordForm = ({ onBack }: { onBack: () => void }) => {
         return;
       }
 
-      // Check if user has set up recovery options
-      if (!profile.date_of_birth || !profile.security_question || !profile.security_answer) {
+      // Check if user has set up security question
+      if (!profile.security_question || !profile.security_answer) {
         toast({
           title: 'Recovery Not Set Up',
-          description: 'Please contact support on Telegram to reset your password.',
+          description: 'Security question not set. Please contact support on Telegram.',
         });
         window.open('https://t.me/ProBattleTournament', '_blank');
         setIsLoading(false);
         return;
       }
 
-      // Verify DOB
-      if (profile.date_of_birth !== dob) {
-        toast({
-          title: 'Verification Failed',
-          description: 'Date of birth does not match our records.',
-          variant: 'destructive',
-        });
-        setIsLoading(false);
-        return;
-      }
-
-      // Verify security answer (case insensitive)
-      if (profile.security_answer.toLowerCase().trim() !== securityAnswer.toLowerCase().trim()) {
-        toast({
-          title: 'Verification Failed',
-          description: 'Security answer is incorrect.',
-          variant: 'destructive',
-        });
-        setIsLoading(false);
-        return;
-      }
-
-      // Verification successful
-      setUserId(profile.id);
+      // Store data and move to security question step
       setSecurityQuestion(profile.security_question);
-      setStep('reset');
-      toast({
-        title: 'Verified!',
-        description: 'You can now set a new password.',
-      });
+      setStoredAnswer(profile.security_answer);
+      setUserEmail(profile.email || `${phone}@probattle.app`);
+      setStep('security');
+      
     } catch (error) {
       toast({
         title: 'Error',
@@ -117,6 +94,42 @@ const ForgotPasswordForm = ({ onBack }: { onBack: () => void }) => {
     setIsLoading(false);
   };
 
+  // Step 2: Verify security answer
+  const handleSecuritySubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+
+    try {
+      // Verify security answer (case insensitive)
+      if (storedAnswer.toLowerCase().trim() !== securityAnswer.toLowerCase().trim()) {
+        toast({
+          title: 'Incorrect Answer',
+          description: 'The answer you provided is incorrect. Please try again.',
+          variant: 'destructive',
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      // Answer correct - move to reset step
+      setStep('reset');
+      toast({
+        title: 'Verified!',
+        description: 'You can now set a new password.',
+      });
+      
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'An error occurred. Please try again.',
+        variant: 'destructive',
+      });
+    }
+
+    setIsLoading(false);
+  };
+
+  // Step 3: Reset password
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
@@ -142,12 +155,31 @@ const ForgotPasswordForm = ({ onBack }: { onBack: () => void }) => {
         return;
       }
 
-      // Use admin function to reset password (via Telegram support for now)
-      toast({
-        title: 'Contact Support',
-        description: 'Password reset verified! Contact support on Telegram to complete the reset with your verified phone number.',
+      // Reset password using Supabase admin API via edge function
+      const { data, error } = await supabase.functions.invoke('reset-password', {
+        body: { 
+          phone,
+          newPassword,
+          securityAnswer: securityAnswer.toLowerCase().trim()
+        }
       });
-      window.open('https://t.me/ProBattleTournament', '_blank');
+
+      if (error || data?.error) {
+        toast({
+          title: 'Reset Failed',
+          description: data?.error || 'Failed to reset password. Please contact support.',
+          variant: 'destructive',
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      // Success
+      setStep('success');
+      toast({
+        title: 'Password Changed!',
+        description: 'Your password has been successfully reset.',
+      });
       
     } catch (error) {
       toast({
@@ -160,15 +192,15 @@ const ForgotPasswordForm = ({ onBack }: { onBack: () => void }) => {
     setIsLoading(false);
   };
 
-  if (step === 'verify') {
+  // Step 1: Phone Input
+  if (step === 'phone') {
     return (
-      <form onSubmit={handleVerify} className="space-y-4">
+      <form onSubmit={handlePhoneSubmit} className="space-y-4">
         <div className="text-center mb-4">
-          <ShieldQuestion className="w-10 h-10 text-primary mx-auto mb-2" />
-          <p className="text-xs text-muted-foreground">Verify your identity to reset password</p>
+          <Phone className="w-10 h-10 text-primary mx-auto mb-2" />
+          <p className="text-xs text-muted-foreground">Enter your registered phone number</p>
         </div>
 
-        {/* Phone */}
         <div className="relative">
           <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
@@ -178,32 +210,7 @@ const ForgotPasswordForm = ({ onBack }: { onBack: () => void }) => {
             onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))}
             className="pl-10 bg-secondary/50 border-border/50 focus:border-primary"
             required
-          />
-        </div>
-
-        {/* Date of Birth */}
-        <div className="relative">
-          <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input
-            type="date"
-            placeholder="Date of Birth"
-            value={dob}
-            onChange={(e) => setDob(e.target.value)}
-            className="pl-10 bg-secondary/50 border-border/50 focus:border-primary"
-            required
-          />
-        </div>
-
-        {/* Security Answer */}
-        <div className="relative">
-          <ShieldQuestion className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input
-            type="text"
-            placeholder="Answer to your security question"
-            value={securityAnswer}
-            onChange={(e) => setSecurityAnswer(e.target.value)}
-            className="pl-10 bg-secondary/50 border-border/50 focus:border-primary"
-            required
+            maxLength={10}
           />
         </div>
 
@@ -218,7 +225,7 @@ const ForgotPasswordForm = ({ onBack }: { onBack: () => void }) => {
             <div className="w-5 h-5 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
           ) : (
             <>
-              Verify Identity
+              Continue
               <ArrowRight className="w-4 h-4" />
             </>
           )}
@@ -238,76 +245,157 @@ const ForgotPasswordForm = ({ onBack }: { onBack: () => void }) => {
     );
   }
 
-  return (
-    <form onSubmit={handleResetPassword} className="space-y-4">
-      <div className="text-center mb-4">
-        <div className="w-10 h-10 rounded-full bg-green-500/20 flex items-center justify-center mx-auto mb-2">
-          <Lock className="w-5 h-5 text-green-500" />
+  // Step 2: Security Question
+  if (step === 'security') {
+    return (
+      <form onSubmit={handleSecuritySubmit} className="space-y-4">
+        <div className="text-center mb-4">
+          <ShieldQuestion className="w-10 h-10 text-primary mx-auto mb-2" />
+          <p className="text-xs text-muted-foreground">Answer your security question</p>
         </div>
-        <p className="text-xs text-muted-foreground">Identity verified! Set your new password.</p>
-      </div>
 
-      {/* New Password */}
-      <div className="relative">
-        <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-        <Input
-          type={showPassword ? 'text' : 'password'}
-          placeholder="New Password"
-          value={newPassword}
-          onChange={(e) => setNewPassword(e.target.value)}
-          className="pl-10 pr-10 bg-secondary/50 border-border/50 focus:border-primary"
-          required
-        />
-        <button
-          type="button"
-          onClick={() => setShowPassword(!showPassword)}
-          className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+        {/* Display the security question */}
+        <div className="p-3 bg-primary/10 rounded-lg border border-primary/20">
+          <p className="text-sm font-medium text-foreground text-center">{securityQuestion}</p>
+        </div>
+
+        <div className="relative">
+          <ShieldQuestion className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input
+            type="text"
+            placeholder="Your Answer"
+            value={securityAnswer}
+            onChange={(e) => setSecurityAnswer(e.target.value)}
+            className="pl-10 bg-secondary/50 border-border/50 focus:border-primary"
+            required
+          />
+        </div>
+
+        <Button 
+          type="submit" 
+          variant="neon" 
+          className="w-full" 
+          size="lg"
+          disabled={isLoading}
         >
-          {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-        </button>
-      </div>
+          {isLoading ? (
+            <div className="w-5 h-5 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
+          ) : (
+            <>
+              Verify Answer
+              <ArrowRight className="w-4 h-4" />
+            </>
+          )}
+        </Button>
 
-      {/* Confirm New Password */}
-      <div className="relative">
-        <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-        <Input
-          type={showPassword ? 'text' : 'password'}
-          placeholder="Confirm New Password"
-          value={confirmPassword}
-          onChange={(e) => setConfirmPassword(e.target.value)}
-          className="pl-10 bg-secondary/50 border-border/50 focus:border-primary"
-          required
-        />
-      </div>
+        <Button 
+          type="button" 
+          variant="ghost" 
+          className="w-full" 
+          size="sm"
+          onClick={() => setStep('phone')}
+        >
+          <ArrowLeft className="w-4 h-4 mr-2" />
+          Back
+        </Button>
+      </form>
+    );
+  }
 
+  // Step 3: Reset Password
+  if (step === 'reset') {
+    return (
+      <form onSubmit={handleResetPassword} className="space-y-4">
+        <div className="text-center mb-4">
+          <div className="w-10 h-10 rounded-full bg-green-500/20 flex items-center justify-center mx-auto mb-2">
+            <Lock className="w-5 h-5 text-green-500" />
+          </div>
+          <p className="text-xs text-muted-foreground">Set your new password</p>
+        </div>
+
+        <div className="relative">
+          <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input
+            type={showPassword ? 'text' : 'password'}
+            placeholder="New Password"
+            value={newPassword}
+            onChange={(e) => setNewPassword(e.target.value)}
+            className="pl-10 pr-10 bg-secondary/50 border-border/50 focus:border-primary"
+            required
+          />
+          <button
+            type="button"
+            onClick={() => setShowPassword(!showPassword)}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+          >
+            {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+          </button>
+        </div>
+
+        <div className="relative">
+          <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Input
+            type={showPassword ? 'text' : 'password'}
+            placeholder="Confirm New Password"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            className="pl-10 bg-secondary/50 border-border/50 focus:border-primary"
+            required
+          />
+        </div>
+
+        <Button 
+          type="submit" 
+          variant="neon" 
+          className="w-full" 
+          size="lg"
+          disabled={isLoading}
+        >
+          {isLoading ? (
+            <div className="w-5 h-5 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
+          ) : (
+            <>
+              Reset Password
+              <ArrowRight className="w-4 h-4" />
+            </>
+          )}
+        </Button>
+
+        <Button 
+          type="button" 
+          variant="ghost" 
+          className="w-full" 
+          size="sm"
+          onClick={() => setStep('security')}
+        >
+          <ArrowLeft className="w-4 h-4 mr-2" />
+          Back
+        </Button>
+      </form>
+    );
+  }
+
+  // Step 4: Success
+  return (
+    <div className="space-y-4 text-center">
+      <div className="w-16 h-16 rounded-full bg-green-500/20 flex items-center justify-center mx-auto mb-4">
+        <Lock className="w-8 h-8 text-green-500" />
+      </div>
+      <h3 className="font-display text-lg font-bold text-green-500">Password Changed!</h3>
+      <p className="text-sm text-muted-foreground">
+        Your password has been successfully reset. You can now login with your new password.
+      </p>
       <Button 
-        type="submit" 
+        type="button" 
         variant="neon" 
         className="w-full" 
         size="lg"
-        disabled={isLoading}
+        onClick={onBack}
       >
-        {isLoading ? (
-          <div className="w-5 h-5 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
-        ) : (
-          <>
-            Reset Password
-            <ArrowRight className="w-4 h-4" />
-          </>
-        )}
+        Login Now
+        <ArrowRight className="w-4 h-4" />
       </Button>
-
-      <Button 
-        type="button" 
-        variant="ghost" 
-        className="w-full" 
-        size="sm"
-        onClick={() => setStep('verify')}
-      >
-        <ArrowLeft className="w-4 h-4 mr-2" />
-        Back
-      </Button>
-    </form>
+    </div>
   );
 };
 
@@ -746,16 +834,18 @@ const AuthPage = () => {
 
             {/* Date of Birth (signup only) */}
             {mode === 'signup' && (
-              <div className="relative">
-                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <Input
-                  type="date"
-                  placeholder="Date of Birth *"
-                  value={formData.dateOfBirth}
-                  onChange={(e) => setFormData({ ...formData, dateOfBirth: e.target.value })}
-                  className="pl-10 bg-secondary/50 border-border/50 focus:border-primary"
-                  required
-                />
+              <div className="space-y-1">
+                <label className="text-xs text-muted-foreground ml-1">Date of Birth *</label>
+                <div className="relative">
+                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    type="date"
+                    value={formData.dateOfBirth}
+                    onChange={(e) => setFormData({ ...formData, dateOfBirth: e.target.value })}
+                    className="pl-10 bg-secondary/50 border-border/50 focus:border-primary"
+                    required
+                  />
+                </div>
               </div>
             )}
 
