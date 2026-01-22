@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import NotificationBell from '@/components/NotificationBell';
 import SupportChat from '@/components/SupportChat';
-import ChangelogPopup, { APP_VERSION } from '@/components/ChangelogPopup';
+import UpdatePopup from '@/components/UpdatePopup';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,6 +14,9 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useUpdateAvailable } from '@/hooks/useUpdateAvailable';
+
+// App version constant
+export const APP_VERSION = '1.2.1';
 // Telegram SVG Icon
 const TelegramIcon = () => (
   <svg viewBox="0 0 24 24" className="w-5 h-5" fill="currentColor">
@@ -25,22 +28,16 @@ const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showInstallPrompt, setShowInstallPrompt] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
-  const [showChangelog, setShowChangelog] = useState(false);
+  const [showUpdatePopup, setShowUpdatePopup] = useState(false);
   const { user, signOut } = useAuth();
   const { updateAvailable, applyUpdate, checkForUpdate, isChecking } = useUpdateAvailable();
 
-  // Check if changelog should be shown after update
+  // Show update popup when update is available
   useEffect(() => {
-    const lastSeenVersion = localStorage.getItem('lastSeenVersion');
-    if (lastSeenVersion !== APP_VERSION) {
-      // Show changelog for new version
-      const timer = setTimeout(() => {
-        setShowChangelog(true);
-        localStorage.setItem('lastSeenVersion', APP_VERSION);
-      }, 1000);
-      return () => clearTimeout(timer);
+    if (updateAvailable) {
+      setShowUpdatePopup(true);
     }
-  }, []);
+  }, [updateAvailable]);
 
   useEffect(() => {
     // Check if mobile device
@@ -199,15 +196,9 @@ const Header = () => {
               <Info className="w-4 h-4 text-muted-foreground" />
               <span className="text-sm text-muted-foreground">Version</span>
             </div>
-            <button 
-              onClick={() => {
-                setShowChangelog(true);
-                setIsMenuOpen(false);
-              }}
-              className="text-sm font-semibold text-primary hover:underline"
-            >
+            <span className="text-sm font-semibold text-primary">
               v{APP_VERSION}
-            </button>
+            </span>
           </div>
 
           {/* Check for Update Option */}
@@ -284,11 +275,12 @@ const Header = () => {
         </div>
       </div>
 
-      {/* Changelog Popup */}
-      <ChangelogPopup 
-        isOpen={showChangelog} 
-        onClose={() => setShowChangelog(false)} 
-        version={APP_VERSION} 
+      {/* Update Popup */}
+      <UpdatePopup 
+        isOpen={showUpdatePopup} 
+        onClose={() => setShowUpdatePopup(false)} 
+        onUpdate={applyUpdate}
+        isChecking={isChecking}
       />
     </header>
   );
