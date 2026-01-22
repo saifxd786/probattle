@@ -27,41 +27,66 @@ const COLORS = {
 
 // Home positions for each color (in the corner bases)
 const HOME_POSITIONS: { [color: string]: { x: number; y: number }[] } = {
-  red: [{ x: 1.8, y: 1.8 }, { x: 3.2, y: 1.8 }, { x: 1.8, y: 3.2 }, { x: 3.2, y: 3.2 }],
-  green: [{ x: 10.8, y: 1.8 }, { x: 12.2, y: 1.8 }, { x: 10.8, y: 3.2 }, { x: 12.2, y: 3.2 }],
-  yellow: [{ x: 10.8, y: 10.8 }, { x: 12.2, y: 10.8 }, { x: 10.8, y: 12.2 }, { x: 12.2, y: 12.2 }],
-  blue: [{ x: 1.8, y: 10.8 }, { x: 3.2, y: 10.8 }, { x: 1.8, y: 12.2 }, { x: 3.2, y: 12.2 }]
+  red: [{ x: 2, y: 2 }, { x: 4, y: 2 }, { x: 2, y: 4 }, { x: 4, y: 4 }],
+  green: [{ x: 11, y: 2 }, { x: 13, y: 2 }, { x: 11, y: 4 }, { x: 13, y: 4 }],
+  yellow: [{ x: 11, y: 11 }, { x: 13, y: 11 }, { x: 11, y: 13 }, { x: 13, y: 13 }],
+  blue: [{ x: 2, y: 11 }, { x: 4, y: 11 }, { x: 2, y: 13 }, { x: 4, y: 13 }]
 };
 
-// Main track positions
-const TRACK_POSITIONS: { x: number; y: number }[] = [];
+// Full track coordinates - 52 positions going clockwise
+// Each position is {x, y} in grid units (0-14)
+const FULL_TRACK: { x: number; y: number }[] = [
+  // Red start (position 1) - bottom left column going up
+  { x: 6, y: 13 }, { x: 6, y: 12 }, { x: 6, y: 11 }, { x: 6, y: 10 }, { x: 6, y: 9 },
+  // Turn left at top of red zone
+  { x: 5, y: 8 }, { x: 4, y: 8 }, { x: 3, y: 8 }, { x: 2, y: 8 }, { x: 1, y: 8 }, { x: 0, y: 8 },
+  // Turn up on left edge
+  { x: 0, y: 7 },
+  // Turn right going across top of left zone
+  { x: 0, y: 6 }, { x: 1, y: 6 }, { x: 2, y: 6 }, { x: 3, y: 6 }, { x: 4, y: 6 }, { x: 5, y: 6 },
+  // Turn up in top-left
+  { x: 6, y: 5 }, { x: 6, y: 4 }, { x: 6, y: 3 }, { x: 6, y: 2 }, { x: 6, y: 1 }, { x: 6, y: 0 },
+  // Turn right at top
+  { x: 7, y: 0 },
+  // Turn down on right side of top section
+  { x: 8, y: 0 }, { x: 8, y: 1 }, { x: 8, y: 2 }, { x: 8, y: 3 }, { x: 8, y: 4 }, { x: 8, y: 5 },
+  // Turn right at green zone
+  { x: 9, y: 6 }, { x: 10, y: 6 }, { x: 11, y: 6 }, { x: 12, y: 6 }, { x: 13, y: 6 }, { x: 14, y: 6 },
+  // Turn down on right edge
+  { x: 14, y: 7 },
+  // Turn left going across bottom of right zone
+  { x: 14, y: 8 }, { x: 13, y: 8 }, { x: 12, y: 8 }, { x: 11, y: 8 }, { x: 10, y: 8 }, { x: 9, y: 8 },
+  // Turn down in bottom-right
+  { x: 8, y: 9 }, { x: 8, y: 10 }, { x: 8, y: 11 }, { x: 8, y: 12 }, { x: 8, y: 13 }, { x: 8, y: 14 },
+  // Turn left at bottom
+  { x: 7, y: 14 },
+  // Turn up on left side of bottom section (back to red start)
+  { x: 6, y: 14 }
+];
 
-// Generate track - Starting from Red's start, going clockwise
-// Bottom section (red start area going up)
-for (let i = 0; i < 5; i++) TRACK_POSITIONS.push({ x: 6, y: 13 - i });
-TRACK_POSITIONS.push({ x: 6, y: 8 }); // Corner
-for (let i = 0; i < 6; i++) TRACK_POSITIONS.push({ x: 5 - i, y: 7 }); // Left going
-TRACK_POSITIONS.push({ x: 0, y: 6 }); // Top-left corner down
-for (let i = 0; i < 5; i++) TRACK_POSITIONS.push({ x: i + 1, y: 6 }); // Going right in left section
-TRACK_POSITIONS.push({ x: 6, y: 6 }); // Turn up
-for (let i = 0; i < 6; i++) TRACK_POSITIONS.push({ x: 6, y: 5 - i }); // Going up
-TRACK_POSITIONS.push({ x: 7, y: 0 }); // Top corner
-for (let i = 0; i < 5; i++) TRACK_POSITIONS.push({ x: 7, y: i + 1 }); // Coming down in green path
-TRACK_POSITIONS.push({ x: 8, y: 6 }); // Turn right
-for (let i = 0; i < 6; i++) TRACK_POSITIONS.push({ x: 9 + i, y: 6 }); // Going right
-TRACK_POSITIONS.push({ x: 14, y: 7 }); // Right corner
-for (let i = 0; i < 5; i++) TRACK_POSITIONS.push({ x: 13 - i, y: 7 }); // Coming left in yellow area
-TRACK_POSITIONS.push({ x: 8, y: 8 }); // Turn down
-for (let i = 0; i < 6; i++) TRACK_POSITIONS.push({ x: 8, y: 9 + i }); // Going down
-TRACK_POSITIONS.push({ x: 7, y: 14 }); // Bottom corner
-for (let i = 0; i < 5; i++) TRACK_POSITIONS.push({ x: 7, y: 13 - i }); // Coming up in blue path
+// Starting position index on the track for each color (1-indexed in game, 0-indexed here)
+// Each color enters the track at a different spot
+const COLOR_START_INDEX: { [color: string]: number } = {
+  red: 0,    // Position 1 on track
+  green: 13, // Position 14 on track
+  yellow: 26, // Position 27 on track  
+  blue: 39   // Position 40 on track
+};
 
-// Home paths for each color (positions 1-6 inside home stretch)
+// Home stretch paths for each color (positions 52-57 lead to center)
 const HOME_PATHS: { [color: string]: { x: number; y: number }[] } = {
-  red: [{ x: 7, y: 12 }, { x: 7, y: 11 }, { x: 7, y: 10 }, { x: 7, y: 9 }, { x: 7, y: 8 }, { x: 7, y: 7 }],
-  green: [{ x: 2, y: 7 }, { x: 3, y: 7 }, { x: 4, y: 7 }, { x: 5, y: 7 }, { x: 6, y: 7 }, { x: 7, y: 7 }],
-  yellow: [{ x: 7, y: 2 }, { x: 7, y: 3 }, { x: 7, y: 4 }, { x: 7, y: 5 }, { x: 7, y: 6 }, { x: 7, y: 7 }],
-  blue: [{ x: 12, y: 7 }, { x: 11, y: 7 }, { x: 10, y: 7 }, { x: 9, y: 7 }, { x: 8, y: 7 }, { x: 7, y: 7 }]
+  red: [
+    { x: 7, y: 13 }, { x: 7, y: 12 }, { x: 7, y: 11 }, { x: 7, y: 10 }, { x: 7, y: 9 }, { x: 7, y: 8 }
+  ],
+  green: [
+    { x: 1, y: 7 }, { x: 2, y: 7 }, { x: 3, y: 7 }, { x: 4, y: 7 }, { x: 5, y: 7 }, { x: 6, y: 7 }
+  ],
+  yellow: [
+    { x: 7, y: 1 }, { x: 7, y: 2 }, { x: 7, y: 3 }, { x: 7, y: 4 }, { x: 7, y: 5 }, { x: 7, y: 6 }
+  ],
+  blue: [
+    { x: 13, y: 7 }, { x: 12, y: 7 }, { x: 11, y: 7 }, { x: 10, y: 7 }, { x: 9, y: 7 }, { x: 8, y: 7 }
+  ]
 };
 
 const LudoBoard = ({ players, onTokenClick, selectedToken }: LudoBoardProps) => {
@@ -74,22 +99,28 @@ const LudoBoard = ({ players, onTokenClick, selectedToken }: LudoBoardProps) => 
       const homePos = HOME_POSITIONS[color][token.id];
       return { x: homePos.x * cellSize, y: homePos.y * cellSize };
     }
+    
     if (token.position >= 52) {
-      // Token is on home path
+      // Token is on home stretch (positions 52-57)
       const homePathIndex = token.position - 52;
       if (homePathIndex < HOME_PATHS[color].length) {
         const pos = HOME_PATHS[color][homePathIndex];
         return { x: pos.x * cellSize, y: pos.y * cellSize };
       }
-      // Token reached home (center)
+      // Token reached center (home)
       return { x: 7 * cellSize, y: 7 * cellSize };
     }
-    // Token is on main track
-    const trackIndex = token.position - 1;
-    if (trackIndex >= 0 && trackIndex < TRACK_POSITIONS.length) {
-      const pos = TRACK_POSITIONS[trackIndex];
+    
+    // Token is on main track (positions 1-51)
+    // Calculate actual track index based on color's starting point
+    const startIndex = COLOR_START_INDEX[color];
+    const trackIndex = (startIndex + token.position - 1) % 52;
+    
+    if (trackIndex >= 0 && trackIndex < FULL_TRACK.length) {
+      const pos = FULL_TRACK[trackIndex];
       return { x: pos.x * cellSize, y: pos.y * cellSize };
     }
+    
     return { x: 7 * cellSize, y: 7 * cellSize };
   };
 
@@ -119,14 +150,6 @@ const LudoBoard = ({ players, onTokenClick, selectedToken }: LudoBoardProps) => 
             <stop offset="0%" stopColor="#FFF8E1" />
             <stop offset="100%" stopColor="#FFECB3" />
           </linearGradient>
-          <filter id="innerShadow">
-            <feOffset dx="0" dy="2" />
-            <feGaussianBlur stdDeviation="1" result="offset-blur" />
-            <feComposite operator="out" in="SourceGraphic" in2="offset-blur" result="inverse" />
-            <feFlood floodColor="#000" floodOpacity="0.2" result="color" />
-            <feComposite operator="in" in="color" in2="inverse" result="shadow" />
-            <feComposite operator="over" in="shadow" in2="SourceGraphic" />
-          </filter>
         </defs>
 
         {/* Board background */}
@@ -218,20 +241,20 @@ const LudoBoard = ({ players, onTokenClick, selectedToken }: LudoBoardProps) => 
         </g>
 
         {/* Colored home paths */}
-        {/* Red path (going up from bottom) */}
-        {[0, 1, 2, 3, 4].map(i => (
+        {/* Red path (center column going down) */}
+        {[0, 1, 2, 3, 4, 5].map(i => (
           <rect key={`rp-${i}`} x={7} y={8.5 + i} width="1" height="1" fill={COLORS.red.light} stroke={COLORS.red.main} strokeWidth="0.05" />
         ))}
-        {/* Green path (going right from left) */}
-        {[0, 1, 2, 3, 4].map(i => (
+        {/* Green path (center row going right) */}
+        {[0, 1, 2, 3, 4, 5].map(i => (
           <rect key={`gp-${i}`} x={0.5 + i} y={7} width="1" height="1" fill={COLORS.green.light} stroke={COLORS.green.main} strokeWidth="0.05" />
         ))}
-        {/* Yellow path (going down from top) */}
-        {[0, 1, 2, 3, 4].map(i => (
+        {/* Yellow path (center column going up) */}
+        {[0, 1, 2, 3, 4, 5].map(i => (
           <rect key={`yp-${i}`} x={7} y={0.5 + i} width="1" height="1" fill={COLORS.yellow.light} stroke={COLORS.yellow.main} strokeWidth="0.05" />
         ))}
-        {/* Blue path (going left from right) */}
-        {[0, 1, 2, 3, 4].map(i => (
+        {/* Blue path (center row going left) */}
+        {[0, 1, 2, 3, 4, 5].map(i => (
           <rect key={`bp-${i}`} x={8.5 + i} y={7} width="1" height="1" fill={COLORS.blue.light} stroke={COLORS.blue.main} strokeWidth="0.05" />
         ))}
 
