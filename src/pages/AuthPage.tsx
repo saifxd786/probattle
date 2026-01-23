@@ -10,6 +10,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { z } from 'zod';
 import { generateDeviceFingerprint } from '@/utils/deviceFingerprint';
+import PasswordStrengthMeter from '@/components/PasswordStrengthMeter';
 
 // Security questions list
 const SECURITY_QUESTIONS = [
@@ -19,6 +20,23 @@ const SECURITY_QUESTIONS = [
   "What is your favorite movie?",
   "What was your childhood nickname?",
 ];
+
+// Timeout wrapper for async operations - converts PromiseLike to Promise
+const withTimeout = async <T,>(promiseLike: Promise<T> | PromiseLike<T>, ms: number, label: string): Promise<T> => {
+  // Convert PromiseLike to proper Promise
+  const promise = Promise.resolve(promiseLike);
+  
+  let timeoutId: number | undefined;
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timeoutId = window.setTimeout(() => reject(new Error(`TIMEOUT:${label}`)), ms);
+  });
+
+  try {
+    return await Promise.race([promise, timeoutPromise]);
+  } finally {
+    if (timeoutId) window.clearTimeout(timeoutId);
+  }
+};
 
 // Forgot Password Form Component with Security Question - Step by Step
 const ForgotPasswordForm = ({ onBack }: { onBack: () => void }) => {
@@ -45,7 +63,6 @@ const ForgotPasswordForm = ({ onBack }: { onBack: () => void }) => {
           description: 'Please enter a valid 10-digit phone number',
           variant: 'destructive',
         });
-        setIsLoading(false);
         return;
       }
 
@@ -62,7 +79,6 @@ const ForgotPasswordForm = ({ onBack }: { onBack: () => void }) => {
           description: 'No account found with this phone number.',
           variant: 'destructive',
         });
-        setIsLoading(false);
         return;
       }
 
@@ -73,7 +89,6 @@ const ForgotPasswordForm = ({ onBack }: { onBack: () => void }) => {
           description: 'Security question not set. Please contact support on Telegram.',
         });
         window.open('https://t.me/ProBattleTournament', '_blank');
-        setIsLoading(false);
         return;
       }
 
@@ -89,9 +104,9 @@ const ForgotPasswordForm = ({ onBack }: { onBack: () => void }) => {
         description: 'An error occurred. Please try again.',
         variant: 'destructive',
       });
+    } finally {
+      setIsLoading(false);
     }
-
-    setIsLoading(false);
   };
 
   // Step 2: Verify security answer
@@ -107,7 +122,6 @@ const ForgotPasswordForm = ({ onBack }: { onBack: () => void }) => {
           description: 'The answer you provided is incorrect. Please try again.',
           variant: 'destructive',
         });
-        setIsLoading(false);
         return;
       }
 
@@ -124,9 +138,9 @@ const ForgotPasswordForm = ({ onBack }: { onBack: () => void }) => {
         description: 'An error occurred. Please try again.',
         variant: 'destructive',
       });
+    } finally {
+      setIsLoading(false);
     }
-
-    setIsLoading(false);
   };
 
   // Step 3: Reset password
@@ -141,7 +155,6 @@ const ForgotPasswordForm = ({ onBack }: { onBack: () => void }) => {
           description: 'Password must be at least 6 characters',
           variant: 'destructive',
         });
-        setIsLoading(false);
         return;
       }
 
@@ -151,7 +164,6 @@ const ForgotPasswordForm = ({ onBack }: { onBack: () => void }) => {
           description: 'Passwords do not match',
           variant: 'destructive',
         });
-        setIsLoading(false);
         return;
       }
 
@@ -170,7 +182,6 @@ const ForgotPasswordForm = ({ onBack }: { onBack: () => void }) => {
           description: data?.error || 'Failed to reset password. Please contact support.',
           variant: 'destructive',
         });
-        setIsLoading(false);
         return;
       }
 
@@ -187,9 +198,9 @@ const ForgotPasswordForm = ({ onBack }: { onBack: () => void }) => {
         description: 'An error occurred. Please try again.',
         variant: 'destructive',
       });
+    } finally {
+      setIsLoading(false);
     }
-
-    setIsLoading(false);
   };
 
   // Step 1: Phone Input
@@ -332,6 +343,9 @@ const ForgotPasswordForm = ({ onBack }: { onBack: () => void }) => {
           </button>
         </div>
 
+        {/* Password Strength Meter for Reset */}
+        <PasswordStrengthMeter password={newPassword} />
+
         <div className="relative">
           <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
@@ -448,32 +462,54 @@ const AuthPage = () => {
   const phoneToEmail = (phone: string) => `${phone}@probattle.app`;
   const phoneToOldEmail = (phone: string) => `${phone}@proscims.app`;
 
-  // Check device ban
+  // Check device ban (non-blocking with timeout)
   const checkDeviceBan = async () => {
-    const fingerprint = await generateDeviceFingerprint();
-    const { data: banData } = await supabase
-      .from('device_bans')
-      .select('*')
-      .eq('device_fingerprint', fingerprint)
-      .maybeSingle();
-    return banData;
+    try {
+      const fingerprint = await withTimeout(generateDeviceFingerprint(), 5000, 'fingerprint');
+      const result = await withTimeout(
+        supabase
+          .from('device_bans')
+          .select('*')
+          .eq('device_fingerprint', fingerprint)
+          .maybeSingle()
+          .then(res => res),
+        5000,
+        'ban-check'
+      );
+      return result.data;
+    } catch {
+      // If fingerprint or ban check fails/times out, allow signup to proceed
+      console.log('[Auth] Device ban check skipped (timeout/error)');
+      return null;
+    }
   };
 
-  // Save device fingerprint to profile
+  // Save device fingerprint to profile (non-blocking)
   const saveDeviceFingerprint = async (userId: string) => {
-    const fingerprint = await generateDeviceFingerprint();
-    await supabase
-      .from('profiles')
-      .update({ device_fingerprint: fingerprint })
-      .eq('id', userId);
+    try {
+      const fingerprint = await withTimeout(generateDeviceFingerprint(), 5000, 'fingerprint-save');
+      await withTimeout(
+        supabase
+          .from('profiles')
+          .update({ device_fingerprint: fingerprint })
+          .eq('id', userId)
+          .then(res => res),
+        5000,
+        'save-fingerprint'
+      );
+    } catch {
+      console.log('[Auth] Device fingerprint save skipped (timeout/error)');
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isLoading) return;
     setIsLoading(true);
 
     try {
-      // Check device ban first
+      // Check device ban first (non-blocking - won't stop signup if slow)
+      console.log('[Auth] Step 1: Checking device ban...');
       const deviceBan = await checkDeviceBan();
       if (deviceBan) {
         toast({
@@ -481,9 +517,9 @@ const AuthPage = () => {
           description: `This device has been banned. Reason: ${deviceBan.reason || 'Policy violation'}`,
           variant: 'destructive',
         });
-        setIsLoading(false);
         return;
       }
+      console.log('[Auth] Step 1 complete: No ban found');
 
       // Validate phone
       const phoneResult = phoneSchema.safeParse(formData.phone);
@@ -493,7 +529,6 @@ const AuthPage = () => {
           description: phoneResult.error.errors[0].message,
           variant: 'destructive',
         });
-        setIsLoading(false);
         return;
       }
 
@@ -505,7 +540,6 @@ const AuthPage = () => {
           description: passwordResult.error.errors[0].message,
           variant: 'destructive',
         });
-        setIsLoading(false);
         return;
       }
 
@@ -519,7 +553,6 @@ const AuthPage = () => {
             description: 'Please enter your name to create an account',
             variant: 'destructive',
           });
-          setIsLoading(false);
           return;
         }
 
@@ -530,7 +563,6 @@ const AuthPage = () => {
             description: usernameResult.error.errors[0].message,
             variant: 'destructive',
           });
-          setIsLoading(false);
           return;
         }
 
@@ -540,7 +572,6 @@ const AuthPage = () => {
             description: 'Passwords do not match',
             variant: 'destructive',
           });
-          setIsLoading(false);
           return;
         }
 
@@ -551,7 +582,6 @@ const AuthPage = () => {
             description: 'Please enter your date of birth for account recovery',
             variant: 'destructive',
           });
-          setIsLoading(false);
           return;
         }
 
@@ -562,23 +592,27 @@ const AuthPage = () => {
             description: 'Please select a security question and provide an answer',
             variant: 'destructive',
           });
-          setIsLoading(false);
           return;
         }
 
-        // Sign up
+        // Sign up with timeout
+        console.log('[Auth] Step 2: Creating account...');
         const redirectUrl = `${window.location.origin}/`;
-        const { data: signupData, error } = await supabase.auth.signUp({
-          email,
-          password: formData.password,
-          options: {
-            emailRedirectTo: redirectUrl,
-            data: {
-              username: formData.username,
-              phone: formData.phone,
+        const { data: signupData, error } = await withTimeout(
+          supabase.auth.signUp({
+            email,
+            password: formData.password,
+            options: {
+              emailRedirectTo: redirectUrl,
+              data: {
+                username: formData.username,
+                phone: formData.phone,
+              },
             },
-          },
-        });
+          }),
+          20000,
+          'signup'
+        );
 
         if (error) {
           let errorMessage = error.message;
@@ -590,16 +624,21 @@ const AuthPage = () => {
             description: errorMessage,
             variant: 'destructive',
           });
-          setIsLoading(false);
           return;
         }
+        console.log('[Auth] Step 2 complete: Account created');
 
         // Ensure user is logged in right after signup
         if (!signupData.session) {
-          const { error: signInAfterSignupError } = await supabase.auth.signInWithPassword({
-            email,
-            password: formData.password,
-          });
+          console.log('[Auth] Step 3: Auto-signing in...');
+          const { error: signInAfterSignupError } = await withTimeout(
+            supabase.auth.signInWithPassword({
+              email,
+              password: formData.password,
+            }),
+            15000,
+            'signin-after-signup'
+          );
 
           if (signInAfterSignupError) {
             toast({
@@ -607,54 +646,86 @@ const AuthPage = () => {
               description: 'Account created, but login failed. Please sign in now.',
               variant: 'destructive',
             });
-            setIsLoading(false);
+            setMode('login');
             return;
           }
+          console.log('[Auth] Step 3 complete: Signed in');
         }
 
         // Ensure profile exists with DOB and security question
         if (signupData.user) {
-          await supabase.from('profiles').upsert(
-            {
-              id: signupData.user.id,
-              username: formData.username,
-              phone: formData.phone,
-              email,
-              date_of_birth: formData.dateOfBirth,
-              security_question: formData.securityQuestion,
-              security_answer: formData.securityAnswer.toLowerCase().trim(),
-            },
-            { onConflict: 'id' }
+          console.log('[Auth] Step 4: Creating profile...');
+          const profileResult = await withTimeout(
+            supabase.from('profiles').upsert(
+              {
+                id: signupData.user.id,
+                username: formData.username,
+                phone: formData.phone,
+                email,
+                date_of_birth: formData.dateOfBirth,
+                security_question: formData.securityQuestion,
+                security_answer: formData.securityAnswer.toLowerCase().trim(),
+              },
+              { onConflict: 'id' }
+            ).then(res => res),
+            15000,
+            'profile-upsert'
           );
-        }
+          const profileError = profileResult.error;
 
-        // Handle referral if code was provided
-        if (referralCode && signupData.user) {
-          const { data: referrer } = await supabase
-            .from('profiles')
-            .select('id')
-            .eq('referral_code', referralCode)
-            .maybeSingle();
-
-          if (referrer) {
-            await supabase
-              .from('profiles')
-              .update({ referred_by: referrer.id })
-              .eq('id', signupData.user.id);
-
-            await supabase.from('referrals').insert({
-              referrer_id: referrer.id,
-              referred_id: signupData.user.id,
-              referral_code: referralCode,
-              reward_amount: REFERRAL_REWARD,
-              is_rewarded: false,
+          if (profileError) {
+            console.error('[Auth] Profile creation failed:', profileError);
+            toast({
+              title: 'Profile Error',
+              description: 'Account created but profile setup failed. Please update your profile later.',
+              variant: 'destructive',
             });
+            // Don't block - continue to home
+          } else {
+            console.log('[Auth] Step 4 complete: Profile created');
           }
         }
 
-        // Save device fingerprint
+        // Handle referral if code was provided (non-blocking)
+        if (referralCode && signupData.user) {
+          console.log('[Auth] Step 5: Processing referral...');
+          try {
+            const referrerResult = await withTimeout(
+              supabase
+                .from('profiles')
+                .select('id')
+                .eq('referral_code', referralCode)
+                .maybeSingle()
+                .then(res => res),
+              8000,
+              'referrer-lookup'
+            );
+            const referrer = referrerResult.data;
+
+            if (referrer) {
+              await Promise.all([
+                supabase
+                  .from('profiles')
+                  .update({ referred_by: referrer.id })
+                  .eq('id', signupData.user.id),
+                supabase.from('referrals').insert({
+                  referrer_id: referrer.id,
+                  referred_id: signupData.user.id,
+                  referral_code: referralCode,
+                  reward_amount: REFERRAL_REWARD,
+                  is_rewarded: false,
+                }),
+              ]);
+              console.log('[Auth] Step 5 complete: Referral processed');
+            }
+          } catch {
+            console.log('[Auth] Referral processing skipped (timeout/error)');
+          }
+        }
+
+        // Save device fingerprint (non-blocking, don't await)
         if (signupData.user) {
-          await saveDeviceFingerprint(signupData.user.id);
+          saveDeviceFingerprint(signupData.user.id);
         }
 
         toast({
@@ -664,22 +735,32 @@ const AuthPage = () => {
         navigate('/');
       } else {
         // Login - try new domain first, then old domain for backwards compatibility
+        console.log('[Auth] Login: Trying new domain...');
         let loginData;
         let loginError;
         
         // Try new domain first
-        const { data: newDomainData, error: newDomainError } = await supabase.auth.signInWithPassword({
-          email,
-          password: formData.password,
-        });
+        const { data: newDomainData, error: newDomainError } = await withTimeout(
+          supabase.auth.signInWithPassword({
+            email,
+            password: formData.password,
+          }),
+          15000,
+          'login-new-domain'
+        );
         
         if (newDomainError && newDomainError.message.includes('Invalid login credentials')) {
           // Try old domain (proscims.app) for backwards compatibility
+          console.log('[Auth] Login: Trying old domain...');
           const oldEmail = phoneToOldEmail(formData.phone);
-          const { data: oldDomainData, error: oldDomainError } = await supabase.auth.signInWithPassword({
-            email: oldEmail,
-            password: formData.password,
-          });
+          const { data: oldDomainData, error: oldDomainError } = await withTimeout(
+            supabase.auth.signInWithPassword({
+              email: oldEmail,
+              password: formData.password,
+            }),
+            15000,
+            'login-old-domain'
+          );
           
           loginData = oldDomainData;
           loginError = oldDomainError;
@@ -698,7 +779,6 @@ const AuthPage = () => {
             description: errorMessage,
             variant: 'destructive',
           });
-          setIsLoading(false);
           return;
         }
 
@@ -726,14 +806,13 @@ const AuthPage = () => {
               description: `Your account was banned on ${banDate}. Reason: ${profileData.ban_reason || 'Violation of terms'}`,
               variant: 'destructive',
             });
-            setIsLoading(false);
             return;
           }
         }
 
-        // Update device fingerprint on login
+        // Update device fingerprint on login (non-blocking)
         if (loginData.user) {
-          await saveDeviceFingerprint(loginData.user.id);
+          saveDeviceFingerprint(loginData.user.id);
         }
 
         toast({
@@ -743,14 +822,25 @@ const AuthPage = () => {
         navigate('/');
       }
     } catch (error) {
-      toast({
-        title: 'Error',
-        description: 'An unexpected error occurred. Please try again.',
-        variant: 'destructive',
-      });
+      const message = error instanceof Error ? error.message : '';
+      console.error('[Auth] Error:', message);
+      
+      if (message.startsWith('TIMEOUT:')) {
+        toast({
+          title: 'Network Slow',
+          description: 'Request timeout. Please check your internet and try again.',
+          variant: 'destructive',
+        });
+      } else {
+        toast({
+          title: 'Error',
+          description: 'An unexpected error occurred. Please try again.',
+          variant: 'destructive',
+        });
+      }
+    } finally {
+      setIsLoading(false);
     }
-
-    setIsLoading(false);
   };
 
   return (
@@ -868,6 +958,11 @@ const AuthPage = () => {
                 {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
             </div>
+
+            {/* Password Strength Meter (signup only) */}
+            {mode === 'signup' && (
+              <PasswordStrengthMeter password={formData.password} />
+            )}
 
             {/* Confirm Password (signup only) */}
             {mode === 'signup' && (
