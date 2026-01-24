@@ -517,7 +517,6 @@ const AuthPage = () => {
       return result.data;
     } catch {
       // If fingerprint or ban check fails/times out, allow signup to proceed
-      console.log('[Auth] Device ban check skipped (timeout/error)');
       return null;
     }
   };
@@ -536,7 +535,7 @@ const AuthPage = () => {
         'save-fingerprint'
       );
     } catch {
-      console.log('[Auth] Device fingerprint save skipped (timeout/error)');
+      // Non-blocking - fingerprint save skipped
     }
   };
 
@@ -547,7 +546,6 @@ const AuthPage = () => {
 
     try {
       // Check device ban first (non-blocking - won't stop signup if slow)
-      console.log('[Auth] Step 1: Checking device ban...');
       const deviceBan = await checkDeviceBan();
       if (deviceBan) {
         setDeviceBanned(true);
@@ -559,7 +557,6 @@ const AuthPage = () => {
         });
         return;
       }
-      console.log('[Auth] Step 1 complete: No ban found');
 
       // Validate phone
       const phoneResult = phoneSchema.safeParse(formData.phone);
@@ -636,7 +633,6 @@ const AuthPage = () => {
         }
 
         // Sign up with timeout
-        console.log('[Auth] Step 2: Creating account...');
         const redirectUrl = `${window.location.origin}/`;
         const { data: signupData, error } = await withTimeout(
           supabase.auth.signUp({
@@ -666,11 +662,9 @@ const AuthPage = () => {
           });
           return;
         }
-        console.log('[Auth] Step 2 complete: Account created');
 
         // Ensure user is logged in right after signup
         if (!signupData.session) {
-          console.log('[Auth] Step 3: Auto-signing in...');
           const { error: signInAfterSignupError } = await withTimeout(
             supabase.auth.signInWithPassword({
               email,
@@ -689,13 +683,11 @@ const AuthPage = () => {
             setMode('login');
             return;
           }
-          console.log('[Auth] Step 3 complete: Signed in');
         }
 
         // Ensure profile exists with DOB and security question
         const userId = signupData.user?.id;
         if (userId) {
-          console.log('[Auth] Step 4: Creating profile for user:', userId);
           try {
             const profileResult = await withTimeout(
               supabase.from('profiles').upsert(
@@ -716,27 +708,20 @@ const AuthPage = () => {
             const profileError = profileResult.error;
 
             if (profileError) {
-              console.error('[Auth] Profile creation failed:', profileError);
               toast({
                 title: 'Database Error',
                 description: 'Account created but profile setup failed. Please contact support.',
                 variant: 'destructive',
               });
               // Don't block - continue to home
-            } else {
-              console.log('[Auth] Step 4 complete: Profile created');
             }
-          } catch (profileErr) {
-            console.error('[Auth] Profile upsert exception:', profileErr);
+          } catch {
             // Non-blocking error
           }
-        } else {
-          console.error('[Auth] No user ID available for profile creation');
         }
 
         // Handle referral if code was provided (non-blocking)
         if (referralCode && userId) {
-          console.log('[Auth] Step 5: Processing referral...');
           try {
             const referrerResult = await withTimeout(
               supabase
@@ -764,10 +749,9 @@ const AuthPage = () => {
                   is_rewarded: false,
                 }),
               ]);
-              console.log('[Auth] Step 5 complete: Referral processed');
             }
           } catch {
-            console.log('[Auth] Referral processing skipped (timeout/error)');
+            // Referral processing skipped
           }
         }
 
@@ -803,7 +787,6 @@ const AuthPage = () => {
         }
 
         // Login - try new domain first, then old domain for backwards compatibility
-        console.log('[Auth] Login: Trying new domain...');
         let loginData;
         let loginError;
         
@@ -819,7 +802,6 @@ const AuthPage = () => {
         
         if (newDomainError && newDomainError.message.includes('Invalid login credentials')) {
           // Try old domain (proscims.app) for backwards compatibility
-          console.log('[Auth] Login: Trying old domain...');
           const oldEmail = phoneToOldEmail(formData.phone);
           const { data: oldDomainData, error: oldDomainError } = await withTimeout(
             supabase.auth.signInWithPassword({
@@ -894,7 +876,6 @@ const AuthPage = () => {
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : '';
-      console.error('[Auth] Error:', message);
       
       if (message.startsWith('TIMEOUT:')) {
         toast({
