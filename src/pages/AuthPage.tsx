@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Phone, Lock, User, ArrowRight, Eye, EyeOff, Gift, ArrowLeft, Calendar, ShieldQuestion } from 'lucide-react';
+import { Phone, Lock, User, ArrowRight, Eye, EyeOff, Gift, ArrowLeft, Calendar, ShieldQuestion, AlertTriangle } from 'lucide-react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,6 +11,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { z } from 'zod';
 import { generateDeviceFingerprint } from '@/utils/deviceFingerprint';
 import PasswordStrengthMeter from '@/components/PasswordStrengthMeter';
+import { useRateLimit } from '@/hooks/useRateLimit';
 
 // Security questions list
 const SECURITY_QUESTIONS = [
@@ -50,10 +51,28 @@ const ForgotPasswordForm = ({ onBack }: { onBack: () => void }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [userEmail, setUserEmail] = useState('');
+  
+  // Rate limiting for forgot password
+  const forgotPasswordRateLimit = useRateLimit('forgot-password', {
+    maxAttempts: 5,
+    windowMs: 60000,
+    lockoutMs: 300000, // 5 min lockout
+  });
 
   // Step 1: Verify phone and fetch user data
   const handlePhoneSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Check rate limit
+    if (forgotPasswordRateLimit.isLocked) {
+      toast({
+        title: 'Too Many Attempts',
+        description: `Please wait ${forgotPasswordRateLimit.remainingLockoutTime} seconds before trying again.`,
+        variant: 'destructive',
+      });
+      return;
+    }
+    
     setIsLoading(true);
 
     try {
@@ -61,6 +80,16 @@ const ForgotPasswordForm = ({ onBack }: { onBack: () => void }) => {
         toast({
           title: 'Invalid Phone',
           description: 'Please enter a valid 10-digit phone number',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      // Record attempt
+      if (!forgotPasswordRateLimit.recordAttempt()) {
+        toast({
+          title: 'Too Many Attempts',
+          description: `You've exceeded the maximum attempts. Please wait 5 minutes.`,
           variant: 'destructive',
         });
         return;
@@ -430,6 +459,15 @@ const AuthPage = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [referralCode, setReferralCode] = useState('');
+  const [deviceBanned, setDeviceBanned] = useState(false);
+  const [banReason, setBanReason] = useState('');
+
+  // Rate limiting for login
+  const loginRateLimit = useRateLimit('login', {
+    maxAttempts: 5,
+    windowMs: 60000,
+    lockoutMs: 300000, // 5 min lockout
+  });
 
   const [formData, setFormData] = useState({
     phone: '',
@@ -512,9 +550,11 @@ const AuthPage = () => {
       console.log('[Auth] Step 1: Checking device ban...');
       const deviceBan = await checkDeviceBan();
       if (deviceBan) {
+        setDeviceBanned(true);
+        setBanReason(deviceBan.reason || 'Violating regulations');
         toast({
           title: '🚫 Device Banned',
-          description: `This device has been banned. Reason: ${deviceBan.reason || 'Policy violation'}`,
+          description: 'Your device has been banned for violating regulations.',
           variant: 'destructive',
         });
         return;
@@ -653,41 +693,49 @@ const AuthPage = () => {
         }
 
         // Ensure profile exists with DOB and security question
-        if (signupData.user) {
-          console.log('[Auth] Step 4: Creating profile...');
-          const profileResult = await withTimeout(
-            supabase.from('profiles').upsert(
-              {
-                id: signupData.user.id,
-                username: formData.username,
-                phone: formData.phone,
-                email,
-                date_of_birth: formData.dateOfBirth,
-                security_question: formData.securityQuestion,
-                security_answer: formData.securityAnswer.toLowerCase().trim(),
-              },
-              { onConflict: 'id' }
-            ).then(res => res),
-            15000,
-            'profile-upsert'
-          );
-          const profileError = profileResult.error;
+        const userId = signupData.user?.id;
+        if (userId) {
+          console.log('[Auth] Step 4: Creating profile for user:', userId);
+          try {
+            const profileResult = await withTimeout(
+              supabase.from('profiles').upsert(
+                {
+                  id: userId,
+                  username: formData.username,
+                  phone: formData.phone,
+                  email,
+                  date_of_birth: formData.dateOfBirth,
+                  security_question: formData.securityQuestion,
+                  security_answer: formData.securityAnswer.toLowerCase().trim(),
+                },
+                { onConflict: 'id' }
+              ).then(res => res),
+              15000,
+              'profile-upsert'
+            );
+            const profileError = profileResult.error;
 
-          if (profileError) {
-            console.error('[Auth] Profile creation failed:', profileError);
-            toast({
-              title: 'Profile Error',
-              description: 'Account created but profile setup failed. Please update your profile later.',
-              variant: 'destructive',
-            });
-            // Don't block - continue to home
-          } else {
-            console.log('[Auth] Step 4 complete: Profile created');
+            if (profileError) {
+              console.error('[Auth] Profile creation failed:', profileError);
+              toast({
+                title: 'Database Error',
+                description: 'Account created but profile setup failed. Please contact support.',
+                variant: 'destructive',
+              });
+              // Don't block - continue to home
+            } else {
+              console.log('[Auth] Step 4 complete: Profile created');
+            }
+          } catch (profileErr) {
+            console.error('[Auth] Profile upsert exception:', profileErr);
+            // Non-blocking error
           }
+        } else {
+          console.error('[Auth] No user ID available for profile creation');
         }
 
         // Handle referral if code was provided (non-blocking)
-        if (referralCode && signupData.user) {
+        if (referralCode && userId) {
           console.log('[Auth] Step 5: Processing referral...');
           try {
             const referrerResult = await withTimeout(
@@ -707,10 +755,10 @@ const AuthPage = () => {
                 supabase
                   .from('profiles')
                   .update({ referred_by: referrer.id })
-                  .eq('id', signupData.user.id),
+                  .eq('id', userId),
                 supabase.from('referrals').insert({
                   referrer_id: referrer.id,
-                  referred_id: signupData.user.id,
+                  referred_id: userId,
                   referral_code: referralCode,
                   reward_amount: REFERRAL_REWARD,
                   is_rewarded: false,
@@ -724,8 +772,8 @@ const AuthPage = () => {
         }
 
         // Save device fingerprint (non-blocking, don't await)
-        if (signupData.user) {
-          saveDeviceFingerprint(signupData.user.id);
+        if (userId) {
+          saveDeviceFingerprint(userId);
         }
 
         toast({
@@ -734,6 +782,26 @@ const AuthPage = () => {
         });
         navigate('/');
       } else {
+        // Login - check rate limit
+        if (loginRateLimit.isLocked) {
+          toast({
+            title: 'Too Many Attempts',
+            description: `Please wait ${loginRateLimit.remainingLockoutTime} seconds before trying again.`,
+            variant: 'destructive',
+          });
+          return;
+        }
+
+        // Record login attempt
+        if (!loginRateLimit.recordAttempt()) {
+          toast({
+            title: 'Too Many Attempts',
+            description: `You've exceeded the maximum login attempts. Please wait 5 minutes.`,
+            variant: 'destructive',
+          });
+          return;
+        }
+
         // Login - try new domain first, then old domain for backwards compatibility
         console.log('[Auth] Login: Trying new domain...');
         let loginData;
@@ -772,7 +840,7 @@ const AuthPage = () => {
         if (loginError) {
           let errorMessage = loginError.message;
           if (loginError.message.includes('Invalid login credentials')) {
-            errorMessage = 'Invalid phone number or password. Please try again.';
+            errorMessage = `Invalid phone number or password. ${loginRateLimit.remainingAttempts} attempts remaining.`;
           }
           toast({
             title: 'Login Error',
@@ -781,6 +849,9 @@ const AuthPage = () => {
           });
           return;
         }
+
+        // Login successful - reset rate limit
+        loginRateLimit.resetAttempts();
 
         // Check if user is banned
         if (loginData.user) {
@@ -864,6 +935,37 @@ const AuthPage = () => {
 
         {/* Card */}
         <div className="glass-card p-6 md:p-8">
+          {/* Device Banned Warning */}
+          {deviceBanned && (
+            <div className="mb-6 p-4 bg-destructive/10 border border-destructive/30 rounded-lg">
+              <div className="flex items-center gap-3">
+                <AlertTriangle className="w-8 h-8 text-destructive shrink-0" />
+                <div>
+                  <h3 className="font-bold text-destructive text-sm">Device Banned</h3>
+                  <p className="text-xs text-destructive/80 mt-1">
+                    Your device has been banned for violating regulations.
+                    {banReason && banReason !== 'Violating regulations' && ` Reason: ${banReason}`}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Rate Limit Warning */}
+          {loginRateLimit.isLocked && mode === 'login' && (
+            <div className="mb-6 p-4 bg-warning/10 border border-warning/30 rounded-lg">
+              <div className="flex items-center gap-3">
+                <AlertTriangle className="w-6 h-6 text-warning shrink-0" />
+                <div>
+                  <h3 className="font-bold text-warning text-sm">Too Many Attempts</h3>
+                  <p className="text-xs text-warning/80 mt-1">
+                    Please wait {loginRateLimit.remainingLockoutTime} seconds before trying again.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Toggle */}
           {mode !== 'forgot' ? (
             <div className="flex gap-1 p-1 bg-secondary/50 rounded-lg mb-6">
@@ -1043,10 +1145,19 @@ const AuthPage = () => {
               variant="neon" 
               className="w-full" 
               size="lg"
-              disabled={isLoading}
+              disabled={isLoading || deviceBanned || (mode === 'login' && loginRateLimit.isLocked)}
             >
               {isLoading ? (
                 <div className="w-5 h-5 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
+              ) : deviceBanned ? (
+                <>
+                  <AlertTriangle className="w-4 h-4" />
+                  Device Banned
+                </>
+              ) : (mode === 'login' && loginRateLimit.isLocked) ? (
+                <>
+                  Wait {loginRateLimit.remainingLockoutTime}s
+                </>
               ) : (
                 <>
                   {mode === 'login' ? 'Sign In' : 'Create Account'}
