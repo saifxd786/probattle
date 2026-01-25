@@ -685,13 +685,30 @@ const AuthPage = () => {
           }
         }
 
-        // Ensure profile exists with DOB and security question
+        // Update profile with additional details (trigger already created base profile)
         const userId = signupData.user?.id;
-        if (userId) {
+        if (userId && typeof userId === 'string' && userId.length > 0) {
           try {
+            // Wait a moment for the trigger to complete profile creation
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
             const profileResult = await withTimeout(
-              supabase.from('profiles').upsert(
-                {
+              supabase.from('profiles').update({
+                username: formData.username,
+                phone: formData.phone,
+                email,
+                date_of_birth: formData.dateOfBirth,
+                security_question: formData.securityQuestion,
+                security_answer: formData.securityAnswer.toLowerCase().trim(),
+              }).eq('id', userId).then(res => res),
+              15000,
+              'profile-update'
+            );
+
+            // If update failed (maybe trigger didn't create profile yet), try insert
+            if (profileResult.error) {
+              await withTimeout(
+                supabase.from('profiles').insert({
                   id: userId,
                   username: formData.username,
                   phone: formData.phone,
@@ -699,24 +716,13 @@ const AuthPage = () => {
                   date_of_birth: formData.dateOfBirth,
                   security_question: formData.securityQuestion,
                   security_answer: formData.securityAnswer.toLowerCase().trim(),
-                },
-                { onConflict: 'id' }
-              ).then(res => res),
-              15000,
-              'profile-upsert'
-            );
-            const profileError = profileResult.error;
-
-            if (profileError) {
-              toast({
-                title: 'Database Error',
-                description: 'Account created but profile setup failed. Please contact support.',
-                variant: 'destructive',
-              });
-              // Don't block - continue to home
+                }).then(res => res),
+                15000,
+                'profile-insert'
+              );
             }
           } catch {
-            // Non-blocking error
+            // Non-blocking error - profile may have been created by trigger
           }
         }
 
