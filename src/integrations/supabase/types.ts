@@ -83,6 +83,7 @@ export type Database = {
           banned_by: string | null
           created_at: string
           device_fingerprint: string
+          expires_at: string | null
           id: string
           reason: string | null
         }
@@ -91,6 +92,7 @@ export type Database = {
           banned_by?: string | null
           created_at?: string
           device_fingerprint: string
+          expires_at?: string | null
           id?: string
           reason?: string | null
         }
@@ -99,8 +101,48 @@ export type Database = {
           banned_by?: string | null
           created_at?: string
           device_fingerprint?: string
+          expires_at?: string | null
           id?: string
           reason?: string | null
+        }
+        Relationships: []
+      }
+      error_logs: {
+        Row: {
+          correlation_id: string
+          created_at: string
+          device_fingerprint: string | null
+          error_details: Json | null
+          error_message: string
+          error_type: string
+          id: string
+          ip_address: string | null
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          correlation_id: string
+          created_at?: string
+          device_fingerprint?: string | null
+          error_details?: Json | null
+          error_message: string
+          error_type: string
+          id?: string
+          ip_address?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          correlation_id?: string
+          created_at?: string
+          device_fingerprint?: string | null
+          error_details?: Json | null
+          error_message?: string
+          error_type?: string
+          id?: string
+          ip_address?: string | null
+          user_agent?: string | null
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -1129,6 +1171,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_device_banned: { Args: { fingerprint: string }; Returns: boolean }
       is_registered_for_match: {
         Args: { _match_id: string; _user_id: string }
         Returns: boolean
