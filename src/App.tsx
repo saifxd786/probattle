@@ -44,6 +44,7 @@ import AdminRedeemCodes from "./pages/admin/AdminRedeemCodes";
 import AdminSupport from "./pages/admin/AdminSupport";
 import AdminSpinWheelSettings from "./pages/admin/AdminSpinWheelSettings";
 import AdminDailyLoginSettings from "./pages/admin/AdminDailyLoginSettings";
+import AdminDeviceBans from "./pages/admin/AdminDeviceBans";
 
 const queryClient = new QueryClient();
 
@@ -115,6 +116,7 @@ const App = () => {
                 <Route path="daily-login" element={<AdminDailyLoginSettings />} />
                 <Route path="redeem-codes" element={<AdminRedeemCodes />} />
                 <Route path="support" element={<AdminSupport />} />
+                <Route path="device-bans" element={<AdminDeviceBans />} />
               </Route>
               <Route path="*" element={<NotFound />} />
             </Routes>
