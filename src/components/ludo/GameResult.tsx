@@ -15,31 +15,33 @@ interface GameResultProps {
   onGoHome: () => void;
 }
 
+// Confetti particles
 const Confetti = () => (
   <div className="absolute inset-0 pointer-events-none overflow-hidden">
-    {Array.from({ length: 60 }).map((_, i) => (
+    {Array.from({ length: 80 }).map((_, i) => (
       <motion.div
         key={i}
         className="absolute"
         style={{
           left: `${Math.random() * 100}%`,
-          width: Math.random() * 8 + 4,
-          height: Math.random() * 8 + 4,
-          backgroundColor: ['#FFD700', '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FF69B4', '#00CED1'][Math.floor(Math.random() * 7)],
+          width: Math.random() * 10 + 5,
+          height: Math.random() * 10 + 5,
+          backgroundColor: ['#FFD700', '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FF69B4', '#00CED1', '#FF4500', '#32CD32'][Math.floor(Math.random() * 9)],
           borderRadius: Math.random() > 0.5 ? '50%' : '2px',
         }}
         initial={{ y: -20, opacity: 1, rotate: 0, scale: 1 }}
         animate={{
-          y: '110vh',
-          opacity: [1, 1, 0],
-          rotate: Math.random() * 720 - 360,
-          scale: [1, 1.2, 0.8],
+          y: '120vh',
+          opacity: [1, 1, 0.8, 0],
+          rotate: Math.random() * 1080 - 540,
+          scale: [1, 1.3, 0.6],
+          x: [0, (Math.random() - 0.5) * 100],
         }}
         transition={{
-          duration: 3 + Math.random() * 2,
-          delay: Math.random() * 1,
+          duration: 4 + Math.random() * 2,
+          delay: Math.random() * 0.8,
           repeat: Infinity,
-          repeatDelay: Math.random() * 3,
+          repeatDelay: Math.random() * 2,
           ease: 'easeOut'
         }}
       />
@@ -47,27 +49,106 @@ const Confetti = () => (
   </div>
 );
 
+// Floating coins animation
 const FloatingCoins = () => (
+  <div className="absolute inset-0 pointer-events-none overflow-hidden">
+    {Array.from({ length: 20 }).map((_, i) => (
+      <motion.div
+        key={i}
+        className="absolute text-3xl"
+        style={{ left: `${5 + Math.random() * 90}%` }}
+        initial={{ y: '100vh', opacity: 0, rotate: 0 }}
+        animate={{
+          y: '-20vh',
+          opacity: [0, 1, 1, 0],
+          rotate: [0, 360, 720],
+          scale: [0.8, 1.2, 0.8],
+        }}
+        transition={{
+          duration: 2.5 + Math.random() * 1.5,
+          delay: i * 0.15,
+          repeat: Infinity,
+          repeatDelay: 1.5,
+        }}
+      >
+        💰
+      </motion.div>
+    ))}
+  </div>
+);
+
+// Firework burst effect
+const Fireworks = () => (
+  <div className="absolute inset-0 pointer-events-none overflow-hidden">
+    {Array.from({ length: 5 }).map((_, burstIdx) => (
+      <motion.div
+        key={burstIdx}
+        className="absolute"
+        style={{
+          left: `${15 + burstIdx * 18}%`,
+          top: `${20 + Math.random() * 30}%`,
+        }}
+        initial={{ scale: 0, opacity: 0 }}
+        animate={{ scale: [0, 1.5, 0], opacity: [0, 1, 0] }}
+        transition={{
+          duration: 1.5,
+          delay: burstIdx * 0.4,
+          repeat: Infinity,
+          repeatDelay: 2,
+        }}
+      >
+        {Array.from({ length: 12 }).map((_, sparkIdx) => (
+          <motion.div
+            key={sparkIdx}
+            className="absolute w-2 h-2 rounded-full"
+            style={{
+              backgroundColor: ['#FFD700', '#FF6B6B', '#4ECDC4', '#FF69B4', '#00FF00'][Math.floor(Math.random() * 5)],
+            }}
+            initial={{ x: 0, y: 0, opacity: 1 }}
+            animate={{
+              x: Math.cos((sparkIdx * 30 * Math.PI) / 180) * 60,
+              y: Math.sin((sparkIdx * 30 * Math.PI) / 180) * 60,
+              opacity: [1, 1, 0],
+              scale: [1, 0.5, 0],
+            }}
+            transition={{
+              duration: 0.8,
+              delay: burstIdx * 0.4,
+              repeat: Infinity,
+              repeatDelay: 2 + 0.7,
+            }}
+          />
+        ))}
+      </motion.div>
+    ))}
+  </div>
+);
+
+// Star burst effect
+const StarBurst = () => (
   <div className="absolute inset-0 pointer-events-none overflow-hidden">
     {Array.from({ length: 15 }).map((_, i) => (
       <motion.div
         key={i}
         className="absolute text-2xl"
-        style={{ left: `${10 + Math.random() * 80}%` }}
-        initial={{ y: '100vh', opacity: 0, rotate: 0 }}
+        style={{
+          left: `${Math.random() * 100}%`,
+          top: `${Math.random() * 100}%`,
+        }}
+        initial={{ scale: 0, opacity: 0, rotate: 0 }}
         animate={{
-          y: '-20vh',
-          opacity: [0, 1, 1, 0],
-          rotate: [0, 180, 360],
+          scale: [0, 1.2, 0],
+          opacity: [0, 1, 0],
+          rotate: [0, 180],
         }}
         transition={{
-          duration: 2 + Math.random() * 1.5,
+          duration: 1,
           delay: i * 0.2,
           repeat: Infinity,
           repeatDelay: 2,
         }}
       >
-        💰
+        ⭐
       </motion.div>
     ))}
   </div>
@@ -96,6 +177,8 @@ const GameResult = ({ isWinner, rewardAmount, entryAmount, playerName, onPlayAga
     <div className="fixed inset-0 bg-background/95 backdrop-blur-lg z-50 flex items-center justify-center p-4">
       {isWinner && <Confetti />}
       {isWinner && <FloatingCoins />}
+      {isWinner && <Fireworks />}
+      {isWinner && <StarBurst />}
       
       {/* Sound toggle */}
       <button

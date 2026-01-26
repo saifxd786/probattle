@@ -64,24 +64,39 @@ class SoundManager {
     }, 100);
   }
 
-  // Token move sound
+  // Token move sound - hop effect
   playTokenMove() {
-    this.playTone(600, 0.08, 'sine', 0.2);
+    // Quick hop sound
+    this.playTone(500, 0.06, 'sine', 0.2);
+    setTimeout(() => this.playTone(650, 0.04, 'sine', 0.15), 50);
+  }
+
+  // Token step - each step on the board
+  playTokenStep() {
+    this.playTone(400 + Math.random() * 100, 0.04, 'sine', 0.15);
   }
 
   // Token enters board (got a 6)
   playTokenEnter() {
-    this.playTone(523, 0.1, 'sine', 0.25); // C5
-    setTimeout(() => this.playTone(659, 0.1, 'sine', 0.25), 80); // E5
-    setTimeout(() => this.playTone(784, 0.15, 'sine', 0.3), 160); // G5
+    // Triumphant entry sound
+    this.playTone(523, 0.1, 'sine', 0.3); // C5
+    setTimeout(() => this.playTone(659, 0.1, 'sine', 0.3), 100); // E5
+    setTimeout(() => this.playTone(784, 0.12, 'sine', 0.35), 200); // G5
+    setTimeout(() => this.playTone(1047, 0.15, 'sine', 0.3), 300); // C6
   }
 
-  // Token reaches home
+  // Token reaches home - victory arpeggio
   playTokenHome() {
-    const notes = [523, 659, 784, 1047]; // C major arpeggio
+    const notes = [523, 659, 784, 1047, 1319]; // C major arpeggio extended
     notes.forEach((freq, i) => {
-      setTimeout(() => this.playTone(freq, 0.15, 'sine', 0.25), i * 100);
+      setTimeout(() => this.playTone(freq, 0.12, 'sine', 0.3), i * 80);
     });
+    // Add a sparkle effect at the end
+    setTimeout(() => {
+      for (let i = 0; i < 3; i++) {
+        setTimeout(() => this.playTone(1500 + Math.random() * 500, 0.05, 'sine', 0.15), i * 50);
+      }
+    }, 400);
   }
 
   // Capture opponent token
@@ -90,20 +105,38 @@ class SoundManager {
     setTimeout(() => this.playTone(150, 0.15, 'sawtooth', 0.25), 80);
   }
 
-  // Win sound - victory fanfare
+  // Win sound - epic victory fanfare
   playWin() {
     const melody = [
-      { freq: 523, dur: 0.15 }, // C5
-      { freq: 659, dur: 0.15 }, // E5
-      { freq: 784, dur: 0.15 }, // G5
-      { freq: 1047, dur: 0.3 }, // C6
+      { freq: 523, dur: 0.12 }, // C5
+      { freq: 659, dur: 0.12 }, // E5
+      { freq: 784, dur: 0.12 }, // G5
+      { freq: 1047, dur: 0.2 }, // C6
+      { freq: 1319, dur: 0.25 }, // E6
     ];
     
     let time = 0;
     melody.forEach(({ freq, dur }) => {
-      setTimeout(() => this.playTone(freq, dur, 'sine', 0.3), time);
-      time += dur * 800;
+      setTimeout(() => this.playTone(freq, dur, 'sine', 0.35), time);
+      time += dur * 700;
     });
+
+    // Add celebratory sparkles
+    setTimeout(() => {
+      for (let i = 0; i < 8; i++) {
+        setTimeout(() => {
+          this.playTone(1000 + Math.random() * 1000, 0.06, 'sine', 0.2);
+        }, i * 80);
+      }
+    }, time);
+
+    // Final triumphant chord
+    setTimeout(() => {
+      this.playTone(523, 0.4, 'sine', 0.25);
+      this.playTone(659, 0.4, 'sine', 0.2);
+      this.playTone(784, 0.4, 'sine', 0.2);
+      this.playTone(1047, 0.4, 'sine', 0.25);
+    }, time + 600);
   }
 
   // Lose sound
