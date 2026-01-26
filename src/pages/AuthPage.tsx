@@ -112,7 +112,7 @@ const ForgotPasswordForm = ({ onBack }: { onBack: () => void }) => {
       if (error || !profile) {
         toast({
           title: 'Account Not Found',
-          description: 'No account found with this phone number.',
+          description: 'इस नंबर से कोई अकाउंट नहीं मिला। कृपया सही नंबर डालें।',
           variant: 'destructive',
         });
         return;
@@ -121,8 +121,9 @@ const ForgotPasswordForm = ({ onBack }: { onBack: () => void }) => {
       // Check if user has set up security question
       if (!profile.security_question || !profile.security_answer) {
         toast({
-          title: 'Recovery Not Set Up',
-          description: 'Security question not set. Please contact support on Telegram.',
+          title: 'Security Question Not Set',
+          description: 'आपने Security Question सेट नहीं किया है। कृपया Telegram पर Support से संपर्क करें।',
+          variant: 'destructive',
         });
         window.open('https://t.me/ProBattleTournament', '_blank');
         return;
