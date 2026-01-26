@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Phone, Lock, User, ArrowRight, Eye, EyeOff, Gift, ArrowLeft, Calendar, ShieldQuestion, AlertTriangle } from 'lucide-react';
+import { Phone, Lock, User, ArrowRight, Eye, EyeOff, Gift, ArrowLeft, Calendar, ShieldQuestion, AlertTriangle, Info } from 'lucide-react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,6 +12,13 @@ import { z } from 'zod';
 import { generateDeviceFingerprint } from '@/utils/deviceFingerprint';
 import PasswordStrengthMeter from '@/components/PasswordStrengthMeter';
 import { useRateLimit } from '@/hooks/useRateLimit';
+import { 
+  generateCorrelationId, 
+  logError, 
+  formatErrorWithCorrelation, 
+  validatePassword,
+  type ErrorType 
+} from '@/utils/errorLogger';
 
 // Security questions list
 const SECURITY_QUESTIONS = [
@@ -569,7 +576,7 @@ const AuthPage = () => {
         return;
       }
 
-      // Validate password
+      // Validate password (basic check)
       const passwordResult = passwordSchema.safeParse(formData.password);
       if (!passwordResult.success) {
         toast({
@@ -578,6 +585,26 @@ const AuthPage = () => {
           variant: 'destructive',
         });
         return;
+      }
+
+      // For signup: enforce strong password rules
+      if (mode === 'signup') {
+        const passwordValidation = validatePassword(formData.password);
+        if (!passwordValidation.isValid) {
+          const correlationId = generateCorrelationId();
+          logError({
+            correlationId,
+            errorType: 'signup_error',
+            errorMessage: 'Weak password rejected',
+            errorDetails: { errors: passwordValidation.errors, strength: passwordValidation.strength },
+          });
+          toast({
+            title: 'Weak Password',
+            description: passwordValidation.errors[0] || 'Please use a stronger password',
+            variant: 'destructive',
+          });
+          return;
+        }
       }
 
       const email = phoneToEmail(formData.phone);
@@ -651,13 +678,23 @@ const AuthPage = () => {
         );
 
         if (error) {
+          const correlationId = generateCorrelationId();
           let errorMessage = error.message;
           if (error.message.includes('already registered')) {
             errorMessage = 'This phone number is already registered. Please login instead.';
           }
+          
+          // Log error with correlation ID
+          logError({
+            correlationId,
+            errorType: 'signup_error',
+            errorMessage: error.message,
+            errorDetails: { code: error.name, phone: formData.phone },
+          });
+          
           toast({
             title: 'Signup Error',
-            description: errorMessage,
+            description: formatErrorWithCorrelation(errorMessage, correlationId),
             variant: 'destructive',
           });
           return;
@@ -721,8 +758,16 @@ const AuthPage = () => {
                 'profile-insert'
               );
             }
-          } catch {
-            // Non-blocking error - profile may have been created by trigger
+          } catch (profileError) {
+            // Log profile error but don't block signup
+            const correlationId = generateCorrelationId();
+            logError({
+              correlationId,
+              errorType: 'profile_error',
+              errorMessage: profileError instanceof Error ? profileError.message : 'Profile save failed',
+              errorDetails: { userId },
+              userId,
+            });
           }
         }
 
@@ -756,8 +801,16 @@ const AuthPage = () => {
                 }),
               ]);
             }
-          } catch {
-            // Referral processing skipped
+          } catch (referralError) {
+            // Log referral error but don't block signup
+            const correlationId = generateCorrelationId();
+            logError({
+              correlationId,
+              errorType: 'referral_error',
+              errorMessage: referralError instanceof Error ? referralError.message : 'Referral processing failed',
+              errorDetails: { referralCode, userId },
+              userId,
+            });
           }
         }
 
@@ -826,13 +879,23 @@ const AuthPage = () => {
         }
 
         if (loginError) {
+          const correlationId = generateCorrelationId();
           let errorMessage = loginError.message;
           if (loginError.message.includes('Invalid login credentials')) {
             errorMessage = `Invalid phone number or password. ${loginRateLimit.remainingAttempts} attempts remaining.`;
           }
+          
+          // Log login error with correlation ID
+          logError({
+            correlationId,
+            errorType: 'login_error',
+            errorMessage: loginError.message,
+            errorDetails: { code: loginError.name, phone: formData.phone },
+          });
+          
           toast({
             title: 'Login Error',
-            description: errorMessage,
+            description: formatErrorWithCorrelation(errorMessage, correlationId),
             variant: 'destructive',
           });
           return;
@@ -881,18 +944,27 @@ const AuthPage = () => {
         navigate('/');
       }
     } catch (error) {
+      const correlationId = generateCorrelationId();
       const message = error instanceof Error ? error.message : '';
+      
+      // Log the general auth error
+      logError({
+        correlationId,
+        errorType: 'general_auth_error',
+        errorMessage: message || 'Unknown error',
+        errorDetails: { mode, phone: formData.phone },
+      });
       
       if (message.startsWith('TIMEOUT:')) {
         toast({
           title: 'Network Slow',
-          description: 'Request timeout. Please check your internet and try again.',
+          description: formatErrorWithCorrelation('Request timeout. Please check your internet and try again.', correlationId),
           variant: 'destructive',
         });
       } else {
         toast({
           title: 'Error',
-          description: 'An unexpected error occurred. Please try again.',
+          description: formatErrorWithCorrelation('An unexpected error occurred. Please try again.', correlationId),
           variant: 'destructive',
         });
       }
@@ -1048,9 +1120,21 @@ const AuthPage = () => {
               </button>
             </div>
 
-            {/* Password Strength Meter (signup only) */}
+            {/* Password Strength Meter with validation hints (signup only) */}
             {mode === 'signup' && (
-              <PasswordStrengthMeter password={formData.password} />
+              <>
+                <PasswordStrengthMeter password={formData.password} />
+                {formData.password && !validatePassword(formData.password).isValid && (
+                  <div className="flex items-start gap-2 p-2 rounded-md bg-warning/10 border border-warning/20">
+                    <Info className="w-4 h-4 text-warning shrink-0 mt-0.5" />
+                    <ul className="text-[10px] text-warning space-y-0.5">
+                      {validatePassword(formData.password).errors.map((err, i) => (
+                        <li key={i}>• {err}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </>
             )}
 
             {/* Confirm Password (signup only) */}
