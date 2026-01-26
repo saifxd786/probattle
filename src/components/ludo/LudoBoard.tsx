@@ -1,5 +1,6 @@
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
+import { User, Bot } from 'lucide-react';
 
 interface Token {
   id: number;
@@ -7,14 +8,16 @@ interface Token {
   color: string;
 }
 
+interface Player {
+  color: string;
+  tokens: Token[];
+  isCurrentTurn: boolean;
+  name?: string;
+  isBot?: boolean;
+}
+
 interface LudoBoardProps {
-  players: {
-    color: string;
-    tokens: Token[];
-    isCurrentTurn: boolean;
-    name?: string;
-    isBot?: boolean;
-  }[];
+  players: Player[];
   onTokenClick?: (color: string, tokenId: number) => void;
   selectedToken?: { color: string; tokenId: number } | null;
 }
@@ -167,9 +170,76 @@ const PinToken = ({
   );
 };
 
+// Player Label Component
+const PlayerLabel = ({ 
+  player, 
+  position 
+}: { 
+  player: Player; 
+  position: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right';
+}) => {
+  const colorKey = player.color as keyof typeof COLORS;
+  const colors = COLORS[colorKey];
+  const isYou = !player.isBot && player.name?.toLowerCase() !== 'computer';
+  const displayName = player.name || (isYou ? 'You' : `Computer`);
+  
+  const positionClasses = {
+    'top-left': 'top-0 left-0 -translate-y-full',
+    'top-right': 'top-0 right-0 -translate-y-full',
+    'bottom-left': 'bottom-0 left-0 translate-y-full',
+    'bottom-right': 'bottom-0 right-0 translate-y-full',
+  };
+
+  return (
+    <motion.div
+      className={cn(
+        'absolute flex items-center gap-1.5 px-2 py-1 rounded-lg',
+        'text-xs font-bold text-white shadow-lg',
+        positionClasses[position]
+      )}
+      style={{ 
+        backgroundColor: colors.main,
+        border: `2px solid ${player.isCurrentTurn ? '#fff' : colors.dark}`,
+      }}
+      animate={{
+        scale: player.isCurrentTurn ? 1.05 : 1,
+        boxShadow: player.isCurrentTurn 
+          ? `0 0 12px ${colors.main}80` 
+          : '0 2px 4px rgba(0,0,0,0.2)'
+      }}
+      transition={{ duration: 0.3 }}
+    >
+      {player.isBot ? (
+        <Bot className="w-3 h-3" />
+      ) : (
+        <User className="w-3 h-3" />
+      )}
+      <span className="truncate max-w-[60px]">{displayName}</span>
+      {player.isCurrentTurn && (
+        <motion.div
+          className="w-2 h-2 rounded-full bg-white"
+          animate={{ scale: [1, 1.3, 1] }}
+          transition={{ duration: 0.8, repeat: Infinity }}
+        />
+      )}
+    </motion.div>
+  );
+};
+
+// Color to corner position mapping
+const COLOR_POSITIONS: Record<string, 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'> = {
+  red: 'top-left',
+  green: 'top-right',
+  yellow: 'bottom-right',
+  blue: 'bottom-left',
+};
+
 const LudoBoard = ({ players, onTokenClick, selectedToken }: LudoBoardProps) => {
   const size = 340;
   const cellSize = size / 15;
+  
+  // Find current turn player
+  const currentTurnPlayer = players.find(p => p.isCurrentTurn);
 
   const getTokenPosition = (token: Token, color: string): { x: number; y: number } => {
     if (token.position === 0) {
@@ -340,6 +410,19 @@ const LudoBoard = ({ players, onTokenClick, selectedToken }: LudoBoardProps) => 
         <circle cx="7.5" cy="7.5" r="0.5" fill="#fff" stroke="#d4a574" strokeWidth="0.08" />
       </svg>
 
+      {/* Player Labels at corners */}
+      {players.map((player) => {
+        const position = COLOR_POSITIONS[player.color];
+        if (!position) return null;
+        return (
+          <PlayerLabel 
+            key={`label-${player.color}`} 
+            player={player} 
+            position={position} 
+          />
+        );
+      })}
+
       {/* Pin Tokens */}
       {players.map((player) => (
         player.tokens.map((token) => {
@@ -391,6 +474,61 @@ const LudoBoard = ({ players, onTokenClick, selectedToken }: LudoBoardProps) => 
           );
         })
       ))}
+
+      {/* Current Turn Indicator - Bottom Bar */}
+      <AnimatePresence mode="wait">
+        {currentTurnPlayer && (
+          <motion.div
+            key={currentTurnPlayer.color}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="absolute -bottom-14 left-1/2 -translate-x-1/2 flex items-center gap-3 px-4 py-2 rounded-xl bg-background/95 backdrop-blur-sm border shadow-lg"
+            style={{ 
+              borderColor: COLORS[currentTurnPlayer.color as keyof typeof COLORS].main,
+              boxShadow: `0 4px 20px ${COLORS[currentTurnPlayer.color as keyof typeof COLORS].main}40`
+            }}
+          >
+            {/* Mini token indicator */}
+            <div className="relative">
+              <PinToken 
+                color={currentTurnPlayer.color as keyof typeof COLORS} 
+                isActive 
+                isSelected={false}
+                size={16}
+              />
+            </div>
+            
+            {/* Player info */}
+            <div className="flex items-center gap-2">
+              {currentTurnPlayer.isBot ? (
+                <Bot className="w-4 h-4 text-muted-foreground" />
+              ) : (
+                <User className="w-4 h-4 text-muted-foreground" />
+              )}
+              <span className="font-bold text-sm" style={{ color: COLORS[currentTurnPlayer.color as keyof typeof COLORS].main }}>
+                {currentTurnPlayer.name || (currentTurnPlayer.isBot ? 'Computer' : 'You')}
+              </span>
+            </div>
+            
+            {/* Turn text */}
+            <span className="text-xs text-muted-foreground">is playing</span>
+            
+            {/* Animated dots */}
+            <div className="flex gap-0.5">
+              {[0, 1, 2].map((i) => (
+                <motion.div
+                  key={i}
+                  className="w-1.5 h-1.5 rounded-full"
+                  style={{ backgroundColor: COLORS[currentTurnPlayer.color as keyof typeof COLORS].main }}
+                  animate={{ opacity: [0.3, 1, 0.3] }}
+                  transition={{ duration: 1, repeat: Infinity, delay: i * 0.2 }}
+                />
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
