@@ -255,6 +255,63 @@ export type Database = {
           },
         ]
       }
+      ludo_rooms: {
+        Row: {
+          created_at: string
+          current_turn: number | null
+          ended_at: string | null
+          entry_amount: number
+          game_state: Json | null
+          guest_color: string | null
+          guest_id: string | null
+          host_color: string | null
+          host_id: string
+          id: string
+          reward_amount: number
+          room_code: string
+          started_at: string | null
+          status: string
+          updated_at: string
+          winner_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          current_turn?: number | null
+          ended_at?: string | null
+          entry_amount?: number
+          game_state?: Json | null
+          guest_color?: string | null
+          guest_id?: string | null
+          host_color?: string | null
+          host_id: string
+          id?: string
+          reward_amount?: number
+          room_code: string
+          started_at?: string | null
+          status?: string
+          updated_at?: string
+          winner_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          current_turn?: number | null
+          ended_at?: string | null
+          entry_amount?: number
+          game_state?: Json | null
+          guest_color?: string | null
+          guest_id?: string | null
+          host_color?: string | null
+          host_id?: string
+          id?: string
+          reward_amount?: number
+          room_code?: string
+          started_at?: string | null
+          status?: string
+          updated_at?: string
+          winner_id?: string | null
+        }
+        Relationships: []
+      }
       ludo_settings: {
         Row: {
           created_at: string
@@ -1147,6 +1204,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      cancel_ludo_room: { Args: { p_room_id: string }; Returns: Json }
       check_spin_availability: { Args: never; Returns: Json }
       claim_daily_bonus: { Args: never; Returns: Json }
       claim_referral_rewards: { Args: never; Returns: Json }
@@ -1155,7 +1213,9 @@ export type Database = {
         Args: { coins_to_convert: number }
         Returns: Json
       }
+      create_ludo_room: { Args: { p_entry_amount: number }; Returns: Json }
       generate_5digit_user_code: { Args: never; Returns: string }
+      generate_room_code: { Args: never; Returns: string }
       get_match_room_credentials: {
         Args: { _match_id: string }
         Returns: {
@@ -1176,6 +1236,7 @@ export type Database = {
         Args: { _match_id: string; _user_id: string }
         Returns: boolean
       }
+      join_ludo_room: { Args: { p_room_code: string }; Returns: Json }
       ludo_is_user_in_match: {
         Args: { _match_id: string; _user_id: string }
         Returns: boolean

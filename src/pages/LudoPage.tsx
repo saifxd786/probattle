@@ -1,5 +1,6 @@
+import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Dices, Wallet, Info, Trophy, Users, Zap, Ban } from 'lucide-react';
+import { Dices, Wallet, Info, Trophy, Users, Zap, Ban, UserPlus } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import Header from '@/components/Header';
 import BottomNav from '@/components/BottomNav';
@@ -11,16 +12,21 @@ import MatchmakingScreen from '@/components/ludo/MatchmakingScreen';
 import LudoBoard from '@/components/ludo/LudoBoard';
 import LudoDice from '@/components/ludo/LudoDice';
 import GameResult from '@/components/ludo/GameResult';
+import FriendMultiplayer from '@/components/ludo/FriendMultiplayer';
+import SoundToggle from '@/components/ludo/SoundToggle';
 import { useLudoGame } from '@/hooks/useLudoGame';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePullToRefresh } from '@/hooks/usePullToRefresh';
 import { useGameBan } from '@/hooks/useGameBan';
+
+type GameMode = 'select' | 'vs-bot' | 'vs-friend';
 
 const LudoPage = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { handleRefresh } = usePullToRefresh();
   const { isBanned, isLoading: isBanLoading } = useGameBan('ludo');
+  const [gameMode, setGameMode] = useState<GameMode>('select');
   const {
     settings,
     gameState,
@@ -116,7 +122,7 @@ const LudoPage = () => {
           background: 'linear-gradient(180deg, #1a1a2e 0%, #0f0f23 100%)',
         }}
       >
-        {/* Compact Game Header */}
+        {/* Compact Game Header with Sound Toggle */}
         <div className="shrink-0 px-3 py-2 border-b border-white/10 flex items-center justify-between">
           <div className="flex items-center gap-2">
             <div 
@@ -131,14 +137,17 @@ const LudoPage = () => {
               <p className="font-medium text-white text-xs">{currentPlayer?.name}</p>
             </div>
           </div>
-          <motion.div 
-            className="px-3 py-1.5 rounded-lg bg-gradient-to-br from-yellow-500/20 to-orange-500/10 border border-yellow-500/30"
-            animate={{ scale: [1, 1.02, 1] }}
-            transition={{ duration: 2, repeat: Infinity }}
-          >
-            <p className="text-[8px] text-yellow-500 uppercase tracking-wide">Prize</p>
-            <p className="font-bold text-sm text-yellow-400">₹{rewardAmount}</p>
-          </motion.div>
+          <div className="flex items-center gap-2">
+            <SoundToggle compact />
+            <motion.div 
+              className="px-3 py-1.5 rounded-lg bg-gradient-to-br from-yellow-500/20 to-orange-500/10 border border-yellow-500/30"
+              animate={{ scale: [1, 1.02, 1] }}
+              transition={{ duration: 2, repeat: Infinity }}
+            >
+              <p className="text-[8px] text-yellow-500 uppercase tracking-wide">Prize</p>
+              <p className="font-bold text-sm text-yellow-400">₹{rewardAmount}</p>
+            </motion.div>
+          </div>
         </div>
 
         {/* Compact Players Status Bar */}
@@ -224,6 +233,28 @@ const LudoPage = () => {
           navigate('/ludo');
         }}
       />
+    );
+  }
+
+  // Friend Multiplayer Screen
+  if (gameMode === 'vs-friend') {
+    return (
+      <div 
+        className="min-h-screen"
+        style={{
+          background: 'linear-gradient(180deg, #1a1a2e 0%, #0f0f23 100%)',
+        }}
+      >
+        <FriendMultiplayer
+          entryAmount={entryAmount}
+          walletBalance={walletBalance}
+          onRoomCreated={(roomId, roomCode, isHost) => {
+            // TODO: Implement room-based game start
+            console.log('Room created:', roomId, roomCode, isHost);
+          }}
+          onBack={() => setGameMode('select')}
+        />
+      </div>
     );
   }
 
@@ -363,30 +394,45 @@ const LudoPage = () => {
             />
           </motion.div>
 
-          {/* Play Button */}
+          {/* Play Buttons */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
+            className="space-y-3"
           >
             {user ? (
-              <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-                <Button
-                  onClick={startMatchmaking}
-                  disabled={walletBalance < entryAmount}
-                  className="w-full py-7 text-xl font-bold rounded-2xl shadow-xl"
-                  style={{
-                    background: walletBalance >= entryAmount 
-                      ? 'linear-gradient(135deg, #FFD700 0%, #FFA500 50%, #FF8C00 100%)'
-                      : undefined,
-                    boxShadow: walletBalance >= entryAmount 
-                      ? '0 10px 40px rgba(255,165,0,0.3)'
-                      : undefined,
-                  }}
-                >
-                  {walletBalance < entryAmount ? '💰 Insufficient Balance' : '🎲 Play Now'}
-                </Button>
-              </motion.div>
+              <>
+                {/* Play vs Bot */}
+                <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                  <Button
+                    onClick={startMatchmaking}
+                    disabled={walletBalance < entryAmount}
+                    className="w-full py-6 text-lg font-bold rounded-2xl shadow-xl"
+                    style={{
+                      background: walletBalance >= entryAmount 
+                        ? 'linear-gradient(135deg, #FFD700 0%, #FFA500 50%, #FF8C00 100%)'
+                        : undefined,
+                      boxShadow: walletBalance >= entryAmount 
+                        ? '0 10px 40px rgba(255,165,0,0.3)'
+                        : undefined,
+                    }}
+                  >
+                    {walletBalance < entryAmount ? '💰 Insufficient Balance' : '🎲 Play vs Bot'}
+                  </Button>
+                </motion.div>
+
+                {/* Play with Friend */}
+                <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                  <Button
+                    onClick={() => setGameMode('vs-friend')}
+                    className="w-full py-6 text-lg font-bold rounded-2xl bg-gradient-to-r from-purple-600 to-pink-600 hover:opacity-90"
+                  >
+                    <UserPlus className="w-5 h-5 mr-2" />
+                    Play with Friend
+                  </Button>
+                </motion.div>
+              </>
             ) : (
               <Link to="/auth" className="block">
                 <Button 

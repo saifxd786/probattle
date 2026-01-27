@@ -292,45 +292,86 @@ export const useLudoGame = () => {
   }, [settings.difficulty]);
 
   // Move token function
-  const moveToken = useCallback((color: string, tokenId: number, diceValue: number, players: Player[]): { updatedPlayers: Player[]; winner: Player | null; gotSix: boolean } => {
+  const moveToken = useCallback((color: string, tokenId: number, diceValue: number, players: Player[]): { updatedPlayers: Player[]; winner: Player | null; gotSix: boolean; capturedOpponent: boolean } => {
     soundManager.playTokenMove();
     hapticManager.tokenMove();
     
     let winner: Player | null = null;
+    let capturedOpponent = false;
+    let newTokenPosition = 0;
+
+    // First, calculate the new position
+    const movingPlayer = players.find(p => p.color === color);
+    const movingToken = movingPlayer?.tokens.find(t => t.id === tokenId);
+    
+    if (movingToken) {
+      if (movingToken.position === 0 && diceValue === 6) {
+        newTokenPosition = 1;
+      } else if (movingToken.position > 0) {
+        newTokenPosition = Math.min(movingToken.position + diceValue, 57);
+      }
+    }
     
     const updatedPlayers = players.map(player => {
-      if (player.color !== color) return player;
+      if (player.color === color) {
+        // Update moving player's token
+        const updatedTokens = player.tokens.map(token => {
+          if (token.id !== tokenId) return token;
 
-      const updatedTokens = player.tokens.map(token => {
-        if (token.id !== tokenId) return token;
-
-        let newPosition = token.position;
-        if (token.position === 0 && diceValue === 6) {
-          newPosition = 1;
-          soundManager.playTokenEnter();
-          hapticManager.tokenEnter();
-        } else if (token.position > 0) {
-          newPosition = Math.min(token.position + diceValue, 57);
-          if (newPosition === 57) {
-            soundManager.playTokenHome();
-            hapticManager.tokenHome();
+          let newPosition = token.position;
+          if (token.position === 0 && diceValue === 6) {
+            newPosition = 1;
+            soundManager.playTokenEnter();
+            hapticManager.tokenEnter();
+          } else if (token.position > 0) {
+            newPosition = Math.min(token.position + diceValue, 57);
+            if (newPosition === 57) {
+              soundManager.playTokenHome();
+              hapticManager.tokenHome();
+            }
           }
+
+          return { ...token, position: newPosition };
+        });
+
+        const tokensHome = updatedTokens.filter(t => t.position === 57).length;
+        const updatedPlayer = { ...player, tokens: updatedTokens, tokensHome };
+        
+        if (tokensHome === 4) {
+          winner = updatedPlayer;
         }
 
-        return { ...token, position: newPosition };
-      });
-
-      const tokensHome = updatedTokens.filter(t => t.position === 57).length;
-      const updatedPlayer = { ...player, tokens: updatedTokens, tokensHome };
-      
-      if (tokensHome === 4) {
-        winner = updatedPlayer;
+        return updatedPlayer;
+      } else {
+        // Check if any of this player's tokens get captured
+        // Safe zones: positions that are safe from capture (home column positions 52-57, start positions)
+        const isSafePosition = newTokenPosition >= 52 || newTokenPosition === 0;
+        
+        if (!isSafePosition && newTokenPosition > 0) {
+          const updatedTokens = player.tokens.map(token => {
+            // If opponent's token is at the same position as our new position, send it home
+            if (token.position === newTokenPosition && token.position > 0 && token.position < 52) {
+              capturedOpponent = true;
+              return { ...token, position: 0 };
+            }
+            return token;
+          });
+          return { ...player, tokens: updatedTokens };
+        }
+        
+        return player;
       }
-
-      return updatedPlayer;
     });
 
-    return { updatedPlayers, winner, gotSix: diceValue === 6 };
+    // Play capture sound if we captured an opponent
+    if (capturedOpponent) {
+      setTimeout(() => {
+        soundManager.playCapture();
+        hapticManager.tokenCapture();
+      }, 200);
+    }
+
+    return { updatedPlayers, winner, gotSix: diceValue === 6, capturedOpponent };
   }, []);
 
   // Bot AI to select best move
