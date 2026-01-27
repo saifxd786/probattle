@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { User, Bot } from 'lucide-react';
@@ -193,31 +194,31 @@ const PlayerLabel = ({
   return (
     <motion.div
       className={cn(
-        'absolute flex items-center gap-1.5 px-2 py-1 rounded-lg',
-        'text-xs font-bold text-white shadow-lg',
+        'absolute flex items-center gap-1 px-1.5 py-0.5 rounded-md',
+        'text-[10px] font-bold text-white shadow-md',
         positionClasses[position]
       )}
       style={{ 
         backgroundColor: colors.main,
-        border: `2px solid ${player.isCurrentTurn ? '#fff' : colors.dark}`,
+        border: `1.5px solid ${player.isCurrentTurn ? '#fff' : colors.dark}`,
       }}
       animate={{
         scale: player.isCurrentTurn ? 1.05 : 1,
         boxShadow: player.isCurrentTurn 
-          ? `0 0 12px ${colors.main}80` 
+          ? `0 0 10px ${colors.main}80` 
           : '0 2px 4px rgba(0,0,0,0.2)'
       }}
       transition={{ duration: 0.3 }}
     >
       {player.isBot ? (
-        <Bot className="w-3 h-3" />
+        <Bot className="w-2.5 h-2.5" />
       ) : (
-        <User className="w-3 h-3" />
+        <User className="w-2.5 h-2.5" />
       )}
-      <span className="truncate max-w-[60px]">{displayName}</span>
+      <span className="truncate max-w-[50px]">{displayName}</span>
       {player.isCurrentTurn && (
         <motion.div
-          className="w-2 h-2 rounded-full bg-white"
+          className="w-1.5 h-1.5 rounded-full bg-white"
           animate={{ scale: [1, 1.3, 1] }}
           transition={{ duration: 0.8, repeat: Infinity }}
         />
@@ -235,7 +236,22 @@ const COLOR_POSITIONS: Record<string, 'top-left' | 'top-right' | 'bottom-left' |
 };
 
 const LudoBoard = ({ players, onTokenClick, selectedToken }: LudoBoardProps) => {
-  const size = 340;
+  // Use viewport-based sizing for mobile optimization - take maximum available space
+  const [size, setSize] = useState(Math.min(window.innerWidth - 16, window.innerHeight - 200, 420));
+  
+  useEffect(() => {
+    const handleResize = () => {
+      // Calculate optimal board size based on viewport
+      const maxWidth = window.innerWidth - 16;
+      const maxHeight = window.innerHeight - 200; // Leave space for header and dice
+      setSize(Math.min(maxWidth, maxHeight, 420));
+    };
+    
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+  
   const cellSize = size / 15;
   
   // Find current turn player
@@ -270,7 +286,7 @@ const LudoBoard = ({ players, onTokenClick, selectedToken }: LudoBoardProps) => 
   return (
     <div className="relative mx-auto" style={{ width: size, height: size }}>
       {/* Main Board SVG */}
-      <svg viewBox="0 0 15 15" className="w-full h-full" style={{ filter: 'drop-shadow(0 8px 16px rgba(0,0,0,0.3))' }}>
+      <svg viewBox="0 0 15 15" className="w-full h-full" style={{ filter: 'drop-shadow(0 6px 12px rgba(0,0,0,0.3))' }}>
         <defs>
           <linearGradient id="boardBg" x1="0%" y1="0%" x2="100%" y2="100%">
             <stop offset="0%" stopColor="#f5f0e6" />
@@ -282,47 +298,47 @@ const LudoBoard = ({ players, onTokenClick, selectedToken }: LudoBoardProps) => 
         <rect x="0" y="0" width="15" height="15" fill="url(#boardBg)" />
         
         {/* Board border */}
-        <rect x="0" y="0" width="15" height="15" fill="none" stroke="#8B7355" strokeWidth="0.15" />
+        <rect x="0" y="0" width="15" height="15" fill="none" stroke="#8B7355" strokeWidth="0.12" />
 
         {/* RED Home Base (top-left) */}
         <rect x="0" y="0" width="6" height="6" fill={COLORS.red.main} />
-        <rect x="0.4" y="0.4" width="5.2" height="5.2" fill={COLORS.red.main} stroke={COLORS.red.dark} strokeWidth="0.1" />
+        <rect x="0.4" y="0.4" width="5.2" height="5.2" fill={COLORS.red.main} stroke={COLORS.red.dark} strokeWidth="0.08" />
         <rect x="0.8" y="0.8" width="4.4" height="4.4" fill="#fff" rx="0.2" />
         {/* Token spots */}
-        <circle cx="1.8" cy="1.8" r="0.65" fill={COLORS.red.bg} stroke={COLORS.red.main} strokeWidth="0.1" />
-        <circle cx="4.2" cy="1.8" r="0.65" fill={COLORS.red.bg} stroke={COLORS.red.main} strokeWidth="0.1" />
-        <circle cx="1.8" cy="4.2" r="0.65" fill={COLORS.red.bg} stroke={COLORS.red.main} strokeWidth="0.1" />
-        <circle cx="4.2" cy="4.2" r="0.65" fill={COLORS.red.bg} stroke={COLORS.red.main} strokeWidth="0.1" />
+        <circle cx="1.8" cy="1.8" r="0.6" fill={COLORS.red.bg} stroke={COLORS.red.main} strokeWidth="0.08" />
+        <circle cx="4.2" cy="1.8" r="0.6" fill={COLORS.red.bg} stroke={COLORS.red.main} strokeWidth="0.08" />
+        <circle cx="1.8" cy="4.2" r="0.6" fill={COLORS.red.bg} stroke={COLORS.red.main} strokeWidth="0.08" />
+        <circle cx="4.2" cy="4.2" r="0.6" fill={COLORS.red.bg} stroke={COLORS.red.main} strokeWidth="0.08" />
 
         {/* GREEN Home Base (top-right) */}
         <rect x="9" y="0" width="6" height="6" fill={COLORS.green.main} />
-        <rect x="9.4" y="0.4" width="5.2" height="5.2" fill={COLORS.green.main} stroke={COLORS.green.dark} strokeWidth="0.1" />
+        <rect x="9.4" y="0.4" width="5.2" height="5.2" fill={COLORS.green.main} stroke={COLORS.green.dark} strokeWidth="0.08" />
         <rect x="9.8" y="0.8" width="4.4" height="4.4" fill="#fff" rx="0.2" />
-        <circle cx="10.8" cy="1.8" r="0.65" fill={COLORS.green.bg} stroke={COLORS.green.main} strokeWidth="0.1" />
-        <circle cx="13.2" cy="1.8" r="0.65" fill={COLORS.green.bg} stroke={COLORS.green.main} strokeWidth="0.1" />
-        <circle cx="10.8" cy="4.2" r="0.65" fill={COLORS.green.bg} stroke={COLORS.green.main} strokeWidth="0.1" />
-        <circle cx="13.2" cy="4.2" r="0.65" fill={COLORS.green.bg} stroke={COLORS.green.main} strokeWidth="0.1" />
+        <circle cx="10.8" cy="1.8" r="0.6" fill={COLORS.green.bg} stroke={COLORS.green.main} strokeWidth="0.08" />
+        <circle cx="13.2" cy="1.8" r="0.6" fill={COLORS.green.bg} stroke={COLORS.green.main} strokeWidth="0.08" />
+        <circle cx="10.8" cy="4.2" r="0.6" fill={COLORS.green.bg} stroke={COLORS.green.main} strokeWidth="0.08" />
+        <circle cx="13.2" cy="4.2" r="0.6" fill={COLORS.green.bg} stroke={COLORS.green.main} strokeWidth="0.08" />
 
         {/* YELLOW Home Base (bottom-right) */}
         <rect x="9" y="9" width="6" height="6" fill={COLORS.yellow.main} />
-        <rect x="9.4" y="9.4" width="5.2" height="5.2" fill={COLORS.yellow.main} stroke={COLORS.yellow.dark} strokeWidth="0.1" />
+        <rect x="9.4" y="9.4" width="5.2" height="5.2" fill={COLORS.yellow.main} stroke={COLORS.yellow.dark} strokeWidth="0.08" />
         <rect x="9.8" y="9.8" width="4.4" height="4.4" fill="#fff" rx="0.2" />
-        <circle cx="10.8" cy="10.8" r="0.65" fill={COLORS.yellow.bg} stroke={COLORS.yellow.main} strokeWidth="0.1" />
-        <circle cx="13.2" cy="10.8" r="0.65" fill={COLORS.yellow.bg} stroke={COLORS.yellow.main} strokeWidth="0.1" />
-        <circle cx="10.8" cy="13.2" r="0.65" fill={COLORS.yellow.bg} stroke={COLORS.yellow.main} strokeWidth="0.1" />
-        <circle cx="13.2" cy="13.2" r="0.65" fill={COLORS.yellow.bg} stroke={COLORS.yellow.main} strokeWidth="0.1" />
+        <circle cx="10.8" cy="10.8" r="0.6" fill={COLORS.yellow.bg} stroke={COLORS.yellow.main} strokeWidth="0.08" />
+        <circle cx="13.2" cy="10.8" r="0.6" fill={COLORS.yellow.bg} stroke={COLORS.yellow.main} strokeWidth="0.08" />
+        <circle cx="10.8" cy="13.2" r="0.6" fill={COLORS.yellow.bg} stroke={COLORS.yellow.main} strokeWidth="0.08" />
+        <circle cx="13.2" cy="13.2" r="0.6" fill={COLORS.yellow.bg} stroke={COLORS.yellow.main} strokeWidth="0.08" />
 
         {/* BLUE Home Base (bottom-left) */}
         <rect x="0" y="9" width="6" height="6" fill={COLORS.blue.main} />
-        <rect x="0.4" y="9.4" width="5.2" height="5.2" fill={COLORS.blue.main} stroke={COLORS.blue.dark} strokeWidth="0.1" />
+        <rect x="0.4" y="9.4" width="5.2" height="5.2" fill={COLORS.blue.main} stroke={COLORS.blue.dark} strokeWidth="0.08" />
         <rect x="0.8" y="9.8" width="4.4" height="4.4" fill="#fff" rx="0.2" />
-        <circle cx="1.8" cy="10.8" r="0.65" fill={COLORS.blue.bg} stroke={COLORS.blue.main} strokeWidth="0.1" />
-        <circle cx="4.2" cy="10.8" r="0.65" fill={COLORS.blue.bg} stroke={COLORS.blue.main} strokeWidth="0.1" />
-        <circle cx="1.8" cy="13.2" r="0.65" fill={COLORS.blue.bg} stroke={COLORS.blue.main} strokeWidth="0.1" />
-        <circle cx="4.2" cy="13.2" r="0.65" fill={COLORS.blue.bg} stroke={COLORS.blue.main} strokeWidth="0.1" />
+        <circle cx="1.8" cy="10.8" r="0.6" fill={COLORS.blue.bg} stroke={COLORS.blue.main} strokeWidth="0.08" />
+        <circle cx="4.2" cy="10.8" r="0.6" fill={COLORS.blue.bg} stroke={COLORS.blue.main} strokeWidth="0.08" />
+        <circle cx="1.8" cy="13.2" r="0.6" fill={COLORS.blue.bg} stroke={COLORS.blue.main} strokeWidth="0.08" />
+        <circle cx="4.2" cy="13.2" r="0.6" fill={COLORS.blue.bg} stroke={COLORS.blue.main} strokeWidth="0.08" />
 
         {/* Track Cells - White cells with grid */}
-        <g fill="#fff" stroke="#ccc" strokeWidth="0.03">
+        <g fill="#fff" stroke="#ccc" strokeWidth="0.02">
           {/* Top vertical path */}
           {[0, 1, 2, 3, 4, 5].map(i => (
             <g key={`tv-${i}`}>
@@ -360,32 +376,32 @@ const LudoBoard = ({ players, onTokenClick, selectedToken }: LudoBoardProps) => 
         {/* Colored Home Paths */}
         {/* Yellow path (top center going down) */}
         {[0, 1, 2, 3, 4, 5].map(i => (
-          <rect key={`yp-${i}`} x={7} y={i} width="1" height="1" fill={COLORS.yellow.main} stroke={COLORS.yellow.dark} strokeWidth="0.05" />
+          <rect key={`yp-${i}`} x={7} y={i} width="1" height="1" fill={COLORS.yellow.main} stroke={COLORS.yellow.dark} strokeWidth="0.04" />
         ))}
         {/* Green path (left center going right) */}
         {[0, 1, 2, 3, 4, 5].map(i => (
-          <rect key={`gp-${i}`} x={i} y={7} width="1" height="1" fill={COLORS.green.main} stroke={COLORS.green.dark} strokeWidth="0.05" />
+          <rect key={`gp-${i}`} x={i} y={7} width="1" height="1" fill={COLORS.green.main} stroke={COLORS.green.dark} strokeWidth="0.04" />
         ))}
         {/* Red path (bottom center going up) */}
         {[9, 10, 11, 12, 13, 14].map(i => (
-          <rect key={`rp-${i}`} x={7} y={i} width="1" height="1" fill={COLORS.red.main} stroke={COLORS.red.dark} strokeWidth="0.05" />
+          <rect key={`rp-${i}`} x={7} y={i} width="1" height="1" fill={COLORS.red.main} stroke={COLORS.red.dark} strokeWidth="0.04" />
         ))}
         {/* Blue path (right center going left) */}
         {[9, 10, 11, 12, 13, 14].map(i => (
-          <rect key={`bp-${i}`} x={i} y={7} width="1" height="1" fill={COLORS.blue.main} stroke={COLORS.blue.dark} strokeWidth="0.05" />
+          <rect key={`bp-${i}`} x={i} y={7} width="1" height="1" fill={COLORS.blue.main} stroke={COLORS.blue.dark} strokeWidth="0.04" />
         ))}
 
         {/* Safe spots / Stars on track */}
-        <g fontSize="0.5" textAnchor="middle" dominantBaseline="central" fill="#999">
+        <g fontSize="0.4" textAnchor="middle" dominantBaseline="central" fill="#999">
           {/* Arrow indicators for entry points */}
-          <text x="6.5" y="12.5" fontSize="0.4">↓</text>
-          <text x="2.5" y="6.5" fontSize="0.4">→</text>
-          <text x="8.5" y="2.5" fontSize="0.4">↑</text>
-          <text x="12.5" y="8.5" fontSize="0.4">←</text>
+          <text x="6.5" y="12.5">↓</text>
+          <text x="2.5" y="6.5">→</text>
+          <text x="8.5" y="2.5">↑</text>
+          <text x="12.5" y="8.5">←</text>
         </g>
 
         {/* Starting stars (colored) */}
-        <g fontSize="0.6" textAnchor="middle" dominantBaseline="central">
+        <g fontSize="0.5" textAnchor="middle" dominantBaseline="central">
           <text x="6.5" y="13.5" fill={COLORS.red.main}>★</text>
           <text x="1.5" y="6.5" fill={COLORS.green.main}>★</text>
           <text x="8.5" y="1.5" fill={COLORS.yellow.main}>★</text>
@@ -393,7 +409,7 @@ const LudoBoard = ({ players, onTokenClick, selectedToken }: LudoBoardProps) => 
         </g>
 
         {/* Safe spots (gray stars) */}
-        <g fontSize="0.45" textAnchor="middle" dominantBaseline="central" fill="#aaa">
+        <g fontSize="0.4" textAnchor="middle" dominantBaseline="central" fill="#aaa">
           <text x="2.5" y="7.5">★</text>
           <text x="7.5" y="2.5">★</text>
           <text x="12.5" y="7.5">★</text>
@@ -401,13 +417,13 @@ const LudoBoard = ({ players, onTokenClick, selectedToken }: LudoBoardProps) => 
         </g>
 
         {/* Center Home Triangle */}
-        <polygon points="6,6 7.5,7.5 6,9" fill={COLORS.green.main} stroke="#fff" strokeWidth="0.05" />
-        <polygon points="6,6 7.5,7.5 9,6" fill={COLORS.yellow.main} stroke="#fff" strokeWidth="0.05" />
-        <polygon points="9,6 7.5,7.5 9,9" fill={COLORS.blue.main} stroke="#fff" strokeWidth="0.05" />
-        <polygon points="6,9 7.5,7.5 9,9" fill={COLORS.red.main} stroke="#fff" strokeWidth="0.05" />
+        <polygon points="6,6 7.5,7.5 6,9" fill={COLORS.green.main} stroke="#fff" strokeWidth="0.04" />
+        <polygon points="6,6 7.5,7.5 9,6" fill={COLORS.yellow.main} stroke="#fff" strokeWidth="0.04" />
+        <polygon points="9,6 7.5,7.5 9,9" fill={COLORS.blue.main} stroke="#fff" strokeWidth="0.04" />
+        <polygon points="6,9 7.5,7.5 9,9" fill={COLORS.red.main} stroke="#fff" strokeWidth="0.04" />
 
         {/* Center circle */}
-        <circle cx="7.5" cy="7.5" r="0.5" fill="#fff" stroke="#d4a574" strokeWidth="0.08" />
+        <circle cx="7.5" cy="7.5" r="0.4" fill="#fff" stroke="#d4a574" strokeWidth="0.06" />
       </svg>
 
       {/* Player Labels at corners */}
@@ -458,7 +474,7 @@ const LudoBoard = ({ players, onTokenClick, selectedToken }: LudoBoardProps) => 
                 color={colorKey} 
                 isActive={player.isCurrentTurn} 
                 isSelected={isSelected}
-                size={cellSize * 0.8}
+                size={cellSize * 0.75}
               />
               
               {/* Pulse effect for current turn */}
@@ -483,10 +499,10 @@ const LudoBoard = ({ players, onTokenClick, selectedToken }: LudoBoardProps) => 
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
-            className="absolute -bottom-14 left-1/2 -translate-x-1/2 flex items-center gap-3 px-4 py-2 rounded-xl bg-background/95 backdrop-blur-sm border shadow-lg"
+            className="absolute -bottom-10 left-1/2 -translate-x-1/2 flex items-center gap-2 px-3 py-1.5 rounded-lg bg-background/95 backdrop-blur-sm border shadow-md"
             style={{ 
               borderColor: COLORS[currentTurnPlayer.color as keyof typeof COLORS].main,
-              boxShadow: `0 4px 20px ${COLORS[currentTurnPlayer.color as keyof typeof COLORS].main}40`
+              boxShadow: `0 3px 12px ${COLORS[currentTurnPlayer.color as keyof typeof COLORS].main}40`
             }}
           >
             {/* Mini token indicator */}
@@ -495,31 +511,28 @@ const LudoBoard = ({ players, onTokenClick, selectedToken }: LudoBoardProps) => 
                 color={currentTurnPlayer.color as keyof typeof COLORS} 
                 isActive 
                 isSelected={false}
-                size={16}
+                size={14}
               />
             </div>
             
             {/* Player info */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5">
               {currentTurnPlayer.isBot ? (
-                <Bot className="w-4 h-4 text-muted-foreground" />
+                <Bot className="w-3 h-3 text-muted-foreground" />
               ) : (
-                <User className="w-4 h-4 text-muted-foreground" />
+                <User className="w-3 h-3 text-muted-foreground" />
               )}
-              <span className="font-bold text-sm" style={{ color: COLORS[currentTurnPlayer.color as keyof typeof COLORS].main }}>
+              <span className="font-bold text-xs" style={{ color: COLORS[currentTurnPlayer.color as keyof typeof COLORS].main }}>
                 {currentTurnPlayer.name || (currentTurnPlayer.isBot ? 'Computer' : 'You')}
               </span>
             </div>
-            
-            {/* Turn text */}
-            <span className="text-xs text-muted-foreground">is playing</span>
             
             {/* Animated dots */}
             <div className="flex gap-0.5">
               {[0, 1, 2].map((i) => (
                 <motion.div
                   key={i}
-                  className="w-1.5 h-1.5 rounded-full"
+                  className="w-1 h-1 rounded-full"
                   style={{ backgroundColor: COLORS[currentTurnPlayer.color as keyof typeof COLORS].main }}
                   animate={{ opacity: [0.3, 1, 0.3] }}
                   transition={{ duration: 1, repeat: Infinity, delay: i * 0.2 }}

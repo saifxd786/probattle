@@ -10,6 +10,7 @@ interface LudoDiceProps {
   onRoll: () => void;
   disabled?: boolean;
   canRoll: boolean;
+  compact?: boolean;
 }
 
 // Dice dot patterns for each face
@@ -58,13 +59,12 @@ const DiceFace = ({ value, className = "" }: { value: number; className?: string
 };
 
 // 3D Dice Cube Component
-const Dice3D = ({ value, isRolling }: { value: number; isRolling: boolean }) => {
+const Dice3D = ({ value, isRolling, size = 80 }: { value: number; isRolling: boolean; size?: number }) => {
   const [displayValue, setDisplayValue] = useState(value);
   const [rotationPhase, setRotationPhase] = useState(0);
 
   useEffect(() => {
     if (isRolling) {
-      // Rapidly change displayed value during roll
       const interval = setInterval(() => {
         setDisplayValue(Math.floor(Math.random() * 6) + 1);
         setRotationPhase(prev => (prev + 1) % 4);
@@ -75,7 +75,6 @@ const Dice3D = ({ value, isRolling }: { value: number; isRolling: boolean }) => 
     }
   }, [isRolling, value]);
 
-  // 3D rotation values based on rolling phase
   const getRotation = () => {
     if (!isRolling) return { rotateX: -15, rotateY: 15, rotateZ: 0 };
     
@@ -89,7 +88,7 @@ const Dice3D = ({ value, isRolling }: { value: number; isRolling: boolean }) => 
   };
 
   return (
-    <div className="relative w-20 h-20" style={{ perspective: '300px' }}>
+    <div className="relative" style={{ width: size, height: size, perspective: '200px' }}>
       <motion.div
         className="relative w-full h-full"
         style={{ transformStyle: 'preserve-3d' }}
@@ -103,61 +102,34 @@ const Dice3D = ({ value, isRolling }: { value: number; isRolling: boolean }) => 
           damping: 20 
         }}
       >
-        {/* Front face */}
         <div
           className="absolute inset-0 rounded-xl"
           style={{
             background: 'linear-gradient(145deg, #FFFFFF 0%, #F5F5F5 30%, #E8E8E8 70%, #D0D0D0 100%)',
             boxShadow: `
-              inset 0 2px 8px rgba(255,255,255,0.9),
-              inset 0 -2px 8px rgba(0,0,0,0.1),
-              0 8px 20px rgba(0,0,0,0.3),
+              inset 0 2px 6px rgba(255,255,255,0.9),
+              inset 0 -2px 6px rgba(0,0,0,0.1),
+              0 4px 12px rgba(0,0,0,0.3),
               0 2px 4px rgba(0,0,0,0.2)
             `,
-            transform: 'translateZ(10px)',
+            transform: 'translateZ(8px)',
             border: '1px solid rgba(200,200,200,0.5)',
           }}
         >
           <DiceFace value={displayValue} />
         </div>
-
-        {/* Top edge highlight */}
-        <div
-          className="absolute inset-x-0 top-0 h-2 rounded-t-xl"
-          style={{
-            background: 'linear-gradient(to bottom, rgba(255,255,255,0.8), transparent)',
-            transform: 'translateZ(10px)',
-          }}
-        />
-
-        {/* Side shadows for 3D depth */}
-        <div
-          className="absolute right-0 inset-y-2 w-2"
-          style={{
-            background: 'linear-gradient(to left, rgba(0,0,0,0.15), transparent)',
-            transform: 'translateZ(10px)',
-            borderRadius: '0 0.75rem 0.75rem 0',
-          }}
-        />
-        <div
-          className="absolute bottom-0 inset-x-2 h-2"
-          style={{
-            background: 'linear-gradient(to top, rgba(0,0,0,0.15), transparent)',
-            transform: 'translateZ(10px)',
-            borderRadius: '0 0 0.75rem 0.75rem',
-          }}
-        />
       </motion.div>
 
-      {/* Ground shadow */}
       <motion.div
-        className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-16 h-4 rounded-full"
+        className="absolute -bottom-1 left-1/2 -translate-x-1/2 rounded-full"
         style={{
-          background: 'radial-gradient(ellipse, rgba(0,0,0,0.3) 0%, transparent 70%)',
+          width: size * 0.8,
+          height: size * 0.2,
+          background: 'radial-gradient(ellipse, rgba(0,0,0,0.25) 0%, transparent 70%)',
         }}
         animate={{
           scale: isRolling ? [1, 1.2, 0.9, 1.1, 1] : 1,
-          opacity: isRolling ? [0.3, 0.5, 0.3, 0.4, 0.3] : 0.3,
+          opacity: isRolling ? [0.25, 0.4, 0.25, 0.35, 0.25] : 0.25,
         }}
         transition={{ duration: 0.3, repeat: isRolling ? Infinity : 0 }}
       />
@@ -166,7 +138,7 @@ const Dice3D = ({ value, isRolling }: { value: number; isRolling: boolean }) => 
 };
 
 // Dice bounce animation during roll
-const BouncingDice = ({ value }: { value: number }) => {
+const BouncingDice = ({ size = 80 }: { size?: number }) => {
   const [currentFace, setCurrentFace] = useState(1);
 
   useEffect(() => {
@@ -178,20 +150,23 @@ const BouncingDice = ({ value }: { value: number }) => {
 
   return (
     <motion.div
-      className="relative w-20 h-20"
       animate={{
-        y: [0, -20, 0, -15, 0, -10, 0, -5, 0],
-        rotate: [0, 15, -10, 8, -5, 3, 0],
+        y: [0, -15, 0, -10, 0, -5, 0],
+        rotate: [0, 10, -8, 5, -3, 0],
       }}
-      transition={{ duration: 0.8, ease: 'easeOut' }}
+      transition={{ duration: 0.6, ease: 'easeOut' }}
     >
-      <Dice3D value={currentFace} isRolling={true} />
+      <Dice3D value={currentFace} isRolling={true} size={size} />
     </motion.div>
   );
 };
 
-const LudoDice = ({ value, isRolling, onRoll, disabled, canRoll }: LudoDiceProps) => {
+const LudoDice = ({ value, isRolling, onRoll, disabled, canRoll, compact = false }: LudoDiceProps) => {
   const [showSixBonus, setShowSixBonus] = useState(false);
+  
+  // Compact sizes
+  const diceSize = compact ? 56 : 80;
+  const platformPadding = compact ? 'p-3' : 'p-5';
 
   useEffect(() => {
     if (!isRolling && value === 6) {
@@ -221,44 +196,38 @@ const LudoDice = ({ value, isRolling, onRoll, disabled, canRoll }: LudoDiceProps
   };
 
   return (
-    <div className="flex flex-col items-center gap-4">
+    <div className={cn("flex items-center justify-center gap-4", compact && "gap-3")}>
       {/* Dice Platform */}
       <motion.div
         className={cn(
-          'relative p-5 rounded-2xl',
+          'relative rounded-2xl',
+          platformPadding,
           canRoll && !disabled && !isRolling && 'cursor-pointer'
         )}
         style={{
           background: 'linear-gradient(180deg, #3D2817 0%, #2A1B0F 50%, #1F1409 100%)',
           boxShadow: `
-            inset 0 2px 4px rgba(255,255,255,0.1),
-            inset 0 -2px 4px rgba(0,0,0,0.3),
-            0 4px 12px rgba(0,0,0,0.4)
+            inset 0 2px 3px rgba(255,255,255,0.1),
+            inset 0 -2px 3px rgba(0,0,0,0.3),
+            0 3px 8px rgba(0,0,0,0.4)
           `,
           border: '2px solid #5C3D2E',
         }}
         onClick={handleRoll}
-        whileHover={canRoll && !disabled && !isRolling ? { scale: 1.03 } : {}}
-        whileTap={canRoll && !disabled && !isRolling ? { scale: 0.97 } : {}}
+        whileHover={canRoll && !disabled && !isRolling ? { scale: 1.02 } : {}}
+        whileTap={canRoll && !disabled && !isRolling ? { scale: 0.98 } : {}}
       >
         {/* Glowing ring when can roll */}
         {canRoll && !disabled && !isRolling && (
           <motion.div
             className="absolute inset-0 rounded-2xl pointer-events-none"
             style={{
-              background: 'transparent',
-              boxShadow: '0 0 20px rgba(255,200,50,0.4), inset 0 0 15px rgba(255,200,50,0.1)',
+              boxShadow: '0 0 15px rgba(255,200,50,0.4), inset 0 0 10px rgba(255,200,50,0.1)',
             }}
             animate={{ opacity: [0.5, 1, 0.5] }}
             transition={{ duration: 1.2, repeat: Infinity, ease: 'easeInOut' }}
           />
         )}
-
-        {/* Decorative corners */}
-        <div className="absolute top-1 left-1 w-3 h-3 border-t-2 border-l-2 border-amber-600/50 rounded-tl" />
-        <div className="absolute top-1 right-1 w-3 h-3 border-t-2 border-r-2 border-amber-600/50 rounded-tr" />
-        <div className="absolute bottom-1 left-1 w-3 h-3 border-b-2 border-l-2 border-amber-600/50 rounded-bl" />
-        <div className="absolute bottom-1 right-1 w-3 h-3 border-b-2 border-r-2 border-amber-600/50 rounded-br" />
 
         <AnimatePresence mode="wait">
           {isRolling ? (
@@ -268,7 +237,7 @@ const LudoDice = ({ value, isRolling, onRoll, disabled, canRoll }: LudoDiceProps
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.8 }}
             >
-              <BouncingDice value={value} />
+              <BouncingDice size={diceSize} />
             </motion.div>
           ) : (
             <motion.div
@@ -277,7 +246,7 @@ const LudoDice = ({ value, isRolling, onRoll, disabled, canRoll }: LudoDiceProps
               animate={{ opacity: 1, scale: 1, rotateY: 0 }}
               transition={{ type: 'spring', stiffness: 300, damping: 25 }}
             >
-              <Dice3D value={value} isRolling={false} />
+              <Dice3D value={value} isRolling={false} size={diceSize} />
             </motion.div>
           )}
         </AnimatePresence>
@@ -286,13 +255,13 @@ const LudoDice = ({ value, isRolling, onRoll, disabled, canRoll }: LudoDiceProps
         <AnimatePresence>
           {showSixBonus && (
             <motion.div
-              initial={{ opacity: 0, scale: 0, y: 20 }}
+              initial={{ opacity: 0, scale: 0, y: 10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0 }}
-              className="absolute -top-2 -right-2 px-2 py-1 rounded-full text-xs font-bold text-white shadow-lg"
+              className="absolute -top-1 -right-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold text-white shadow-lg"
               style={{
                 background: 'linear-gradient(135deg, #FFD700 0%, #FFA500 50%, #FF8C00 100%)',
-                boxShadow: '0 2px 8px rgba(255,165,0,0.5)',
+                boxShadow: '0 2px 6px rgba(255,165,0,0.5)',
               }}
             >
               🎉 +1!
@@ -301,23 +270,24 @@ const LudoDice = ({ value, isRolling, onRoll, disabled, canRoll }: LudoDiceProps
         </AnimatePresence>
       </motion.div>
 
-      {/* Roll Button */}
+      {/* Roll Button - Compact */}
       <motion.button
         onClick={handleRoll}
         disabled={disabled || !canRoll || isRolling}
         className={cn(
-          'relative px-8 py-3 rounded-xl font-bold text-sm overflow-hidden transition-all',
+          'relative rounded-xl font-bold overflow-hidden transition-all',
+          compact ? 'px-5 py-2.5 text-xs' : 'px-8 py-3 text-sm',
           canRoll && !disabled && !isRolling
             ? 'text-amber-900'
             : 'bg-gray-600 text-gray-400 cursor-not-allowed'
         )}
         style={canRoll && !disabled && !isRolling ? {
           background: 'linear-gradient(180deg, #FFE066 0%, #FFD700 30%, #FFA500 70%, #E6940B 100%)',
-          boxShadow: '0 4px 12px rgba(255,165,0,0.4), inset 0 1px 2px rgba(255,255,255,0.4)',
+          boxShadow: '0 3px 10px rgba(255,165,0,0.4), inset 0 1px 2px rgba(255,255,255,0.4)',
           border: '1px solid #CC8400',
         } : {}}
-        whileHover={canRoll && !disabled && !isRolling ? { scale: 1.05, y: -1 } : {}}
-        whileTap={canRoll && !disabled && !isRolling ? { scale: 0.95 } : {}}
+        whileHover={canRoll && !disabled && !isRolling ? { scale: 1.03, y: -1 } : {}}
+        whileTap={canRoll && !disabled && !isRolling ? { scale: 0.97 } : {}}
       >
         {/* Shine effect */}
         {canRoll && !disabled && !isRolling && (
@@ -330,7 +300,7 @@ const LudoDice = ({ value, isRolling, onRoll, disabled, canRoll }: LudoDiceProps
             transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
           />
         )}
-        <span className="relative z-10 flex items-center gap-2">
+        <span className="relative z-10 flex items-center gap-1.5">
           {isRolling ? (
             <>
               <motion.span
@@ -342,9 +312,9 @@ const LudoDice = ({ value, isRolling, onRoll, disabled, canRoll }: LudoDiceProps
               Rolling...
             </>
           ) : canRoll ? (
-            <>🎲 TAP TO ROLL</>
+            <>🎲 Tap to Roll</>
           ) : (
-            <>⏳ Wait...</>
+            <>⏳ Wait</>
           )}
         </span>
       </motion.button>
