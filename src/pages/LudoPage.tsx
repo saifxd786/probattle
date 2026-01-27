@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Dices, Wallet, Info, Trophy, Users, Zap, Ban, UserPlus } from 'lucide-react';
+import { Dices, Wallet, Info, Trophy, Users, Zap, Ban, UserPlus, WifiOff, Wifi } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import Header from '@/components/Header';
 import BottomNav from '@/components/BottomNav';
@@ -15,6 +15,7 @@ import GameResult from '@/components/ludo/GameResult';
 import FriendMultiplayer from '@/components/ludo/FriendMultiplayer';
 import SoundToggle from '@/components/ludo/SoundToggle';
 import { useLudoGame } from '@/hooks/useLudoGame';
+import { useFriendLudoGame } from '@/hooks/useFriendLudoGame';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePullToRefresh } from '@/hooks/usePullToRefresh';
 import { useGameBan } from '@/hooks/useGameBan';
@@ -27,6 +28,8 @@ const LudoPage = () => {
   const { handleRefresh } = usePullToRefresh();
   const { isBanned, isLoading: isBanLoading } = useGameBan('ludo');
   const [gameMode, setGameMode] = useState<GameMode>('select');
+  
+  // Bot game hook
   const {
     settings,
     gameState,
@@ -41,6 +44,17 @@ const LudoPage = () => {
     resetGame,
     rewardAmount
   } = useLudoGame();
+  
+  // Friend multiplayer hook
+  const {
+    gameState: friendGameState,
+    walletBalance: friendWalletBalance,
+    opponentOnline,
+    startRoom,
+    rollDice: friendRollDice,
+    handleTokenClick: friendHandleTokenClick,
+    resetGame: friendResetGame
+  } = useFriendLudoGame();
 
   const ENTRY_AMOUNTS = [100, 200, 500, 1000];
 
@@ -236,7 +250,158 @@ const LudoPage = () => {
     );
   }
 
-  // Friend Multiplayer Screen
+  // Friend Multiplayer - Game in progress
+  if (gameMode === 'vs-friend' && friendGameState.phase === 'playing') {
+    const currentPlayer = friendGameState.players[friendGameState.currentTurn];
+    const isUserTurn = currentPlayer && currentPlayer.id === user?.id;
+    const colorStyles: Record<string, string> = {
+      red: 'from-red-600 to-red-800',
+      green: 'from-green-600 to-green-800',
+      yellow: 'from-yellow-500 to-yellow-700',
+      blue: 'from-blue-600 to-blue-800'
+    };
+
+    return (
+      <div 
+        className="min-h-screen flex flex-col overflow-hidden"
+        style={{
+          background: 'linear-gradient(180deg, #1a1a2e 0%, #0f0f23 100%)',
+        }}
+      >
+        {/* Game Header */}
+        <div className="shrink-0 px-3 py-2 border-b border-white/10 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div 
+              className={`w-7 h-7 rounded-full bg-gradient-to-br ${colorStyles[currentPlayer?.color || 'red']} flex items-center justify-center`}
+            >
+              <span className="text-white text-[10px] font-bold">
+                {currentPlayer?.name.charAt(0).toUpperCase()}
+              </span>
+            </div>
+            <div>
+              <p className="text-[8px] text-gray-400 uppercase tracking-wide">Turn</p>
+              <p className="font-medium text-white text-xs">{currentPlayer?.name}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            {/* Opponent Online Status */}
+            <div className={`flex items-center gap-1 px-2 py-1 rounded-lg ${opponentOnline ? 'bg-green-500/20' : 'bg-red-500/20'}`}>
+              {opponentOnline ? (
+                <Wifi className="w-3 h-3 text-green-400" />
+              ) : (
+                <WifiOff className="w-3 h-3 text-red-400" />
+              )}
+              <span className={`text-[10px] ${opponentOnline ? 'text-green-400' : 'text-red-400'}`}>
+                {opponentOnline ? 'Online' : 'Offline'}
+              </span>
+            </div>
+            <SoundToggle compact />
+            <motion.div 
+              className="px-3 py-1.5 rounded-lg bg-gradient-to-br from-yellow-500/20 to-orange-500/10 border border-yellow-500/30"
+              animate={{ scale: [1, 1.02, 1] }}
+              transition={{ duration: 2, repeat: Infinity }}
+            >
+              <p className="text-[8px] text-yellow-500 uppercase tracking-wide">Prize</p>
+              <p className="font-bold text-sm text-yellow-400">₹{friendGameState.rewardAmount}</p>
+            </motion.div>
+          </div>
+        </div>
+
+        {/* Players Status Bar */}
+        <div className="shrink-0 flex justify-around py-1.5 px-2 bg-black/30">
+          {friendGameState.players.map((player, idx) => (
+            <motion.div
+              key={player.id}
+              className={`flex items-center gap-1 px-1.5 py-0.5 rounded transition-all ${
+                idx === friendGameState.currentTurn 
+                  ? 'bg-white/10 ring-1 ring-white/30' 
+                  : 'opacity-60'
+              }`}
+              animate={idx === friendGameState.currentTurn ? { scale: [1, 1.02, 1] } : {}}
+              transition={{ duration: 1, repeat: Infinity }}
+            >
+              <div
+                className={`w-4 h-4 rounded-full bg-gradient-to-br ${colorStyles[player.color]} border border-white/30`}
+              />
+              <div>
+                <p className="text-[8px] text-white font-medium truncate max-w-[60px]">
+                  {player.id === user?.id ? 'You' : player.name}
+                </p>
+                <div className="flex gap-0.5">
+                  {[0, 1, 2, 3].map(i => (
+                    <div
+                      key={i}
+                      className={`w-1 h-1 rounded-full ${
+                        i < player.tokensHome ? 'bg-green-400' : 'bg-gray-600'
+                      }`}
+                    />
+                  ))}
+                </div>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+
+        {/* Game Board */}
+        <div className="flex-1 flex items-center justify-center p-2 min-h-0 overflow-hidden">
+          <LudoBoard
+            players={friendGameState.players.map((p, idx) => ({
+              color: p.color,
+              tokens: p.tokens,
+              isCurrentTurn: idx === friendGameState.currentTurn,
+              name: p.id === user?.id ? 'You' : p.name,
+              isBot: false
+            }))}
+            onTokenClick={isUserTurn && !friendGameState.canRoll ? friendHandleTokenClick : undefined}
+            selectedToken={friendGameState.selectedToken}
+          />
+        </div>
+
+        {/* Dice Area */}
+        <div className="shrink-0 px-4 py-3 border-t border-white/10 bg-black/40">
+          <LudoDice
+            value={friendGameState.diceValue}
+            isRolling={friendGameState.isRolling}
+            onRoll={friendRollDice}
+            disabled={!isUserTurn}
+            canRoll={friendGameState.canRoll && isUserTurn}
+            compact
+          />
+          
+          <AnimatedStatus 
+            isUserTurn={isUserTurn} 
+            canRoll={friendGameState.canRoll} 
+            isRolling={friendGameState.isRolling} 
+            playerName={currentPlayer?.name || ''} 
+          />
+        </div>
+      </div>
+    );
+  }
+
+  // Friend Multiplayer - Result Screen
+  if (gameMode === 'vs-friend' && friendGameState.phase === 'result' && friendGameState.winner) {
+    const isUserWinner = friendGameState.winner.id === user?.id;
+
+    return (
+      <GameResult
+        isWinner={isUserWinner}
+        rewardAmount={friendGameState.rewardAmount}
+        entryAmount={friendGameState.entryAmount}
+        playerName={friendGameState.winner.name}
+        onPlayAgain={() => {
+          friendResetGame();
+          setGameMode('vs-friend');
+        }}
+        onGoHome={() => {
+          friendResetGame();
+          setGameMode('select');
+        }}
+      />
+    );
+  }
+
+  // Friend Multiplayer Lobby Screen
   if (gameMode === 'vs-friend') {
     return (
       <div 
@@ -248,11 +413,13 @@ const LudoPage = () => {
         <FriendMultiplayer
           entryAmount={entryAmount}
           walletBalance={walletBalance}
-          onRoomCreated={(roomId, roomCode, isHost) => {
-            // TODO: Implement room-based game start
-            console.log('Room created:', roomId, roomCode, isHost);
+          onRoomCreated={(roomId, roomCode, isHost, entryAmt, rewardAmt) => {
+            startRoom(roomId, roomCode, isHost, entryAmt, rewardAmt);
           }}
-          onBack={() => setGameMode('select')}
+          onBack={() => {
+            friendResetGame();
+            setGameMode('select');
+          }}
         />
       </div>
     );
