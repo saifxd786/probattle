@@ -9,7 +9,7 @@ import { toast } from 'sonner';
 interface FriendMultiplayerProps {
   entryAmount: number;
   walletBalance: number;
-  onRoomCreated: (roomId: string, roomCode: string, isHost: boolean) => void;
+  onRoomCreated: (roomId: string, roomCode: string, isHost: boolean, entryAmount: number, rewardAmount: number) => void;
   onBack: () => void;
 }
 
@@ -67,10 +67,10 @@ const FriendMultiplayer = ({
             filter: `id=eq.${result.room_id}`
           },
           (payload) => {
-            const newData = payload.new as { status: string; guest_id: string };
+            const newData = payload.new as { status: string; guest_id: string; entry_amount: number; reward_amount: number };
             if (newData.status === 'ready' && newData.guest_id) {
               toast.success('Friend joined! Game starting...');
-              onRoomCreated(result.room_id!, result.room_code!, true);
+              onRoomCreated(result.room_id!, result.room_code!, true, newData.entry_amount, newData.reward_amount);
             }
           }
         )
@@ -100,7 +100,7 @@ const FriendMultiplayer = ({
 
       if (error) throw error;
       
-      const result = data as { success: boolean; message?: string; room_id?: string; room_code?: string };
+      const result = data as { success: boolean; message?: string; room_id?: string; room_code?: string; entry_amount?: number; reward_amount?: number };
       
       if (!result.success) {
         toast.error(result.message || 'Failed to join room');
@@ -108,7 +108,7 @@ const FriendMultiplayer = ({
       }
 
       toast.success('Joined room! Game starting...');
-      onRoomCreated(result.room_id!, result.room_code!, false);
+      onRoomCreated(result.room_id!, result.room_code!, false, result.entry_amount || entryAmount, result.reward_amount || rewardAmount);
     } catch (error: any) {
       toast.error(error.message || 'Failed to join room');
     } finally {
