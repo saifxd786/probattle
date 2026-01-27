@@ -98,7 +98,7 @@ const LudoPage = () => {
     );
   }
 
-  // Game Board Screen - Ludo King Style
+  // Game Board Screen - Ludo King Style (Mobile Optimized)
   if (gameState.phase === 'playing') {
     const currentPlayer = gameState.players[gameState.currentTurn];
     const isUserTurn = currentPlayer && !currentPlayer.isBot;
@@ -111,61 +111,59 @@ const LudoPage = () => {
 
     return (
       <div 
-        className="min-h-screen flex flex-col"
+        className="min-h-screen flex flex-col overflow-hidden"
         style={{
           background: 'linear-gradient(180deg, #1a1a2e 0%, #0f0f23 100%)',
         }}
       >
-        {/* Game Header */}
-        <div className="p-3 border-b border-white/10">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div 
-                className={`w-8 h-8 rounded-full bg-gradient-to-br ${colorStyles[currentPlayer?.color || 'red']} flex items-center justify-center`}
-              >
-                <span className="text-white text-xs font-bold">
-                  {currentPlayer?.name.charAt(0).toUpperCase()}
-                </span>
-              </div>
-              <div>
-                <p className="text-[10px] text-gray-400 uppercase tracking-wide">Current Turn</p>
-                <p className="font-medium text-white text-sm">{currentPlayer?.name}</p>
-              </div>
-            </div>
-            <motion.div 
-              className="px-4 py-2 rounded-xl bg-gradient-to-br from-yellow-500/20 to-orange-500/10 border border-yellow-500/30"
-              animate={{ scale: [1, 1.02, 1] }}
-              transition={{ duration: 2, repeat: Infinity }}
+        {/* Compact Game Header */}
+        <div className="shrink-0 px-3 py-2 border-b border-white/10 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div 
+              className={`w-7 h-7 rounded-full bg-gradient-to-br ${colorStyles[currentPlayer?.color || 'red']} flex items-center justify-center`}
             >
-              <p className="text-[10px] text-yellow-500 uppercase tracking-wide">Prize Pool</p>
-              <p className="font-bold text-lg text-yellow-400">₹{rewardAmount}</p>
-            </motion.div>
+              <span className="text-white text-[10px] font-bold">
+                {currentPlayer?.name.charAt(0).toUpperCase()}
+              </span>
+            </div>
+            <div>
+              <p className="text-[8px] text-gray-400 uppercase tracking-wide">Turn</p>
+              <p className="font-medium text-white text-xs">{currentPlayer?.name}</p>
+            </div>
           </div>
+          <motion.div 
+            className="px-3 py-1.5 rounded-lg bg-gradient-to-br from-yellow-500/20 to-orange-500/10 border border-yellow-500/30"
+            animate={{ scale: [1, 1.02, 1] }}
+            transition={{ duration: 2, repeat: Infinity }}
+          >
+            <p className="text-[8px] text-yellow-500 uppercase tracking-wide">Prize</p>
+            <p className="font-bold text-sm text-yellow-400">₹{rewardAmount}</p>
+          </motion.div>
         </div>
 
-        {/* Players Status Bar */}
-        <div className="flex justify-around py-2 px-2 bg-black/30">
+        {/* Compact Players Status Bar */}
+        <div className="shrink-0 flex justify-around py-1.5 px-2 bg-black/30">
           {gameState.players.map((player, idx) => (
             <motion.div
               key={player.id}
-              className={`flex items-center gap-1.5 px-2 py-1 rounded-lg transition-all ${
+              className={`flex items-center gap-1 px-1.5 py-0.5 rounded transition-all ${
                 idx === gameState.currentTurn 
                   ? 'bg-white/10 ring-1 ring-white/30' 
                   : 'opacity-60'
               }`}
-              animate={idx === gameState.currentTurn ? { scale: [1, 1.05, 1] } : {}}
+              animate={idx === gameState.currentTurn ? { scale: [1, 1.02, 1] } : {}}
               transition={{ duration: 1, repeat: Infinity }}
             >
               <div
-                className={`w-5 h-5 rounded-full bg-gradient-to-br ${colorStyles[player.color]} border border-white/30`}
+                className={`w-4 h-4 rounded-full bg-gradient-to-br ${colorStyles[player.color]} border border-white/30`}
               />
               <div>
-                <p className="text-[9px] text-white font-medium truncate max-w-[50px]">{player.name}</p>
+                <p className="text-[8px] text-white font-medium truncate max-w-[40px]">{player.name}</p>
                 <div className="flex gap-0.5">
                   {[0, 1, 2, 3].map(i => (
                     <div
                       key={i}
-                      className={`w-1.5 h-1.5 rounded-full ${
+                      className={`w-1 h-1 rounded-full ${
                         i < player.tokensHome ? 'bg-green-400' : 'bg-gray-600'
                       }`}
                     />
@@ -176,32 +174,30 @@ const LudoPage = () => {
           ))}
         </div>
 
-        {/* Game Board */}
-        <div className="flex-1 flex items-center justify-center p-4 overflow-auto">
+        {/* Game Board - Takes maximum space */}
+        <div className="flex-1 flex items-center justify-center p-2 min-h-0 overflow-hidden">
           <LudoBoard
             players={gameState.players.map((p, idx) => ({
               color: p.color,
               tokens: p.tokens,
-              isCurrentTurn: idx === gameState.currentTurn
+              isCurrentTurn: idx === gameState.currentTurn,
+              name: p.name,
+              isBot: p.isBot
             }))}
             onTokenClick={isUserTurn && !gameState.canRoll ? handleTokenClick : undefined}
             selectedToken={gameState.selectedToken}
           />
         </div>
 
-        {/* Dice Area */}
-        <div 
-          className="p-6 border-t border-white/10"
-          style={{
-            background: 'linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.5) 100%)',
-          }}
-        >
+        {/* Compact Dice Area */}
+        <div className="shrink-0 px-4 py-3 border-t border-white/10 bg-black/40">
           <LudoDice
             value={gameState.diceValue}
             isRolling={gameState.isRolling}
             onRoll={rollDice}
             disabled={!isUserTurn}
             canRoll={gameState.canRoll && isUserTurn}
+            compact
           />
           
           <AnimatedStatus isUserTurn={isUserTurn} canRoll={gameState.canRoll} isRolling={gameState.isRolling} playerName={currentPlayer?.name || ''} />
@@ -439,11 +435,11 @@ const AnimatedStatus = ({ isUserTurn, canRoll, isRolling, playerName }: {
   if (!isUserTurn) {
     return (
       <motion.p 
-        className="text-center text-sm text-gray-400 mt-4"
+        className="text-center text-xs text-gray-400 mt-2"
         animate={{ opacity: [0.5, 1, 0.5] }}
         transition={{ duration: 1.5, repeat: Infinity }}
       >
-        ⏳ Waiting for {playerName}...
+        ⏳ {playerName} ka turn...
       </motion.p>
     );
   }
@@ -455,11 +451,11 @@ const AnimatedStatus = ({ isUserTurn, canRoll, isRolling, playerName }: {
   if (!canRoll) {
     return (
       <motion.p 
-        className="text-center text-sm text-yellow-400 mt-4 font-medium"
-        animate={{ scale: [1, 1.05, 1] }}
+        className="text-center text-xs text-yellow-400 mt-2 font-medium"
+        animate={{ scale: [1, 1.03, 1] }}
         transition={{ duration: 0.5, repeat: Infinity }}
       >
-        👆 Tap a token to move!
+        👆 Token select karo!
       </motion.p>
     );
   }
