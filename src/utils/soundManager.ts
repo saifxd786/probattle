@@ -99,10 +99,26 @@ class SoundManager {
     }, 400);
   }
 
-  // Capture opponent token
+  // Capture opponent token - dramatic capture sound
   playCapture() {
-    this.playTone(200, 0.1, 'sawtooth', 0.2);
-    setTimeout(() => this.playTone(150, 0.15, 'sawtooth', 0.25), 80);
+    if (!this.enabled) return;
+    
+    // Impact sound
+    this.playTone(150, 0.1, 'sawtooth', 0.3);
+    setTimeout(() => this.playTone(100, 0.12, 'sawtooth', 0.35), 60);
+    
+    // Bounce/send-home effect
+    setTimeout(() => {
+      this.playTone(400, 0.08, 'sine', 0.2);
+      setTimeout(() => this.playTone(300, 0.08, 'sine', 0.18), 50);
+      setTimeout(() => this.playTone(200, 0.1, 'sine', 0.15), 100);
+    }, 150);
+    
+    // Victory chime
+    setTimeout(() => {
+      this.playTone(523, 0.1, 'sine', 0.25);
+      this.playTone(659, 0.1, 'sine', 0.2);
+    }, 300);
   }
 
   // Win sound - epic victory fanfare
