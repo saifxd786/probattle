@@ -110,6 +110,7 @@ export const useFriendLudoGame = () => {
   const gameActionChannelRef = useRef<RealtimeChannel | null>(null); // NEW: instant action broadcast
   const checksumIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const lastActionRef = useRef<number>(0); // Prevent duplicate action processing
+  const userIdRef = useRef<string | null>(null); // Track user ID for consistency
   
   // Reconnection handling refs
   const reconnectAttemptsRef = useRef<number>(0);
@@ -120,6 +121,26 @@ export const useFriendLudoGame = () => {
   const lastIsHostRef = useRef<boolean>(false);
   const lastEntryAmountRef = useRef<number>(0);
   const lastRewardAmountRef = useRef<number>(0);
+
+  // Track user ID changes to prevent token mixups
+  useEffect(() => {
+    if (user?.id) {
+      if (userIdRef.current && userIdRef.current !== user.id) {
+        console.warn('[FriendLudo] User ID changed during session!', {
+          old: userIdRef.current,
+          new: user.id
+        });
+        // This is a critical issue - user changed mid-game
+        toast({
+          title: '⚠️ Session Changed',
+          description: 'Please rejoin the game room',
+          variant: 'destructive'
+        });
+      }
+      userIdRef.current = user.id;
+      console.log('[FriendLudo] User ID set:', user.id);
+    }
+  }, [user?.id, toast]);
 
   const [gameState, setGameState] = useState<FriendGameState>({
     phase: 'idle',
@@ -1031,10 +1052,25 @@ export const useFriendLudoGame = () => {
 
   // Roll dice
   const rollDice = useCallback(async () => {
-    if (!gameState.canRoll || gameState.isRolling || !user) return;
+    if (!gameState.canRoll || gameState.isRolling || !user) {
+      console.log('[LudoGame] Roll blocked:', { canRoll: gameState.canRoll, isRolling: gameState.isRolling, hasUser: !!user });
+      return;
+    }
 
     const currentPlayer = gameState.players[gameState.currentTurn];
-    if (currentPlayer?.id !== user.id) return;
+    if (!currentPlayer) {
+      console.error('[LudoGame] No current player found at turn:', gameState.currentTurn);
+      return;
+    }
+    
+    // CRITICAL: Validate user ID matches current player
+    if (currentPlayer.id !== user.id) {
+      console.error('[LudoGame] User ID mismatch!', { currentPlayerId: currentPlayer.id, userId: user.id });
+      toast({ title: 'Not your turn!', variant: 'destructive' });
+      return;
+    }
+
+    console.log('[LudoGame] Rolling dice for user:', user.id);
 
     // Broadcast rolling START immediately - opponent sees animation in sync
     broadcastAction('dice_rolling', {});
@@ -1051,6 +1087,12 @@ export const useFriendLudoGame = () => {
 
     setGameState(prev => {
       const player = prev.players[prev.currentTurn];
+      
+      // Double-check user still matches (session could have changed)
+      if (player?.id !== user.id) {
+        console.error('[LudoGame] Player ID changed during roll!');
+        return { ...prev, isRolling: false };
+      }
 
       // Check if can move any token
       const canMove = player.tokens.some(token => {
@@ -1071,15 +1113,35 @@ export const useFriendLudoGame = () => {
 
       return { ...prev, diceValue, isRolling: false };
     });
-  }, [gameState.canRoll, gameState.isRolling, gameState.players, gameState.currentTurn, user, generateDiceValue, broadcastAction]);
+  }, [gameState.canRoll, gameState.isRolling, gameState.players, gameState.currentTurn, user, generateDiceValue, broadcastAction, toast]);
 
   // Handle token click
   const handleTokenClick = useCallback((color: string, tokenId: number) => {
-    if (!user) return;
+    if (!user) {
+      console.error('[LudoGame] No user for token click');
+      return;
+    }
 
     // Get current state for validation
     const currentPlayer = gameState.players[gameState.currentTurn];
-    if (!currentPlayer || currentPlayer.color !== color || currentPlayer.id !== user.id || gameState.canRoll) return;
+    if (!currentPlayer) {
+      console.error('[LudoGame] No current player for token click');
+      return;
+    }
+    
+    // Validate: color matches, it's user's turn, and user ID matches
+    if (currentPlayer.color !== color) {
+      console.log('[LudoGame] Token click blocked: wrong color');
+      return;
+    }
+    if (currentPlayer.id !== user.id) {
+      console.error('[LudoGame] Token click blocked: user ID mismatch', { currentPlayerId: currentPlayer.id, userId: user.id });
+      return;
+    }
+    if (gameState.canRoll) {
+      console.log('[LudoGame] Token click blocked: must roll first');
+      return;
+    }
 
     const token = currentPlayer.tokens.find(t => t.id === tokenId);
     if (!token) return;
