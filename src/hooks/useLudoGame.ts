@@ -171,6 +171,11 @@ export const useLudoGame = () => {
   const [playerMode, setPlayerMode] = useState<2 | 4>(2);
   const [walletBalance, setWalletBalance] = useState(0);
   const [userUID, setUserUID] = useState<string>('');
+  const [captureEvent, setCaptureEvent] = useState<{
+    capturedColor: string;
+    position: number;
+    capturingColor: string;
+  } | null>(null);
 
   // Fetch user profile and UID
   useEffect(() => {
@@ -387,12 +392,19 @@ export const useLudoGame = () => {
   }, [settings.difficulty]);
 
   // Move token with CORRECT capture logic using board coordinates
-  const moveToken = useCallback((color: string, tokenId: number, diceValue: number, players: Player[]): { updatedPlayers: Player[]; winner: Player | null; gotSix: boolean; capturedOpponent: boolean } => {
+  const moveToken = useCallback((color: string, tokenId: number, diceValue: number, players: Player[]): { 
+    updatedPlayers: Player[]; 
+    winner: Player | null; 
+    gotSix: boolean; 
+    capturedOpponent: boolean;
+    captureInfo: { capturedColor: string; position: number; capturingColor: string } | null;
+  } => {
     soundManager.playTokenMove();
     hapticManager.tokenMove();
     
     let winner: Player | null = null;
     let capturedOpponent = false;
+    let captureInfo: { capturedColor: string; position: number; capturingColor: string } | null = null;
     let newBoardCoords: { x: number; y: number } | null = null;
     let newPosition = 0;
 
@@ -460,6 +472,11 @@ export const useLudoGame = () => {
           // Compare BOARD coordinates
           if (opponentCoords.x === newBoardCoords!.x && opponentCoords.y === newBoardCoords!.y) {
             capturedOpponent = true;
+            captureInfo = {
+              capturedColor: player.color,
+              position: newPosition,
+              capturingColor: color
+            };
             return { ...token, position: 0 };
           }
           return token;
@@ -475,7 +492,7 @@ export const useLudoGame = () => {
       }, 200);
     }
 
-    return { updatedPlayers, winner, gotSix: diceValue === 6, capturedOpponent };
+    return { updatedPlayers, winner, gotSix: diceValue === 6, capturedOpponent, captureInfo };
   }, []);
 
   // Bot AI
@@ -532,12 +549,17 @@ export const useLudoGame = () => {
             if (tokenId !== null) {
               setTimeout(() => {
                 setGameState(moveState => {
-                  const { updatedPlayers, winner, gotSix } = moveToken(
+                  const { updatedPlayers, winner, gotSix, captureInfo } = moveToken(
                     botPlayer.color, 
                     tokenId, 
                     diceValue, 
                     moveState.players
                   );
+
+                  // Trigger capture animation
+                  if (captureInfo) {
+                    setCaptureEvent(captureInfo);
+                  }
 
                   if (winner) {
                     gameInProgressRef.current = false;
@@ -689,7 +711,12 @@ export const useLudoGame = () => {
 
       if (!canMove) return prev;
 
-      const { updatedPlayers, winner, gotSix } = moveToken(color, tokenId, prev.diceValue, prev.players);
+      const { updatedPlayers, winner, gotSix, captureInfo } = moveToken(color, tokenId, prev.diceValue, prev.players);
+
+      // Trigger capture animation
+      if (captureInfo) {
+        setCaptureEvent(captureInfo);
+      }
 
       if (winner) {
         gameInProgressRef.current = false;
@@ -781,6 +808,11 @@ export const useLudoGame = () => {
     });
   }, []);
 
+  // Clear capture event
+  const clearCaptureEvent = useCallback(() => {
+    setCaptureEvent(null);
+  }, []);
+
   // Handle winner
   useEffect(() => {
     if (gameState.winner) {
@@ -800,6 +832,8 @@ export const useLudoGame = () => {
     rollDice,
     handleTokenClick,
     resetGame,
-    rewardAmount: entryAmount * settings.rewardMultiplier
+    rewardAmount: entryAmount * settings.rewardMultiplier,
+    captureEvent,
+    clearCaptureEvent
   };
 };
