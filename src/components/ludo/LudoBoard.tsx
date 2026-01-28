@@ -583,8 +583,8 @@ const LudoBoard = ({ players, onTokenClick, selectedToken, captureEvent, onCaptu
               <g key={`star-${i}`} transform={`translate(${x}, ${y})`}>
                 <polygon
                   points="0,-0.32 0.09,-0.11 0.32,0 0.09,0.11 0,0.32 -0.09,0.11 -0.32,0 -0.09,-0.11"
-                  fill="#FFD700"
-                  stroke="#FFA500"
+                  fill="#1a1a1a"
+                  stroke="#000000"
                   strokeWidth="0.03"
                 />
               </g>
