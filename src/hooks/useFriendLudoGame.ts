@@ -109,6 +109,16 @@ export const useFriendLudoGame = () => {
   const gameActionChannelRef = useRef<RealtimeChannel | null>(null); // NEW: instant action broadcast
   const checksumIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const lastActionRef = useRef<number>(0); // Prevent duplicate action processing
+  
+  // Reconnection handling refs
+  const reconnectAttemptsRef = useRef<number>(0);
+  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const isReconnectingRef = useRef<boolean>(false);
+  const lastRoomIdRef = useRef<string | null>(null);
+  const lastRoomCodeRef = useRef<string | null>(null);
+  const lastIsHostRef = useRef<boolean>(false);
+  const lastEntryAmountRef = useRef<number>(0);
+  const lastRewardAmountRef = useRef<number>(0);
 
   const [gameState, setGameState] = useState<FriendGameState>({
     phase: 'idle',
@@ -134,6 +144,10 @@ export const useFriendLudoGame = () => {
 
   const [syncStatus, setSyncStatus] = useState<'synced' | 'checking' | 'mismatch' | 'resyncing'>('synced');
   const [lastMismatchTime, setLastMismatchTime] = useState<number | null>(null);
+  
+  // Connection status state
+  const [connectionStatus, setConnectionStatus] = useState<'connected' | 'disconnected' | 'reconnecting'>('connected');
+  const [reconnectAttempts, setReconnectAttempts] = useState(0);
 
   const [walletBalance, setWalletBalance] = useState(0);
   const [opponentOnline, setOpponentOnline] = useState(false);
@@ -344,7 +358,16 @@ export const useFriendLudoGame = () => {
           });
         }
       })
-      .subscribe();
+      .subscribe((status) => {
+        console.log('[LudoSync] Game action channel status:', status);
+        if (status === 'SUBSCRIBED') {
+          setConnectionStatus('connected');
+          reconnectAttemptsRef.current = 0;
+          setReconnectAttempts(0);
+        } else if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
+          setConnectionStatus('disconnected');
+        }
+      });
 
     gameActionChannelRef.current = channel;
   }, [user]);
@@ -362,6 +385,98 @@ export const useFriendLudoGame = () => {
       payload: { ...payload, senderId: user.id, timestamp }
     });
   }, [user]);
+
+  // Reconnection with exponential backoff
+  const attemptReconnection = useCallback(() => {
+    if (isReconnectingRef.current) return;
+    if (!lastRoomIdRef.current) return;
+    
+    isReconnectingRef.current = true;
+    setConnectionStatus('reconnecting');
+    
+    const maxAttempts = 5;
+    const baseDelay = 1000; // 1 second
+    
+    const tryReconnect = () => {
+      if (reconnectAttemptsRef.current >= maxAttempts) {
+        toast({
+          title: '❌ Connection Lost',
+          description: 'Unable to reconnect. Please check your internet and refresh.',
+          variant: 'destructive'
+        });
+        setConnectionStatus('disconnected');
+        isReconnectingRef.current = false;
+        return;
+      }
+      
+      reconnectAttemptsRef.current += 1;
+      setReconnectAttempts(reconnectAttemptsRef.current);
+      
+      console.log(`[LudoSync] Reconnection attempt ${reconnectAttemptsRef.current}/${maxAttempts}`);
+      
+      // Resubscribe to all channels
+      if (lastRoomIdRef.current) {
+        subscribeToRoom(lastRoomIdRef.current);
+        subscribeToPresence(lastRoomIdRef.current);
+        subscribeToChatChannel(lastRoomIdRef.current);
+        subscribeToGameActions(lastRoomIdRef.current);
+        
+        // Fetch latest state from database
+        fetchRoomState(lastRoomIdRef.current);
+        
+        // Check if reconnected after a short delay
+        reconnectTimeoutRef.current = setTimeout(() => {
+          if (connectionStatus !== 'connected') {
+            const delay = Math.min(baseDelay * Math.pow(2, reconnectAttemptsRef.current), 10000);
+            reconnectTimeoutRef.current = setTimeout(tryReconnect, delay);
+          } else {
+            isReconnectingRef.current = false;
+            toast({ title: '✅ Reconnected!', description: 'Game sync restored.' });
+          }
+        }, 2000);
+      }
+    };
+    
+    tryReconnect();
+  }, [subscribeToRoom, subscribeToPresence, subscribeToChatChannel, subscribeToGameActions, connectionStatus, toast]);
+
+  // Online/offline detection for automatic reconnection
+  useEffect(() => {
+    const handleOnline = () => {
+      console.log('[LudoSync] Browser online');
+      if (gameState.phase === 'playing' && connectionStatus === 'disconnected') {
+        toast({ title: '🌐 Back Online', description: 'Reconnecting to game...' });
+        attemptReconnection();
+      }
+    };
+    
+    const handleOffline = () => {
+      console.log('[LudoSync] Browser offline');
+      if (gameState.phase === 'playing') {
+        setConnectionStatus('disconnected');
+        toast({ 
+          title: '⚠️ Connection Lost', 
+          description: 'You are offline. Will reconnect automatically...',
+          variant: 'destructive'
+        });
+      }
+    };
+    
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, [gameState.phase, connectionStatus, attemptReconnection, toast]);
+
+  // Manual reconnect function
+  const manualReconnect = useCallback(() => {
+    reconnectAttemptsRef.current = 0;
+    isReconnectingRef.current = false;
+    attemptReconnection();
+  }, [attemptReconnection]);
 
   // Send chat message
   const sendChatMessage = useCallback(async (message: string, isEmoji: boolean) => {
@@ -522,6 +637,13 @@ export const useFriendLudoGame = () => {
 
   // Start room (called from FriendMultiplayer when room is created/joined)
   const startRoom = useCallback((roomId: string, roomCode: string, isHost: boolean, entryAmount: number, rewardAmount: number) => {
+    // Store room details for reconnection
+    lastRoomIdRef.current = roomId;
+    lastRoomCodeRef.current = roomCode;
+    lastIsHostRef.current = isHost;
+    lastEntryAmountRef.current = entryAmount;
+    lastRewardAmountRef.current = rewardAmount;
+    
     setGameState(prev => ({
       ...prev,
       phase: 'waiting',
@@ -1195,6 +1317,9 @@ export const useFriendLudoGame = () => {
       if (checksumIntervalRef.current) {
         clearInterval(checksumIntervalRef.current);
       }
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+      }
     };
   }, []);
 
@@ -1203,6 +1328,8 @@ export const useFriendLudoGame = () => {
     walletBalance,
     opponentOnline,
     syncStatus,
+    connectionStatus,
+    reconnectAttempts,
     startRoom,
     rollDice,
     handleTokenClick,
@@ -1212,6 +1339,7 @@ export const useFriendLudoGame = () => {
     clearCaptureAnimation,
     resyncGameState,
     requestRematch,
-    respondToRematch
+    respondToRematch,
+    manualReconnect
   };
 };
