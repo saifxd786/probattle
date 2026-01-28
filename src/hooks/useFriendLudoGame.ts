@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { toast as sonnerToast } from 'sonner';
 import { soundManager } from '@/utils/soundManager';
 import { hapticManager } from '@/utils/hapticManager';
 import { RealtimeChannel } from '@supabase/supabase-js';
@@ -153,6 +154,7 @@ export const useFriendLudoGame = () => {
   const [pingLatency, setPingLatency] = useState<number | null>(null);
   const pingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const pendingPingsRef = useRef<Map<string, number>>(new Map());
+  const lastHighPingWarningRef = useRef<number>(0);
 
   const [walletBalance, setWalletBalance] = useState(0);
   const [opponentOnline, setOpponentOnline] = useState(false);
@@ -390,6 +392,16 @@ export const useFriendLudoGame = () => {
           const latency = Date.now() - originalTimestamp;
           pendingPingsRef.current.delete(pingId);
           setPingLatency(latency);
+          
+          // Show warning if ping exceeds 300ms (but not more than once per 30 seconds)
+          const now = Date.now();
+          if (latency > 300 && now - lastHighPingWarningRef.current > 30000) {
+            lastHighPingWarningRef.current = now;
+            sonnerToast.error(`Poor connection: ${latency}ms latency`, {
+              description: 'Game may lag. Check your network.',
+              duration: 5000,
+            });
+          }
         }
       })
       .subscribe((status) => {
