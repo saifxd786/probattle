@@ -177,6 +177,17 @@ export const useLudoGame = () => {
     capturingColor: string;
   } | null>(null);
 
+  // Active game detection for resume
+  const [hasActiveGame, setHasActiveGame] = useState(false);
+  const [activeGameData, setActiveGameData] = useState<{
+    matchId: string;
+    entryAmount: number;
+    rewardAmount: number;
+    playerCount: number;
+    gameState: any;
+  } | null>(null);
+  const [isCheckingActiveGame, setIsCheckingActiveGame] = useState(true);
+
   // Fetch user profile and UID
   useEffect(() => {
     if (!user) return;
@@ -220,6 +231,70 @@ export const useLudoGame = () => {
     fetchSettings();
   }, []);
 
+  // Check for active in-progress games on mount
+  useEffect(() => {
+    if (!user) {
+      setIsCheckingActiveGame(false);
+      return;
+    }
+
+    const checkActiveGame = async () => {
+      try {
+        // Find any in-progress matches where user is a player
+        const { data: activeMatch, error } = await supabase
+          .from('ludo_matches')
+          .select(`
+            id,
+            entry_amount,
+            reward_amount,
+            player_count,
+            game_state,
+            ludo_match_players!inner (
+              user_id,
+              is_bot,
+              bot_name,
+              player_color,
+              token_positions,
+              tokens_home
+            )
+          `)
+          .eq('status', 'in_progress')
+          .eq('ludo_match_players.user_id', user.id)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (error) {
+          console.error('[LudoGame] Error checking active game:', error);
+          setIsCheckingActiveGame(false);
+          return;
+        }
+
+        if (activeMatch) {
+          console.log('[LudoGame] Found active game:', activeMatch.id);
+          setHasActiveGame(true);
+          setActiveGameData({
+            matchId: activeMatch.id,
+            entryAmount: Number(activeMatch.entry_amount),
+            rewardAmount: Number(activeMatch.reward_amount),
+            playerCount: activeMatch.player_count,
+            gameState: activeMatch.game_state
+          });
+          
+          // Play alert sound
+          soundManager.playDisconnectAlert();
+          hapticManager.warning();
+        }
+      } catch (err) {
+        console.error('[LudoGame] Error checking active game:', err);
+      } finally {
+        setIsCheckingActiveGame(false);
+      }
+    };
+
+    checkActiveGame();
+  }, [user]);
+
   const getRandomBotName = useCallback((usedNames: string[]) => {
     const available = BOT_NAMES.filter(name => !usedNames.includes(name));
     return available[Math.floor(Math.random() * available.length)] || BOT_NAMES[0];
@@ -228,6 +303,117 @@ export const useLudoGame = () => {
   const createInitialTokens = useCallback((color: string): Token[] => {
     return [0, 1, 2, 3].map(id => ({ id, position: 0, color }));
   }, []);
+
+  // Resume an active game
+  const resumeGame = useCallback(async () => {
+    if (!user || !activeGameData) {
+      toast({ title: 'No active game to resume', variant: 'destructive' });
+      return;
+    }
+
+    try {
+      // Fetch the match and players
+      const { data: matchData, error: matchError } = await supabase
+        .from('ludo_matches')
+        .select(`
+          *,
+          ludo_match_players (
+            user_id,
+            is_bot,
+            bot_name,
+            player_color,
+            token_positions,
+            tokens_home
+          )
+        `)
+        .eq('id', activeGameData.matchId)
+        .single();
+
+      if (matchError || !matchData) {
+        toast({ title: 'Failed to load game', variant: 'destructive' });
+        setHasActiveGame(false);
+        setActiveGameData(null);
+        return;
+      }
+
+      // Reconstruct players
+      const players: Player[] = matchData.ludo_match_players.map((p: any, index: number) => {
+        const tokenPositions = Array.isArray(p.token_positions) ? p.token_positions : [0, 0, 0, 0];
+        return {
+          id: p.is_bot ? `bot-${index}` : p.user_id,
+          name: p.is_bot ? (p.bot_name || `Bot ${index}`) : (user.email?.split('@')[0] || 'You'),
+          uid: p.is_bot ? generateUID() : (userUID || generateUID()),
+          isBot: p.is_bot,
+          status: 'ready' as const,
+          color: p.player_color,
+          tokens: tokenPositions.map((pos: number, tid: number) => ({
+            id: tid,
+            position: pos,
+            color: p.player_color
+          })),
+          tokensHome: p.tokens_home || 0
+        };
+      });
+
+      // Determine current turn from game_state or default to user
+      const savedState = matchData.game_state as any;
+      const currentTurn = savedState?.currentTurn ?? 0;
+      const diceValue = savedState?.diceValue ?? 1;
+
+      // Set game state
+      gameInProgressRef.current = true;
+      setGameState({
+        phase: 'playing',
+        matchId: activeGameData.matchId,
+        players,
+        currentTurn,
+        diceValue,
+        isRolling: false,
+        canRoll: currentTurn === 0, // User's turn
+        selectedToken: null,
+        winner: null
+      });
+
+      setEntryAmount(activeGameData.entryAmount);
+      setPlayerMode(activeGameData.playerCount as 2 | 4);
+      setHasActiveGame(false);
+      setActiveGameData(null);
+
+      toast({ title: '🎮 Game Resumed!', description: 'Continue where you left off' });
+      soundManager.playWin();
+    } catch (err) {
+      console.error('[LudoGame] Error resuming game:', err);
+      toast({ title: 'Failed to resume game', variant: 'destructive' });
+    }
+  }, [user, activeGameData, userUID, toast]);
+
+  // Dismiss active game (forfeit)
+  const dismissActiveGame = useCallback(async () => {
+    if (!user || !activeGameData) return;
+
+    try {
+      // Mark match as cancelled
+      await supabase
+        .from('ludo_matches')
+        .update({ 
+          status: 'cancelled',
+          ended_at: new Date().toISOString()
+        })
+        .eq('id', activeGameData.matchId);
+
+      // No refund since game was in progress
+      toast({ 
+        title: 'Game Forfeited', 
+        description: 'Entry fee was not refunded as the game was in progress',
+        variant: 'destructive'
+      });
+
+      setHasActiveGame(false);
+      setActiveGameData(null);
+    } catch (err) {
+      console.error('[LudoGame] Error dismissing game:', err);
+    }
+  }, [user, activeGameData, toast]);
 
   const startMatchmaking = useCallback(async () => {
     if (!user) {
@@ -834,6 +1020,12 @@ export const useLudoGame = () => {
     resetGame,
     rewardAmount: entryAmount * settings.rewardMultiplier,
     captureEvent,
-    clearCaptureEvent
+    clearCaptureEvent,
+    // Resume game functionality
+    hasActiveGame,
+    activeGameData,
+    isCheckingActiveGame,
+    resumeGame,
+    dismissActiveGame
   };
 };
