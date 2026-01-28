@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
-import { MapPin, Crown } from 'lucide-react';
+import { Crown } from 'lucide-react';
 import CaptureAnimation from './CaptureAnimation';
 
 interface Token {
@@ -245,10 +245,10 @@ const PlayerProfileCard = ({
               <img src={player.avatar} alt={displayUID} className="w-full h-full object-cover" />
             ) : (
               <div 
-                className="w-full h-full flex items-center justify-center text-white text-lg font-bold"
+                className="w-full h-full flex items-center justify-center text-white text-2xl font-bold"
                 style={{ background: `linear-gradient(135deg, ${colors.light} 0%, ${colors.dark} 100%)` }}
               >
-                <MapPin className="w-6 h-6" />
+                {displayUID.slice(0, 2)}
               </div>
             )}
           </div>
@@ -270,15 +270,13 @@ const PlayerProfileCard = ({
       
       {/* Color indicator at corner */}
       <div 
-        className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full flex items-center justify-center"
+        className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full"
         style={{ 
           background: colors.main,
           border: '2px solid white',
           boxShadow: `0 2px 8px ${colors.main}80`
         }}
-      >
-        <MapPin className="w-3 h-3 text-white" />
-      </div>
+      />
       
       {/* Crown for current turn */}
       {player.isCurrentTurn && (
@@ -317,14 +315,12 @@ const BottomInfoBar = ({
       {/* Left Player Info */}
       <div className="flex items-center gap-2">
         <div 
-          className="w-8 h-8 rounded-full flex items-center justify-center"
+          className="w-8 h-8 rounded-full"
           style={{ 
             background: COLORS[leftPlayer?.color as keyof typeof COLORS]?.main || '#1E88E5',
             boxShadow: `0 0 8px ${COLORS[leftPlayer?.color as keyof typeof COLORS]?.main || '#1E88E5'}50`
           }}
-        >
-          <MapPin className="w-4 h-4 text-white" />
-        </div>
+        />
         <div className="text-left">
           <div className="text-white font-bold text-sm">{leftUID}</div>
           <div className="flex items-center gap-1">
@@ -356,14 +352,12 @@ const BottomInfoBar = ({
           </div>
         </div>
         <div 
-          className="w-8 h-8 rounded-full flex items-center justify-center"
+          className="w-8 h-8 rounded-full"
           style={{ 
             background: COLORS[rightPlayer?.color as keyof typeof COLORS]?.main || '#43A047',
             boxShadow: `0 0 8px ${COLORS[rightPlayer?.color as keyof typeof COLORS]?.main || '#43A047'}50`
           }}
-        >
-          <MapPin className="w-4 h-4 text-white" />
-        </div>
+        />
       </div>
     </div>
   );
@@ -543,20 +537,20 @@ const LudoBoard = ({ players, onTokenClick, selectedToken, captureEvent, onCaptu
             </g>
 
             {/* Home stretch colored cells - FIXED POSITIONS */}
-            {/* Green home stretch (top center - going DOWN from y=1 to y=6) */}
-            {[1, 2, 3, 4, 5, 6].map(i => (
+            {/* Green home stretch (top center column at x=7, going DOWN from y=1 to y=5) */}
+            {[1, 2, 3, 4, 5].map(i => (
               <rect key={`green-home-${i}`} x={7} y={i} width="1" height="1" fill={COLORS.green.main} stroke={COLORS.green.dark} strokeWidth="0.03" />
             ))}
-            {/* Red home stretch (left center - going RIGHT from x=1 to x=6) */}
-            {[1, 2, 3, 4, 5, 6].map(i => (
+            {/* Red home stretch (left center row at y=7, going RIGHT from x=1 to x=5) */}
+            {[1, 2, 3, 4, 5].map(i => (
               <rect key={`red-home-${i}`} x={i} y={7} width="1" height="1" fill={COLORS.red.main} stroke={COLORS.red.dark} strokeWidth="0.03" />
             ))}
-            {/* Yellow home stretch (right center - going LEFT from x=13 to x=8) */}
-            {[8, 9, 10, 11, 12, 13].map(i => (
+            {/* Yellow home stretch (right center row at y=7, going LEFT from x=13 to x=9) */}
+            {[9, 10, 11, 12, 13].map(i => (
               <rect key={`yellow-home-${i}`} x={i} y={7} width="1" height="1" fill={COLORS.yellow.main} stroke={COLORS.yellow.dark} strokeWidth="0.03" />
             ))}
-            {/* Blue home stretch (bottom center - going UP from y=13 to y=8) */}
-            {[8, 9, 10, 11, 12, 13].map(i => (
+            {/* Blue home stretch (bottom center column at x=7, going UP from y=13 to y=9) */}
+            {[9, 10, 11, 12, 13].map(i => (
               <rect key={`blue-home-${i}`} x={7} y={i} width="1" height="1" fill={COLORS.blue.main} stroke={COLORS.blue.dark} strokeWidth="0.03" />
             ))}
 
