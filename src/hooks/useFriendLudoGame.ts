@@ -779,7 +779,7 @@ export const useFriendLudoGame = () => {
           }));
         }
       })
-      .on('broadcast', { event: 'rematch_response' }, (payload) => {
+      .on('broadcast', { event: 'rematch_response' }, async (payload) => {
         const { accepted } = payload.payload;
         setGameState(prev => ({
           ...prev,
@@ -787,23 +787,19 @@ export const useFriendLudoGame = () => {
         }));
 
         if (accepted) {
-          // Start new game after short delay
-          setTimeout(() => {
-            // Reset for new game while keeping room info
-            setGameState(prev => ({
-              ...prev,
-              phase: 'waiting',
-              players: [],
-              currentTurn: 0,
-              diceValue: 1,
-              isRolling: false,
-              canRoll: false,
-              selectedToken: null,
-              winner: null,
-              rematchStatus: 'idle',
-              rematchRequester: null,
-              captureAnimation: null
-            }));
+          // Start new game after short delay - host reinitializes
+          setTimeout(async () => {
+            setGameState(prev => {
+              if (prev.isHost && prev.roomId) {
+                // Host initializes the new game
+                reinitializeGame(prev.roomId);
+              }
+              return {
+                ...prev,
+                rematchStatus: 'idle',
+                rematchRequester: null,
+              };
+            });
           }, 1500);
         }
       })
@@ -811,6 +807,87 @@ export const useFriendLudoGame = () => {
 
     rematchChannelRef.current = channel;
   }, [user]);
+
+  // Reinitialize game for rematch (host only)
+  const reinitializeGame = async (roomId: string) => {
+    if (!user) return;
+
+    // Fetch current room data
+    const { data: roomData, error } = await supabase
+      .from('ludo_rooms')
+      .select('*')
+      .eq('id', roomId)
+      .single();
+
+    if (error || !roomData || !roomData.guest_id) {
+      toast({ title: 'Error', description: 'Could not restart game', variant: 'destructive' });
+      return;
+    }
+
+    const hostColor = 'red';
+    const guestColor = 'green';
+
+    // Fetch player names
+    const { data: hostProfile } = await supabase
+      .from('profiles')
+      .select('username, email, user_code')
+      .eq('id', roomData.host_id)
+      .single();
+
+    const { data: guestProfile } = await supabase
+      .from('profiles')
+      .select('username, email, user_code')
+      .eq('id', roomData.guest_id)
+      .single();
+
+    const hostName = hostProfile?.username || hostProfile?.email?.split('@')[0] || 'Host';
+    const guestName = guestProfile?.username || guestProfile?.email?.split('@')[0] || 'Guest';
+    const hostUid = hostProfile?.user_code || Math.floor(10000 + Math.random() * 90000).toString();
+    const guestUid = guestProfile?.user_code || Math.floor(10000 + Math.random() * 90000).toString();
+
+    const players: Player[] = [
+      {
+        id: roomData.host_id,
+        name: hostName,
+        uid: hostUid,
+        isBot: false,
+        color: hostColor,
+        tokens: createInitialTokens(hostColor),
+        tokensHome: 0
+      },
+      {
+        id: roomData.guest_id,
+        name: guestName,
+        uid: guestUid,
+        isBot: false,
+        color: guestColor,
+        tokens: createInitialTokens(guestColor),
+        tokensHome: 0
+      }
+    ];
+
+    const gameData: GameStateData = {
+      players,
+      currentTurn: 0,
+      diceValue: 1,
+      phase: 'playing'
+    };
+
+    // Update room with fresh game state
+    await supabase
+      .from('ludo_rooms')
+      .update({
+        status: 'playing',
+        current_turn: 0,
+        game_state: gameData as any,
+        winner_id: null,
+        started_at: new Date().toISOString(),
+        ended_at: null
+      })
+      .eq('id', roomId);
+
+    toast({ title: '🎮 Rematch Started!', description: 'New game begins!' });
+  };
 
   // Request rematch
   const requestRematch = useCallback(async () => {
