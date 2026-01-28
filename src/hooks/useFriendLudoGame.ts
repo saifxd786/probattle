@@ -156,6 +156,11 @@ export const useFriendLudoGame = () => {
 
   const [walletBalance, setWalletBalance] = useState(0);
   const [opponentOnline, setOpponentOnline] = useState(false);
+  
+  // Opponent disconnect timeout (1 minute = 60 seconds)
+  const [opponentDisconnectCountdown, setOpponentDisconnectCountdown] = useState<number | null>(null);
+  const disconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Fetch wallet balance
   useEffect(() => {
@@ -553,6 +558,129 @@ export const useFriendLudoGame = () => {
     isReconnectingRef.current = false;
     attemptReconnection();
   }, [attemptReconnection]);
+
+  // Claim win when opponent disconnects for too long
+  const claimWinByDisconnect = useCallback(async () => {
+    if (!user || !gameState.roomId || gameState.phase !== 'playing') return;
+    
+    const currentPlayer = gameState.players.find(p => p.id === user.id);
+    if (!currentPlayer) return;
+
+    console.log('[LudoSync] Claiming win by opponent disconnect');
+    
+    // Update room status
+    await supabase
+      .from('ludo_rooms')
+      .update({
+        status: 'completed',
+        winner_id: user.id,
+        ended_at: new Date().toISOString()
+      })
+      .eq('id', gameState.roomId);
+
+    // Credit reward to wallet
+    await supabase.from('profiles').update({
+      wallet_balance: walletBalance + gameState.rewardAmount
+    }).eq('id', user.id);
+
+    // Create transaction
+    await supabase.from('transactions').insert({
+      user_id: user.id,
+      type: 'prize',
+      amount: gameState.rewardAmount,
+      status: 'completed',
+      description: `Won Ludo match by opponent disconnect (Room: ${gameState.roomCode})`
+    });
+
+    setWalletBalance(prev => prev + gameState.rewardAmount);
+
+    // Send notification
+    await supabase.from('notifications').insert({
+      user_id: user.id,
+      title: '🏆 Victory by Forfeit!',
+      message: `Opponent disconnected. You won ₹${gameState.rewardAmount}!`,
+      type: 'success'
+    });
+
+    // Update game state to show win
+    setGameState(prev => ({
+      ...prev,
+      phase: 'result',
+      winner: currentPlayer,
+      canRoll: false
+    }));
+
+    // Clear countdown
+    setOpponentDisconnectCountdown(null);
+    
+    toast({
+      title: '🏆 You Win!',
+      description: 'Opponent was disconnected for too long.',
+    });
+  }, [user, gameState.roomId, gameState.phase, gameState.players, gameState.roomCode, gameState.rewardAmount, walletBalance, toast]);
+
+  // Opponent disconnect countdown effect
+  useEffect(() => {
+    // Only run during active games
+    if (gameState.phase !== 'playing') {
+      // Clear any existing timers
+      if (disconnectTimeoutRef.current) {
+        clearTimeout(disconnectTimeoutRef.current);
+        disconnectTimeoutRef.current = null;
+      }
+      if (countdownIntervalRef.current) {
+        clearInterval(countdownIntervalRef.current);
+        countdownIntervalRef.current = null;
+      }
+      setOpponentDisconnectCountdown(null);
+      return;
+    }
+
+    if (!opponentOnline) {
+      // Opponent went offline - start 60 second countdown
+      console.log('[LudoSync] Opponent offline - starting disconnect countdown');
+      setOpponentDisconnectCountdown(60);
+      
+      // Start countdown interval
+      countdownIntervalRef.current = setInterval(() => {
+        setOpponentDisconnectCountdown(prev => {
+          if (prev === null || prev <= 1) {
+            // Time's up - clear interval, claim win will be triggered separately
+            if (countdownIntervalRef.current) {
+              clearInterval(countdownIntervalRef.current);
+              countdownIntervalRef.current = null;
+            }
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+      
+    } else {
+      // Opponent is back online - clear countdown
+      console.log('[LudoSync] Opponent back online - clearing countdown');
+      if (countdownIntervalRef.current) {
+        clearInterval(countdownIntervalRef.current);
+        countdownIntervalRef.current = null;
+      }
+      setOpponentDisconnectCountdown(null);
+    }
+
+    return () => {
+      if (countdownIntervalRef.current) {
+        clearInterval(countdownIntervalRef.current);
+        countdownIntervalRef.current = null;
+      }
+    };
+  }, [opponentOnline, gameState.phase]);
+
+  // Auto-claim win when countdown reaches 0
+  useEffect(() => {
+    if (opponentDisconnectCountdown === 0 && gameState.phase === 'playing') {
+      claimWinByDisconnect();
+    }
+  }, [opponentDisconnectCountdown, gameState.phase, claimWinByDisconnect]);
+
 
   // Send chat message
   const sendChatMessage = useCallback(async (message: string, isEmoji: boolean) => {
@@ -1403,6 +1531,12 @@ export const useFriendLudoGame = () => {
       if (pingIntervalRef.current) {
         clearInterval(pingIntervalRef.current);
       }
+      if (disconnectTimeoutRef.current) {
+        clearTimeout(disconnectTimeoutRef.current);
+      }
+      if (countdownIntervalRef.current) {
+        clearInterval(countdownIntervalRef.current);
+      }
     };
   }, []);
 
@@ -1410,6 +1544,7 @@ export const useFriendLudoGame = () => {
     gameState,
     walletBalance,
     opponentOnline,
+    opponentDisconnectCountdown,
     syncStatus,
     connectionStatus,
     reconnectAttempts,

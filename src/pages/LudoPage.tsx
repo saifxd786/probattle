@@ -56,6 +56,7 @@ const LudoPage = () => {
     gameState: friendGameState,
     walletBalance: friendWalletBalance,
     opponentOnline,
+    opponentDisconnectCountdown,
     syncStatus,
     connectionStatus,
     reconnectAttempts,
@@ -377,16 +378,28 @@ const LudoPage = () => {
                 </span>
               </div>
             )}
-            {/* Opponent Online Status */}
-            <div className={`flex items-center gap-1 px-2 py-1 rounded-lg ${opponentOnline ? 'bg-green-500/20' : 'bg-red-500/20'}`}>
+            {/* Opponent Online Status with Disconnect Countdown */}
+            <div className={`flex items-center gap-1 px-2 py-1 rounded-lg ${
+              opponentOnline ? 'bg-green-500/20' : 
+              opponentDisconnectCountdown !== null ? 'bg-red-500/30 border border-red-500/50' : 'bg-red-500/20'
+            }`}>
               {opponentOnline ? (
-                <Wifi className="w-3 h-3 text-green-400" />
+                <>
+                  <Wifi className="w-3 h-3 text-green-400" />
+                  <span className="text-[10px] text-green-400">Online</span>
+                </>
               ) : (
-                <WifiOff className="w-3 h-3 text-red-400" />
+                <>
+                  <WifiOff className="w-3 h-3 text-red-400" />
+                  <span className="text-[10px] text-red-400">
+                    {opponentDisconnectCountdown !== null ? (
+                      <span className="font-mono animate-pulse">
+                        Offline • Win in {opponentDisconnectCountdown}s
+                      </span>
+                    ) : 'Offline'}
+                  </span>
+                </>
               )}
-              <span className={`text-[10px] ${opponentOnline ? 'text-green-400' : 'text-red-400'}`}>
-                {opponentOnline ? 'Online' : 'Offline'}
-              </span>
             </div>
             {/* Sync Status & Button */}
             <Button
