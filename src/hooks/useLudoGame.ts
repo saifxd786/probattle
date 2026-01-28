@@ -147,6 +147,7 @@ export const useLudoGame = () => {
   const { toast } = useToast();
   const botTurnRef = useRef<boolean>(false);
   const gameInProgressRef = useRef<boolean>(false);
+  const userIdRef = useRef<string | null>(null); // Track user ID for consistency
   
   const [settings, setSettings] = useState<LudoSettings>({
     isEnabled: true,
@@ -166,6 +167,34 @@ export const useLudoGame = () => {
     selectedToken: null,
     winner: null
   });
+  
+  // Track user ID changes
+  useEffect(() => {
+    if (user?.id) {
+      if (userIdRef.current && userIdRef.current !== user.id) {
+        console.warn('[LudoGame] User ID changed during session!', {
+          old: userIdRef.current,
+          new: user.id
+        });
+        // Reset game state if user changes
+        if (gameState.phase !== 'idle') {
+          console.log('[LudoGame] Resetting game due to user change');
+          setGameState({
+            phase: 'idle',
+            matchId: null,
+            players: [],
+            currentTurn: 0,
+            diceValue: 1,
+            isRolling: false,
+            canRoll: false,
+            selectedToken: null,
+            winner: null
+          });
+        }
+      }
+      userIdRef.current = user.id;
+    }
+  }, [user?.id, gameState.phase]);
   
   const [entryAmount, setEntryAmount] = useState(100);
   const [playerMode, setPlayerMode] = useState<2 | 4>(2);
@@ -839,11 +868,29 @@ export const useLudoGame = () => {
 
   // User roll dice
   const rollDice = useCallback(async () => {
-    if (!gameState.canRoll || gameState.isRolling) return;
+    if (!gameState.canRoll || gameState.isRolling) {
+      console.log('[LudoGame Bot] Roll blocked:', { canRoll: gameState.canRoll, isRolling: gameState.isRolling });
+      return;
+    }
     
     const currentPlayer = gameState.players[gameState.currentTurn];
-    if (currentPlayer?.isBot) return;
+    if (!currentPlayer) {
+      console.error('[LudoGame Bot] No current player at turn:', gameState.currentTurn);
+      return;
+    }
+    
+    if (currentPlayer.isBot) {
+      console.log('[LudoGame Bot] Cannot roll for bot');
+      return;
+    }
+    
+    // Validate user is the current player
+    if (user && currentPlayer.id !== user.id) {
+      console.error('[LudoGame Bot] User ID mismatch!', { currentPlayerId: currentPlayer.id, userId: user.id });
+      return;
+    }
 
+    console.log('[LudoGame Bot] User rolling dice');
     setGameState(prev => ({ ...prev, isRolling: true, canRoll: false }));
 
     await new Promise(resolve => setTimeout(resolve, 800));
@@ -852,6 +899,12 @@ export const useLudoGame = () => {
     
     setGameState(prev => {
       const player = prev.players[prev.currentTurn];
+      
+      // Revalidate player
+      if (!player || player.isBot) {
+        console.error('[LudoGame Bot] Invalid player state after roll');
+        return { ...prev, isRolling: false };
+      }
       
       const canMove = player.tokens.some(token => {
         if (token.position === 0 && diceValue === 6) return true;
@@ -880,13 +933,38 @@ export const useLudoGame = () => {
 
       return { ...prev, diceValue, isRolling: false };
     });
-  }, [gameState.canRoll, gameState.isRolling, gameState.players, gameState.currentTurn, generateDiceValue, executeBotTurn]);
+  }, [gameState.canRoll, gameState.isRolling, gameState.players, gameState.currentTurn, user, generateDiceValue, executeBotTurn]);
 
   // Handle user token click
   const handleTokenClick = useCallback((color: string, tokenId: number) => {
     setGameState(prev => {
       const currentPlayer = prev.players[prev.currentTurn];
-      if (currentPlayer.color !== color || currentPlayer.isBot || prev.canRoll) return prev;
+      
+      if (!currentPlayer) {
+        console.error('[LudoGame Bot] No current player for token click');
+        return prev;
+      }
+      
+      if (currentPlayer.color !== color) {
+        console.log('[LudoGame Bot] Token click blocked: wrong color');
+        return prev;
+      }
+      
+      if (currentPlayer.isBot) {
+        console.log('[LudoGame Bot] Token click blocked: bot turn');
+        return prev;
+      }
+      
+      if (prev.canRoll) {
+        console.log('[LudoGame Bot] Token click blocked: must roll first');
+        return prev;
+      }
+      
+      // Validate user ID if available
+      if (user && currentPlayer.id !== user.id) {
+        console.error('[LudoGame Bot] Token click blocked: user ID mismatch', { currentPlayerId: currentPlayer.id, userId: user.id });
+        return prev;
+      }
 
       const token = currentPlayer.tokens.find(t => t.id === tokenId);
       if (!token) return prev;
