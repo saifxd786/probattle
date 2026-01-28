@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Search, Clock, CheckCircle, XCircle, Loader2, Image as ImageIcon } from 'lucide-react';
+import { Search, Clock, CheckCircle, XCircle, Loader2, Image as ImageIcon, ShieldX } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
+import { useAgentPermissions } from '@/hooks/useAgentPermissions';
 
 type Transaction = {
   id: string;
@@ -25,6 +26,7 @@ type Transaction = {
 };
 
 const AgentTransactions = () => {
+  const { permissions, isLoading: permissionsLoading } = useAgentPermissions();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'pending' | 'processing' | 'completed' | 'cancelled'>('all');
@@ -53,7 +55,6 @@ const AgentTransactions = () => {
       return;
     }
 
-    // Fetch profiles for each transaction
     const transactionsWithProfiles = await Promise.all(
       (data || []).map(async (tx) => {
         const { data: profile } = await supabase
@@ -70,8 +71,12 @@ const AgentTransactions = () => {
   };
 
   useEffect(() => {
-    fetchTransactions();
-  }, [filter]);
+    if (permissions.can_view_transactions) {
+      fetchTransactions();
+    } else {
+      setIsLoading(false);
+    }
+  }, [filter, permissions.can_view_transactions]);
 
   const viewScreenshot = async (path: string) => {
     const { data } = supabase.storage
@@ -109,6 +114,27 @@ const AgentTransactions = () => {
     { key: 'cancelled', label: 'Cancelled', icon: XCircle },
   ] as const;
 
+  if (permissionsLoading) {
+    return (
+      <div className="p-6 flex items-center justify-center min-h-[50vh]">
+        <p className="text-muted-foreground">Loading permissions...</p>
+      </div>
+    );
+  }
+
+  if (!permissions.can_view_transactions) {
+    return (
+      <div className="p-6 flex flex-col items-center justify-center min-h-[50vh] gap-4">
+        <ShieldX className="w-16 h-16 text-destructive" />
+        <h2 className="text-xl font-bold text-foreground">Access Denied</h2>
+        <p className="text-muted-foreground text-center">
+          You don't have permission to view transactions.<br />
+          Contact admin to enable this access.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="p-6 space-y-6">
       <div>
@@ -116,7 +142,6 @@ const AgentTransactions = () => {
         <p className="text-muted-foreground">View all deposits and withdrawals (Read Only)</p>
       </div>
 
-      {/* Search */}
       <div className="relative max-w-md">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
         <Input
@@ -127,7 +152,6 @@ const AgentTransactions = () => {
         />
       </div>
 
-      {/* Filter Tabs */}
       <div className="flex gap-2 flex-wrap">
         {filterButtons.map((btn) => (
           <Button
@@ -143,7 +167,6 @@ const AgentTransactions = () => {
         ))}
       </div>
 
-      {/* Transactions Table */}
       <Card className="glass-card">
         <CardContent className="p-0">
           <div className="overflow-x-auto">
@@ -222,7 +245,6 @@ const AgentTransactions = () => {
         </CardContent>
       </Card>
 
-      {/* Screenshot Dialog */}
       <Dialog open={isScreenshotOpen} onOpenChange={setIsScreenshotOpen}>
         <DialogContent className="max-w-lg">
           <DialogHeader>

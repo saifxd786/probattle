@@ -14,6 +14,51 @@ export type Database = {
   }
   public: {
     Tables: {
+      agent_permissions: {
+        Row: {
+          agent_user_id: string
+          can_approve_registrations: boolean
+          can_manage_bgmi_results: boolean
+          can_publish_room_details: boolean
+          can_reply_support: boolean
+          can_view_support: boolean
+          can_view_transactions: boolean
+          can_view_user_details: boolean
+          can_view_users: boolean
+          created_at: string
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          agent_user_id: string
+          can_approve_registrations?: boolean
+          can_manage_bgmi_results?: boolean
+          can_publish_room_details?: boolean
+          can_reply_support?: boolean
+          can_view_support?: boolean
+          can_view_transactions?: boolean
+          can_view_user_details?: boolean
+          can_view_users?: boolean
+          created_at?: string
+          id?: string
+          updated_at?: string
+        }
+        Update: {
+          agent_user_id?: string
+          can_approve_registrations?: boolean
+          can_manage_bgmi_results?: boolean
+          can_publish_room_details?: boolean
+          can_reply_support?: boolean
+          can_view_support?: boolean
+          can_view_transactions?: boolean
+          can_view_user_details?: boolean
+          can_view_users?: boolean
+          created_at?: string
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       daily_login_bonus: {
         Row: {
           coins: number

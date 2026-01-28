@@ -3,6 +3,7 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
+import { useAgentPermissions } from '@/hooks/useAgentPermissions';
 
 interface AgentSidebarProps {
   collapsed: boolean;
@@ -11,15 +12,18 @@ interface AgentSidebarProps {
   isMobile?: boolean;
 }
 
-const navItems = [
-  { title: 'Users', url: '/agent', icon: Users },
-  { title: 'BGMI Matches', url: '/agent/matches', icon: Gamepad2 },
-  { title: 'Transactions', url: '/agent/transactions', icon: ArrowLeftRight },
-];
-
 const AgentSidebar = ({ collapsed, onToggle, onNavigate, isMobile }: AgentSidebarProps) => {
   const { signOut } = useAuth();
   const navigate = useNavigate();
+  const { permissions, isLoading } = useAgentPermissions();
+
+  const navItems = [
+    { title: 'Users', url: '/agent', icon: Users, visible: permissions.can_view_users },
+    { title: 'BGMI Matches', url: '/agent/matches', icon: Gamepad2, visible: permissions.can_manage_bgmi_results },
+    { title: 'Transactions', url: '/agent/transactions', icon: ArrowLeftRight, visible: permissions.can_view_transactions },
+  ];
+
+  const visibleItems = navItems.filter(item => item.visible);
 
   const handleSignOut = async () => {
     await signOut();
@@ -61,26 +65,32 @@ const AgentSidebar = ({ collapsed, onToggle, onNavigate, isMobile }: AgentSideba
 
       {/* Navigation */}
       <nav className="flex-1 py-4 px-2 space-y-1 overflow-y-auto">
-        {navItems.map((item) => (
-          <NavLink
-            key={item.url}
-            to={item.url}
-            end={item.url === '/agent'}
-            onClick={handleNavClick}
-            className={({ isActive }) =>
-              cn(
-                'flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200',
-                isActive
-                  ? 'bg-blue-600 text-white'
-                  : 'text-muted-foreground hover:bg-secondary hover:text-foreground',
-                collapsed && !isMobile && 'justify-center px-2'
-              )
-            }
-          >
-            <item.icon className="w-5 h-5 shrink-0" />
-            {(!collapsed || isMobile) && <span className="text-sm font-medium">{item.title}</span>}
-          </NavLink>
-        ))}
+        {isLoading ? (
+          <div className="px-3 py-2 text-sm text-muted-foreground">Loading...</div>
+        ) : visibleItems.length === 0 ? (
+          <div className="px-3 py-2 text-sm text-muted-foreground">No permissions</div>
+        ) : (
+          visibleItems.map((item) => (
+            <NavLink
+              key={item.url}
+              to={item.url}
+              end={item.url === '/agent'}
+              onClick={handleNavClick}
+              className={({ isActive }) =>
+                cn(
+                  'flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200',
+                  isActive
+                    ? 'bg-blue-600 text-white'
+                    : 'text-muted-foreground hover:bg-secondary hover:text-foreground',
+                  collapsed && !isMobile && 'justify-center px-2'
+                )
+              }
+            >
+              <item.icon className="w-5 h-5 shrink-0" />
+              {(!collapsed || isMobile) && <span className="text-sm font-medium">{item.title}</span>}
+            </NavLink>
+          ))
+        )}
       </nav>
 
       {/* Footer */}

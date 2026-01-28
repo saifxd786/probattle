@@ -1,15 +1,15 @@
 import { useEffect, useState } from 'react';
-import { Trophy, Users, Send, Edit, Copy, Check } from 'lucide-react';
+import { Trophy, Users, Send, Copy, Check, ShieldX } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { Database } from '@/integrations/supabase/types';
 import MatchResultsDialog from '@/components/admin/MatchResultsDialog';
 import MatchParticipantsDialog from '@/components/MatchParticipantsDialog';
+import { useAgentPermissions } from '@/hooks/useAgentPermissions';
 
 type MatchStatus = Database['public']['Enums']['match_status'];
 
@@ -31,6 +31,7 @@ type Match = {
 };
 
 const AgentMatches = () => {
+  const { permissions, isLoading: permissionsLoading } = useAgentPermissions();
   const [matches, setMatches] = useState<Match[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [resultsMatch, setResultsMatch] = useState<Match | null>(null);
@@ -62,8 +63,12 @@ const AgentMatches = () => {
   };
 
   useEffect(() => {
-    fetchMatches();
-  }, []);
+    if (permissions.can_manage_bgmi_results) {
+      fetchMatches();
+    } else {
+      setIsLoading(false);
+    }
+  }, [permissions.can_manage_bgmi_results]);
 
   const updateStatus = async (id: string, status: MatchStatus) => {
     const { error } = await supabase.from('matches').update({ status }).eq('id', id);
@@ -77,6 +82,11 @@ const AgentMatches = () => {
   };
 
   const publishRoomDetails = async (match: Match) => {
+    if (!permissions.can_publish_room_details) {
+      toast({ title: 'Access Denied', description: 'You do not have permission to publish room details', variant: 'destructive' });
+      return;
+    }
+
     if (!match.room_id || !match.room_password) {
       toast({ title: 'Error', description: 'Room details not set by admin', variant: 'destructive' });
       return;
@@ -114,6 +124,15 @@ const AgentMatches = () => {
     }
   };
 
+  const handleManageResults = (match: Match) => {
+    if (!permissions.can_manage_bgmi_results) {
+      toast({ title: 'Access Denied', description: 'You do not have permission to manage results', variant: 'destructive' });
+      return;
+    }
+    setResultsMatch(match);
+    setIsResultsOpen(true);
+  };
+
   const getStatusColor = (status: MatchStatus) => {
     switch (status) {
       case 'upcoming': return 'bg-blue-500/20 text-blue-500';
@@ -124,6 +143,27 @@ const AgentMatches = () => {
     }
   };
 
+  if (permissionsLoading) {
+    return (
+      <div className="p-6 flex items-center justify-center min-h-[50vh]">
+        <p className="text-muted-foreground">Loading permissions...</p>
+      </div>
+    );
+  }
+
+  if (!permissions.can_manage_bgmi_results) {
+    return (
+      <div className="p-6 flex flex-col items-center justify-center min-h-[50vh] gap-4">
+        <ShieldX className="w-16 h-16 text-destructive" />
+        <h2 className="text-xl font-bold text-foreground">Access Denied</h2>
+        <p className="text-muted-foreground text-center">
+          You don't have permission to manage BGMI matches.<br />
+          Contact admin to enable this access.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="p-6 space-y-6">
       <div>
@@ -131,7 +171,6 @@ const AgentMatches = () => {
         <p className="text-muted-foreground">Manage match results and status</p>
       </div>
 
-      {/* Matches Table */}
       <Card className="glass-card">
         <CardContent className="p-0">
           <div className="overflow-x-auto">
@@ -223,21 +262,20 @@ const AgentMatches = () => {
                           >
                             <Users className="w-4 h-4 text-blue-500" />
                           </Button>
+                          {permissions.can_publish_room_details && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => publishRoomDetails(match)}
+                              title="Publish room details"
+                            >
+                              <Send className="w-4 h-4 text-green-500" />
+                            </Button>
+                          )}
                           <Button
                             variant="ghost"
                             size="icon"
-                            onClick={() => publishRoomDetails(match)}
-                            title="Publish room details"
-                          >
-                            <Send className="w-4 h-4 text-green-500" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => {
-                              setResultsMatch(match);
-                              setIsResultsOpen(true);
-                            }}
+                            onClick={() => handleManageResults(match)}
                             title="Manage results"
                           >
                             <Trophy className="w-4 h-4 text-yellow-500" />
@@ -253,7 +291,6 @@ const AgentMatches = () => {
         </CardContent>
       </Card>
 
-      {/* Results Dialog */}
       {resultsMatch && (
         <MatchResultsDialog
           isOpen={isResultsOpen}
@@ -266,7 +303,6 @@ const AgentMatches = () => {
         />
       )}
 
-      {/* Participants Dialog */}
       {participantsMatch && (
         <MatchParticipantsDialog
           isOpen={isParticipantsOpen}
