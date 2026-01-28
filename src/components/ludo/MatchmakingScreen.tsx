@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 interface Player {
   id: string;
   name: string;
+  uid: string; // 5-digit UID
   avatar?: string;
   isBot: boolean;
   status: 'searching' | 'connecting' | 'ready';
@@ -146,14 +147,14 @@ const PlayerCard = ({ player, index, isSearching }: { player?: Player; index: nu
           {/* Player info */}
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
-              <span className="font-semibold text-white truncate">{player.name}</span>
+              <span className="font-semibold text-white">#{player.uid || '00000'}</span>
               {!player.isBot && (
                 <span className="text-[10px] bg-blue-500/20 text-blue-400 px-1.5 py-0.5 rounded-full">YOU</span>
               )}
             </div>
             <div className="flex items-center gap-2 mt-1">
               <span className={cn('text-xs font-medium capitalize', colors.text)}>
-                {colorKey} Player
+                {colorKey}
               </span>
               {player.status === 'ready' && (
                 <span className="flex items-center gap-1 text-[10px] text-green-400">

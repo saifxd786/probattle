@@ -15,6 +15,7 @@ interface Token {
 interface Player {
   id: string;
   name: string;
+  uid: string;
   isBot: boolean;
   color: string;
   tokens: Token[];
@@ -332,23 +333,26 @@ export const useFriendLudoGame = () => {
     // Fetch player names
     const { data: hostProfile } = await supabase
       .from('profiles')
-      .select('username, email')
+      .select('username, email, user_code')
       .eq('id', roomData.host_id)
       .single();
 
     const { data: guestProfile } = await supabase
       .from('profiles')
-      .select('username, email')
+      .select('username, email, user_code')
       .eq('id', roomData.guest_id!)
       .single();
 
     const hostName = hostProfile?.username || hostProfile?.email?.split('@')[0] || 'Host';
     const guestName = guestProfile?.username || guestProfile?.email?.split('@')[0] || 'Guest';
+    const hostUid = hostProfile?.user_code || Math.floor(10000 + Math.random() * 90000).toString();
+    const guestUid = guestProfile?.user_code || Math.floor(10000 + Math.random() * 90000).toString();
 
     const players: Player[] = [
       {
         id: roomData.host_id,
         name: hostName,
+        uid: hostUid,
         isBot: false,
         color: hostColor,
         tokens: createInitialTokens(hostColor),
@@ -357,6 +361,7 @@ export const useFriendLudoGame = () => {
       {
         id: roomData.guest_id!,
         name: guestName,
+        uid: guestUid,
         isBot: false,
         color: guestColor,
         tokens: createInitialTokens(guestColor),

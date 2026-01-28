@@ -116,6 +116,7 @@ const LudoPage = () => {
         players={gameState.players.map(p => ({
           id: p.id,
           name: p.name,
+          uid: p.uid,
           isBot: p.isBot,
           status: p.status,
           color: p.color
@@ -173,7 +174,7 @@ const LudoPage = () => {
           </div>
         </div>
 
-        {/* Compact Players Status Bar */}
+        {/* Compact Players Status Bar with UID */}
         <div className="shrink-0 flex justify-around py-1.5 px-2 bg-black/30">
           {gameState.players.map((player, idx) => (
             <motion.div
@@ -190,7 +191,7 @@ const LudoPage = () => {
                 className={`w-4 h-4 rounded-full bg-gradient-to-br ${colorStyles[player.color]} border border-white/30`}
               />
               <div>
-                <p className="text-[8px] text-white font-medium truncate max-w-[40px]">{player.name}</p>
+                <p className="text-[8px] text-white font-medium">#{player.uid || '00000'}</p>
                 <div className="flex gap-0.5">
                   {[0, 1, 2, 3].map(i => (
                     <div
@@ -214,6 +215,7 @@ const LudoPage = () => {
               tokens: p.tokens,
               isCurrentTurn: idx === gameState.currentTurn,
               name: p.name,
+              uid: p.uid,
               isBot: p.isBot
             }))}
             onTokenClick={isUserTurn && !gameState.canRoll ? handleTokenClick : undefined}
@@ -326,7 +328,7 @@ const LudoPage = () => {
           </div>
         </div>
 
-        {/* Players Status Bar */}
+        {/* Players Status Bar with UID */}
         <div className="shrink-0 flex justify-around py-1.5 px-2 bg-black/30">
           {friendGameState.players.map((player, idx) => (
             <motion.div
@@ -343,8 +345,8 @@ const LudoPage = () => {
                 className={`w-4 h-4 rounded-full bg-gradient-to-br ${colorStyles[player.color]} border border-white/30`}
               />
               <div>
-                <p className="text-[8px] text-white font-medium truncate max-w-[60px]">
-                  {player.id === user?.id ? 'You' : player.name}
+                <p className="text-[8px] text-white font-medium">
+                  #{player.uid || '00000'} {player.id === user?.id && '(You)'}
                 </p>
                 <div className="flex gap-0.5">
                   {[0, 1, 2, 3].map(i => (
@@ -368,7 +370,8 @@ const LudoPage = () => {
               color: p.color,
               tokens: p.tokens,
               isCurrentTurn: idx === friendGameState.currentTurn,
-              name: p.id === user?.id ? 'You' : p.name,
+              name: p.name,
+              uid: p.uid,
               isBot: false
             }))}
             onTokenClick={isUserTurn && !friendGameState.canRoll ? friendHandleTokenClick : undefined}
@@ -491,7 +494,7 @@ const LudoPage = () => {
     );
   }
 
-  // Home Screen - Ludo King Style
+  // Home Screen - Ludo King Style (Compact)
   return (
     <PullToRefresh onRefresh={handleRefresh}>
       <div 
@@ -502,196 +505,127 @@ const LudoPage = () => {
       >
         <Header />
         
-        <main className="container mx-auto px-4 pt-20">
-          {/* Hero Section */}
+        <main className="container mx-auto px-3 pt-16">
+          {/* Compact Hero */}
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="text-center mb-8"
+            className="text-center mb-4"
           >
-            {/* Animated Dice Icon */}
             <motion.div
-              className="inline-flex relative mb-4"
-              animate={{ y: [0, -10, 0] }}
+              className="inline-flex relative mb-2"
+              animate={{ y: [0, -5, 0] }}
               transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
             >
               <div 
-                className="p-5 rounded-2xl"
+                className="p-3 rounded-xl"
                 style={{
                   background: 'linear-gradient(145deg, #FFD700 0%, #FFA500 100%)',
-                  boxShadow: '0 10px 40px rgba(255,165,0,0.4)',
+                  boxShadow: '0 6px 20px rgba(255,165,0,0.3)',
                 }}
               >
-                <Dices className="w-14 h-14 text-white drop-shadow-lg" />
+                <Dices className="w-8 h-8 text-white" />
               </div>
-              {/* Sparkles */}
-              {[...Array(4)].map((_, i) => (
-                <motion.div
-                  key={i}
-                  className="absolute w-2 h-2 rounded-full bg-yellow-300"
-                  style={{
-                    top: `${20 + Math.random() * 60}%`,
-                    left: `${-20 + Math.random() * 140}%`,
-                  }}
-                  animate={{
-                    scale: [0, 1, 0],
-                    opacity: [0, 1, 0],
-                  }}
-                  transition={{
-                    duration: 1.5,
-                    delay: i * 0.3,
-                    repeat: Infinity,
-                  }}
-                />
-              ))}
             </motion.div>
-
-            <h1 className="font-display text-4xl font-bold text-white mb-2">
+            <h1 className="font-display text-2xl font-bold text-white">
               <span className="text-gradient">Ludo King</span>
             </h1>
-            <p className="text-gray-400 flex items-center justify-center gap-2">
-              <Zap className="w-4 h-4 text-yellow-500" />
+            <p className="text-gray-400 text-xs flex items-center justify-center gap-1">
+              <Zap className="w-3 h-3 text-yellow-500" />
               Play & Win Real Cash
-              <Zap className="w-4 h-4 text-yellow-500" />
             </p>
           </motion.div>
 
-          {/* Stats */}
+          {/* Compact Stats */}
           <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.1 }}
-            className="grid grid-cols-3 gap-3 mb-6"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="grid grid-cols-3 gap-2 mb-4"
           >
-            <div className="text-center p-3 rounded-xl bg-white/5 border border-white/10">
-              <Trophy className="w-5 h-5 text-yellow-500 mx-auto mb-1" />
-              <p className="text-lg font-bold text-white">10K+</p>
-              <p className="text-[10px] text-gray-500">Winners</p>
+            <div className="text-center p-2 rounded-lg bg-white/5 border border-white/10">
+              <Trophy className="w-4 h-4 text-yellow-500 mx-auto" />
+              <p className="text-sm font-bold text-white">10K+</p>
+              <p className="text-[8px] text-gray-500">Winners</p>
             </div>
-            <div className="text-center p-3 rounded-xl bg-white/5 border border-white/10">
-              <Users className="w-5 h-5 text-green-500 mx-auto mb-1" />
-              <p className="text-lg font-bold text-white">5K+</p>
-              <p className="text-[10px] text-gray-500">Players Online</p>
+            <div className="text-center p-2 rounded-lg bg-white/5 border border-white/10">
+              <Users className="w-4 h-4 text-green-500 mx-auto" />
+              <p className="text-sm font-bold text-white">5K+</p>
+              <p className="text-[8px] text-gray-500">Online</p>
             </div>
-            <div className="text-center p-3 rounded-xl bg-white/5 border border-white/10">
-              <Dices className="w-5 h-5 text-blue-500 mx-auto mb-1" />
-              <p className="text-lg font-bold text-white">₹50L+</p>
-              <p className="text-[10px] text-gray-500">Distributed</p>
+            <div className="text-center p-2 rounded-lg bg-white/5 border border-white/10">
+              <Dices className="w-4 h-4 text-blue-500 mx-auto" />
+              <p className="text-sm font-bold text-white">₹50L+</p>
+              <p className="text-[8px] text-gray-500">Paid</p>
             </div>
           </motion.div>
 
-          {/* Wallet Balance */}
+          {/* Compact Wallet */}
           <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.15 }}
-            className="p-4 rounded-xl mb-6 flex items-center justify-between"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="p-3 rounded-lg mb-4 flex items-center justify-between"
             style={{
-              background: 'linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.02) 100%)',
-              border: '1px solid rgba(255,255,255,0.1)',
+              background: 'rgba(255,255,255,0.03)',
+              border: '1px solid rgba(255,255,255,0.08)',
             }}
           >
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-gradient-to-br from-green-500/20 to-green-600/10">
-                <Wallet className="w-5 h-5 text-green-400" />
+            <div className="flex items-center gap-2">
+              <div className="p-1.5 rounded-md bg-green-500/20">
+                <Wallet className="w-4 h-4 text-green-400" />
               </div>
               <div>
-                <p className="text-xs text-gray-400">Wallet Balance</p>
-                <p className="font-bold text-xl text-white">₹{walletBalance.toFixed(2)}</p>
+                <p className="text-[10px] text-gray-400">Balance</p>
+                <p className="font-bold text-lg text-white">₹{walletBalance.toFixed(0)}</p>
               </div>
             </div>
             <Link to="/wallet">
-              <Button 
-                size="sm"
-                className="bg-gradient-to-r from-green-500 to-green-600 hover:opacity-90 text-white"
-              >
-                Add Money
+              <Button size="sm" className="h-8 text-xs bg-green-600 hover:bg-green-700">
+                Add
               </Button>
             </Link>
           </motion.div>
 
-          {/* Entry Selector */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="mb-6"
-          >
-            <EntrySelector
-              amounts={ENTRY_AMOUNTS.filter(a => a >= settings.minEntryAmount)}
-              selectedAmount={entryAmount}
-              onSelect={setEntryAmount}
-              rewardMultiplier={settings.rewardMultiplier}
-              playerMode={playerMode}
-              onPlayerModeChange={setPlayerMode}
-            />
-          </motion.div>
-
-          {/* Play Mode Buttons - Top */}
+          {/* Play Buttons - Top (Compact) */}
           {user && (
             <motion.div
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
               className="grid grid-cols-2 gap-2 mb-4"
             >
-              {/* Play vs Bot - Compact */}
-              <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-                <Button
-                  onClick={startMatchmaking}
-                  disabled={walletBalance < entryAmount}
-                  className="w-full py-4 text-sm font-bold rounded-xl"
-                  style={{
-                    background: walletBalance >= entryAmount 
-                      ? 'linear-gradient(135deg, #FFD700 0%, #FFA500 100%)'
-                      : undefined,
-                    boxShadow: walletBalance >= entryAmount 
-                      ? '0 4px 20px rgba(255,165,0,0.3)'
-                      : undefined,
-                  }}
-                >
-                  🎲 Play vs Bot
-                </Button>
-              </motion.div>
-
-              {/* Play with Friend - Compact */}
-              <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-                <Button
-                  onClick={() => setGameMode('vs-friend')}
-                  className="w-full py-4 text-sm font-bold rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 hover:opacity-90"
-                >
-                  <UserPlus className="w-4 h-4 mr-1" />
-                  With Friend
-                </Button>
-              </motion.div>
+              <Button
+                onClick={startMatchmaking}
+                disabled={walletBalance < entryAmount}
+                className="h-10 text-xs font-bold rounded-lg"
+                style={{
+                  background: walletBalance >= entryAmount 
+                    ? 'linear-gradient(135deg, #FFD700 0%, #FFA500 100%)'
+                    : undefined,
+                }}
+              >
+                🎲 Play vs Bot
+              </Button>
+              <Button
+                onClick={() => setGameMode('vs-friend')}
+                className="h-10 text-xs font-bold rounded-lg bg-gradient-to-r from-purple-600 to-pink-600"
+              >
+                <UserPlus className="w-3 h-3 mr-1" />
+                With Friend
+              </Button>
             </motion.div>
           )}
 
           {!user && (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-              className="mb-4"
-            >
-              <Link to="/auth" className="block">
-                <Button 
-                  className="w-full py-5 text-lg font-bold rounded-xl"
-                  style={{
-                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                  }}
-                >
-                  Login to Play
-                </Button>
-              </Link>
-            </motion.div>
+            <Link to="/auth" className="block mb-4">
+              <Button className="w-full h-10 text-sm font-bold rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600">
+                Login to Play
+              </Button>
+            </Link>
           )}
 
           {/* Entry Selector */}
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.25 }}
             className="mb-4"
           >
             <EntrySelector
@@ -704,35 +638,30 @@ const LudoPage = () => {
             />
           </motion.div>
 
-          {/* Insufficient Balance Warning */}
+          {/* Insufficient Balance */}
           {user && walletBalance < entryAmount && (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              className="mb-4 p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-center"
+              className="mb-3 p-2 rounded-lg bg-red-500/10 border border-red-500/20 text-center"
             >
-              <p className="text-red-400 text-sm font-medium">💰 Insufficient Balance</p>
-              <Link to="/wallet" className="text-xs text-red-300 hover:underline">
-                Add money to wallet →
+              <p className="text-red-400 text-xs">💰 Insufficient Balance</p>
+              <Link to="/wallet" className="text-[10px] text-red-300 hover:underline">
+                Add money →
               </Link>
             </motion.div>
           )}
 
-          {/* Rules Link */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.4 }}
-            className="text-center mt-6"
-          >
+          {/* Rules */}
+          <div className="text-center mt-4">
             <Link 
               to="/ludo/rules" 
-              className="inline-flex items-center gap-2 text-sm text-gray-400 hover:text-white transition-colors"
+              className="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-white"
             >
-              <Info className="w-4 h-4" />
-              Game Rules & Fair Play
+              <Info className="w-3 h-3" />
+              Rules & Fair Play
             </Link>
-          </motion.div>
+          </div>
         </main>
 
         <BottomNav />
