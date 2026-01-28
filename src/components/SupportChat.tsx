@@ -17,6 +17,7 @@ import ImageLightbox from '@/components/ImageLightbox';
 import { uploadResumableToBucket } from '@/utils/resumableUpload';
 import { SUPPORT_ATTACHMENTS_BUCKET } from '@/utils/supportAttachments';
 import ReactMarkdown from 'react-markdown';
+import heroBanner from '@/assets/hero-banner.jpg';
 
 interface Attachment {
   url: string;
@@ -411,6 +412,22 @@ const SupportChat = () => {
                   exit={{ opacity: 0, x: 20 }}
                   className="flex-1 p-4 overflow-auto"
                 >
+                  {/* Hero Banner */}
+                  <div className="relative mb-4 rounded-xl overflow-hidden">
+                    <img 
+                      src={heroBanner} 
+                      alt="ProBattle Gaming" 
+                      className="w-full h-24 object-cover"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent" />
+                    <div className="absolute bottom-2 left-3 right-3">
+                      <h4 className="font-display font-bold text-white text-sm drop-shadow-lg">
+                        Game Support
+                      </h4>
+                      <p className="text-[10px] text-white/80">Select your game for help</p>
+                    </div>
+                  </div>
+
                   <p className="text-sm text-muted-foreground mb-4 text-center">
                     🎮 Konse game mein problem hai?
                   </p>
