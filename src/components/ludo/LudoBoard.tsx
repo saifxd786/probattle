@@ -365,14 +365,15 @@ const BottomInfoBar = ({
 
 const LudoBoard = ({ players, onTokenClick, selectedToken, captureEvent, onCaptureAnimationComplete, diceValue = 1 }: LudoBoardProps) => {
   const boardRef = useRef<HTMLDivElement>(null);
-  const [size, setSize] = useState(Math.min(window.innerWidth - 16, window.innerHeight - 280, 380));
+  // Calculate size based on available viewport - fit within screen
+  const [size, setSize] = useState(Math.min(window.innerWidth - 16, window.innerHeight - 320, 340));
   const [capturePosition, setCapturePosition] = useState<{ x: number; y: number } | null>(null);
   
   useEffect(() => {
     const handleResize = () => {
       const maxWidth = window.innerWidth - 16;
-      const maxHeight = window.innerHeight - 280;
-      setSize(Math.min(maxWidth, maxHeight, 380));
+      const maxHeight = window.innerHeight - 320;
+      setSize(Math.min(maxWidth, maxHeight, 340));
     };
     handleResize();
     window.addEventListener('resize', handleResize);
@@ -433,7 +434,7 @@ const LudoBoard = ({ players, onTokenClick, selectedToken, captureEvent, onCaptu
   };
 
   return (
-    <div className="relative mx-auto flex flex-col">
+    <div className="relative mx-auto flex flex-col overflow-hidden">
       {/* Enhanced Blue Pattern Background */}
       <div 
         className="absolute inset-0 -z-10"
@@ -660,26 +661,31 @@ const LudoBoard = ({ players, onTokenClick, selectedToken, captureEvent, onCaptu
         </div>
       </motion.div>
 
-      {/* Player Profile Cards at bottom corners */}
-      <div className="flex justify-between items-end px-4 mt-4">
+      {/* Compact Player indicators at bottom corners */}
+      <div className="flex justify-between items-center px-2 mt-2">
         {players[0] && (
-          <PlayerProfileCard 
-            player={players[0]} 
-            isLeft={true}
-          />
+          <div className="flex items-center gap-1.5">
+            <div 
+              className="w-6 h-6 rounded-full"
+              style={{ background: COLORS[players[0].color as keyof typeof COLORS]?.main }}
+            />
+            <span className="text-white text-xs font-bold">{players[0].uid || generateUID()}</span>
+          </div>
         )}
         
+        <div className="px-2 py-0.5 rounded bg-yellow-500/20">
+          <span className="text-yellow-400 text-xs font-bold">VS</span>
+        </div>
+        
         {players[1] && (
-          <PlayerProfileCard 
-            player={players[1]} 
-            isLeft={false}
-          />
+          <div className="flex items-center gap-1.5">
+            <span className="text-white text-xs font-bold">{players[1].uid || generateUID()}</span>
+            <div 
+              className="w-6 h-6 rounded-full"
+              style={{ background: COLORS[players[1].color as keyof typeof COLORS]?.main }}
+            />
+          </div>
         )}
-      </div>
-
-      {/* Bottom Info Bar with player UIDs and coins */}
-      <div className="mt-3 px-4">
-        <BottomInfoBar players={players} />
       </div>
     </div>
   );
