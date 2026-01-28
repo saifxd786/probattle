@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { User, Edit2, Save, X, History, Trophy, Calendar, Loader2, Copy, Check, Ban, AlertTriangle, Camera, Image } from 'lucide-react';
+import { User, Edit2, Save, X, History, Trophy, Calendar, Loader2, Copy, Check, Ban, AlertTriangle, Camera } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import Header from '@/components/Header';
 import BottomNav from '@/components/BottomNav';
@@ -11,6 +11,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
+import SecurityQuestionForm from '@/components/profile/SecurityQuestionForm';
 
 type Profile = {
   id: string;
@@ -24,6 +25,8 @@ type Profile = {
   ban_reason: string | null;
   banned_at: string | null;
   created_at: string;
+  security_question: string | null;
+  security_answer: string | null;
 };
 
 type MatchRegistration = {
@@ -441,6 +444,14 @@ const ProfilePage = () => {
                 </CardContent>
               </Card>
             </motion.div>
+
+            {/* Security Question Form */}
+            <SecurityQuestionForm
+              userId={user.id}
+              currentQuestion={profile?.security_question || null}
+              hasAnswer={!!profile?.security_answer}
+              onUpdate={fetchData}
+            />
 
 
             {/* Match History */}
