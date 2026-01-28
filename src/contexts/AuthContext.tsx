@@ -14,11 +14,11 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Component to initialize push notifications
-const PushNotificationInitializer = () => {
+// Component to initialize push notifications - using memo to prevent unnecessary re-renders
+const PushNotificationInitializer = React.memo(function PushNotificationInitializer() {
   usePushNotifications();
   return null;
-};
+});
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
