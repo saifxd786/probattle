@@ -261,6 +261,7 @@ const BGMIPage = () => {
                 isRegistered={userRegistrations.includes(match.id)}
                 isFreeMatch={match.is_free}
                 isClassicMatch={match.match_type === 'classic'}
+                gunCategory={(match as any).gun_category}
                 onRegister={handleRegistrationChange}
                 delay={index * 0.05}
               />

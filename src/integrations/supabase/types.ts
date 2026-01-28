@@ -676,6 +676,7 @@ export type Database = {
           filled_slots: number
           first_place_prize: number | null
           game: Database["public"]["Enums"]["game_type"]
+          gun_category: string | null
           id: string
           is_free: boolean
           map_name: string | null
@@ -701,6 +702,7 @@ export type Database = {
           filled_slots?: number
           first_place_prize?: number | null
           game?: Database["public"]["Enums"]["game_type"]
+          gun_category?: string | null
           id?: string
           is_free?: boolean
           map_name?: string | null
@@ -726,6 +728,7 @@ export type Database = {
           filled_slots?: number
           first_place_prize?: number | null
           game?: Database["public"]["Enums"]["game_type"]
+          gun_category?: string | null
           id?: string
           is_free?: boolean
           map_name?: string | null

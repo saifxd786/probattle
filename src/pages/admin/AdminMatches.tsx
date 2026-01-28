@@ -35,6 +35,7 @@ type Match = {
   room_id: string | null;
   room_password: string | null;
   is_free: boolean;
+  gun_category: string | null;
 };
 
 const defaultFormData = {
@@ -54,6 +55,7 @@ const defaultFormData = {
   room_password: '',
   rules: '',
   is_free: false,
+  gun_category: '' as string,
 };
 
 const AdminMatches = () => {
@@ -119,6 +121,7 @@ const AdminMatches = () => {
       room_password: formData.room_password || null,
       rules: formData.rules || null,
       is_free: formData.is_free,
+      gun_category: formData.gun_category || null,
       created_by: user?.id,
     };
 
@@ -192,6 +195,7 @@ const AdminMatches = () => {
       room_password: match.room_password || '',
       rules: '',
       is_free: match.is_free,
+      gun_category: match.gun_category || '',
     });
     setIsDialogOpen(true);
   };
@@ -315,6 +319,21 @@ const AdminMatches = () => {
                     </SelectContent>
                   </Select>
                 </div>
+                
+                {/* Gun Category - Only for TDM matches */}
+                {formData.match_type.startsWith('tdm') && (
+                  <div>
+                    <Label>Gun Category</Label>
+                    <Select value={formData.gun_category} onValueChange={(v) => setFormData({ ...formData, gun_category: v })}>
+                      <SelectTrigger><SelectValue placeholder="Select gun category" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="m416_only">Only M416</SelectItem>
+                        <SelectItem value="shotgun_only">Only Shotgun</SelectItem>
+                        <SelectItem value="any_gun">Any Gun</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
                 <div>
                   <Label>Entry Fee (₹)</Label>
                   <Input
