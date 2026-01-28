@@ -25,6 +25,49 @@ import { useGameBan } from '@/hooks/useGameBan';
 
 type GameMode = 'select' | 'vs-bot' | 'vs-friend';
 
+// Helper function to get realistic live users based on time of day (IST)
+const getLiveUsersCount = (): string => {
+  const now = new Date();
+  // Convert to IST (UTC+5:30)
+  const istOffset = 5.5 * 60 * 60 * 1000;
+  const istTime = new Date(now.getTime() + istOffset);
+  const hour = istTime.getUTCHours();
+  
+  // Add randomness factor (±15%)
+  const randomFactor = 0.85 + Math.random() * 0.3;
+  
+  let baseUsers: number;
+  
+  if (hour >= 0 && hour < 5) {
+    // Late night (12 AM - 5 AM): Lowest activity
+    baseUsers = Math.floor((400 + Math.random() * 600) * randomFactor);
+  } else if (hour >= 5 && hour < 9) {
+    // Early morning (5 AM - 9 AM): Low activity
+    baseUsers = Math.floor((600 + Math.random() * 800) * randomFactor);
+  } else if (hour >= 9 && hour < 12) {
+    // Morning (9 AM - 12 PM): Moderate activity
+    baseUsers = Math.floor((1500 + Math.random() * 1000) * randomFactor);
+  } else if (hour >= 12 && hour < 17) {
+    // Afternoon (12 PM - 5 PM): Good activity
+    baseUsers = Math.floor((2500 + Math.random() * 1500) * randomFactor);
+  } else if (hour >= 17 && hour < 21) {
+    // Evening (5 PM - 9 PM): Peak hours
+    baseUsers = Math.floor((4000 + Math.random() * 3000) * randomFactor);
+  } else if (hour >= 21 && hour < 23) {
+    // Night (9 PM - 11 PM): High activity
+    baseUsers = Math.floor((3000 + Math.random() * 2000) * randomFactor);
+  } else {
+    // Late night (11 PM - 12 AM): Declining
+    baseUsers = Math.floor((1500 + Math.random() * 1000) * randomFactor);
+  }
+  
+  // Format the number
+  if (baseUsers >= 1000) {
+    return `${(baseUsers / 1000).toFixed(1)}K`;
+  }
+  return `${baseUsers}`;
+};
+
 const LudoPage = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -32,6 +75,7 @@ const LudoPage = () => {
   const { isBanned, isLoading: isBanLoading } = useGameBan('ludo');
   const [gameMode, setGameMode] = useState<GameMode>('select');
   const [showRematchDialog, setShowRematchDialog] = useState(false);
+  const [liveUsers, setLiveUsers] = useState(getLiveUsersCount);
   
   // Bot game hook
   const {
@@ -74,6 +118,14 @@ const LudoPage = () => {
   } = useFriendLudoGame();
 
   const ENTRY_AMOUNTS = [100, 200, 500, 1000];
+
+  // Update live users count every 30 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setLiveUsers(getLiveUsersCount());
+    }, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Auto-open rematch dialog when opponent requests
   useEffect(() => {
@@ -652,8 +704,8 @@ const LudoPage = () => {
               <p className="text-[8px] text-gray-500">Winners</p>
             </div>
             <div className="text-center p-2 rounded-lg bg-white/5 border border-white/10">
-              <Users className="w-4 h-4 text-green-500 mx-auto" />
-              <p className="text-sm font-bold text-white">5K+</p>
+              <Users className="w-4 h-4 text-green-500 mx-auto animate-pulse" />
+              <p className="text-sm font-bold text-white">{liveUsers}+</p>
               <p className="text-[8px] text-gray-500">Online</p>
             </div>
             <div className="text-center p-2 rounded-lg bg-white/5 border border-white/10">
