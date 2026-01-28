@@ -15,6 +15,7 @@ interface Token {
 interface Player {
   id: string;
   name: string;
+  uid: string; // 5-digit UID
   avatar?: string;
   isBot: boolean;
   status: 'searching' | 'connecting' | 'ready';
@@ -44,6 +45,103 @@ interface LudoSettings {
 
 const COLORS = ['red', 'green', 'yellow', 'blue'];
 
+// Track coordinates for each color (same as LudoBoard.tsx)
+// These map position numbers to actual board grid coordinates
+const COLOR_TRACK_COORDS: { [color: string]: { x: number; y: number }[] } = {
+  // Red (top-left) starts from left lane
+  red: [
+    { x: 1.5, y: 6.5 }, { x: 2.5, y: 6.5 }, { x: 3.5, y: 6.5 }, { x: 4.5, y: 6.5 }, { x: 5.5, y: 6.5 },
+    { x: 6.5, y: 5.5 }, { x: 6.5, y: 4.5 }, { x: 6.5, y: 3.5 }, { x: 6.5, y: 2.5 }, { x: 6.5, y: 1.5 }, { x: 6.5, y: 0.5 },
+    { x: 7.5, y: 0.5 },
+    { x: 8.5, y: 0.5 }, { x: 8.5, y: 1.5 }, { x: 8.5, y: 2.5 }, { x: 8.5, y: 3.5 }, { x: 8.5, y: 4.5 }, { x: 8.5, y: 5.5 },
+    { x: 9.5, y: 6.5 }, { x: 10.5, y: 6.5 }, { x: 11.5, y: 6.5 }, { x: 12.5, y: 6.5 }, { x: 13.5, y: 6.5 }, { x: 14.5, y: 6.5 },
+    { x: 14.5, y: 7.5 },
+    { x: 14.5, y: 8.5 }, { x: 13.5, y: 8.5 }, { x: 12.5, y: 8.5 }, { x: 11.5, y: 8.5 }, { x: 10.5, y: 8.5 }, { x: 9.5, y: 8.5 },
+    { x: 8.5, y: 9.5 }, { x: 8.5, y: 10.5 }, { x: 8.5, y: 11.5 }, { x: 8.5, y: 12.5 }, { x: 8.5, y: 13.5 }, { x: 8.5, y: 14.5 },
+    { x: 7.5, y: 14.5 },
+    { x: 6.5, y: 14.5 }, { x: 6.5, y: 13.5 }, { x: 6.5, y: 12.5 }, { x: 6.5, y: 11.5 }, { x: 6.5, y: 10.5 }, { x: 6.5, y: 9.5 },
+    { x: 5.5, y: 8.5 }, { x: 4.5, y: 8.5 }, { x: 3.5, y: 8.5 }, { x: 2.5, y: 8.5 }, { x: 1.5, y: 8.5 }, { x: 0.5, y: 8.5 },
+    { x: 0.5, y: 7.5 },
+  ],
+  // Green (top-right) starts from top lane
+  green: [
+    { x: 8.5, y: 1.5 }, { x: 8.5, y: 2.5 }, { x: 8.5, y: 3.5 }, { x: 8.5, y: 4.5 }, { x: 8.5, y: 5.5 },
+    { x: 9.5, y: 6.5 }, { x: 10.5, y: 6.5 }, { x: 11.5, y: 6.5 }, { x: 12.5, y: 6.5 }, { x: 13.5, y: 6.5 }, { x: 14.5, y: 6.5 },
+    { x: 14.5, y: 7.5 },
+    { x: 14.5, y: 8.5 }, { x: 13.5, y: 8.5 }, { x: 12.5, y: 8.5 }, { x: 11.5, y: 8.5 }, { x: 10.5, y: 8.5 }, { x: 9.5, y: 8.5 },
+    { x: 8.5, y: 9.5 }, { x: 8.5, y: 10.5 }, { x: 8.5, y: 11.5 }, { x: 8.5, y: 12.5 }, { x: 8.5, y: 13.5 }, { x: 8.5, y: 14.5 },
+    { x: 7.5, y: 14.5 },
+    { x: 6.5, y: 14.5 }, { x: 6.5, y: 13.5 }, { x: 6.5, y: 12.5 }, { x: 6.5, y: 11.5 }, { x: 6.5, y: 10.5 }, { x: 6.5, y: 9.5 },
+    { x: 5.5, y: 8.5 }, { x: 4.5, y: 8.5 }, { x: 3.5, y: 8.5 }, { x: 2.5, y: 8.5 }, { x: 1.5, y: 8.5 }, { x: 0.5, y: 8.5 },
+    { x: 0.5, y: 7.5 },
+    { x: 0.5, y: 6.5 }, { x: 1.5, y: 6.5 }, { x: 2.5, y: 6.5 }, { x: 3.5, y: 6.5 }, { x: 4.5, y: 6.5 }, { x: 5.5, y: 6.5 },
+    { x: 6.5, y: 5.5 }, { x: 6.5, y: 4.5 }, { x: 6.5, y: 3.5 }, { x: 6.5, y: 2.5 }, { x: 6.5, y: 1.5 }, { x: 6.5, y: 0.5 },
+    { x: 7.5, y: 0.5 },
+  ],
+  // Yellow (bottom-right) starts from right lane
+  yellow: [
+    { x: 13.5, y: 8.5 }, { x: 12.5, y: 8.5 }, { x: 11.5, y: 8.5 }, { x: 10.5, y: 8.5 }, { x: 9.5, y: 8.5 },
+    { x: 8.5, y: 9.5 }, { x: 8.5, y: 10.5 }, { x: 8.5, y: 11.5 }, { x: 8.5, y: 12.5 }, { x: 8.5, y: 13.5 }, { x: 8.5, y: 14.5 },
+    { x: 7.5, y: 14.5 },
+    { x: 6.5, y: 14.5 }, { x: 6.5, y: 13.5 }, { x: 6.5, y: 12.5 }, { x: 6.5, y: 11.5 }, { x: 6.5, y: 10.5 }, { x: 6.5, y: 9.5 },
+    { x: 5.5, y: 8.5 }, { x: 4.5, y: 8.5 }, { x: 3.5, y: 8.5 }, { x: 2.5, y: 8.5 }, { x: 1.5, y: 8.5 }, { x: 0.5, y: 8.5 },
+    { x: 0.5, y: 7.5 },
+    { x: 0.5, y: 6.5 }, { x: 1.5, y: 6.5 }, { x: 2.5, y: 6.5 }, { x: 3.5, y: 6.5 }, { x: 4.5, y: 6.5 }, { x: 5.5, y: 6.5 },
+    { x: 6.5, y: 5.5 }, { x: 6.5, y: 4.5 }, { x: 6.5, y: 3.5 }, { x: 6.5, y: 2.5 }, { x: 6.5, y: 1.5 }, { x: 6.5, y: 0.5 },
+    { x: 7.5, y: 0.5 },
+    { x: 8.5, y: 0.5 }, { x: 8.5, y: 1.5 }, { x: 8.5, y: 2.5 }, { x: 8.5, y: 3.5 }, { x: 8.5, y: 4.5 }, { x: 8.5, y: 5.5 },
+    { x: 9.5, y: 6.5 }, { x: 10.5, y: 6.5 }, { x: 11.5, y: 6.5 }, { x: 12.5, y: 6.5 }, { x: 13.5, y: 6.5 }, { x: 14.5, y: 6.5 },
+    { x: 14.5, y: 7.5 },
+  ],
+  // Blue (bottom-left) starts from bottom lane
+  blue: [
+    { x: 6.5, y: 13.5 }, { x: 6.5, y: 12.5 }, { x: 6.5, y: 11.5 }, { x: 6.5, y: 10.5 }, { x: 6.5, y: 9.5 },
+    { x: 5.5, y: 8.5 }, { x: 4.5, y: 8.5 }, { x: 3.5, y: 8.5 }, { x: 2.5, y: 8.5 }, { x: 1.5, y: 8.5 }, { x: 0.5, y: 8.5 },
+    { x: 0.5, y: 7.5 },
+    { x: 0.5, y: 6.5 }, { x: 1.5, y: 6.5 }, { x: 2.5, y: 6.5 }, { x: 3.5, y: 6.5 }, { x: 4.5, y: 6.5 }, { x: 5.5, y: 6.5 },
+    { x: 6.5, y: 5.5 }, { x: 6.5, y: 4.5 }, { x: 6.5, y: 3.5 }, { x: 6.5, y: 2.5 }, { x: 6.5, y: 1.5 }, { x: 6.5, y: 0.5 },
+    { x: 7.5, y: 0.5 },
+    { x: 8.5, y: 0.5 }, { x: 8.5, y: 1.5 }, { x: 8.5, y: 2.5 }, { x: 8.5, y: 3.5 }, { x: 8.5, y: 4.5 }, { x: 8.5, y: 5.5 },
+    { x: 9.5, y: 6.5 }, { x: 10.5, y: 6.5 }, { x: 11.5, y: 6.5 }, { x: 12.5, y: 6.5 }, { x: 13.5, y: 6.5 }, { x: 14.5, y: 6.5 },
+    { x: 14.5, y: 7.5 },
+    { x: 14.5, y: 8.5 }, { x: 13.5, y: 8.5 }, { x: 12.5, y: 8.5 }, { x: 11.5, y: 8.5 }, { x: 10.5, y: 8.5 }, { x: 9.5, y: 8.5 },
+    { x: 8.5, y: 9.5 }, { x: 8.5, y: 10.5 }, { x: 8.5, y: 11.5 }, { x: 8.5, y: 12.5 }, { x: 8.5, y: 13.5 }, { x: 8.5, y: 14.5 },
+    { x: 7.5, y: 14.5 },
+  ],
+};
+
+// Safe positions (board coordinates) - starting stars and safe spots
+const SAFE_POSITIONS = [
+  // Starting stars
+  { x: 1.5, y: 6.5 },   // Red start
+  { x: 8.5, y: 1.5 },   // Green start
+  { x: 13.5, y: 8.5 },  // Yellow start
+  { x: 6.5, y: 13.5 },  // Blue start
+  // Safe spots
+  { x: 2.5, y: 7.5 },
+  { x: 7.5, y: 2.5 },
+  { x: 12.5, y: 7.5 },
+  { x: 7.5, y: 12.5 },
+];
+
+// Get board coordinates for a token position
+const getBoardCoords = (position: number, color: string): { x: number; y: number } | null => {
+  if (position <= 0 || position >= 52) return null; // Home or home stretch
+  const track = COLOR_TRACK_COORDS[color];
+  if (!track || position - 1 >= track.length) return null;
+  return track[position - 1];
+};
+
+// Check if position is a safe spot
+const isSafePosition = (coords: { x: number; y: number }): boolean => {
+  return SAFE_POSITIONS.some(safe => safe.x === coords.x && safe.y === coords.y);
+};
+
+// Generate random 5-digit UID
+const generateUID = (): string => {
+  return Math.floor(10000 + Math.random() * 90000).toString();
+};
+
 export const useLudoGame = () => {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -72,6 +170,27 @@ export const useLudoGame = () => {
   const [entryAmount, setEntryAmount] = useState(100);
   const [playerMode, setPlayerMode] = useState<2 | 4>(2);
   const [walletBalance, setWalletBalance] = useState(0);
+  const [userUID, setUserUID] = useState<string>('');
+
+  // Fetch user profile and UID
+  useEffect(() => {
+    if (!user) return;
+    
+    const fetchProfile = async () => {
+      const { data } = await supabase
+        .from('profiles')
+        .select('wallet_balance, user_code')
+        .eq('id', user.id)
+        .single();
+      
+      if (data) {
+        setWalletBalance(Number(data.wallet_balance));
+        setUserUID(data.user_code || generateUID());
+      }
+    };
+    
+    fetchProfile();
+  }, [user]);
 
   // Fetch settings
   useEffect(() => {
@@ -95,25 +214,6 @@ export const useLudoGame = () => {
     
     fetchSettings();
   }, []);
-
-  // Fetch wallet balance
-  useEffect(() => {
-    if (!user) return;
-    
-    const fetchBalance = async () => {
-      const { data } = await supabase
-        .from('profiles')
-        .select('wallet_balance')
-        .eq('id', user.id)
-        .single();
-      
-      if (data) {
-        setWalletBalance(Number(data.wallet_balance));
-      }
-    };
-    
-    fetchBalance();
-  }, [user]);
 
   const getRandomBotName = useCallback((usedNames: string[]) => {
     const available = BOT_NAMES.filter(name => !usedNames.includes(name));
@@ -165,7 +265,6 @@ export const useLudoGame = () => {
 
     if (matchError || !match) {
       toast({ title: 'Failed to create match', variant: 'destructive' });
-      // Refund
       await supabase.from('profiles').update({ wallet_balance: walletBalance }).eq('id', user.id);
       return;
     }
@@ -188,10 +287,11 @@ export const useLudoGame = () => {
       type: 'entry'
     });
 
-    // Initialize players with user
+    // Initialize user player
     const userPlayer: Player = {
       id: user.id,
       name: user.email?.split('@')[0] || 'You',
+      uid: userUID || generateUID(),
       isBot: false,
       status: 'ready',
       color: userColor,
@@ -206,7 +306,7 @@ export const useLudoGame = () => {
       players: [userPlayer]
     }));
 
-    // Simulate bot joining after delays
+    // Simulate bot joining
     const usedNames: string[] = [];
     for (let i = 1; i < playerMode; i++) {
       setTimeout(async () => {
@@ -225,6 +325,7 @@ export const useLudoGame = () => {
         const botPlayer: Player = {
           id: `bot-${i}`,
           name: botName,
+          uid: generateUID(),
           isBot: true,
           status: 'connecting',
           color: botColor,
@@ -237,7 +338,6 @@ export const useLudoGame = () => {
           players: [...prev.players, botPlayer]
         }));
 
-        // Mark bot as ready after short delay
         setTimeout(() => {
           setGameState(prev => ({
             ...prev,
@@ -249,7 +349,7 @@ export const useLudoGame = () => {
       }, 1000 * i + Math.random() * 800);
     }
 
-    // Start game after all players join
+    // Start game
     setTimeout(() => {
       gameInProgressRef.current = true;
       setGameState(prev => ({
@@ -264,12 +364,11 @@ export const useLudoGame = () => {
         started_at: new Date().toISOString()
       }).eq('id', match.id);
     }, 1500 * playerMode + 500);
-  }, [user, walletBalance, entryAmount, playerMode, settings, toast, getRandomBotName, createInitialTokens]);
+  }, [user, walletBalance, entryAmount, playerMode, settings, toast, getRandomBotName, createInitialTokens, userUID]);
 
   // Generate dice value
   const generateDiceValue = useCallback((isBot: boolean): number => {
     if (isBot) {
-      // Bot dice - weighted based on difficulty
       const weights = {
         easy: [0.2, 0.2, 0.2, 0.2, 0.1, 0.1],
         normal: [0.167, 0.167, 0.167, 0.167, 0.167, 0.167],
@@ -280,36 +379,34 @@ export const useLudoGame = () => {
       let cumulative = 0;
       for (let i = 0; i < w.length; i++) {
         cumulative += w[i];
-        if (rand < cumulative) {
-          return i + 1;
-        }
+        if (rand < cumulative) return i + 1;
       }
       return 6;
-    } else {
-      // User dice - fair random
-      return Math.floor(Math.random() * 6) + 1;
     }
+    return Math.floor(Math.random() * 6) + 1;
   }, [settings.difficulty]);
 
-  // Move token function
+  // Move token with CORRECT capture logic using board coordinates
   const moveToken = useCallback((color: string, tokenId: number, diceValue: number, players: Player[]): { updatedPlayers: Player[]; winner: Player | null; gotSix: boolean; capturedOpponent: boolean } => {
     soundManager.playTokenMove();
     hapticManager.tokenMove();
     
     let winner: Player | null = null;
     let capturedOpponent = false;
-    let newTokenPosition = 0;
+    let newBoardCoords: { x: number; y: number } | null = null;
+    let newPosition = 0;
 
-    // First, calculate the new position
+    // Calculate new position first
     const movingPlayer = players.find(p => p.color === color);
     const movingToken = movingPlayer?.tokens.find(t => t.id === tokenId);
     
     if (movingToken) {
       if (movingToken.position === 0 && diceValue === 6) {
-        newTokenPosition = 1;
+        newPosition = 1;
       } else if (movingToken.position > 0) {
-        newTokenPosition = Math.min(movingToken.position + diceValue, 57);
+        newPosition = Math.min(movingToken.position + diceValue, 57);
       }
+      newBoardCoords = getBoardCoords(newPosition, color);
     }
     
     const updatedPlayers = players.map(player => {
@@ -318,20 +415,20 @@ export const useLudoGame = () => {
         const updatedTokens = player.tokens.map(token => {
           if (token.id !== tokenId) return token;
 
-          let newPosition = token.position;
+          let finalPosition = token.position;
           if (token.position === 0 && diceValue === 6) {
-            newPosition = 1;
+            finalPosition = 1;
             soundManager.playTokenEnter();
             hapticManager.tokenEnter();
           } else if (token.position > 0) {
-            newPosition = Math.min(token.position + diceValue, 57);
-            if (newPosition === 57) {
+            finalPosition = Math.min(token.position + diceValue, 57);
+            if (finalPosition === 57) {
               soundManager.playTokenHome();
               hapticManager.tokenHome();
             }
           }
 
-          return { ...token, position: newPosition };
+          return { ...token, position: finalPosition };
         });
 
         const tokensHome = updatedTokens.filter(t => t.position === 57).length;
@@ -343,27 +440,34 @@ export const useLudoGame = () => {
 
         return updatedPlayer;
       } else {
-        // Check if any of this player's tokens get captured
-        // Safe zones: positions that are safe from capture (home column positions 52-57, start positions)
-        const isSafePosition = newTokenPosition >= 52 || newTokenPosition === 0;
-        
-        if (!isSafePosition && newTokenPosition > 0) {
-          const updatedTokens = player.tokens.map(token => {
-            // If opponent's token is at the same position as our new position, send it home
-            if (token.position === newTokenPosition && token.position > 0 && token.position < 52) {
-              capturedOpponent = true;
-              return { ...token, position: 0 };
-            }
-            return token;
-          });
-          return { ...player, tokens: updatedTokens };
+        // Check capture using BOARD COORDINATES
+        if (!newBoardCoords || newPosition >= 52 || newPosition === 0) {
+          return player;
         }
         
-        return player;
+        // Check if new position is a safe spot
+        if (isSafePosition(newBoardCoords)) {
+          return player;
+        }
+
+        // Check each opponent token
+        const updatedTokens = player.tokens.map(token => {
+          if (token.position <= 0 || token.position >= 52) return token;
+          
+          const opponentCoords = getBoardCoords(token.position, player.color);
+          if (!opponentCoords) return token;
+          
+          // Compare BOARD coordinates
+          if (opponentCoords.x === newBoardCoords!.x && opponentCoords.y === newBoardCoords!.y) {
+            capturedOpponent = true;
+            return { ...token, position: 0 };
+          }
+          return token;
+        });
+        return { ...player, tokens: updatedTokens };
       }
     });
 
-    // Play capture sound if we captured an opponent
     if (capturedOpponent) {
       setTimeout(() => {
         soundManager.playCapture();
@@ -374,7 +478,7 @@ export const useLudoGame = () => {
     return { updatedPlayers, winner, gotSix: diceValue === 6, capturedOpponent };
   }, []);
 
-  // Bot AI to select best move
+  // Bot AI
   const selectBotMove = useCallback((player: Player, diceValue: number): number | null => {
     const movableTokens = player.tokens.filter(token => {
       if (token.position === 0 && diceValue === 6) return true;
@@ -384,7 +488,6 @@ export const useLudoGame = () => {
 
     if (movableTokens.length === 0) return null;
 
-    // Priority: 1. Get token home if possible, 2. Move out with 6, 3. Move furthest token
     const tokenToHome = movableTokens.find(t => t.position > 0 && t.position + diceValue === 57);
     if (tokenToHome) return tokenToHome.id;
 
@@ -393,7 +496,6 @@ export const useLudoGame = () => {
       if (tokenInHome) return tokenInHome.id;
     }
 
-    // Move the furthest token
     const furthestToken = movableTokens.reduce((prev, curr) => 
       curr.position > prev.position ? curr : prev
     );
@@ -412,11 +514,9 @@ export const useLudoGame = () => {
       
       botTurnRef.current = true;
 
-      // Start rolling animation
       setTimeout(() => {
         setGameState(inner => ({ ...inner, isRolling: true, canRoll: false }));
         
-        // After roll animation
         setTimeout(() => {
           const diceValue = generateDiceValue(true);
           
@@ -430,7 +530,6 @@ export const useLudoGame = () => {
             const tokenId = selectBotMove(botPlayer, diceValue);
             
             if (tokenId !== null) {
-              // Bot can move
               setTimeout(() => {
                 setGameState(moveState => {
                   const { updatedPlayers, winner, gotSix } = moveToken(
@@ -455,7 +554,6 @@ export const useLudoGame = () => {
                   }
 
                   if (gotSix) {
-                    // Bot gets another turn
                     botTurnRef.current = false;
                     setTimeout(() => executeBotTurn(), 500);
                     return {
@@ -467,14 +565,12 @@ export const useLudoGame = () => {
                     };
                   }
 
-                  // Next player's turn
                   const nextTurn = (moveState.currentTurn + 1) % moveState.players.length;
                   const isNextUser = !moveState.players[nextTurn]?.isBot;
                   
                   botTurnRef.current = false;
                   soundManager.playTurnChange();
                   
-                  // Schedule next bot turn if needed
                   if (!isNextUser) {
                     setTimeout(() => executeBotTurn(), 800);
                   }
@@ -493,7 +589,6 @@ export const useLudoGame = () => {
 
               return { ...rollState, diceValue, isRolling: false };
             } else {
-              // No valid move, skip turn
               setTimeout(() => {
                 const nextTurn = (rollState.currentTurn + 1) % rollState.players.length;
                 const isNextUser = !rollState.players[nextTurn]?.isBot;
@@ -550,7 +645,6 @@ export const useLudoGame = () => {
     setGameState(prev => {
       const player = prev.players[prev.currentTurn];
       
-      // Check if user can move any token
       const canMove = player.tokens.some(token => {
         if (token.position === 0 && diceValue === 6) return true;
         if (token.position > 0 && token.position + diceValue <= 57) return true;
@@ -558,7 +652,6 @@ export const useLudoGame = () => {
       });
 
       if (!canMove) {
-        // No valid moves, go to next turn after delay
         setTimeout(() => {
           const nextTurn = (prev.currentTurn + 1) % prev.players.length;
           const isNextUser = !prev.players[nextTurn]?.isBot;
@@ -643,7 +736,6 @@ export const useLudoGame = () => {
     const isUserWinner = winner.id === user.id;
     const rewardAmount = entryAmount * settings.rewardMultiplier;
 
-    // Update match
     await supabase.from('ludo_matches').update({
       status: 'completed',
       winner_id: isUserWinner ? user.id : null,
@@ -651,12 +743,10 @@ export const useLudoGame = () => {
     }).eq('id', gameState.matchId);
 
     if (isUserWinner) {
-      // Credit reward to wallet
       await supabase.from('profiles').update({
         wallet_balance: walletBalance + rewardAmount
       }).eq('id', user.id);
 
-      // Record win transaction
       await supabase.from('ludo_transactions').insert({
         user_id: user.id,
         match_id: gameState.matchId,
@@ -666,7 +756,6 @@ export const useLudoGame = () => {
 
       setWalletBalance(prev => prev + rewardAmount);
 
-      // Send notification
       await supabase.from('notifications').insert({
         user_id: user.id,
         title: '🎉 Ludo Victory!',

@@ -14,6 +14,7 @@ interface Player {
   tokens: Token[];
   isCurrentTurn: boolean;
   name?: string;
+  uid?: string;
   isBot?: boolean;
 }
 
@@ -275,10 +276,10 @@ const PlayerLabel = ({
   player: Player; 
   position: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right';
 }) => {
+  const displayText = player.uid ? `#${player.uid}` : (player.name || 'Player');
   const colorKey = player.color as keyof typeof COLORS;
   const colors = COLORS[colorKey];
-  const isYou = !player.isBot && player.name?.toLowerCase() !== 'computer';
-  const displayName = player.name || (isYou ? 'You' : `Computer`);
+  const displayName = player.uid ? `#${player.uid}` : (player.name || 'Player');
   
   const positionClasses = {
     'top-left': 'top-0 left-0 -translate-y-full',
