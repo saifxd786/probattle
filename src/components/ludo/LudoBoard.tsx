@@ -941,11 +941,13 @@ const LudoBoard = ({ players, onTokenClick, selectedToken, captureEvent, onCaptu
               {/* "TAP" hint badge for movable tokens */}
               {canMove && !isSelected && !isHoveredToken && (
                 <motion.div
-                  className="absolute -top-1 -right-1 px-1 py-0.5 rounded-full text-white font-bold shadow-lg"
+                  className="absolute px-1.5 py-0.5 rounded-full text-white font-bold shadow-lg pointer-events-none"
                   style={{
                     fontSize: cellSize * 0.18,
                     background: `linear-gradient(135deg, ${COLORS[colorKey].main} 0%, ${COLORS[colorKey].dark} 100%)`,
                     border: '1px solid white',
+                    top: cellSize * -0.05,
+                    right: cellSize * -0.15,
                   }}
                   initial={{ scale: 0 }}
                   animate={{ scale: [1, 1.1, 1] }}
