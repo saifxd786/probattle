@@ -144,26 +144,32 @@ const BGMIPage = () => {
     <div className="min-h-screen bg-background pb-20">
       <Header />
       
-      {/* Hero Banner */}
+      {/* Hero Banner - Changes based on selected tab */}
       <section className="relative pt-16">
-        <div className="relative h-48 md:h-64 overflow-hidden">
+        <motion.div 
+          key={activeTab}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.3 }}
+          className="relative h-52 md:h-64 overflow-hidden"
+        >
           <img 
-            src={bgmiHeroBanner}
-            alt="BGMI Tournaments"
+            src={currentBanner}
+            alt={currentBannerTitle}
             className="w-full h-full object-cover"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/50 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent" />
           
           {/* Back button */}
           <Link 
             to="/" 
-            className="absolute top-4 left-4 flex items-center gap-2 text-sm text-foreground/80 hover:text-primary transition-colors"
+            className="absolute top-4 left-4 flex items-center gap-2 text-sm text-foreground/80 hover:text-primary transition-colors z-10"
           >
             <ArrowLeft className="w-4 h-4" />
             Back
           </Link>
 
-          {/* Title */}
+          {/* Title - Mode specific */}
           <div className="absolute bottom-4 left-4 right-4">
             <div className="flex items-center gap-3">
               <img 
@@ -172,12 +178,18 @@ const BGMIPage = () => {
                 className="w-12 h-12 rounded-lg object-cover border border-primary/30"
               />
               <div>
-                <h1 className="font-display text-2xl font-bold">BGMI</h1>
-                <p className="text-xs text-muted-foreground">Battlegrounds Mobile India</p>
+                <h1 className="font-display text-2xl font-bold drop-shadow-lg">
+                  {activeTab === 'TDM Matches' ? 'TDM Matches' : 'Classic Erangel'}
+                </h1>
+                <p className="text-xs text-foreground/80">
+                  {activeTab === 'TDM Matches' 
+                    ? 'Fast-paced close combat action' 
+                    : 'Battle royale survival mode'}
+                </p>
               </div>
             </div>
           </div>
-        </div>
+        </motion.div>
       </section>
 
       {/* Tabs */}
@@ -206,34 +218,6 @@ const BGMIPage = () => {
             ))}
           </div>
         </div>
-      </section>
-
-      {/* Map Banner Section */}
-      <section className="container mx-auto px-4 py-4">
-        <motion.div
-          key={activeTab}
-          initial={{ opacity: 0, scale: 0.98 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.3 }}
-          className="relative h-40 md:h-52 rounded-2xl overflow-hidden"
-        >
-          <img 
-            src={currentBanner}
-            alt={currentBannerTitle}
-            className="w-full h-full object-cover"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/30 to-transparent" />
-          <div className="absolute bottom-4 left-4 right-4">
-            <h2 className="font-display text-xl md:text-2xl font-bold text-foreground drop-shadow-lg">
-              {currentBannerTitle}
-            </h2>
-            <p className="text-sm text-foreground/80 mt-1">
-              {activeTab === 'TDM Matches' 
-                ? 'Fast-paced close combat action' 
-                : 'Battle royale survival mode'}
-            </p>
-          </div>
-        </motion.div>
       </section>
 
       {/* Matches Grid */}
