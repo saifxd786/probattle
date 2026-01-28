@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Search, Ban, CheckCircle, Shield, ShieldOff, Gamepad2, Trash2, Eye, KeyRound, UserCog } from 'lucide-react';
+import { Search, Ban, CheckCircle, Shield, ShieldOff, Gamepad2, Trash2, Eye, KeyRound, UserCog, Settings2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -9,6 +9,7 @@ import { format } from 'date-fns';
 import BanUserDialog from '@/components/admin/BanUserDialog';
 import UserDetailDialog from '@/components/admin/UserDetailDialog';
 import ResetPasswordDialog from '@/components/admin/ResetPasswordDialog';
+import AgentPermissionsDialog from '@/components/admin/AgentPermissionsDialog';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -52,6 +53,7 @@ const AdminUsers = () => {
   const [viewUserId, setViewUserId] = useState<string | null>(null);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [resetPasswordUser, setResetPasswordUser] = useState<Profile | null>(null);
+  const [agentPermissionsUser, setAgentPermissionsUser] = useState<Profile | null>(null);
 
   const fetchUsers = async () => {
     const { data: profiles, error } = await supabase
@@ -475,6 +477,16 @@ const AdminUsers = () => {
                             >
                               <UserCog className={`w-4 h-4 ${isAgent ? 'text-orange-500' : 'text-muted-foreground'}`} />
                             </Button>
+                            {isAgent && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => setAgentPermissionsUser(user)}
+                                title="Agent Permissions"
+                              >
+                                <Settings2 className="w-4 h-4 text-cyan-500" />
+                              </Button>
+                            )}
                             <Button
                               variant="ghost"
                               size="icon"
@@ -546,6 +558,13 @@ const AdminUsers = () => {
         userId={resetPasswordUser?.id || ''}
         username={resetPasswordUser?.username || null}
         hasSecurityQuestion={!!resetPasswordUser?.security_question}
+      />
+
+      <AgentPermissionsDialog
+        isOpen={!!agentPermissionsUser}
+        onClose={() => setAgentPermissionsUser(null)}
+        userId={agentPermissionsUser?.id || ''}
+        username={agentPermissionsUser?.username || null}
       />
     </div>
   );

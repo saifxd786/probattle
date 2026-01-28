@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Search, Eye, Wallet } from 'lucide-react';
+import { Search, Eye, Wallet, ShieldX } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
+import { useAgentPermissions } from '@/hooks/useAgentPermissions';
 
 type Profile = {
   id: string;
@@ -32,6 +33,7 @@ type UserStats = {
 };
 
 const AgentUsers = () => {
+  const { permissions, isLoading: permissionsLoading } = useAgentPermissions();
   const [users, setUsers] = useState<Profile[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [isLoading, setIsLoading] = useState(true);
@@ -55,13 +57,16 @@ const AgentUsers = () => {
   };
 
   useEffect(() => {
-    fetchUsers();
-  }, []);
+    if (permissions.can_view_users) {
+      fetchUsers();
+    } else {
+      setIsLoading(false);
+    }
+  }, [permissions.can_view_users]);
 
   const fetchUserStats = async (userId: string) => {
     setIsLoadingStats(true);
     
-    // Fetch transactions
     const { data: transactions } = await supabase
       .from('transactions')
       .select('type, amount, status')
@@ -71,7 +76,6 @@ const AgentUsers = () => {
     const totalDeposits = transactions?.filter(t => t.type === 'deposit').reduce((sum, t) => sum + t.amount, 0) || 0;
     const totalWithdrawals = transactions?.filter(t => t.type === 'withdrawal').reduce((sum, t) => sum + t.amount, 0) || 0;
 
-    // Fetch Ludo stats
     const { data: ludoMatches } = await supabase
       .from('ludo_match_players')
       .select('is_winner')
@@ -81,7 +85,6 @@ const AgentUsers = () => {
     const ludoWins = ludoMatches?.filter(m => m.is_winner).length || 0;
     const ludoLosses = (ludoMatches?.length || 0) - ludoWins;
 
-    // Fetch Mines stats
     const { data: minesGames } = await supabase
       .from('mines_games')
       .select('is_cashed_out, is_mine_hit')
@@ -90,7 +93,6 @@ const AgentUsers = () => {
     const minesWins = minesGames?.filter(g => g.is_cashed_out).length || 0;
     const minesLosses = minesGames?.filter(g => g.is_mine_hit).length || 0;
 
-    // Fetch Thimble stats
     const { data: thimbleGames } = await supabase
       .from('thimble_games')
       .select('is_win')
@@ -113,6 +115,10 @@ const AgentUsers = () => {
   };
 
   const handleViewUser = (user: Profile) => {
+    if (!permissions.can_view_user_details) {
+      toast({ title: 'Access Denied', description: 'You do not have permission to view user details', variant: 'destructive' });
+      return;
+    }
     setSelectedUser(user);
     setIsDialogOpen(true);
     fetchUserStats(user.id);
@@ -135,18 +141,36 @@ const AgentUsers = () => {
     return { text: 'Active', color: 'bg-green-500/20 text-green-500' };
   };
 
-  // Hide phone number from email (format: 9876543210@probattle.app)
   const maskEmail = (email: string | null) => {
     if (!email) return 'N/A';
-    // Check if it's a phone-based email
     if (email.includes('@probattle.app') || email.includes('@proscims.app')) {
       return '***@probattle.app';
     }
-    // For regular emails, show partial
     const [local, domain] = email.split('@');
     if (local.length <= 3) return `${local}@${domain}`;
     return `${local.slice(0, 3)}***@${domain}`;
   };
+
+  if (permissionsLoading) {
+    return (
+      <div className="p-6 flex items-center justify-center min-h-[50vh]">
+        <p className="text-muted-foreground">Loading permissions...</p>
+      </div>
+    );
+  }
+
+  if (!permissions.can_view_users) {
+    return (
+      <div className="p-6 flex flex-col items-center justify-center min-h-[50vh] gap-4">
+        <ShieldX className="w-16 h-16 text-destructive" />
+        <h2 className="text-xl font-bold text-foreground">Access Denied</h2>
+        <p className="text-muted-foreground text-center">
+          You don't have permission to view users.<br />
+          Contact admin to enable this access.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 space-y-6">
@@ -155,7 +179,6 @@ const AgentUsers = () => {
         <p className="text-muted-foreground">View platform users and their details</p>
       </div>
 
-      {/* Search */}
       <div className="relative max-w-md">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
         <Input
@@ -166,7 +189,6 @@ const AgentUsers = () => {
         />
       </div>
 
-      {/* Users Table */}
       <Card className="glass-card">
         <CardContent className="p-0">
           <div className="overflow-x-auto">
@@ -178,7 +200,9 @@ const AgentUsers = () => {
                   <th className="text-left p-4 font-medium text-muted-foreground">Wallet</th>
                   <th className="text-left p-4 font-medium text-muted-foreground">Joined</th>
                   <th className="text-left p-4 font-medium text-muted-foreground">Status</th>
-                  <th className="text-left p-4 font-medium text-muted-foreground">Actions</th>
+                  {permissions.can_view_user_details && (
+                    <th className="text-left p-4 font-medium text-muted-foreground">Actions</th>
+                  )}
                 </tr>
               </thead>
               <tbody>
@@ -225,16 +249,18 @@ const AgentUsers = () => {
                             {banStatus.text}
                           </span>
                         </td>
-                        <td className="p-4">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleViewUser(user)}
-                            title="View user details"
-                          >
-                            <Eye className="w-4 h-4 text-blue-500" />
-                          </Button>
-                        </td>
+                        {permissions.can_view_user_details && (
+                          <td className="p-4">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleViewUser(user)}
+                              title="View user details"
+                            >
+                              <Eye className="w-4 h-4 text-blue-500" />
+                            </Button>
+                          </td>
+                        )}
                       </tr>
                     );
                   })
@@ -245,7 +271,6 @@ const AgentUsers = () => {
         </CardContent>
       </Card>
 
-      {/* User Detail Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
