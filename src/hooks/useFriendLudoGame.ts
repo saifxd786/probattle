@@ -148,6 +148,11 @@ export const useFriendLudoGame = () => {
   // Connection status state
   const [connectionStatus, setConnectionStatus] = useState<'connected' | 'disconnected' | 'reconnecting'>('connected');
   const [reconnectAttempts, setReconnectAttempts] = useState(0);
+  
+  // Ping/latency tracking
+  const [pingLatency, setPingLatency] = useState<number | null>(null);
+  const pingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const pendingPingsRef = useRef<Map<string, number>>(new Map());
 
   const [walletBalance, setWalletBalance] = useState(0);
   const [opponentOnline, setOpponentOnline] = useState(false);
@@ -358,6 +363,26 @@ export const useFriendLudoGame = () => {
           });
         }
       })
+      // Ping/Pong for latency measurement
+      .on('broadcast', { event: 'ping' }, (payload) => {
+        const { senderId, pingId, timestamp } = payload.payload;
+        if (senderId !== user?.id) {
+          // Respond with pong
+          channel.send({
+            type: 'broadcast',
+            event: 'pong',
+            payload: { senderId: user?.id, pingId, originalTimestamp: timestamp }
+          });
+        }
+      })
+      .on('broadcast', { event: 'pong' }, (payload) => {
+        const { senderId, pingId, originalTimestamp } = payload.payload;
+        if (senderId !== user?.id && pendingPingsRef.current.has(pingId)) {
+          const latency = Date.now() - originalTimestamp;
+          pendingPingsRef.current.delete(pingId);
+          setPingLatency(latency);
+        }
+      })
       .subscribe((status) => {
         console.log('[LudoSync] Game action channel status:', status);
         if (status === 'SUBSCRIBED') {
@@ -371,6 +396,53 @@ export const useFriendLudoGame = () => {
 
     gameActionChannelRef.current = channel;
   }, [user]);
+
+  // Ping interval for latency measurement
+  useEffect(() => {
+    if (gameState.phase !== 'playing' || !gameActionChannelRef.current || !user) {
+      if (pingIntervalRef.current) {
+        clearInterval(pingIntervalRef.current);
+        pingIntervalRef.current = null;
+      }
+      return;
+    }
+
+    const sendPing = () => {
+      if (!gameActionChannelRef.current) return;
+      
+      const pingId = `ping-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      const timestamp = Date.now();
+      
+      pendingPingsRef.current.set(pingId, timestamp);
+      
+      gameActionChannelRef.current.send({
+        type: 'broadcast',
+        event: 'ping',
+        payload: { senderId: user.id, pingId, timestamp }
+      });
+      
+      // Clean up old pending pings (> 5 seconds)
+      const now = Date.now();
+      pendingPingsRef.current.forEach((time, id) => {
+        if (now - time > 5000) {
+          pendingPingsRef.current.delete(id);
+        }
+      });
+    };
+
+    // Send initial ping
+    sendPing();
+    
+    // Send ping every 3 seconds
+    pingIntervalRef.current = setInterval(sendPing, 3000);
+
+    return () => {
+      if (pingIntervalRef.current) {
+        clearInterval(pingIntervalRef.current);
+        pingIntervalRef.current = null;
+      }
+    };
+  }, [gameState.phase, user]);
 
   // Broadcast game action instantly
   const broadcastAction = useCallback(async (event: string, payload: any) => {
@@ -1320,6 +1392,9 @@ export const useFriendLudoGame = () => {
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current);
       }
+      if (pingIntervalRef.current) {
+        clearInterval(pingIntervalRef.current);
+      }
     };
   }, []);
 
@@ -1330,6 +1405,7 @@ export const useFriendLudoGame = () => {
     syncStatus,
     connectionStatus,
     reconnectAttempts,
+    pingLatency,
     startRoom,
     rollDice,
     handleTokenClick,
