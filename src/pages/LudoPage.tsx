@@ -56,6 +56,7 @@ const LudoPage = () => {
     gameState: friendGameState,
     walletBalance: friendWalletBalance,
     opponentOnline,
+    syncStatus,
     startRoom,
     rollDice: friendRollDice,
     handleTokenClick: friendHandleTokenClick,
@@ -327,15 +328,21 @@ const LudoPage = () => {
                 {opponentOnline ? 'Online' : 'Offline'}
               </span>
             </div>
-            {/* Resync Button */}
+            {/* Sync Status & Button */}
             <Button
               variant="ghost"
               size="sm"
-              onClick={resyncGameState}
-              className="h-7 px-2 text-[10px] text-muted-foreground hover:text-white"
+              onClick={() => resyncGameState()}
+              disabled={syncStatus === 'resyncing'}
+              className={`h-7 px-2 text-[10px] hover:text-white ${
+                syncStatus === 'mismatch' ? 'text-yellow-400 animate-pulse' : 
+                syncStatus === 'resyncing' ? 'text-blue-400' : 
+                'text-muted-foreground'
+              }`}
             >
-              <RefreshCw className="w-3 h-3 mr-1" />
-              Sync
+              <RefreshCw className={`w-3 h-3 mr-1 ${syncStatus === 'resyncing' ? 'animate-spin' : ''}`} />
+              {syncStatus === 'resyncing' ? 'Syncing...' : 
+               syncStatus === 'mismatch' ? '⚠️ Sync' : 'Sync'}
             </Button>
             <SoundToggle compact />
             <motion.div 
