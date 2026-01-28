@@ -26,46 +26,92 @@ const getDotPositions = (value: number): { x: number; y: number }[] => {
   return patterns[value] || [];
 };
 
-// Premium 3D Dice Face with realistic dots
+// Premium 3D Dice Face with realistic ivory dots
 const DiceFace = ({ value, faceStyle }: { value: number; faceStyle?: React.CSSProperties }) => {
   const dots = getDotPositions(value);
   
   return (
     <div 
-      className="absolute w-full h-full rounded-lg flex items-center justify-center"
+      className="absolute w-full h-full flex items-center justify-center"
       style={{
-        background: 'linear-gradient(145deg, #FEFEFE 0%, #F8F8F8 20%, #EFEFEF 50%, #E0E0E0 80%, #D8D8D8 100%)',
-        boxShadow: `
-          inset 0 2px 4px rgba(255,255,255,1),
-          inset 0 -2px 4px rgba(0,0,0,0.08),
-          inset 2px 0 4px rgba(255,255,255,0.5),
-          inset -2px 0 4px rgba(0,0,0,0.05)
+        background: `
+          linear-gradient(145deg, 
+            #FFFEF8 0%, 
+            #FBF9F3 15%,
+            #F5F2EA 35%, 
+            #EDE9DF 55%,
+            #E5E0D4 75%,
+            #DDD8CC 100%
+          )
         `,
-        border: '1px solid rgba(180,180,180,0.3)',
+        boxShadow: `
+          inset 0 3px 6px rgba(255,255,255,0.9),
+          inset 0 -3px 6px rgba(0,0,0,0.12),
+          inset 3px 0 6px rgba(255,255,255,0.6),
+          inset -3px 0 6px rgba(0,0,0,0.08)
+        `,
+        border: '1px solid rgba(160,150,130,0.4)',
+        borderRadius: '12%',
         backfaceVisibility: 'hidden',
         ...faceStyle
       }}
     >
-      <svg viewBox="0 0 100 100" className="w-[85%] h-[85%]">
+      {/* Subtle texture overlay */}
+      <div 
+        className="absolute inset-1 rounded-lg opacity-30 pointer-events-none"
+        style={{
+          background: `
+            radial-gradient(circle at 30% 30%, rgba(255,255,255,0.8) 0%, transparent 50%),
+            radial-gradient(circle at 70% 70%, rgba(0,0,0,0.05) 0%, transparent 50%)
+          `
+        }}
+      />
+      <svg viewBox="0 0 100 100" className="w-[80%] h-[80%] relative z-10">
         <defs>
-          <radialGradient id={`dotGrad-${value}`} cx="35%" cy="35%">
-            <stop offset="0%" stopColor="#C41E3A" />
-            <stop offset="40%" stopColor="#8B0000" />
-            <stop offset="100%" stopColor="#4A0000" />
+          {/* Premium ruby red gradient for dots */}
+          <radialGradient id={`dotGrad-${value}`} cx="30%" cy="30%">
+            <stop offset="0%" stopColor="#E53935" />
+            <stop offset="35%" stopColor="#C62828" />
+            <stop offset="70%" stopColor="#8B0000" />
+            <stop offset="100%" stopColor="#5D0000" />
+          </radialGradient>
+          {/* Inner highlight for 3D effect */}
+          <radialGradient id={`dotHighlight-${value}`} cx="35%" cy="35%">
+            <stop offset="0%" stopColor="rgba(255,255,255,0.5)" />
+            <stop offset="50%" stopColor="rgba(255,255,255,0.1)" />
+            <stop offset="100%" stopColor="transparent" />
           </radialGradient>
           <filter id={`dotShadow-${value}`} x="-50%" y="-50%" width="200%" height="200%">
-            <feDropShadow dx="0.5" dy="1.5" stdDeviation="1" floodColor="#000" floodOpacity="0.35" />
+            <feDropShadow dx="0.8" dy="2" stdDeviation="1.2" floodColor="#000" floodOpacity="0.4" />
           </filter>
         </defs>
         {dots.map((dot, idx) => (
-          <circle
-            key={idx}
-            cx={dot.x}
-            cy={dot.y}
-            r="10"
-            fill={`url(#dotGrad-${value})`}
-            filter={`url(#dotShadow-${value})`}
-          />
+          <g key={idx}>
+            {/* Main dot */}
+            <circle
+              cx={dot.x}
+              cy={dot.y}
+              r="11"
+              fill={`url(#dotGrad-${value})`}
+              filter={`url(#dotShadow-${value})`}
+            />
+            {/* Highlight overlay */}
+            <circle
+              cx={dot.x}
+              cy={dot.y}
+              r="11"
+              fill={`url(#dotHighlight-${value})`}
+            />
+            {/* Inner depth ring */}
+            <circle
+              cx={dot.x}
+              cy={dot.y}
+              r="9"
+              fill="none"
+              stroke="rgba(0,0,0,0.15)"
+              strokeWidth="0.5"
+            />
+          </g>
         ))}
       </svg>
     </div>
@@ -279,7 +325,7 @@ const LudoDice = ({ value, isRolling, onRoll, disabled, canRoll, compact = false
 
   return (
     <div className={cn("flex items-center justify-center gap-4", compact && "gap-3")}>
-      {/* Premium Wooden Dice Platform */}
+      {/* Ultra Premium Wooden Dice Platform */}
       <motion.div
         className={cn(
           'relative rounded-2xl',
@@ -289,70 +335,108 @@ const LudoDice = ({ value, isRolling, onRoll, disabled, canRoll, compact = false
         style={{
           background: `
             linear-gradient(180deg, 
-              #5D4037 0%, 
-              #4E342E 15%,
-              #3E2723 40%, 
-              #2D1F1A 70%,
-              #1A1210 100%
+              #4A3728 0%, 
+              #3D2E23 10%,
+              #2F231A 30%, 
+              #251B14 60%,
+              #1A130E 85%,
+              #120D09 100%
             )
           `,
           boxShadow: `
-            inset 0 2px 4px rgba(139,90,43,0.4),
-            inset 0 -3px 6px rgba(0,0,0,0.5),
-            inset 2px 0 4px rgba(139,90,43,0.2),
-            inset -2px 0 4px rgba(0,0,0,0.3),
-            0 6px 20px rgba(0,0,0,0.5),
-            0 2px 8px rgba(0,0,0,0.3)
+            inset 0 3px 8px rgba(139,90,43,0.35),
+            inset 0 -4px 10px rgba(0,0,0,0.6),
+            inset 3px 0 6px rgba(139,90,43,0.2),
+            inset -3px 0 6px rgba(0,0,0,0.4),
+            0 8px 25px rgba(0,0,0,0.6),
+            0 3px 10px rgba(0,0,0,0.4)
           `,
-          border: '3px solid #6D4C41',
-          borderTopColor: '#8D6E63',
-          borderBottomColor: '#3E2723',
+          border: '4px solid #5D4C3B',
+          borderTopColor: '#7D6B59',
+          borderBottomColor: '#2A1F17',
         }}
         onClick={handleRoll}
-        whileHover={canRoll && !disabled && !isRolling ? { scale: 1.02, y: -2 } : {}}
-        whileTap={canRoll && !disabled && !isRolling ? { scale: 0.98, y: 0 } : {}}
+        whileHover={canRoll && !disabled && !isRolling ? { scale: 1.03, y: -3 } : {}}
+        whileTap={canRoll && !disabled && !isRolling ? { scale: 0.97, y: 0 } : {}}
       >
         {/* Wood grain texture overlay */}
         <div 
-          className="absolute inset-0 rounded-xl opacity-20 pointer-events-none"
+          className="absolute inset-0 rounded-xl opacity-15 pointer-events-none"
           style={{
             background: `
               repeating-linear-gradient(
-                90deg,
+                95deg,
                 transparent,
-                transparent 2px,
-                rgba(0,0,0,0.1) 2px,
-                rgba(0,0,0,0.1) 4px
+                transparent 3px,
+                rgba(0,0,0,0.1) 3px,
+                rgba(0,0,0,0.1) 5px
+              ),
+              repeating-linear-gradient(
+                85deg,
+                transparent,
+                transparent 8px,
+                rgba(139,90,43,0.08) 8px,
+                rgba(139,90,43,0.08) 10px
               )
             `
           }}
         />
 
-        {/* Inner felt/velvet surface */}
+        {/* Corner metal studs */}
+        {[
+          { top: 4, left: 4 },
+          { top: 4, right: 4 },
+          { bottom: 4, left: 4 },
+          { bottom: 4, right: 4 }
+        ].map((pos, i) => (
+          <div
+            key={i}
+            className="absolute w-2 h-2 rounded-full"
+            style={{
+              ...pos,
+              background: 'linear-gradient(135deg, #C9A86C 0%, #8B6914 50%, #5C4A10 100%)',
+              boxShadow: 'inset 0 1px 2px rgba(255,255,255,0.4), 0 1px 2px rgba(0,0,0,0.5)'
+            }}
+          />
+        ))}
+
+        {/* Inner velvet/felt surface */}
         <div 
           className={cn(
             "relative rounded-xl overflow-hidden",
-            compact ? "p-2" : "p-3"
+            compact ? "p-2.5" : "p-3.5"
           )}
           style={{
-            background: 'linear-gradient(145deg, #1B5E20 0%, #145214 50%, #0D3B0D 100%)',
+            background: `
+              radial-gradient(ellipse at 50% 30%, #1E6B22 0%, #15571A 30%, #0F4210 60%, #092F0A 100%)
+            `,
             boxShadow: `
-              inset 0 2px 8px rgba(0,0,0,0.6),
-              inset 0 -1px 4px rgba(76,175,80,0.2)
+              inset 0 4px 12px rgba(0,0,0,0.7),
+              inset 0 -2px 6px rgba(76,175,80,0.15),
+              inset 4px 0 8px rgba(0,0,0,0.3),
+              inset -4px 0 8px rgba(0,0,0,0.3)
             `,
           }}
         >
+          {/* Felt texture */}
+          <div 
+            className="absolute inset-0 opacity-20 pointer-events-none"
+            style={{
+              backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E")`,
+            }}
+          />
+
           {/* Glowing ring when can roll */}
           <AnimatePresence>
             {canRoll && !disabled && !isRolling && (
               <motion.div
                 initial={{ opacity: 0 }}
-                animate={{ opacity: [0.3, 0.7, 0.3] }}
+                animate={{ opacity: [0.4, 0.8, 0.4] }}
                 exit={{ opacity: 0 }}
-                transition={{ duration: 1.5, repeat: Infinity, ease: 'easeInOut' }}
+                transition={{ duration: 1.2, repeat: Infinity, ease: 'easeInOut' }}
                 className="absolute inset-0 rounded-xl pointer-events-none"
                 style={{
-                  boxShadow: '0 0 20px rgba(255,215,0,0.5), inset 0 0 15px rgba(255,215,0,0.15)',
+                  boxShadow: '0 0 25px rgba(255,215,0,0.6), inset 0 0 20px rgba(255,215,0,0.2)',
                 }}
               />
             )}
@@ -387,7 +471,7 @@ const LudoDice = ({ value, isRolling, onRoll, disabled, canRoll, compact = false
           </AnimatePresence>
         </div>
 
-        {/* Six bonus badge */}
+        {/* Six bonus badge - Enhanced */}
         <AnimatePresence>
           {showSixBonus && (
             <motion.div
@@ -395,11 +479,12 @@ const LudoDice = ({ value, isRolling, onRoll, disabled, canRoll, compact = false
               animate={{ opacity: 1, scale: 1, y: 0, rotate: 0 }}
               exit={{ opacity: 0, scale: 0, y: -10 }}
               transition={{ type: 'spring', stiffness: 400, damping: 15 }}
-              className="absolute -top-2 -right-2 px-2 py-1 rounded-full text-xs font-black text-white shadow-xl"
+              className="absolute -top-3 -right-3 px-2.5 py-1.5 rounded-full text-xs font-black text-white shadow-xl"
               style={{
-                background: 'linear-gradient(135deg, #FFD700 0%, #FFA500 40%, #FF6B00 100%)',
-                boxShadow: '0 3px 10px rgba(255,165,0,0.6), 0 0 20px rgba(255,215,0,0.4)',
-                textShadow: '0 1px 2px rgba(0,0,0,0.3)',
+                background: 'linear-gradient(135deg, #FFE082 0%, #FFD54F 25%, #FFCA28 50%, #FF9800 75%, #F57C00 100%)',
+                boxShadow: '0 4px 15px rgba(255,152,0,0.7), 0 0 25px rgba(255,215,0,0.5)',
+                textShadow: '0 1px 3px rgba(0,0,0,0.4)',
+                border: '2px solid rgba(255,255,255,0.3)'
               }}
             >
               🎉 +1
@@ -408,74 +493,108 @@ const LudoDice = ({ value, isRolling, onRoll, disabled, canRoll, compact = false
         </AnimatePresence>
       </motion.div>
 
-      {/* Premium Roll Button */}
+      {/* Ultra Premium Roll Button */}
       <motion.button
         onClick={handleRoll}
         disabled={disabled || !canRoll || isRolling}
         className={cn(
           'relative rounded-xl font-bold overflow-hidden transition-all',
-          compact ? 'px-5 py-3 text-xs' : 'px-7 py-3.5 text-sm',
+          compact ? 'px-5 py-3 text-xs' : 'px-8 py-4 text-sm',
           canRoll && !disabled && !isRolling
-            ? 'text-amber-900'
-            : 'bg-gray-700 text-gray-500 cursor-not-allowed border-gray-600'
+            ? 'text-amber-950'
+            : 'bg-gradient-to-b from-gray-600 to-gray-800 text-gray-400 cursor-not-allowed'
         )}
         style={canRoll && !disabled && !isRolling ? {
-          background: 'linear-gradient(180deg, #FFE082 0%, #FFD54F 25%, #FFCA28 50%, #FFB300 75%, #FF8F00 100%)',
-          boxShadow: `
-            0 4px 15px rgba(255,152,0,0.5),
-            0 2px 6px rgba(0,0,0,0.2),
-            inset 0 2px 4px rgba(255,255,255,0.5),
-            inset 0 -2px 4px rgba(0,0,0,0.1)
+          background: `
+            linear-gradient(180deg, 
+              #FFF8E1 0%, 
+              #FFECB3 15%,
+              #FFD54F 35%, 
+              #FFC107 55%,
+              #FFB300 75%,
+              #FF8F00 90%,
+              #E65100 100%
+            )
           `,
-          border: '2px solid #F57C00',
+          boxShadow: `
+            0 6px 20px rgba(255,152,0,0.5),
+            0 3px 8px rgba(0,0,0,0.25),
+            inset 0 2px 6px rgba(255,255,255,0.7),
+            inset 0 -3px 6px rgba(0,0,0,0.15)
+          `,
+          border: '3px solid #F57C00',
           borderTopColor: '#FFB74D',
-          borderBottomColor: '#E65100',
+          borderBottomColor: '#BF360C',
         } : {
-          border: '2px solid #555',
+          border: '3px solid #444',
+          boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.3)'
         }}
         whileHover={canRoll && !disabled && !isRolling ? { 
-          scale: 1.03, 
-          y: -2,
-          boxShadow: '0 6px 20px rgba(255,152,0,0.6), 0 3px 10px rgba(0,0,0,0.3)'
+          scale: 1.05, 
+          y: -3,
+          boxShadow: '0 10px 30px rgba(255,152,0,0.6), 0 5px 15px rgba(0,0,0,0.3)'
         } : {}}
-        whileTap={canRoll && !disabled && !isRolling ? { scale: 0.97, y: 0 } : {}}
+        whileTap={canRoll && !disabled && !isRolling ? { scale: 0.95, y: 0 } : {}}
       >
-        {/* Animated shine */}
+        {/* Animated shine effect */}
         {canRoll && !disabled && !isRolling && (
           <motion.div
             className="absolute inset-0 pointer-events-none"
             style={{
-              background: 'linear-gradient(105deg, transparent 40%, rgba(255,255,255,0.5) 50%, transparent 60%)',
+              background: 'linear-gradient(105deg, transparent 35%, rgba(255,255,255,0.6) 50%, transparent 65%)',
             }}
-            animate={{ x: ['-150%', '150%'] }}
-            transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut', repeatDelay: 0.5 }}
+            animate={{ x: ['-200%', '200%'] }}
+            transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut', repeatDelay: 1 }}
           />
         )}
         
-        <span className="relative z-10 flex items-center gap-2 font-black tracking-wide">
+        {/* Button content */}
+        <span className="relative z-10 flex items-center gap-2.5 font-black tracking-wider uppercase">
           {isRolling ? (
             <>
               <motion.span
-                animate={{ rotate: 360, scale: [1, 1.2, 1] }}
-                transition={{ duration: 0.4, repeat: Infinity, ease: 'linear' }}
-                className="text-lg"
+                animate={{ rotate: 360, scale: [1, 1.3, 1] }}
+                transition={{ duration: 0.35, repeat: Infinity, ease: 'linear' }}
+                className="text-xl"
               >
                 🎲
               </motion.span>
-              <span>Rolling...</span>
+              <span className="text-amber-900">Rolling...</span>
             </>
           ) : canRoll ? (
             <>
-              <span className="text-lg">🎲</span>
-              <span>TAP TO ROLL</span>
+              <motion.span 
+                className="text-xl"
+                animate={{ scale: [1, 1.15, 1] }}
+                transition={{ duration: 0.8, repeat: Infinity }}
+              >
+                🎲
+              </motion.span>
+              <span>Tap to Roll</span>
             </>
           ) : (
             <>
-              <span className="text-base">⏳</span>
-              <span>Wait...</span>
+              <motion.span 
+                className="text-lg"
+                animate={{ opacity: [0.5, 1, 0.5] }}
+                transition={{ duration: 1.5, repeat: Infinity }}
+              >
+                ⏳
+              </motion.span>
+              <span>Waiting...</span>
             </>
           )}
         </span>
+
+        {/* Bottom edge highlight */}
+        {canRoll && !disabled && !isRolling && (
+          <div 
+            className="absolute bottom-0 left-2 right-2 h-1 rounded-full opacity-50"
+            style={{
+              background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.5), transparent)'
+            }}
+          />
+        )}
       </motion.button>
     </div>
   );
