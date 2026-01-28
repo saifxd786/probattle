@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { Users, Crown, Wifi, Shield, Clock, Zap, Gamepad2, Sparkles, Signal, Globe } from 'lucide-react';
+import { Users, Crown, Shield, Clock, Zap, Gamepad2, Sparkles, Signal, Globe, Search } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useEffect, useState } from 'react';
 
@@ -29,37 +29,37 @@ const BOT_NAMES = [
 const COLORS = {
   red: { 
     gradient: 'linear-gradient(135deg, #EF5350 0%, #C62828 50%, #8B0000 100%)',
-    bgLight: 'linear-gradient(135deg, rgba(239,83,80,0.15) 0%, rgba(198,40,40,0.08) 100%)',
-    glow: 'rgba(239,83,80,0.4)',
+    bgLight: 'linear-gradient(135deg, rgba(239,83,80,0.2) 0%, rgba(198,40,40,0.12) 100%)',
+    glow: 'rgba(239,83,80,0.5)',
     text: '#EF5350',
-    border: 'rgba(239,83,80,0.4)'
+    border: 'rgba(239,83,80,0.5)'
   },
   green: { 
     gradient: 'linear-gradient(135deg, #66BB6A 0%, #388E3C 50%, #1B5E20 100%)',
-    bgLight: 'linear-gradient(135deg, rgba(102,187,106,0.15) 0%, rgba(56,142,60,0.08) 100%)',
-    glow: 'rgba(76,175,80,0.4)',
+    bgLight: 'linear-gradient(135deg, rgba(102,187,106,0.2) 0%, rgba(56,142,60,0.12) 100%)',
+    glow: 'rgba(76,175,80,0.5)',
     text: '#66BB6A',
-    border: 'rgba(102,187,106,0.4)'
+    border: 'rgba(102,187,106,0.5)'
   },
   yellow: { 
     gradient: 'linear-gradient(135deg, #FFEE58 0%, #FBC02D 50%, #F57F17 100%)',
-    bgLight: 'linear-gradient(135deg, rgba(255,238,88,0.15) 0%, rgba(251,192,45,0.08) 100%)',
-    glow: 'rgba(255,193,7,0.4)',
+    bgLight: 'linear-gradient(135deg, rgba(255,238,88,0.2) 0%, rgba(251,192,45,0.12) 100%)',
+    glow: 'rgba(255,193,7,0.5)',
     text: '#FFCA28',
-    border: 'rgba(255,202,40,0.4)'
+    border: 'rgba(255,202,40,0.5)'
   },
   blue: { 
     gradient: 'linear-gradient(135deg, #42A5F5 0%, #1976D2 50%, #0D47A1 100%)',
-    bgLight: 'linear-gradient(135deg, rgba(66,165,245,0.15) 0%, rgba(25,118,210,0.08) 100%)',
-    glow: 'rgba(33,150,243,0.4)',
+    bgLight: 'linear-gradient(135deg, rgba(66,165,245,0.2) 0%, rgba(25,118,210,0.12) 100%)',
+    glow: 'rgba(33,150,243,0.5)',
     text: '#42A5F5',
-    border: 'rgba(66,165,245,0.4)'
+    border: 'rgba(66,165,245,0.5)'
   }
 };
 
-// Premium Radar/pulse animation component
+// Premium Radar/pulse animation component - Blue themed
 const PremiumRadarPulse = () => (
-  <div className="relative w-36 h-36 mx-auto mb-8">
+  <div className="relative w-40 h-40 mx-auto mb-6">
     {/* Outer scanning rings */}
     {[0, 1, 2, 3].map((i) => (
       <motion.div
@@ -67,7 +67,7 @@ const PremiumRadarPulse = () => (
         className="absolute inset-0 rounded-full"
         style={{
           border: '2px solid',
-          borderColor: `rgba(255,215,0,${0.4 - i * 0.1})`,
+          borderColor: `rgba(66,165,245,${0.5 - i * 0.1})`,
         }}
         initial={{ scale: 0.3, opacity: 0 }}
         animate={{ scale: 1.8 + i * 0.25, opacity: [0, 0.6, 0] }}
@@ -80,27 +80,27 @@ const PremiumRadarPulse = () => (
       />
     ))}
     
-    {/* Center glowing orb */}
+    {/* Center glowing orb - Blue themed */}
     <motion.div
       className="absolute inset-0 flex items-center justify-center"
       animate={{ scale: [1, 1.08, 1] }}
       transition={{ duration: 2, repeat: Infinity }}
     >
       <div 
-        className="w-24 h-24 rounded-full flex items-center justify-center relative"
+        className="w-28 h-28 rounded-full flex items-center justify-center relative"
         style={{
-          background: 'linear-gradient(180deg, #FFE082 0%, #FFD54F 25%, #FFCA28 50%, #FFB300 75%, #FF8F00 100%)',
-          boxShadow: '0 0 50px rgba(255,193,7,0.5), 0 0 100px rgba(255,152,0,0.3), inset 0 2px 10px rgba(255,255,255,0.5)',
+          background: 'linear-gradient(180deg, #64B5F6 0%, #42A5F5 25%, #2196F3 50%, #1E88E5 75%, #1565C0 100%)',
+          boxShadow: '0 0 60px rgba(33,150,243,0.6), 0 0 100px rgba(25,118,210,0.4), inset 0 2px 10px rgba(255,255,255,0.5)',
         }}
       >
         {/* Inner reflection */}
         <div 
-          className="absolute inset-2 rounded-full opacity-30"
+          className="absolute inset-2 rounded-full opacity-30 pointer-events-none"
           style={{
             background: 'linear-gradient(180deg, rgba(255,255,255,0.8) 0%, transparent 50%)',
           }}
         />
-        <Gamepad2 className="w-12 h-12 text-amber-900 drop-shadow-lg relative z-10" />
+        <Search className="w-14 h-14 text-white drop-shadow-lg relative z-10" />
       </div>
     </motion.div>
     
@@ -113,13 +113,13 @@ const PremiumRadarPulse = () => (
       {[0, 60, 120, 180, 240, 300].map((angle) => (
         <motion.div
           key={angle}
-          className="absolute w-2.5 h-2.5 rounded-full"
+          className="absolute w-3 h-3 rounded-full"
           style={{
             left: '50%',
             top: '50%',
-            transform: `rotate(${angle}deg) translateY(-55px) translateX(-50%)`,
-            background: 'linear-gradient(135deg, #FFD54F 0%, #FF8F00 100%)',
-            boxShadow: '0 0 10px rgba(255,193,7,0.8)',
+            transform: `rotate(${angle}deg) translateY(-65px) translateX(-50%)`,
+            background: 'linear-gradient(135deg, #64B5F6 0%, #1565C0 100%)',
+            boxShadow: '0 0 12px rgba(33,150,243,0.8)',
           }}
           animate={{ opacity: [0.4, 1, 0.4], scale: [0.8, 1.2, 0.8] }}
           transition={{ duration: 1.8, delay: angle / 360, repeat: Infinity }}
@@ -136,7 +136,7 @@ const PremiumRadarPulse = () => (
       <div 
         className="absolute top-1/2 left-1/2 w-1/2 h-1"
         style={{
-          background: 'linear-gradient(90deg, rgba(255,215,0,0.8) 0%, transparent 100%)',
+          background: 'linear-gradient(90deg, rgba(66,165,245,0.9) 0%, transparent 100%)',
           transformOrigin: 'left center',
         }}
       />
@@ -163,26 +163,26 @@ const PremiumPlayerSlot = ({ player, index, totalPlayers }: {
         transition={{ delay: index * 0.12, type: 'spring', stiffness: 200 }}
         className="relative p-4 rounded-2xl overflow-hidden"
         style={{
-          background: 'linear-gradient(135deg, rgba(40,38,35,0.6) 0%, rgba(30,28,25,0.5) 100%)',
-          border: '2px dashed rgba(255,255,255,0.15)',
+          background: 'linear-gradient(135deg, rgba(25,118,210,0.15) 0%, rgba(13,71,161,0.1) 100%)',
+          border: '2px dashed rgba(66,165,245,0.3)',
         }}
       >
         <div className="flex items-center gap-4">
           <motion.div 
             className="w-14 h-14 rounded-full flex items-center justify-center relative"
             style={{
-              background: 'linear-gradient(135deg, rgba(60,55,50,0.8) 0%, rgba(45,40,35,0.6) 100%)',
-              border: '2px solid rgba(255,255,255,0.1)',
+              background: 'linear-gradient(135deg, rgba(33,150,243,0.3) 0%, rgba(25,118,210,0.2) 100%)',
+              border: '2px solid rgba(66,165,245,0.3)',
             }}
             animate={{ opacity: [0.5, 0.8, 0.5] }}
             transition={{ duration: 2, repeat: Infinity }}
           >
-            <Users className="w-6 h-6 text-white/30" />
+            <Users className="w-6 h-6 text-blue-300/50" />
             
             {/* Scanning ring */}
             <motion.div
               className="absolute inset-0 rounded-full"
-              style={{ border: '2px solid rgba(255,215,0,0.3)' }}
+              style={{ border: '2px solid rgba(66,165,245,0.4)' }}
               animate={{ scale: [1, 1.3, 1], opacity: [0.5, 0, 0.5] }}
               transition={{ duration: 1.5, repeat: Infinity }}
             />
@@ -191,7 +191,7 @@ const PremiumPlayerSlot = ({ player, index, totalPlayers }: {
           <div className="flex-1">
             <div className="flex items-center gap-2">
               <motion.span 
-                className="text-sm text-white/50 font-medium"
+                className="text-sm text-blue-200/70 font-medium"
                 animate={{ opacity: [0.5, 0.9, 0.5] }}
                 transition={{ duration: 2, repeat: Infinity }}
               >
@@ -202,7 +202,7 @@ const PremiumPlayerSlot = ({ player, index, totalPlayers }: {
                   <motion.div
                     key={i}
                     className="w-1.5 h-1.5 rounded-full"
-                    style={{ background: 'rgba(255,215,0,0.6)' }}
+                    style={{ background: 'rgba(66,165,245,0.8)' }}
                     animate={{ opacity: [0.3, 1, 0.3], scale: [0.8, 1.1, 0.8] }}
                     transition={{ duration: 0.7, delay: i * 0.15, repeat: Infinity }}
                   />
@@ -276,11 +276,11 @@ const PremiumPlayerSlot = ({ player, index, totalPlayers }: {
             style={{
               background: player.status === 'ready' 
                 ? 'linear-gradient(135deg, #4CAF50 0%, #2E7D32 100%)'
-                : 'linear-gradient(135deg, #FFC107 0%, #FF8F00 100%)',
+                : 'linear-gradient(135deg, #42A5F5 0%, #1976D2 100%)',
               boxShadow: player.status === 'ready'
                 ? '0 2px 10px rgba(76,175,80,0.5)'
-                : '0 2px 10px rgba(255,152,0,0.5)',
-              border: '2px solid rgba(0,0,0,0.3)',
+                : '0 2px 10px rgba(33,150,243,0.5)',
+              border: '2px solid rgba(255,255,255,0.3)',
             }}
           >
             {player.status === 'ready' ? (
@@ -303,9 +303,9 @@ const PremiumPlayerSlot = ({ player, index, totalPlayers }: {
               <span 
                 className="text-[10px] px-2 py-0.5 rounded-full font-black tracking-wide"
                 style={{
-                  background: 'linear-gradient(135deg, #FFD54F 0%, #FF8F00 100%)',
-                  color: '#5D4037',
-                  boxShadow: '0 2px 8px rgba(255,152,0,0.4)',
+                  background: 'linear-gradient(135deg, #42A5F5 0%, #1976D2 100%)',
+                  color: '#FFFFFF',
+                  boxShadow: '0 2px 8px rgba(33,150,243,0.5)',
                 }}
               >
                 YOU
@@ -334,11 +334,11 @@ const PremiumPlayerSlot = ({ player, index, totalPlayers }: {
           style={{
             background: player.status === 'ready'
               ? 'linear-gradient(135deg, rgba(76,175,80,0.2) 0%, rgba(46,125,50,0.15) 100%)'
-              : 'linear-gradient(135deg, rgba(255,193,7,0.2) 0%, rgba(255,143,0,0.15) 100%)',
+              : 'linear-gradient(135deg, rgba(33,150,243,0.2) 0%, rgba(25,118,210,0.15) 100%)',
             border: player.status === 'ready'
               ? '1px solid rgba(76,175,80,0.4)'
-              : '1px solid rgba(255,193,7,0.4)',
-            color: player.status === 'ready' ? '#4CAF50' : '#FFC107',
+              : '1px solid rgba(66,165,245,0.4)',
+            color: player.status === 'ready' ? '#4CAF50' : '#64B5F6',
           }}
         >
           {player.status === 'ready' ? '✓ Ready' : 'Joining...'}
@@ -370,16 +370,24 @@ const MatchmakingScreen = ({ players, totalPlayers, entryAmount, rewardAmount }:
     <div 
       className="min-h-screen"
       style={{
-        background: 'linear-gradient(180deg, rgba(20,18,15,1) 0%, rgba(12,10,8,1) 100%)',
+        background: 'linear-gradient(180deg, #1565C0 0%, #0D47A1 40%, #0A2472 100%)',
       }}
     >
-      {/* Premium Header */}
+      {/* Ludo pattern overlay */}
+      <div 
+        className="fixed inset-0 pointer-events-none opacity-10"
+        style={{
+          backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.4'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
+        }}
+      />
+
+      {/* Premium Header - Blue themed */}
       <div 
         className="sticky top-0 z-10"
         style={{
-          background: 'linear-gradient(180deg, rgba(30,28,25,0.98) 0%, rgba(25,23,20,0.95) 100%)',
-          borderBottom: '1px solid rgba(255,215,0,0.15)',
-          boxShadow: '0 4px 20px rgba(0,0,0,0.4)',
+          background: 'linear-gradient(180deg, rgba(21,101,192,0.98) 0%, rgba(13,71,161,0.95) 100%)',
+          borderBottom: '1px solid rgba(66,165,245,0.3)',
+          boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
         }}
       >
         <div className="container mx-auto px-4 py-4">
@@ -388,27 +396,22 @@ const MatchmakingScreen = ({ players, totalPlayers, entryAmount, rewardAmount }:
               <div 
                 className="w-11 h-11 rounded-xl flex items-center justify-center relative"
                 style={{
-                  background: 'linear-gradient(135deg, #FFD54F 0%, #FF8F00 100%)',
-                  boxShadow: '0 4px 15px rgba(255,152,0,0.4)',
+                  background: 'linear-gradient(135deg, #64B5F6 0%, #1976D2 100%)',
+                  boxShadow: '0 4px 15px rgba(33,150,243,0.4)',
                 }}
               >
-                <Gamepad2 className="w-5 h-5 text-amber-900" />
+                <Gamepad2 className="w-5 h-5 text-white" />
               </div>
               <div>
                 <h1 
-                  className="font-display font-black text-lg tracking-wide"
-                  style={{
-                    background: 'linear-gradient(135deg, #FFE082 0%, #FFD54F 50%, #FF8F00 100%)',
-                    WebkitBackgroundClip: 'text',
-                    WebkitTextFillColor: 'transparent',
-                  }}
+                  className="font-display font-black text-lg tracking-wide text-white"
                 >
-                  Finding Match
+                  ONLINE MULTIPLAYER
                 </h1>
                 <div className="flex items-center gap-2 text-xs">
-                  <Clock className="w-3 h-3 text-white/50" />
-                  <span className="text-white/60 font-medium">{formatTime(searchTime)}</span>
-                  <span className="text-white/20">•</span>
+                  <Clock className="w-3 h-3 text-blue-200/70" />
+                  <span className="text-blue-200/80 font-medium">{formatTime(searchTime)}</span>
+                  <span className="text-blue-200/30">•</span>
                   <motion.div 
                     className="flex items-center gap-1"
                     animate={{ opacity: [1, 0.6, 1] }}
@@ -429,8 +432,8 @@ const MatchmakingScreen = ({ players, totalPlayers, entryAmount, rewardAmount }:
             <div 
               className="text-right px-3 py-2 rounded-xl"
               style={{
-                background: 'linear-gradient(135deg, rgba(76,175,80,0.15) 0%, rgba(46,125,50,0.1) 100%)',
-                border: '1px solid rgba(76,175,80,0.3)',
+                background: 'linear-gradient(135deg, rgba(76,175,80,0.2) 0%, rgba(46,125,50,0.15) 100%)',
+                border: '1px solid rgba(76,175,80,0.4)',
               }}
             >
               <div className="flex items-center gap-1.5 text-green-400">
@@ -444,9 +447,171 @@ const MatchmakingScreen = ({ players, totalPlayers, entryAmount, rewardAmount }:
       </div>
 
       {/* Content */}
-      <div className="container mx-auto px-4 py-6 space-y-6">
+      <div className="container mx-auto px-4 py-6 space-y-6 relative z-10">
+        {/* Game Mode & Entry Info Card */}
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="p-3 rounded-xl text-center"
+          style={{
+            background: 'linear-gradient(135deg, rgba(25,118,210,0.4) 0%, rgba(13,71,161,0.3) 100%)',
+            border: '2px solid rgba(66,165,245,0.4)',
+          }}
+        >
+          <div className="flex items-center justify-around">
+            <div>
+              <span className="text-xs text-blue-200/70">Game Mode</span>
+              <div className="flex items-center gap-2 mt-1">
+                <Crown className="w-4 h-4 text-yellow-400" />
+                <span className="text-white font-bold">Classic</span>
+              </div>
+            </div>
+            <div className="w-px h-8 bg-blue-400/30" />
+            <div>
+              <span className="text-xs text-blue-200/70">Entry Amount</span>
+              <p className="text-white font-bold text-lg">₹{entryAmount.toLocaleString()}</p>
+            </div>
+          </div>
+        </motion.div>
+
         {/* Radar Animation */}
         <PremiumRadarPulse />
+
+        {/* VS Player Cards - Like Ludo King */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 0.1 }}
+          className="flex items-center justify-center gap-4 mb-4"
+        >
+          {/* Player 1 (User) */}
+          <motion.div
+            className="relative w-24 h-28 rounded-xl overflow-hidden"
+            style={{
+              background: 'linear-gradient(135deg, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.05) 100%)',
+              border: '3px solid rgba(66,165,245,0.6)',
+              boxShadow: '0 8px 32px rgba(33,150,243,0.3)',
+            }}
+          >
+            <div className="h-full flex flex-col items-center justify-center p-2">
+              <div 
+                className="w-14 h-14 rounded-full flex items-center justify-center text-white font-black text-xl mb-2"
+                style={{
+                  background: 'linear-gradient(135deg, #42A5F5 0%, #1565C0 100%)',
+                  boxShadow: '0 4px 15px rgba(33,150,243,0.5)',
+                }}
+              >
+                {players[0]?.name?.charAt(0).toUpperCase() || 'Y'}
+              </div>
+              <span className="text-white text-xs font-medium truncate w-full text-center">
+                {players[0]?.name || 'You'}
+              </span>
+            </div>
+          </motion.div>
+
+          {/* VS Badge */}
+          <motion.div
+            animate={{ scale: [1, 1.1, 1], rotate: [0, 5, -5, 0] }}
+            transition={{ duration: 2, repeat: Infinity }}
+            className="relative"
+          >
+            <span 
+              className="text-3xl font-black"
+              style={{
+                background: 'linear-gradient(135deg, #FFD54F 0%, #FF8F00 100%)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                textShadow: '0 0 20px rgba(255,193,7,0.5)',
+              }}
+            >
+              VS
+            </span>
+          </motion.div>
+
+          {/* Player 2 (Opponent) */}
+          <motion.div
+            className="relative w-24 h-28 rounded-xl overflow-hidden"
+            style={{
+              background: 'linear-gradient(135deg, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.05) 100%)',
+              border: players[1] ? '3px solid rgba(76,175,80,0.6)' : '3px dashed rgba(255,255,255,0.3)',
+              boxShadow: players[1] ? '0 8px 32px rgba(76,175,80,0.3)' : 'none',
+            }}
+            animate={!players[1] ? { opacity: [0.6, 1, 0.6] } : {}}
+            transition={{ duration: 2, repeat: Infinity }}
+          >
+            <div className="h-full flex flex-col items-center justify-center p-2">
+              {players[1] ? (
+                <>
+                  <div 
+                    className="w-14 h-14 rounded-full flex items-center justify-center text-white font-black text-xl mb-2"
+                    style={{
+                      background: 'linear-gradient(135deg, #66BB6A 0%, #2E7D32 100%)',
+                      boxShadow: '0 4px 15px rgba(76,175,80,0.5)',
+                    }}
+                  >
+                    {players[1].name.charAt(0).toUpperCase()}
+                  </div>
+                  <span className="text-white text-xs font-medium truncate w-full text-center">
+                    {players[1].name}
+                  </span>
+                </>
+              ) : (
+                <>
+                  <div 
+                    className="w-14 h-14 rounded-full flex items-center justify-center mb-2"
+                    style={{
+                      background: 'linear-gradient(135deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0.1) 100%)',
+                      border: '2px dashed rgba(255,255,255,0.3)',
+                    }}
+                  >
+                    <span className="text-2xl text-white/50">?</span>
+                  </div>
+                  <span className="text-blue-200/60 text-xs font-medium">???</span>
+                </>
+              )}
+            </div>
+          </motion.div>
+        </motion.div>
+
+        {/* Timer Badge */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex justify-center"
+        >
+          <div 
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-full"
+            style={{
+              background: 'linear-gradient(135deg, rgba(76,175,80,0.2) 0%, rgba(46,125,50,0.15) 100%)',
+              border: '2px solid rgba(76,175,80,0.4)',
+            }}
+          >
+            <motion.div
+              animate={{ rotate: 360 }}
+              transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
+              className="w-5 h-5 rounded-full border-2 border-green-400 border-t-transparent"
+            />
+            <span className="text-white font-bold">{formatTime(searchTime)}</span>
+          </div>
+        </motion.div>
+
+        {/* Searching Status */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="text-center"
+        >
+          <motion.div
+            className="inline-flex items-center gap-2"
+            animate={{ opacity: [0.7, 1, 0.7] }}
+            transition={{ duration: 2, repeat: Infinity }}
+          >
+            <Search className="w-5 h-5 text-blue-300" />
+            <span className="text-blue-100 font-medium text-sm">
+              SEARCHING FOR PLAYERS...
+            </span>
+          </motion.div>
+        </motion.div>
 
         {/* Premium Match Info Cards */}
         <div className="grid grid-cols-2 gap-3">
@@ -456,9 +621,9 @@ const MatchmakingScreen = ({ players, totalPlayers, entryAmount, rewardAmount }:
             transition={{ delay: 0.1 }}
             className="p-4 rounded-2xl text-center relative overflow-hidden"
             style={{
-              background: 'linear-gradient(135deg, rgba(239,83,80,0.12) 0%, rgba(198,40,40,0.08) 100%)',
-              border: '2px solid rgba(239,83,80,0.3)',
-              boxShadow: '0 4px 20px rgba(239,83,80,0.15)',
+              background: 'linear-gradient(135deg, rgba(33,150,243,0.2) 0%, rgba(25,118,210,0.15) 100%)',
+              border: '2px solid rgba(66,165,245,0.4)',
+              boxShadow: '0 4px 20px rgba(33,150,243,0.2)',
             }}
           >
             {/* Shimmer */}
@@ -474,20 +639,15 @@ const MatchmakingScreen = ({ players, totalPlayers, entryAmount, rewardAmount }:
             <div 
               className="w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-3 relative"
               style={{
-                background: 'linear-gradient(135deg, rgba(239,83,80,0.3) 0%, rgba(198,40,40,0.2) 100%)',
-                border: '1px solid rgba(239,83,80,0.4)',
+                background: 'linear-gradient(135deg, rgba(66,165,245,0.3) 0%, rgba(25,118,210,0.2) 100%)',
+                border: '1px solid rgba(66,165,245,0.4)',
               }}
             >
-              <Zap className="w-6 h-6 text-red-400" />
+              <Zap className="w-6 h-6 text-blue-400" />
             </div>
-            <p className="text-xs text-white/50 font-medium mb-1">Entry Fee</p>
+            <p className="text-xs text-blue-200/70 font-medium mb-1">Entry Fee</p>
             <p 
-              className="text-3xl font-display font-black"
-              style={{
-                background: 'linear-gradient(135deg, #EF5350 0%, #FFCDD2 50%, #EF5350 100%)',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-              }}
+              className="text-3xl font-display font-black text-white"
             >
               ₹{entryAmount}
             </p>
@@ -499,9 +659,9 @@ const MatchmakingScreen = ({ players, totalPlayers, entryAmount, rewardAmount }:
             transition={{ delay: 0.2 }}
             className="p-4 rounded-2xl text-center relative overflow-hidden"
             style={{
-              background: 'linear-gradient(135deg, rgba(76,175,80,0.12) 0%, rgba(46,125,50,0.08) 100%)',
-              border: '2px solid rgba(76,175,80,0.3)',
-              boxShadow: '0 4px 20px rgba(76,175,80,0.15)',
+              background: 'linear-gradient(135deg, rgba(76,175,80,0.2) 0%, rgba(46,125,50,0.15) 100%)',
+              border: '2px solid rgba(76,175,80,0.4)',
+              boxShadow: '0 4px 20px rgba(76,175,80,0.2)',
             }}
           >
             {/* Shimmer */}
@@ -523,7 +683,7 @@ const MatchmakingScreen = ({ players, totalPlayers, entryAmount, rewardAmount }:
             >
               <Crown className="w-6 h-6 text-green-400" />
             </div>
-            <p className="text-xs text-white/50 font-medium mb-1">Win Prize</p>
+            <p className="text-xs text-green-200/70 font-medium mb-1">Win Prize</p>
             <p 
               className="text-3xl font-display font-black"
               style={{
@@ -544,11 +704,11 @@ const MatchmakingScreen = ({ players, totalPlayers, entryAmount, rewardAmount }:
               <div 
                 className="p-1.5 rounded-lg"
                 style={{
-                  background: 'rgba(255,255,255,0.08)',
-                  border: '1px solid rgba(255,255,255,0.1)',
+                  background: 'rgba(66,165,245,0.2)',
+                  border: '1px solid rgba(66,165,245,0.3)',
                 }}
               >
-                <Users className="w-4 h-4 text-white/60" />
+                <Users className="w-4 h-4 text-blue-300" />
               </div>
               <span className="text-sm font-bold text-white">
                 Players ({readyCount}/{totalPlayers})
@@ -557,8 +717,8 @@ const MatchmakingScreen = ({ players, totalPlayers, entryAmount, rewardAmount }:
             <div 
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold"
               style={{
-                background: 'linear-gradient(135deg, rgba(76,175,80,0.15) 0%, rgba(46,125,50,0.1) 100%)',
-                border: '1px solid rgba(76,175,80,0.3)',
+                background: 'linear-gradient(135deg, rgba(76,175,80,0.2) 0%, rgba(46,125,50,0.15) 100%)',
+                border: '1px solid rgba(76,175,80,0.4)',
                 color: '#4CAF50',
               }}
             >
@@ -584,15 +744,15 @@ const MatchmakingScreen = ({ players, totalPlayers, entryAmount, rewardAmount }:
           <div 
             className="h-3 rounded-full overflow-hidden relative"
             style={{
-              background: 'linear-gradient(180deg, rgba(40,38,35,0.8) 0%, rgba(30,28,25,0.9) 100%)',
-              border: '1px solid rgba(255,255,255,0.1)',
+              background: 'linear-gradient(180deg, rgba(13,71,161,0.8) 0%, rgba(10,36,114,0.9) 100%)',
+              border: '1px solid rgba(66,165,245,0.3)',
               boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.3)',
             }}
           >
             <motion.div
               className="h-full relative"
               style={{
-                background: 'linear-gradient(90deg, #FFD54F 0%, #4CAF50 50%, #2E7D32 100%)',
+                background: 'linear-gradient(90deg, #42A5F5 0%, #4CAF50 50%, #2E7D32 100%)',
                 boxShadow: '0 0 20px rgba(76,175,80,0.5)',
               }}
               initial={{ width: '0%' }}
@@ -651,7 +811,7 @@ const MatchmakingScreen = ({ players, totalPlayers, entryAmount, rewardAmount }:
                 className="text-center"
               >
                 <motion.span
-                  className="text-sm text-white/50 font-medium"
+                  className="text-sm text-blue-200/70 font-medium"
                   animate={{ opacity: [0.5, 0.9, 0.5] }}
                   transition={{ duration: 2.5, repeat: Infinity }}
                 >
