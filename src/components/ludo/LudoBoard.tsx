@@ -660,33 +660,6 @@ const LudoBoard = ({ players, onTokenClick, selectedToken, captureEvent, onCaptu
           />
         </div>
       </motion.div>
-
-      {/* Compact Player indicators at bottom corners */}
-      <div className="flex justify-between items-center px-2 mt-2">
-        {players[0] && (
-          <div className="flex items-center gap-1.5">
-            <div 
-              className="w-6 h-6 rounded-full"
-              style={{ background: COLORS[players[0].color as keyof typeof COLORS]?.main }}
-            />
-            <span className="text-white text-xs font-bold">{players[0].uid || generateUID()}</span>
-          </div>
-        )}
-        
-        <div className="px-2 py-0.5 rounded bg-yellow-500/20">
-          <span className="text-yellow-400 text-xs font-bold">VS</span>
-        </div>
-        
-        {players[1] && (
-          <div className="flex items-center gap-1.5">
-            <span className="text-white text-xs font-bold">{players[1].uid || generateUID()}</span>
-            <div 
-              className="w-6 h-6 rounded-full"
-              style={{ background: COLORS[players[1].color as keyof typeof COLORS]?.main }}
-            />
-          </div>
-        )}
-      </div>
     </div>
   );
 };
