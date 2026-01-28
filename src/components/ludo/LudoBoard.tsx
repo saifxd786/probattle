@@ -922,16 +922,16 @@ const LudoBoard = ({ players, onTokenClick, selectedToken, captureEvent, onCaptu
                 <motion.div
                   className="absolute rounded-full pointer-events-none"
                   style={{
-                    width: cellSize * 0.95,
-                    height: cellSize * 0.95,
-                    top: '50%',
+                    width: cellSize * 0.8,
+                    height: cellSize * 0.8,
+                    top: cellSize * 0.15,
                     left: '50%',
-                    transform: 'translate(-50%, -50%)',
+                    transform: 'translateX(-50%)',
                     border: `3px solid ${COLORS[colorKey].main}`,
                     boxShadow: `0 0 12px ${COLORS[colorKey].main}, 0 0 20px ${COLORS[colorKey].light}80`,
                   }}
                   animate={{ 
-                    scale: [1, 1.2, 1],
+                    scale: [1, 1.15, 1],
                     opacity: [0.9, 0.5, 0.9],
                   }}
                   transition={{ duration: 1.2, repeat: Infinity, ease: 'easeInOut' }}
