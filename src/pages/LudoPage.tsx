@@ -293,7 +293,7 @@ const LudoPage = () => {
         </div>
 
         {/* Compact Dice Area */}
-        <div className="shrink-0 px-4 py-3 border-t border-white/10 bg-black/40">
+        <div className="shrink-0 px-3 py-1.5 border-t border-white/10 bg-black/40">
           <LudoDice
             value={gameState.diceValue}
             isRolling={gameState.isRolling}
@@ -302,8 +302,6 @@ const LudoPage = () => {
             canRoll={gameState.canRoll && isUserTurn}
             compact
           />
-          
-          <AnimatedStatus isUserTurn={isUserTurn} canRoll={gameState.canRoll} isRolling={gameState.isRolling} playerName={currentPlayer?.name || ''} />
         </div>
       </div>
     );
