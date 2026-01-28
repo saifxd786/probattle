@@ -39,8 +39,12 @@ const HOME_POSITIONS: { [color: string]: { x: number; y: number }[] } = {
   blue: [{ x: 1.8, y: 10.8 }, { x: 4.2, y: 10.8 }, { x: 1.8, y: 13.2 }, { x: 4.2, y: 13.2 }]
 };
 
-// Each color has its own complete track - 51 positions on main track, then 6 in home stretch
-// RED starts at bottom-left, goes up, clockwise around the board
+// Track geometry (52-step loop represented as 51 visible positions here) is correct,
+// but color-to-lane mapping must match corner homes:
+// red: top-left (left lane) • green: top-right (top lane) • yellow: bottom-right (right lane) • blue: bottom-left (bottom lane)
+//
+// NOTE: These arrays are lane-geometry, not “color truth”. Final mapping is done in COLOR_TRACKS below.
+// BOTTOM lane start (previously used as RED)
 const RED_TRACK: { x: number; y: number }[] = [
   // Position 1-5: Going up from red start
   { x: 6.5, y: 13.5 }, { x: 6.5, y: 12.5 }, { x: 6.5, y: 11.5 }, { x: 6.5, y: 10.5 }, { x: 6.5, y: 9.5 },
@@ -68,7 +72,7 @@ const RED_TRACK: { x: number; y: number }[] = [
   { x: 7.5, y: 14.5 },
 ];
 
-// GREEN starts at top-left, goes right, clockwise
+// LEFT lane start (previously used as GREEN)
 const GREEN_TRACK: { x: number; y: number }[] = [
   // Position 1-5: Going right from green start
   { x: 1.5, y: 6.5 }, { x: 2.5, y: 6.5 }, { x: 3.5, y: 6.5 }, { x: 4.5, y: 6.5 }, { x: 5.5, y: 6.5 },
@@ -96,7 +100,7 @@ const GREEN_TRACK: { x: number; y: number }[] = [
   { x: 0.5, y: 7.5 },
 ];
 
-// YELLOW starts at top-right, goes down, clockwise
+// TOP lane start (previously used as YELLOW)
 const YELLOW_TRACK: { x: number; y: number }[] = [
   // Position 1-5: Going down from yellow start
   { x: 8.5, y: 1.5 }, { x: 8.5, y: 2.5 }, { x: 8.5, y: 3.5 }, { x: 8.5, y: 4.5 }, { x: 8.5, y: 5.5 },
@@ -124,7 +128,7 @@ const YELLOW_TRACK: { x: number; y: number }[] = [
   { x: 7.5, y: 0.5 },
 ];
 
-// BLUE starts at bottom-right, goes left, clockwise
+// RIGHT lane start (previously used as BLUE)
 const BLUE_TRACK: { x: number; y: number }[] = [
   // Position 1-5: Going left from blue start
   { x: 13.5, y: 8.5 }, { x: 12.5, y: 8.5 }, { x: 11.5, y: 8.5 }, { x: 10.5, y: 8.5 }, { x: 9.5, y: 8.5 },
@@ -152,28 +156,37 @@ const BLUE_TRACK: { x: number; y: number }[] = [
   { x: 14.5, y: 7.5 },
 ];
 
-// Color-specific track mapping
+// Color-specific track mapping (aligned with corner homes)
+// red (top-left) should start from LEFT lane
+// green (top-right) should start from TOP lane
+// yellow (bottom-right) should start from RIGHT lane
+// blue (bottom-left) should start from BOTTOM lane
 const COLOR_TRACKS: { [color: string]: { x: number; y: number }[] } = {
-  red: RED_TRACK,
-  green: GREEN_TRACK,
-  yellow: YELLOW_TRACK,
-  blue: BLUE_TRACK
+  red: GREEN_TRACK,
+  green: YELLOW_TRACK,
+  yellow: BLUE_TRACK,
+  blue: RED_TRACK,
 };
 
 // Home stretch paths for each color (positions 52-57 lead to center)
+// Lanes (geometry): TOP, RIGHT, BOTTOM, LEFT — then mapped to corner colors.
 const HOME_PATHS: { [color: string]: { x: number; y: number }[] } = {
+  // red corner (top-left) uses LEFT lane
   red: [
-    { x: 7.5, y: 13.5 }, { x: 7.5, y: 12.5 }, { x: 7.5, y: 11.5 }, { x: 7.5, y: 10.5 }, { x: 7.5, y: 9.5 }, { x: 7.5, y: 8.5 }
-  ],
-  green: [
     { x: 1.5, y: 7.5 }, { x: 2.5, y: 7.5 }, { x: 3.5, y: 7.5 }, { x: 4.5, y: 7.5 }, { x: 5.5, y: 7.5 }, { x: 6.5, y: 7.5 }
   ],
-  yellow: [
+  // green corner (top-right) uses TOP lane
+  green: [
     { x: 7.5, y: 1.5 }, { x: 7.5, y: 2.5 }, { x: 7.5, y: 3.5 }, { x: 7.5, y: 4.5 }, { x: 7.5, y: 5.5 }, { x: 7.5, y: 6.5 }
   ],
-  blue: [
+  // yellow corner (bottom-right) uses RIGHT lane
+  yellow: [
     { x: 13.5, y: 7.5 }, { x: 12.5, y: 7.5 }, { x: 11.5, y: 7.5 }, { x: 10.5, y: 7.5 }, { x: 9.5, y: 7.5 }, { x: 8.5, y: 7.5 }
-  ]
+  ],
+  // blue corner (bottom-left) uses BOTTOM lane
+  blue: [
+    { x: 7.5, y: 13.5 }, { x: 7.5, y: 12.5 }, { x: 7.5, y: 11.5 }, { x: 7.5, y: 10.5 }, { x: 7.5, y: 9.5 }, { x: 7.5, y: 8.5 }
+  ],
 };
 
 // Teardrop/Pin Token SVG Component
@@ -462,22 +475,22 @@ const LudoBoard = ({ players, onTokenClick, selectedToken }: LudoBoardProps) => 
           ))}
         </g>
 
-        {/* Colored Home Paths */}
-        {/* Yellow path (top center going down) */}
+        {/* Colored Home Paths (aligned with corner homes) */}
+        {/* TOP lane = green */}
         {[0, 1, 2, 3, 4, 5].map(i => (
-          <rect key={`yp-${i}`} x={7} y={i} width="1" height="1" fill={COLORS.yellow.main} stroke={COLORS.yellow.dark} strokeWidth="0.04" />
+          <rect key={`hp-top-${i}`} x={7} y={i} width="1" height="1" fill={COLORS.green.main} stroke={COLORS.green.dark} strokeWidth="0.04" />
         ))}
-        {/* Green path (left center going right) */}
+        {/* LEFT lane = red */}
         {[0, 1, 2, 3, 4, 5].map(i => (
-          <rect key={`gp-${i}`} x={i} y={7} width="1" height="1" fill={COLORS.green.main} stroke={COLORS.green.dark} strokeWidth="0.04" />
+          <rect key={`hp-left-${i}`} x={i} y={7} width="1" height="1" fill={COLORS.red.main} stroke={COLORS.red.dark} strokeWidth="0.04" />
         ))}
-        {/* Red path (bottom center going up) */}
+        {/* BOTTOM lane = blue */}
         {[9, 10, 11, 12, 13, 14].map(i => (
-          <rect key={`rp-${i}`} x={7} y={i} width="1" height="1" fill={COLORS.red.main} stroke={COLORS.red.dark} strokeWidth="0.04" />
+          <rect key={`hp-bottom-${i}`} x={7} y={i} width="1" height="1" fill={COLORS.blue.main} stroke={COLORS.blue.dark} strokeWidth="0.04" />
         ))}
-        {/* Blue path (right center going left) */}
+        {/* RIGHT lane = yellow */}
         {[9, 10, 11, 12, 13, 14].map(i => (
-          <rect key={`bp-${i}`} x={i} y={7} width="1" height="1" fill={COLORS.blue.main} stroke={COLORS.blue.dark} strokeWidth="0.04" />
+          <rect key={`hp-right-${i}`} x={i} y={7} width="1" height="1" fill={COLORS.yellow.main} stroke={COLORS.yellow.dark} strokeWidth="0.04" />
         ))}
 
         {/* Safe spots / Stars on track */}
@@ -489,12 +502,16 @@ const LudoBoard = ({ players, onTokenClick, selectedToken }: LudoBoardProps) => 
           <text x="12.5" y="8.5">←</text>
         </g>
 
-        {/* Starting stars (colored) */}
+        {/* Starting stars (colored) - aligned with corner homes */}
         <g fontSize="0.5" textAnchor="middle" dominantBaseline="central">
-          <text x="6.5" y="13.5" fill={COLORS.red.main}>★</text>
-          <text x="1.5" y="6.5" fill={COLORS.green.main}>★</text>
-          <text x="8.5" y="1.5" fill={COLORS.yellow.main}>★</text>
-          <text x="13.5" y="8.5" fill={COLORS.blue.main}>★</text>
+          {/* bottom start */}
+          <text x="6.5" y="13.5" fill={COLORS.blue.main}>★</text>
+          {/* left start */}
+          <text x="1.5" y="6.5" fill={COLORS.red.main}>★</text>
+          {/* top start */}
+          <text x="8.5" y="1.5" fill={COLORS.green.main}>★</text>
+          {/* right start */}
+          <text x="13.5" y="8.5" fill={COLORS.yellow.main}>★</text>
         </g>
 
         {/* Safe spots (gray stars) */}
@@ -505,11 +522,15 @@ const LudoBoard = ({ players, onTokenClick, selectedToken }: LudoBoardProps) => 
           <text x="7.5" y="12.5">★</text>
         </g>
 
-        {/* Center Home Triangle */}
-        <polygon points="6,6 7.5,7.5 6,9" fill={COLORS.green.main} stroke="#fff" strokeWidth="0.04" />
-        <polygon points="6,6 7.5,7.5 9,6" fill={COLORS.yellow.main} stroke="#fff" strokeWidth="0.04" />
-        <polygon points="9,6 7.5,7.5 9,9" fill={COLORS.blue.main} stroke="#fff" strokeWidth="0.04" />
-        <polygon points="6,9 7.5,7.5 9,9" fill={COLORS.red.main} stroke="#fff" strokeWidth="0.04" />
+        {/* Center Home Triangle (aligned with lanes) */}
+        {/* left */}
+        <polygon points="6,6 7.5,7.5 6,9" fill={COLORS.red.main} stroke="#fff" strokeWidth="0.04" />
+        {/* top */}
+        <polygon points="6,6 7.5,7.5 9,6" fill={COLORS.green.main} stroke="#fff" strokeWidth="0.04" />
+        {/* right */}
+        <polygon points="9,6 7.5,7.5 9,9" fill={COLORS.yellow.main} stroke="#fff" strokeWidth="0.04" />
+        {/* bottom */}
+        <polygon points="6,9 7.5,7.5 9,9" fill={COLORS.blue.main} stroke="#fff" strokeWidth="0.04" />
 
         {/* Center circle */}
         <circle cx="7.5" cy="7.5" r="0.4" fill="#fff" stroke="#d4a574" strokeWidth="0.06" />
