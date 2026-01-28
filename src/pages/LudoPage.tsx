@@ -272,38 +272,6 @@ const LudoPage = () => {
           </div>
         </div>
 
-        {/* Compact Players Status Bar with UID */}
-        <div className="shrink-0 flex justify-around py-1.5 px-2 bg-black/30">
-          {gameState.players.map((player, idx) => (
-            <motion.div
-              key={player.id}
-              className={`flex items-center gap-1 px-1.5 py-0.5 rounded transition-all ${
-                idx === gameState.currentTurn 
-                  ? 'bg-white/10 ring-1 ring-white/30' 
-                  : 'opacity-60'
-              }`}
-              animate={idx === gameState.currentTurn ? { scale: [1, 1.02, 1] } : {}}
-              transition={{ duration: 1, repeat: Infinity }}
-            >
-              <div
-                className={`w-4 h-4 rounded-full bg-gradient-to-br ${colorStyles[player.color]} border border-white/30`}
-              />
-              <div>
-                <p className="text-[8px] text-white font-medium">#{player.uid || '00000'}</p>
-                <div className="flex gap-0.5">
-                  {[0, 1, 2, 3].map(i => (
-                    <div
-                      key={i}
-                      className={`w-1 h-1 rounded-full ${
-                        i < player.tokensHome ? 'bg-green-400' : 'bg-gray-600'
-                      }`}
-                    />
-                  ))}
-                </div>
-              </div>
-            </motion.div>
-          ))}
-        </div>
 
         {/* Game Board - Takes maximum space */}
         <div className="flex-1 flex items-center justify-center p-2 min-h-0 overflow-hidden">
