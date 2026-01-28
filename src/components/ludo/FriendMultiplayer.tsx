@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Users, Copy, Check, ArrowLeft, Loader2, Signal, Wifi, WifiOff, Gamepad2, Hash, Trophy, Coins, Sparkles, UserPlus, Link2 } from 'lucide-react';
+import { Users, Copy, Check, ArrowLeft, Loader2, Signal, Wifi, WifiOff, Gamepad2, Hash, Trophy, Coins, Sparkles, UserPlus, Link2, Gift, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
@@ -30,11 +30,14 @@ const FriendMultiplayer = ({
   const [copied, setCopied] = useState(false);
   const [waitingForPlayer, setWaitingForPlayer] = useState(false);
   const [currentRoomId, setCurrentRoomId] = useState<string | null>(null);
+  const [isFreeMatch, setIsFreeMatch] = useState(false);
 
-  const rewardAmount = Math.floor(entryAmount * 1.5);
+  const actualEntryAmount = isFreeMatch ? 0 : entryAmount;
+  const rewardAmount = isFreeMatch ? 0 : Math.floor(entryAmount * 1.5);
 
   const handleCreateRoom = async () => {
-    if (walletBalance < entryAmount) {
+    // Only check balance for paid matches
+    if (!isFreeMatch && walletBalance < entryAmount) {
       toast.error('Insufficient balance');
       return;
     }
@@ -42,7 +45,7 @@ const FriendMultiplayer = ({
     setIsLoading(true);
     try {
       const { data, error } = await supabase.rpc('create_ludo_room', {
-        p_entry_amount: entryAmount
+        p_entry_amount: actualEntryAmount
       });
 
       if (error) throw error;
@@ -72,7 +75,7 @@ const FriendMultiplayer = ({
           (payload) => {
             const newData = payload.new as { status: string; guest_id: string; entry_amount: number; reward_amount: number };
             if (newData.status === 'ready' && newData.guest_id) {
-              toast.success('Friend joined! Game starting...');
+              toast.success(isFreeMatch ? 'Friend joined! Free game starting...' : 'Friend joined! Game starting...');
               onRoomCreated(result.room_id!, result.room_code!, true, newData.entry_amount, newData.reward_amount);
             }
           }
@@ -174,42 +177,185 @@ const FriendMultiplayer = ({
           </div>
         </motion.div>
 
-        {/* Prize Pool Card */}
+        {/* Free Match Toggle */}
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.1 }}
-          className="relative mb-6 p-5 rounded-2xl bg-gradient-to-br from-primary/20 via-card to-primary/10 border border-primary/30 overflow-hidden"
+          className="mb-4"
         >
-          {/* Decorative elements */}
-          <div className="absolute top-0 right-0 w-32 h-32 bg-primary/20 rounded-full blur-3xl" />
-          <div className="absolute -bottom-4 -left-4 w-24 h-24 bg-yellow-500/20 rounded-full blur-2xl" />
-          
-          <div className="relative flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-xl bg-primary/20 flex items-center justify-center">
-                <Coins className="w-6 h-6 text-primary" />
+          <div className="grid grid-cols-2 gap-3">
+            {/* Paid Match Option */}
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => setIsFreeMatch(false)}
+              className={`relative p-4 rounded-xl transition-all duration-300 overflow-hidden ${
+                !isFreeMatch
+                  ? 'bg-gradient-to-br from-yellow-500/20 via-card to-amber-600/10 border-2 border-yellow-500/50'
+                  : 'bg-card/50 border-2 border-border/50'
+              }`}
+            >
+              {!isFreeMatch && (
+                <motion.div
+                  className="absolute inset-0 pointer-events-none"
+                  style={{
+                    background: 'radial-gradient(circle at 50% 30%, rgba(255,193,7,0.2) 0%, transparent 60%)',
+                  }}
+                  animate={{ opacity: [0.4, 0.7, 0.4] }}
+                  transition={{ duration: 2.5, repeat: Infinity }}
+                />
+              )}
+              <div className="relative flex flex-col items-center gap-2">
+                <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
+                  !isFreeMatch 
+                    ? 'bg-gradient-to-br from-yellow-400 to-amber-600' 
+                    : 'bg-muted'
+                }`}>
+                  <Coins className={`w-6 h-6 ${!isFreeMatch ? 'text-amber-900' : 'text-muted-foreground'}`} />
+                </div>
+                <div className="text-center">
+                  <p className={`font-bold text-sm ${!isFreeMatch ? 'text-foreground' : 'text-muted-foreground'}`}>
+                    Paid Match
+                  </p>
+                  <p className={`text-xs ${!isFreeMatch ? 'text-yellow-400' : 'text-muted-foreground'}`}>
+                    Win ₹{Math.floor(entryAmount * 1.5)}
+                  </p>
+                </div>
               </div>
-              <div>
-                <p className="text-xs text-muted-foreground uppercase tracking-wider">Entry Fee</p>
-                <p className="text-2xl font-bold text-foreground">₹{entryAmount}</p>
+              {!isFreeMatch && (
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  className="absolute top-2 right-2 w-5 h-5 rounded-full bg-yellow-500 flex items-center justify-center"
+                >
+                  <Check className="w-3 h-3 text-amber-900" />
+                </motion.div>
+              )}
+            </motion.button>
+
+            {/* Free Match Option */}
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => setIsFreeMatch(true)}
+              className={`relative p-4 rounded-xl transition-all duration-300 overflow-hidden ${
+                isFreeMatch
+                  ? 'bg-gradient-to-br from-purple-500/20 via-card to-violet-600/10 border-2 border-purple-500/50'
+                  : 'bg-card/50 border-2 border-border/50'
+              }`}
+            >
+              {isFreeMatch && (
+                <motion.div
+                  className="absolute inset-0 pointer-events-none"
+                  style={{
+                    background: 'radial-gradient(circle at 50% 30%, rgba(168,85,247,0.2) 0%, transparent 60%)',
+                  }}
+                  animate={{ opacity: [0.4, 0.7, 0.4] }}
+                  transition={{ duration: 2.5, repeat: Infinity }}
+                />
+              )}
+              <div className="relative flex flex-col items-center gap-2">
+                <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
+                  isFreeMatch 
+                    ? 'bg-gradient-to-br from-purple-400 to-violet-600' 
+                    : 'bg-muted'
+                }`}>
+                  <Gift className={`w-6 h-6 ${isFreeMatch ? 'text-white' : 'text-muted-foreground'}`} />
+                </div>
+                <div className="text-center">
+                  <p className={`font-bold text-sm ${isFreeMatch ? 'text-foreground' : 'text-muted-foreground'}`}>
+                    Free Match
+                  </p>
+                  <p className={`text-xs ${isFreeMatch ? 'text-purple-400' : 'text-muted-foreground'}`}>
+                    Just for fun!
+                  </p>
+                </div>
               </div>
-            </div>
-            
-            <div className="text-center px-4">
-              <Sparkles className="w-5 h-5 text-yellow-400 mx-auto mb-1" />
-              <span className="text-xs text-muted-foreground">1.5x</span>
-            </div>
-            
-            <div className="text-right">
-              <div className="flex items-center gap-2 justify-end">
-                <Trophy className="w-5 h-5 text-yellow-400" />
-                <span className="text-xs text-muted-foreground uppercase tracking-wider">Winner Gets</span>
-              </div>
-              <p className="text-2xl font-bold text-yellow-400">₹{rewardAmount}</p>
-            </div>
+              {isFreeMatch && (
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  className="absolute top-2 right-2 w-5 h-5 rounded-full bg-purple-500 flex items-center justify-center"
+                >
+                  <Check className="w-3 h-3 text-white" />
+                </motion.div>
+              )}
+            </motion.button>
           </div>
         </motion.div>
+
+        {/* Prize Pool Card - Shows based on match type */}
+        <AnimatePresence mode="wait">
+          {isFreeMatch ? (
+            <motion.div
+              key="free-card"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ duration: 0.2 }}
+              className="relative mb-6 p-5 rounded-2xl bg-gradient-to-br from-purple-500/20 via-card to-violet-500/10 border border-purple-500/30 overflow-hidden"
+            >
+              {/* Decorative elements */}
+              <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/20 rounded-full blur-3xl" />
+              <div className="absolute -bottom-4 -left-4 w-24 h-24 bg-violet-500/20 rounded-full blur-2xl" />
+              
+              <div className="relative text-center">
+                <motion.div
+                  animate={{ rotate: [0, 10, -10, 0], scale: [1, 1.1, 1] }}
+                  transition={{ duration: 2, repeat: Infinity }}
+                  className="w-16 h-16 rounded-2xl bg-gradient-to-br from-purple-400 to-violet-600 flex items-center justify-center mx-auto mb-3 shadow-lg shadow-purple-500/30"
+                >
+                  <Gift className="w-8 h-8 text-white" />
+                </motion.div>
+                <h3 className="font-bold text-lg text-foreground mb-1">Free Match</h3>
+                <p className="text-sm text-purple-400">Play for fun, no money involved!</p>
+                <div className="mt-3 flex items-center justify-center gap-2">
+                  <Zap className="w-4 h-4 text-purple-400" />
+                  <span className="text-xs text-muted-foreground">Winner gets bragging rights 🏆</span>
+                </div>
+              </div>
+            </motion.div>
+          ) : (
+            <motion.div
+              key="paid-card"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ duration: 0.2 }}
+              className="relative mb-6 p-5 rounded-2xl bg-gradient-to-br from-primary/20 via-card to-primary/10 border border-primary/30 overflow-hidden"
+            >
+              {/* Decorative elements */}
+              <div className="absolute top-0 right-0 w-32 h-32 bg-primary/20 rounded-full blur-3xl" />
+              <div className="absolute -bottom-4 -left-4 w-24 h-24 bg-yellow-500/20 rounded-full blur-2xl" />
+              
+              <div className="relative flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-xl bg-primary/20 flex items-center justify-center">
+                    <Coins className="w-6 h-6 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground uppercase tracking-wider">Entry Fee</p>
+                    <p className="text-2xl font-bold text-foreground">₹{entryAmount}</p>
+                  </div>
+                </div>
+                
+                <div className="text-center px-4">
+                  <Sparkles className="w-5 h-5 text-yellow-400 mx-auto mb-1" />
+                  <span className="text-xs text-muted-foreground">1.5x</span>
+                </div>
+                
+                <div className="text-right">
+                  <div className="flex items-center gap-2 justify-end">
+                    <Trophy className="w-5 h-5 text-yellow-400" />
+                    <span className="text-xs text-muted-foreground uppercase tracking-wider">Winner Gets</span>
+                  </div>
+                  <p className="text-2xl font-bold text-yellow-400">₹{rewardAmount}</p>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Mode Selection Cards */}
         <div className="grid gap-4">
@@ -220,7 +366,7 @@ const FriendMultiplayer = ({
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             onClick={() => handleCreateRoom()}
-            disabled={walletBalance < entryAmount || isLoading}
+            disabled={(!isFreeMatch && walletBalance < entryAmount) || isLoading}
             className="relative p-5 rounded-2xl bg-gradient-to-br from-emerald-500/20 via-card to-emerald-600/10 border border-emerald-500/30 text-left disabled:opacity-50 disabled:cursor-not-allowed overflow-hidden group"
           >
             {/* Hover glow */}
@@ -233,6 +379,11 @@ const FriendMultiplayer = ({
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-1">
                   <h3 className="font-bold text-lg text-foreground">Create Room</h3>
+                  {isFreeMatch && (
+                    <span className="px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-400 text-xs font-semibold">
+                      FREE
+                    </span>
+                  )}
                   {isLoading && <Loader2 className="w-4 h-4 animate-spin text-emerald-400" />}
                 </div>
                 <p className="text-sm text-muted-foreground">Get a unique code to share with your friend</p>
@@ -270,7 +421,7 @@ const FriendMultiplayer = ({
           </motion.button>
         </div>
 
-        {walletBalance < entryAmount && (
+        {!isFreeMatch && walletBalance < entryAmount && (
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -296,8 +447,17 @@ const FriendMultiplayer = ({
           </h4>
           <div className="space-y-2 text-xs text-muted-foreground">
             <p>1. Create a room or join using a friend's code</p>
-            <p>2. Both players pay ₹{entryAmount} entry fee</p>
-            <p>3. Winner takes ₹{rewardAmount} (1.5x pool)</p>
+            {isFreeMatch ? (
+              <>
+                <p>2. No entry fee required - completely free!</p>
+                <p>3. Play for fun and bragging rights 🎉</p>
+              </>
+            ) : (
+              <>
+                <p>2. Both players pay ₹{entryAmount} entry fee</p>
+                <p>3. Winner takes ₹{rewardAmount} (1.5x pool)</p>
+              </>
+            )}
           </div>
         </motion.div>
       </div>
@@ -467,25 +627,39 @@ const FriendMultiplayer = ({
               </div>
             </motion.div>
 
-            {/* Prize Info */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3 }}
-              className="p-4 rounded-xl bg-card/50 border border-border/50"
-            >
-              <div className="flex justify-between items-center mb-3">
-                <span className="text-sm text-muted-foreground">Your Entry</span>
-                <span className="text-sm font-medium text-foreground">₹{entryAmount}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-muted-foreground flex items-center gap-1.5">
-                  <Trophy className="w-4 h-4 text-yellow-400" />
-                  Winner Prize
-                </span>
-                <span className="text-lg font-bold text-yellow-400">₹{rewardAmount}</span>
-              </div>
-            </motion.div>
+            {/* Prize Info - Conditional based on free match */}
+            {isFreeMatch ? (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 }}
+                className="p-4 rounded-xl bg-purple-500/10 border border-purple-500/30"
+              >
+                <div className="flex items-center justify-center gap-3">
+                  <Gift className="w-5 h-5 text-purple-400" />
+                  <span className="text-sm font-medium text-purple-400">Free Match - Just for Fun!</span>
+                </div>
+              </motion.div>
+            ) : (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3 }}
+                className="p-4 rounded-xl bg-card/50 border border-border/50"
+              >
+                <div className="flex justify-between items-center mb-3">
+                  <span className="text-sm text-muted-foreground">Your Entry</span>
+                  <span className="text-sm font-medium text-foreground">₹{entryAmount}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground flex items-center gap-1.5">
+                    <Trophy className="w-4 h-4 text-yellow-400" />
+                    Winner Prize
+                  </span>
+                  <span className="text-lg font-bold text-yellow-400">₹{rewardAmount}</span>
+                </div>
+              </motion.div>
+            )}
 
             {/* Cancel Button */}
             <Button
@@ -495,7 +669,7 @@ const FriendMultiplayer = ({
               className="w-full py-6 border-destructive/50 text-destructive hover:bg-destructive/10 rounded-xl"
             >
               {isLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-              Cancel & Get Refund
+              {isFreeMatch ? 'Cancel Room' : 'Cancel & Get Refund'}
             </Button>
           </motion.div>
         </AnimatePresence>
