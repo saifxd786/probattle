@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Header from '@/components/Header';
 import BottomNav from '@/components/BottomNav';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFriends } from '@/hooks/useFriends';
 import { useGameChallenge } from '@/hooks/useGameChallenge';
+import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -13,7 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Users, UserPlus, Gamepad2, Clock, Check, X, Swords, Loader2, Copy, Share2 } from 'lucide-react';
+import { Users, UserPlus, Gamepad2, Clock, Check, X, Swords, Loader2, Share2, Circle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -25,24 +26,27 @@ const FriendsPage = () => {
   const { friends, pendingRequests, sentRequests, isLoading, sendFriendRequest, acceptRequest, rejectRequest, removeFriend } = useFriends();
   const { pendingChallenges, sendChallenge, acceptChallenge, rejectChallenge, isLoading: challengeLoading } = useGameChallenge();
   
+  // Get friend IDs for online status tracking
+  const friendIds = useMemo(() => friends.map(f => f.id), [friends]);
+  const { isOnline } = useOnlineStatus(friendIds);
+  
   const [userCode, setUserCode] = useState('');
   const [isAddingFriend, setIsAddingFriend] = useState(false);
   const [selectedFriend, setSelectedFriend] = useState<string | null>(null);
-  const [challengeGame, setChallengeGame] = useState('ludo');
   const [challengeAmount, setChallengeAmount] = useState('10');
   const [myCode, setMyCode] = useState<string | null>(null);
 
   // Fetch user's own code
-  useState(() => {
+  useEffect(() => {
     if (user) {
       supabase
         .from('profiles')
         .select('user_code')
         .eq('id', user.id)
-        .single()
+        .maybeSingle()
         .then(({ data }) => setMyCode(data?.user_code || null));
     }
-  });
+  }, [user]);
 
   if (!user) {
     return (
@@ -80,7 +84,7 @@ const FriendsPage = () => {
 
   const handleChallenge = async () => {
     if (!selectedFriend) return;
-    const result = await sendChallenge(selectedFriend, challengeGame, parseInt(challengeAmount));
+    const result = await sendChallenge(selectedFriend, 'ludo', parseInt(challengeAmount));
     if (!result.success) {
       toast({
         title: "Error",
@@ -252,14 +256,29 @@ const FriendsPage = () => {
                         <CardContent className="p-4">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-3">
-                              <Avatar className="w-12 h-12">
-                                <AvatarImage src={friend.avatar_url || ''} />
-                                <AvatarFallback className="bg-primary/20 text-primary">
-                                  {friend.username?.[0]?.toUpperCase() || '?'}
-                                </AvatarFallback>
-                              </Avatar>
+                              <div className="relative">
+                                <Avatar className="w-12 h-12">
+                                  <AvatarImage src={friend.avatar_url || ''} />
+                                  <AvatarFallback className="bg-primary/20 text-primary">
+                                    {friend.username?.[0]?.toUpperCase() || '?'}
+                                  </AvatarFallback>
+                                </Avatar>
+                                {/* Online Status Indicator */}
+                                <div className={`absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full border-2 border-card ${
+                                  isOnline(friend.id) ? 'bg-green-500' : 'bg-red-500'
+                                }`}>
+                                  <Circle className={`w-full h-full ${
+                                    isOnline(friend.id) ? 'text-green-500 fill-green-500' : 'text-red-500 fill-red-500'
+                                  }`} />
+                                </div>
+                              </div>
                               <div>
-                                <p className="font-medium">{friend.username}</p>
+                                <div className="flex items-center gap-2">
+                                  <p className="font-medium">{friend.username}</p>
+                                  <span className={`text-xs ${isOnline(friend.id) ? 'text-green-500' : 'text-red-500'}`}>
+                                    {isOnline(friend.id) ? '● Online' : '● Offline'}
+                                  </span>
+                                </div>
                                 <Badge variant="outline" className="text-xs">
                                   {friend.user_code}
                                 </Badge>
@@ -282,18 +301,14 @@ const FriendsPage = () => {
                                     <DialogTitle>Challenge {friend.username}</DialogTitle>
                                   </DialogHeader>
                                   <div className="space-y-4 pt-4">
-                                    <div>
-                                      <label className="text-sm font-medium mb-2 block">Game</label>
-                                      <Select value={challengeGame} onValueChange={setChallengeGame}>
-                                        <SelectTrigger>
-                                          <SelectValue />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                          <SelectItem value="ludo">🎲 Ludo</SelectItem>
-                                          <SelectItem value="thimble">🎩 Thimble</SelectItem>
-                                          <SelectItem value="mines">💣 Mines</SelectItem>
-                                        </SelectContent>
-                                      </Select>
+                                    <div className="p-4 rounded-lg bg-primary/10 border border-primary/20">
+                                      <div className="flex items-center gap-3">
+                                        <span className="text-3xl">🎲</span>
+                                        <div>
+                                          <p className="font-bold text-lg">Ludo Challenge</p>
+                                          <p className="text-sm text-muted-foreground">1v1 multiplayer battle</p>
+                                        </div>
+                                      </div>
                                     </div>
                                     <div>
                                       <label className="text-sm font-medium mb-2 block">Entry Amount</label>
