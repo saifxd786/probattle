@@ -620,39 +620,111 @@ const LudoBoard = ({ players, onTokenClick, selectedToken, captureEvent, onCaptu
       {/* Path Preview Highlights */}
       {previewToken && (
         <div className="absolute inset-0 pointer-events-none z-5">
+          {/* Special arrow from home to entry for tokens at home base */}
+          {previewToken.position === 0 && diceValue === 6 && (() => {
+            const colorKey = previewToken.color as keyof typeof COLORS;
+            const homePos = HOME_POSITIONS[previewToken.color][0]; // Use first home slot as reference
+            const entryCell = COLOR_TRACKS[previewToken.color]?.[0];
+            if (!entryCell) return null;
+            
+            const homeCenter = {
+              x: (HOME_POSITIONS[previewToken.color][0].x + HOME_POSITIONS[previewToken.color][3].x) / 2,
+              y: (HOME_POSITIONS[previewToken.color][0].y + HOME_POSITIONS[previewToken.color][3].y) / 2,
+            };
+            
+            return (
+              <motion.div
+                key="home-arrow"
+                initial={{ opacity: 0, pathLength: 0 }}
+                animate={{ opacity: 1, pathLength: 1 }}
+                className="absolute"
+                style={{
+                  left: 0,
+                  top: 0,
+                  width: size,
+                  height: size,
+                }}
+              >
+                <svg width={size} height={size} className="absolute inset-0">
+                  <defs>
+                    <marker
+                      id={`arrow-${previewToken.color}`}
+                      markerWidth="8"
+                      markerHeight="8"
+                      refX="6"
+                      refY="4"
+                      orient="auto"
+                    >
+                      <path d="M0,0 L8,4 L0,8 Z" fill={COLORS[colorKey].main} />
+                    </marker>
+                  </defs>
+                  <motion.path
+                    d={`M ${homeCenter.x * cellSize} ${homeCenter.y * cellSize} Q ${(homeCenter.x + entryCell.x) / 2 * cellSize} ${(homeCenter.y + entryCell.y) / 2 * cellSize - 10} ${entryCell.x * cellSize} ${entryCell.y * cellSize}`}
+                    stroke={COLORS[colorKey].main}
+                    strokeWidth="2"
+                    strokeDasharray="5,3"
+                    fill="none"
+                    markerEnd={`url(#arrow-${previewToken.color})`}
+                    initial={{ pathLength: 0, opacity: 0 }}
+                    animate={{ pathLength: 1, opacity: 0.8 }}
+                    transition={{ duration: 0.4, ease: "easeOut" }}
+                  />
+                </svg>
+              </motion.div>
+            );
+          })()}
+          
           {getPathPreviewCells(previewToken.color, previewToken.position, diceValue).map((cell, index, arr) => {
             const isLast = index === arr.length - 1;
             const colorKey = previewToken.color as keyof typeof COLORS;
+            const isHomeExit = previewToken.position === 0 && diceValue === 6;
+            
             return (
               <motion.div
                 key={`preview-${index}`}
                 className="absolute rounded-sm"
                 initial={{ opacity: 0, scale: 0.5 }}
-                animate={{ opacity: 1, scale: 1 }}
+                animate={{ 
+                  opacity: 1, 
+                  scale: isHomeExit ? [1, 1.1, 1] : 1,
+                }}
                 exit={{ opacity: 0, scale: 0.5 }}
-                transition={{ delay: index * 0.05, duration: 0.15 }}
+                transition={{ 
+                  delay: index * 0.05, 
+                  duration: 0.15,
+                  scale: isHomeExit ? { duration: 0.8, repeat: Infinity } : undefined
+                }}
                 style={{
                   left: cell.x * cellSize - cellSize * 0.4,
                   top: cell.y * cellSize - cellSize * 0.4,
                   width: cellSize * 0.8,
                   height: cellSize * 0.8,
-                  backgroundColor: isLast 
-                    ? `${COLORS[colorKey].main}90` 
-                    : `${COLORS[colorKey].light}60`,
-                  border: isLast 
-                    ? `2px solid ${COLORS[colorKey].dark}` 
-                    : `1px dashed ${COLORS[colorKey].main}80`,
-                  boxShadow: isLast 
-                    ? `0 0 8px ${COLORS[colorKey].main}80` 
-                    : 'none',
+                  backgroundColor: isHomeExit 
+                    ? `${COLORS[colorKey].main}` 
+                    : isLast 
+                      ? `${COLORS[colorKey].main}90` 
+                      : `${COLORS[colorKey].light}60`,
+                  border: isHomeExit
+                    ? `3px solid ${COLORS[colorKey].dark}`
+                    : isLast 
+                      ? `2px solid ${COLORS[colorKey].dark}` 
+                      : `1px dashed ${COLORS[colorKey].main}80`,
+                  boxShadow: isHomeExit
+                    ? `0 0 15px ${COLORS[colorKey].main}, 0 0 25px ${COLORS[colorKey].light}80`
+                    : isLast 
+                      ? `0 0 8px ${COLORS[colorKey].main}80` 
+                      : 'none',
                 }}
               >
-                {/* Step number */}
+                {/* Step number or START label */}
                 <span 
-                  className="absolute inset-0 flex items-center justify-center text-white font-bold text-xs"
-                  style={{ textShadow: '0 1px 2px rgba(0,0,0,0.5)' }}
+                  className="absolute inset-0 flex items-center justify-center text-white font-bold"
+                  style={{ 
+                    textShadow: '0 1px 2px rgba(0,0,0,0.5)',
+                    fontSize: isHomeExit ? cellSize * 0.22 : cellSize * 0.3,
+                  }}
                 >
-                  {isLast ? '●' : index + 1}
+                  {isHomeExit ? 'START' : isLast ? '●' : index + 1}
                 </span>
               </motion.div>
             );
