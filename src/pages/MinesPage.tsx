@@ -49,63 +49,6 @@ const MinesPage = () => {
       <Header />
       
       <main className="container mx-auto px-4 pt-20">
-        {/* Back Button */}
-        <Button
-          variant="ghost"
-          size="sm"
-          className="mb-4"
-          onClick={() => navigate('/matches')}
-        >
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Back to Games
-        </Button>
-
-        {/* Hero Banner */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="relative rounded-2xl overflow-hidden mb-6"
-        >
-          <img 
-            src={minesBanner} 
-            alt="Mines Game" 
-            className="w-full h-40 md:h-56 object-cover"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent" />
-          <div className="absolute bottom-0 left-0 right-0 p-4 md:p-6">
-            <h1 className="font-display text-2xl md:text-4xl font-bold mb-1">
-              <span className="text-gradient">Mines</span> Game
-            </h1>
-            <p className="text-sm md:text-base text-muted-foreground">
-              Navigate the minefield to find gems! Cash out before you hit a mine!
-            </p>
-          </div>
-        </motion.div>
-
-        {/* Stats */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="grid grid-cols-3 gap-3 mb-6"
-        >
-          <div className="glass-card p-3 text-center">
-            <Trophy className="w-5 h-5 mx-auto mb-1 text-primary" />
-            <p className="font-display text-lg font-bold text-foreground">{formatNumber(winnersToday)}</p>
-            <p className="text-xs text-muted-foreground">Winners Today</p>
-          </div>
-          <div className="glass-card p-3 text-center">
-            <Users className="w-5 h-5 mx-auto mb-1 text-primary" />
-            <p className="font-display text-lg font-bold text-foreground">{formatNumber(playingNow)}</p>
-            <p className="text-xs text-muted-foreground">Playing Now</p>
-          </div>
-          <div className="glass-card p-3 text-center">
-            <Coins className="w-5 h-5 mx-auto mb-1 text-primary" />
-            <p className="font-display text-lg font-bold text-foreground">{formatCurrency(distributedToday)}</p>
-            <p className="text-xs text-muted-foreground">Won Today</p>
-          </div>
-        </motion.div>
-
         {/* Game */}
         <MinesGame />
 
