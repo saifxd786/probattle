@@ -812,6 +812,57 @@ const LudoBoard = ({ players, onTokenClick, selectedToken, captureEvent, onCaptu
         );
       })}
 
+      {/* All Possible Moves Destination Indicators */}
+      {players.map((player) => {
+        if (!player.isCurrentTurn) return null;
+        return player.tokens.map((token) => {
+          const canMove = canTokenMove(token.position, diceValue);
+          if (!canMove || previewToken) return null; // Don't show when hovering on a specific token
+          
+          // Calculate destination
+          const pathCells = getPathPreviewCells(player.color, token.position, diceValue);
+          const finalCell = pathCells[pathCells.length - 1];
+          if (!finalCell) return null;
+          
+          const finalPos = getFinalPosition(token.position, diceValue);
+          const captureTarget = getOpponentAtPosition(player.color, finalPos);
+          const isCapture = captureTarget !== null;
+          const colorKey = player.color as keyof typeof COLORS;
+          
+          return (
+            <motion.div
+              key={`dest-${player.color}-${token.id}`}
+              className="absolute pointer-events-none"
+              initial={{ opacity: 0, scale: 0 }}
+              animate={{ 
+                opacity: 0.8, 
+                scale: [0.9, 1.1, 0.9],
+              }}
+              transition={{ 
+                opacity: { duration: 0.3 },
+                scale: { duration: 1.5, repeat: Infinity, ease: 'easeInOut' }
+              }}
+              style={{
+                left: finalCell.x * cellSize - cellSize * 0.25,
+                top: finalCell.y * cellSize - cellSize * 0.25,
+                width: cellSize * 0.5,
+                height: cellSize * 0.5,
+                borderRadius: '50%',
+                backgroundColor: isCapture ? '#DC262680' : `${COLORS[colorKey].main}50`,
+                border: isCapture ? '2px solid #DC2626' : `2px dashed ${COLORS[colorKey].main}`,
+                boxShadow: isCapture 
+                  ? '0 0 10px #DC2626' 
+                  : `0 0 8px ${COLORS[colorKey].main}60`,
+              }}
+            >
+              {isCapture && (
+                <span className="absolute inset-0 flex items-center justify-center text-xs">💀</span>
+              )}
+            </motion.div>
+          );
+        });
+      })}
+
       {/* Pin Tokens */}
       {players.map((player) => (
         player.tokens.map((token) => {
@@ -820,6 +871,7 @@ const LudoBoard = ({ players, onTokenClick, selectedToken, captureEvent, onCaptu
           const colorKey = player.color as keyof typeof COLORS;
 
           const canMove = player.isCurrentTurn && canTokenMove(token.position, diceValue);
+          const isHoveredToken = previewToken?.color === player.color && previewToken?.tokenId === token.id;
 
           return (
             <motion.button
@@ -827,7 +879,8 @@ const LudoBoard = ({ players, onTokenClick, selectedToken, captureEvent, onCaptu
               className={cn(
                 'absolute flex items-center justify-center',
                 player.isCurrentTurn && onTokenClick && 'cursor-pointer z-10',
-                isSelected && 'z-20'
+                isSelected && 'z-20',
+                canMove && !isSelected && 'z-15'
               )}
               style={{
                 width: cellSize * 0.85,
@@ -837,7 +890,7 @@ const LudoBoard = ({ players, onTokenClick, selectedToken, captureEvent, onCaptu
               animate={{
                 left: pos.x - (cellSize * 0.42),
                 top: pos.y - (cellSize * 0.7),
-                scale: isSelected ? 1.3 : player.isCurrentTurn ? 1.05 : 1,
+                scale: isSelected ? 1.3 : canMove ? 1.1 : player.isCurrentTurn ? 1.05 : 1,
               }}
               transition={{ type: 'spring', stiffness: 400, damping: 25 }}
               whileHover={onTokenClick && player.isCurrentTurn ? { scale: 1.15 } : {}}
@@ -863,6 +916,44 @@ const LudoBoard = ({ players, onTokenClick, selectedToken, captureEvent, onCaptu
                 isSelected={isSelected}
                 size={cellSize * 0.75}
               />
+              
+              {/* Movable token indicator - glowing ring */}
+              {canMove && !isSelected && (
+                <motion.div
+                  className="absolute rounded-full pointer-events-none"
+                  style={{
+                    width: cellSize * 0.95,
+                    height: cellSize * 0.95,
+                    top: '50%',
+                    left: '50%',
+                    transform: 'translate(-50%, -50%)',
+                    border: `3px solid ${COLORS[colorKey].main}`,
+                    boxShadow: `0 0 12px ${COLORS[colorKey].main}, 0 0 20px ${COLORS[colorKey].light}80`,
+                  }}
+                  animate={{ 
+                    scale: [1, 1.2, 1],
+                    opacity: [0.9, 0.5, 0.9],
+                  }}
+                  transition={{ duration: 1.2, repeat: Infinity, ease: 'easeInOut' }}
+                />
+              )}
+              
+              {/* "TAP" hint badge for movable tokens */}
+              {canMove && !isSelected && !isHoveredToken && (
+                <motion.div
+                  className="absolute -top-1 -right-1 px-1 py-0.5 rounded-full text-white font-bold shadow-lg"
+                  style={{
+                    fontSize: cellSize * 0.18,
+                    background: `linear-gradient(135deg, ${COLORS[colorKey].main} 0%, ${COLORS[colorKey].dark} 100%)`,
+                    border: '1px solid white',
+                  }}
+                  initial={{ scale: 0 }}
+                  animate={{ scale: [1, 1.1, 1] }}
+                  transition={{ duration: 0.8, repeat: Infinity }}
+                >
+                  TAP
+                </motion.div>
+              )}
               
               {/* Pulse effect for current turn */}
               {player.isCurrentTurn && (
