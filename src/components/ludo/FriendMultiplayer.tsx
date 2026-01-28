@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Users, Copy, Check, ArrowLeft, Loader2, Signal, Wifi, WifiOff } from 'lucide-react';
+import { Users, Copy, Check, ArrowLeft, Loader2, Signal, Wifi, WifiOff, Gamepad2, Hash, Trophy, Coins, Sparkles, UserPlus, Link2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
@@ -31,7 +31,7 @@ const FriendMultiplayer = ({
   const [waitingForPlayer, setWaitingForPlayer] = useState(false);
   const [currentRoomId, setCurrentRoomId] = useState<string | null>(null);
 
-  const rewardAmount = Math.floor(entryAmount * 1.5); // 1.5x of entry amount
+  const rewardAmount = Math.floor(entryAmount * 1.5);
 
   const handleCreateRoom = async () => {
     if (walletBalance < entryAmount) {
@@ -59,7 +59,6 @@ const FriendMultiplayer = ({
       setWaitingForPlayer(true);
       setMode('create');
 
-      // Subscribe to room updates
       const channel = supabase
         .channel(`room-${result.room_id}`)
         .on(
@@ -154,73 +153,153 @@ const FriendMultiplayer = ({
   // Mode Selection
   if (mode === 'select') {
     return (
-      <div className="p-6 space-y-6">
-        <div className="flex items-center gap-3 mb-6">
-          <Button variant="ghost" size="icon" onClick={onBack}>
+      <div className="min-h-screen bg-gradient-to-b from-background via-background to-primary/5 p-4 pb-24">
+        {/* Header */}
+        <motion.div 
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex items-center gap-3 mb-6"
+        >
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={onBack}
+            className="h-10 w-10 rounded-xl bg-card/50 border border-border/50 hover:bg-card"
+          >
             <ArrowLeft className="w-5 h-5" />
           </Button>
-          <h2 className="font-display text-xl font-bold text-white">Friend Multiplayer</h2>
-        </div>
+          <div>
+            <h1 className="font-display text-xl font-bold text-foreground">Friend Match</h1>
+            <p className="text-xs text-muted-foreground">Challenge your friends</p>
+          </div>
+        </motion.div>
 
-        {/* Entry Info */}
-        <div className="p-4 rounded-xl bg-gradient-to-br from-yellow-500/20 to-orange-500/10 border border-yellow-500/30">
-          <div className="flex justify-between items-center">
-            <div>
-              <p className="text-xs text-gray-400">Entry Amount</p>
-              <p className="text-xl font-bold text-white">₹{entryAmount}</p>
+        {/* Prize Pool Card */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 0.1 }}
+          className="relative mb-6 p-5 rounded-2xl bg-gradient-to-br from-primary/20 via-card to-primary/10 border border-primary/30 overflow-hidden"
+        >
+          {/* Decorative elements */}
+          <div className="absolute top-0 right-0 w-32 h-32 bg-primary/20 rounded-full blur-3xl" />
+          <div className="absolute -bottom-4 -left-4 w-24 h-24 bg-yellow-500/20 rounded-full blur-2xl" />
+          
+          <div className="relative flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-xl bg-primary/20 flex items-center justify-center">
+                <Coins className="w-6 h-6 text-primary" />
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground uppercase tracking-wider">Entry Fee</p>
+                <p className="text-2xl font-bold text-foreground">₹{entryAmount}</p>
+              </div>
             </div>
+            
+            <div className="text-center px-4">
+              <Sparkles className="w-5 h-5 text-yellow-400 mx-auto mb-1" />
+              <span className="text-xs text-muted-foreground">1.5x</span>
+            </div>
+            
             <div className="text-right">
-              <p className="text-xs text-gray-400">Winner Gets</p>
-              <p className="text-xl font-bold text-yellow-400">₹{rewardAmount}</p>
+              <div className="flex items-center gap-2 justify-end">
+                <Trophy className="w-5 h-5 text-yellow-400" />
+                <span className="text-xs text-muted-foreground uppercase tracking-wider">Winner Gets</span>
+              </div>
+              <p className="text-2xl font-bold text-yellow-400">₹{rewardAmount}</p>
             </div>
           </div>
-          <p className="text-xs text-gray-500 mt-2 text-center">
-            Win 1.5x of your entry amount
-          </p>
-        </div>
+        </motion.div>
 
+        {/* Mode Selection Cards */}
         <div className="grid gap-4">
           <motion.button
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.2 }}
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             onClick={() => handleCreateRoom()}
             disabled={walletBalance < entryAmount || isLoading}
-            className="p-6 rounded-2xl bg-gradient-to-br from-green-600 to-green-800 text-white text-left disabled:opacity-50"
+            className="relative p-5 rounded-2xl bg-gradient-to-br from-emerald-500/20 via-card to-emerald-600/10 border border-emerald-500/30 text-left disabled:opacity-50 disabled:cursor-not-allowed overflow-hidden group"
           >
-            <div className="flex items-center gap-4">
-              <div className="w-14 h-14 rounded-xl bg-white/20 flex items-center justify-center">
-                <Users className="w-7 h-7" />
+            {/* Hover glow */}
+            <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/0 via-emerald-500/10 to-emerald-500/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+            
+            <div className="relative flex items-center gap-4">
+              <div className="w-14 h-14 rounded-xl bg-emerald-500/20 flex items-center justify-center border border-emerald-500/30">
+                <Link2 className="w-7 h-7 text-emerald-400" />
               </div>
-              <div>
-                <h3 className="font-bold text-lg">Create Room</h3>
-                <p className="text-sm opacity-80">Get a code to share with friend</p>
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-1">
+                  <h3 className="font-bold text-lg text-foreground">Create Room</h3>
+                  {isLoading && <Loader2 className="w-4 h-4 animate-spin text-emerald-400" />}
+                </div>
+                <p className="text-sm text-muted-foreground">Get a unique code to share with your friend</p>
+              </div>
+              <div className="w-8 h-8 rounded-full bg-emerald-500/20 flex items-center justify-center">
+                <ArrowLeft className="w-4 h-4 text-emerald-400 rotate-180" />
               </div>
             </div>
           </motion.button>
 
           <motion.button
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.3 }}
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             onClick={() => setMode('join')}
-            className="p-6 rounded-2xl bg-gradient-to-br from-blue-600 to-blue-800 text-white text-left"
+            className="relative p-5 rounded-2xl bg-gradient-to-br from-blue-500/20 via-card to-blue-600/10 border border-blue-500/30 text-left overflow-hidden group"
           >
-            <div className="flex items-center gap-4">
-              <div className="w-14 h-14 rounded-xl bg-white/20 flex items-center justify-center">
-                <span className="text-2xl">#</span>
+            {/* Hover glow */}
+            <div className="absolute inset-0 bg-gradient-to-r from-blue-500/0 via-blue-500/10 to-blue-500/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+            
+            <div className="relative flex items-center gap-4">
+              <div className="w-14 h-14 rounded-xl bg-blue-500/20 flex items-center justify-center border border-blue-500/30">
+                <UserPlus className="w-7 h-7 text-blue-400" />
               </div>
-              <div>
-                <h3 className="font-bold text-lg">Join Room</h3>
-                <p className="text-sm opacity-80">Enter friend's room code</p>
+              <div className="flex-1">
+                <h3 className="font-bold text-lg text-foreground">Join Room</h3>
+                <p className="text-sm text-muted-foreground">Enter your friend's room code to join</p>
+              </div>
+              <div className="w-8 h-8 rounded-full bg-blue-500/20 flex items-center justify-center">
+                <ArrowLeft className="w-4 h-4 text-blue-400 rotate-180" />
               </div>
             </div>
           </motion.button>
         </div>
 
         {walletBalance < entryAmount && (
-          <p className="text-center text-red-400 text-sm">
-            ⚠️ Insufficient balance. Need ₹{entryAmount}
-          </p>
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4 }}
+            className="mt-4 p-3 rounded-xl bg-destructive/10 border border-destructive/30 text-center"
+          >
+            <p className="text-sm text-destructive">
+              ⚠️ Insufficient balance. Need ₹{entryAmount}
+            </p>
+          </motion.div>
         )}
+
+        {/* How it works */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.5 }}
+          className="mt-6 p-4 rounded-xl bg-card/50 border border-border/50"
+        >
+          <h4 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+            <Gamepad2 className="w-4 h-4 text-primary" />
+            How it works
+          </h4>
+          <div className="space-y-2 text-xs text-muted-foreground">
+            <p>1. Create a room or join using a friend's code</p>
+            <p>2. Both players pay ₹{entryAmount} entry fee</p>
+            <p>3. Winner takes ₹{rewardAmount} (1.5x pool)</p>
+          </div>
+        </motion.div>
       </div>
     );
   }
@@ -228,61 +307,139 @@ const FriendMultiplayer = ({
   // Create Room - Waiting for player
   if (mode === 'create') {
     return (
-      <div className="p-6 space-y-6">
-        <div className="flex items-center gap-3 mb-6">
-          <Button variant="ghost" size="icon" onClick={handleCancelRoom} disabled={isLoading}>
+      <div className="min-h-screen bg-gradient-to-b from-background via-background to-primary/5 p-4 pb-24">
+        {/* Header */}
+        <motion.div 
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex items-center gap-3 mb-6"
+        >
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            onClick={handleCancelRoom}
+            disabled={isLoading}
+            className="h-10 w-10 rounded-xl bg-card/50 border border-border/50 hover:bg-card"
+          >
             <ArrowLeft className="w-5 h-5" />
           </Button>
-          <h2 className="font-display text-xl font-bold text-white">Room Created</h2>
-        </div>
+          <div>
+            <h1 className="font-display text-xl font-bold text-foreground">Room Created</h1>
+            <p className="text-xs text-muted-foreground">Share code with your friend</p>
+          </div>
+        </motion.div>
 
         <AnimatePresence>
           <motion.div
             initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            className="text-center space-y-6"
+            className="space-y-6"
           >
-            {/* Room Code Display */}
-            <div className="p-6 rounded-2xl bg-gradient-to-br from-purple-600/30 to-pink-600/20 border border-purple-500/40">
-              <p className="text-sm text-gray-400 mb-2">Share this code with your friend</p>
-              <div className="flex items-center justify-center gap-3">
-                <span className="font-mono text-4xl font-bold text-white tracking-widest">
-                  {createdRoomCode}
-                </span>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={copyRoomCode}
-                  className="text-white hover:bg-white/10"
-                >
-                  {copied ? <Check className="w-5 h-5 text-green-400" /> : <Copy className="w-5 h-5" />}
-                </Button>
+            {/* Room Code Card */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+              className="relative p-6 rounded-2xl bg-gradient-to-br from-primary/20 via-card to-purple-500/10 border border-primary/30 overflow-hidden"
+            >
+              {/* Animated background */}
+              <div className="absolute inset-0 opacity-30">
+                <motion.div
+                  className="absolute top-1/2 left-1/2 w-64 h-64 -translate-x-1/2 -translate-y-1/2 bg-primary/30 rounded-full blur-3xl"
+                  animate={{ scale: [1, 1.2, 1], opacity: [0.3, 0.5, 0.3] }}
+                  transition={{ duration: 3, repeat: Infinity }}
+                />
               </div>
-            </div>
+              
+              <div className="relative text-center">
+                <div className="flex items-center justify-center gap-2 mb-3">
+                  <Hash className="w-5 h-5 text-primary" />
+                  <p className="text-sm text-muted-foreground uppercase tracking-wider">Room Code</p>
+                </div>
+                
+                <div className="flex items-center justify-center gap-3 mb-4">
+                  <div className="flex gap-1.5">
+                    {createdRoomCode.split('').map((char, i) => (
+                      <motion.span
+                        key={i}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.1 + i * 0.05 }}
+                        className="w-11 h-14 rounded-lg bg-background/80 border border-border flex items-center justify-center font-mono text-2xl font-bold text-foreground"
+                      >
+                        {char}
+                      </motion.span>
+                    ))}
+                  </div>
+                  
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={copyRoomCode}
+                    className="h-12 w-12 rounded-xl bg-primary/20 border border-primary/30 hover:bg-primary/30"
+                  >
+                    {copied ? (
+                      <Check className="w-5 h-5 text-emerald-400" />
+                    ) : (
+                      <Copy className="w-5 h-5 text-primary" />
+                    )}
+                  </Button>
+                </div>
+                
+                <p className="text-xs text-muted-foreground">
+                  Share this code with your friend to join
+                </p>
+              </div>
+            </motion.div>
 
             {/* Waiting Animation */}
-            <div className="py-8">
-              <motion.div
-                className="w-20 h-20 mx-auto rounded-full border-4 border-yellow-500/30 border-t-yellow-500"
-                animate={{ rotate: 360 }}
-                transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-              />
-              <p className="mt-4 text-gray-400">Waiting for friend to join...</p>
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="relative py-8 flex flex-col items-center"
+            >
+              {/* Radar animation */}
+              <div className="relative w-32 h-32 mb-4">
+                {[1, 2, 3].map((ring) => (
+                  <motion.div
+                    key={ring}
+                    className="absolute inset-0 rounded-full border-2 border-primary/30"
+                    animate={{
+                      scale: [1, 2],
+                      opacity: [0.6, 0],
+                    }}
+                    transition={{
+                      duration: 2,
+                      repeat: Infinity,
+                      delay: ring * 0.4,
+                      ease: "easeOut",
+                    }}
+                  />
+                ))}
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="w-16 h-16 rounded-full bg-gradient-to-br from-primary/30 to-primary/10 border border-primary/50 flex items-center justify-center">
+                    <Users className="w-8 h-8 text-primary" />
+                  </div>
+                </div>
+              </div>
               
-              {/* Connection Status in Waiting Room */}
+              <p className="text-base font-medium text-foreground mb-2">Waiting for friend...</p>
+              <p className="text-xs text-muted-foreground">They need to enter the code above</p>
+              
+              {/* Connection Status */}
               <div className="flex items-center justify-center gap-3 mt-4">
-                {/* Ping Indicator */}
                 {pingLatency !== null && pingLatency !== undefined && (
-                  <div className={`flex items-center gap-1 px-3 py-1.5 rounded-lg ${
-                    pingLatency < 100 ? 'bg-green-500/20' : 
-                    pingLatency < 200 ? 'bg-yellow-500/20' : 'bg-red-500/20'
+                  <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg ${
+                    pingLatency < 100 ? 'bg-emerald-500/20 border border-emerald-500/30' : 
+                    pingLatency < 200 ? 'bg-yellow-500/20 border border-yellow-500/30' : 'bg-red-500/20 border border-red-500/30'
                   }`}>
-                    <Signal className={`w-4 h-4 ${
-                      pingLatency < 100 ? 'text-green-400' : 
+                    <Signal className={`w-3.5 h-3.5 ${
+                      pingLatency < 100 ? 'text-emerald-400' : 
                       pingLatency < 200 ? 'text-yellow-400' : 'text-red-400'
                     }`} />
                     <span className={`text-xs font-mono ${
-                      pingLatency < 100 ? 'text-green-400' : 
+                      pingLatency < 100 ? 'text-emerald-400' : 
                       pingLatency < 200 ? 'text-yellow-400' : 'text-red-400'
                     }`}>
                       {pingLatency}ms
@@ -290,44 +447,52 @@ const FriendMultiplayer = ({
                   </div>
                 )}
                 
-                {/* Opponent Status */}
                 {opponentOnline !== undefined && (
-                  <div className={`flex items-center gap-1 px-3 py-1.5 rounded-lg ${
-                    opponentOnline ? 'bg-green-500/20' : 'bg-gray-500/20'
+                  <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg ${
+                    opponentOnline ? 'bg-emerald-500/20 border border-emerald-500/30' : 'bg-muted/50 border border-border'
                   }`}>
                     {opponentOnline ? (
                       <>
-                        <Wifi className="w-4 h-4 text-green-400" />
-                        <span className="text-xs text-green-400">Friend Connected</span>
+                        <Wifi className="w-3.5 h-3.5 text-emerald-400" />
+                        <span className="text-xs text-emerald-400">Connected</span>
                       </>
                     ) : (
                       <>
-                        <WifiOff className="w-4 h-4 text-gray-400" />
-                        <span className="text-xs text-gray-400">Waiting...</span>
+                        <WifiOff className="w-3.5 h-3.5 text-muted-foreground" />
+                        <span className="text-xs text-muted-foreground">Waiting...</span>
                       </>
                     )}
                   </div>
                 )}
               </div>
-            </div>
+            </motion.div>
 
             {/* Prize Info */}
-            <div className="p-4 rounded-xl bg-white/5 border border-white/10">
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-400">Entry Amount</span>
-                <span className="text-white">₹{entryAmount}</span>
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+              className="p-4 rounded-xl bg-card/50 border border-border/50"
+            >
+              <div className="flex justify-between items-center mb-3">
+                <span className="text-sm text-muted-foreground">Your Entry</span>
+                <span className="text-sm font-medium text-foreground">₹{entryAmount}</span>
               </div>
-              <div className="flex justify-between text-sm mt-2">
-                <span className="text-gray-400">Winner Prize</span>
-                <span className="text-yellow-400 font-bold">₹{rewardAmount}</span>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-muted-foreground flex items-center gap-1.5">
+                  <Trophy className="w-4 h-4 text-yellow-400" />
+                  Winner Prize
+                </span>
+                <span className="text-lg font-bold text-yellow-400">₹{rewardAmount}</span>
               </div>
-            </div>
+            </motion.div>
 
+            {/* Cancel Button */}
             <Button
               variant="outline"
               onClick={handleCancelRoom}
               disabled={isLoading}
-              className="w-full border-red-500/50 text-red-400 hover:bg-red-500/10"
+              className="w-full py-6 border-destructive/50 text-destructive hover:bg-destructive/10 rounded-xl"
             >
               {isLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
               Cancel & Get Refund
@@ -340,52 +505,113 @@ const FriendMultiplayer = ({
 
   // Join Room
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center gap-3 mb-6">
-        <Button variant="ghost" size="icon" onClick={() => setMode('select')}>
+    <div className="min-h-screen bg-gradient-to-b from-background via-background to-primary/5 p-4 pb-24">
+      {/* Header */}
+      <motion.div 
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="flex items-center gap-3 mb-6"
+      >
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          onClick={() => setMode('select')}
+          className="h-10 w-10 rounded-xl bg-card/50 border border-border/50 hover:bg-card"
+        >
           <ArrowLeft className="w-5 h-5" />
         </Button>
-        <h2 className="font-display text-xl font-bold text-white">Join Room</h2>
-      </div>
-
-      <div className="space-y-4">
         <div>
-          <label className="text-sm text-gray-400 mb-2 block">Enter 6-digit Room Code</label>
-          <Input
-            value={roomCode}
-            onChange={(e) => setRoomCode(e.target.value.toUpperCase().slice(0, 6))}
-            placeholder="000000"
-            className="text-center text-2xl font-mono tracking-widest bg-white/5 border-white/20 text-white"
-            maxLength={6}
-          />
+          <h1 className="font-display text-xl font-bold text-foreground">Join Room</h1>
+          <p className="text-xs text-muted-foreground">Enter friend's room code</p>
         </div>
+      </motion.div>
 
-        {/* Entry Info */}
-        <div className="p-4 rounded-xl bg-white/5 border border-white/10">
-          <p className="text-xs text-gray-400 text-center mb-2">
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="space-y-6"
+      >
+        {/* Code Input Card */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 0.1 }}
+          className="relative p-6 rounded-2xl bg-gradient-to-br from-blue-500/20 via-card to-blue-600/10 border border-blue-500/30 overflow-hidden"
+        >
+          <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/20 rounded-full blur-3xl" />
+          
+          <div className="relative">
+            <div className="flex items-center justify-center gap-2 mb-4">
+              <Hash className="w-5 h-5 text-blue-400" />
+              <p className="text-sm text-muted-foreground uppercase tracking-wider">Enter 6-Digit Code</p>
+            </div>
+            
+            <Input
+              value={roomCode}
+              onChange={(e) => setRoomCode(e.target.value.toUpperCase().slice(0, 6))}
+              placeholder="000000"
+              className="text-center text-3xl font-mono tracking-[0.5em] bg-background/50 border-border/50 text-foreground h-16 rounded-xl"
+              maxLength={6}
+            />
+          </div>
+        </motion.div>
+
+        {/* Balance Info */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="p-4 rounded-xl bg-card/50 border border-border/50"
+        >
+          <p className="text-xs text-muted-foreground text-center mb-3">
             Entry fee will be deducted upon joining
           </p>
-          <div className="flex justify-between text-sm">
-            <span className="text-gray-400">Your Balance</span>
-            <span className="text-white">₹{walletBalance.toFixed(2)}</span>
+          <div className="flex justify-between items-center">
+            <span className="text-sm text-muted-foreground">Your Balance</span>
+            <span className="text-base font-medium text-foreground">₹{walletBalance.toFixed(2)}</span>
           </div>
-        </div>
+        </motion.div>
 
-        <Button
-          onClick={handleJoinRoom}
-          disabled={roomCode.length !== 6 || isLoading}
-          className="w-full py-6 text-lg font-bold bg-gradient-to-r from-blue-600 to-blue-700"
+        {/* Join Button */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
         >
-          {isLoading ? (
-            <>
-              <Loader2 className="w-5 h-5 animate-spin mr-2" />
-              Joining...
-            </>
-          ) : (
-            'Join Room'
-          )}
-        </Button>
-      </div>
+          <Button
+            onClick={handleJoinRoom}
+            disabled={roomCode.length !== 6 || isLoading}
+            className="w-full py-6 text-lg font-bold bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 rounded-xl shadow-lg shadow-blue-500/25"
+          >
+            {isLoading ? (
+              <>
+                <Loader2 className="w-5 h-5 animate-spin mr-2" />
+                Joining...
+              </>
+            ) : (
+              <>
+                <UserPlus className="w-5 h-5 mr-2" />
+                Join Room
+              </>
+            )}
+          </Button>
+        </motion.div>
+
+        {/* Prize Preview */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
+          className="p-4 rounded-xl bg-gradient-to-br from-yellow-500/10 to-orange-500/5 border border-yellow-500/20"
+        >
+          <div className="flex items-center justify-center gap-3">
+            <Trophy className="w-5 h-5 text-yellow-400" />
+            <span className="text-sm text-muted-foreground">Winner takes</span>
+            <span className="text-lg font-bold text-yellow-400">1.5x</span>
+            <span className="text-sm text-muted-foreground">of combined entry</span>
+          </div>
+        </motion.div>
+      </motion.div>
     </div>
   );
 };
