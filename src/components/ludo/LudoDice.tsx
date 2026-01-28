@@ -362,7 +362,7 @@ const LudoDice = ({ value, isRolling, onRoll, disabled, canRoll, compact = false
   const [showSixBonus, setShowSixBonus] = useState(false);
   const [showResult, setShowResult] = useState(false);
   
-  const diceSize = compact ? 56 : 72;
+  const diceSize = compact ? 48 : 72;
 
   useEffect(() => {
     if (!isRolling && value === 6) {
