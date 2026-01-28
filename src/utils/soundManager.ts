@@ -177,6 +177,22 @@ class SoundManager {
     this.playTone(200, 0.15, 'square', 0.2);
   }
 
+  // Opponent disconnected alert - attention-grabbing warning sound
+  playDisconnectAlert() {
+    if (!this.enabled) return;
+    
+    // Descending warning tones
+    this.playTone(800, 0.12, 'square', 0.3);
+    setTimeout(() => this.playTone(600, 0.12, 'square', 0.28), 120);
+    setTimeout(() => this.playTone(400, 0.15, 'square', 0.25), 240);
+    
+    // Quick alert beeps
+    setTimeout(() => {
+      this.playTone(700, 0.08, 'square', 0.2);
+      setTimeout(() => this.playTone(700, 0.08, 'square', 0.2), 100);
+    }, 450);
+  }
+
   // Mines - Gem reveal celebration
   playGemReveal() {
     const notes = [880, 1100, 1320]; // High sparkly tones

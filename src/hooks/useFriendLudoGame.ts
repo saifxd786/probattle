@@ -669,6 +669,8 @@ export const useFriendLudoGame = () => {
     if (!opponentOnline) {
       // Opponent went offline - start 60 second countdown
       console.log('[LudoSync] Opponent offline - starting disconnect countdown');
+      soundManager.playDisconnectAlert();
+      hapticManager.warning();
       setOpponentDisconnectCountdown(60);
       
       // Start countdown interval
