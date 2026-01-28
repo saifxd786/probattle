@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Search, Ban, CheckCircle, Shield, ShieldOff, Gamepad2, Trash2, Eye } from 'lucide-react';
+import { Search, Ban, CheckCircle, Shield, ShieldOff, Gamepad2, Trash2, Eye, KeyRound } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -8,6 +8,7 @@ import { toast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import BanUserDialog from '@/components/admin/BanUserDialog';
 import UserDetailDialog from '@/components/admin/UserDetailDialog';
+import ResetPasswordDialog from '@/components/admin/ResetPasswordDialog';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -29,6 +30,7 @@ type Profile = {
   banned_at: string | null;
   banned_games: string[] | null;
   device_fingerprint: string | null;
+  security_question: string | null;
   created_at: string;
 };
 
@@ -49,6 +51,7 @@ const AdminUsers = () => {
   const [isDeleting, setIsDeleting] = useState(false);
   const [viewUserId, setViewUserId] = useState<string | null>(null);
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
+  const [resetPasswordUser, setResetPasswordUser] = useState<Profile | null>(null);
 
   const fetchUsers = async () => {
     const { data: profiles, error } = await supabase
@@ -430,6 +433,14 @@ const AdminUsers = () => {
                             <Button
                               variant="ghost"
                               size="icon"
+                              onClick={() => setResetPasswordUser(user)}
+                              title="Reset password"
+                            >
+                              <KeyRound className="w-4 h-4 text-orange-500" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
                               onClick={() => {
                                 setUserToDelete(user);
                                 setDeleteDialogOpen(true);
@@ -482,6 +493,14 @@ const AdminUsers = () => {
         isOpen={viewDialogOpen}
         onClose={() => setViewDialogOpen(false)}
         userId={viewUserId}
+      />
+
+      <ResetPasswordDialog
+        isOpen={!!resetPasswordUser}
+        onClose={() => setResetPasswordUser(null)}
+        userId={resetPasswordUser?.id || ''}
+        username={resetPasswordUser?.username || null}
+        hasSecurityQuestion={!!resetPasswordUser?.security_question}
       />
     </div>
   );
