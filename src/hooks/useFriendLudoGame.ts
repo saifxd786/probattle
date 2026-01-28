@@ -106,7 +106,9 @@ export const useFriendLudoGame = () => {
   const chatChannelRef = useRef<RealtimeChannel | null>(null);
   const rematchChannelRef = useRef<RealtimeChannel | null>(null);
   const syncChannelRef = useRef<RealtimeChannel | null>(null);
+  const gameActionChannelRef = useRef<RealtimeChannel | null>(null); // NEW: instant action broadcast
   const checksumIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const lastActionRef = useRef<number>(0); // Prevent duplicate action processing
 
   const [gameState, setGameState] = useState<FriendGameState>({
     phase: 'idle',
@@ -237,6 +239,129 @@ export const useFriendLudoGame = () => {
 
     chatChannelRef.current = channel;
   }, []);
+
+  // NEW: Subscribe to game action broadcast for instant sync (like Ludo King)
+  const subscribeToGameActions = useCallback((roomId: string) => {
+    if (gameActionChannelRef.current) {
+      supabase.removeChannel(gameActionChannelRef.current);
+    }
+
+    const channel = supabase
+      .channel(`ludo-actions-${roomId}`)
+      .on('broadcast', { event: 'dice_roll' }, (payload) => {
+        const { senderId, diceValue, timestamp } = payload.payload;
+        if (senderId !== user?.id && timestamp > lastActionRef.current) {
+          lastActionRef.current = timestamp;
+          console.log('[LudoSync] Received dice roll:', diceValue);
+          
+          // Show opponent rolling animation then update dice
+          setGameState(prev => ({ ...prev, isRolling: true }));
+          
+          setTimeout(() => {
+            setGameState(prev => {
+              const player = prev.players[prev.currentTurn];
+              const canMove = player?.tokens.some(token => {
+                if (token.position === 0 && diceValue === 6) return true;
+                if (token.position > 0 && token.position + diceValue <= 57) return true;
+                return false;
+              });
+
+              if (!canMove) {
+                // Opponent has no moves, turn changes
+                const nextTurn = (prev.currentTurn + 1) % prev.players.length;
+                const isMyTurn = prev.players[nextTurn]?.id === user?.id;
+                return { 
+                  ...prev, 
+                  diceValue, 
+                  isRolling: false, 
+                  currentTurn: nextTurn,
+                  canRoll: isMyTurn
+                };
+              }
+
+              return { ...prev, diceValue, isRolling: false };
+            });
+            soundManager.playDiceResult(diceValue);
+          }, 600);
+        }
+      })
+      .on('broadcast', { event: 'token_move' }, (payload) => {
+        const { senderId, color, tokenId, newPlayers, nextTurn, gotSix, winnerId, timestamp } = payload.payload;
+        if (senderId !== user?.id && timestamp > lastActionRef.current) {
+          lastActionRef.current = timestamp;
+          console.log('[LudoSync] Received token move:', { color, tokenId });
+          
+          soundManager.playTokenMove();
+          hapticManager.tokenMove();
+
+          setGameState(prev => {
+            const isMyTurn = newPlayers[nextTurn]?.id === user?.id;
+            
+            if (winnerId) {
+              const winner = newPlayers.find((p: Player) => p.id === winnerId);
+              return {
+                ...prev,
+                players: newPlayers,
+                currentTurn: nextTurn,
+                phase: 'result',
+                winner,
+                canRoll: false
+              };
+            }
+
+            return {
+              ...prev,
+              players: newPlayers,
+              currentTurn: nextTurn,
+              canRoll: isMyTurn && !gotSix,
+              selectedToken: null
+            };
+          });
+
+          if (!gotSix) {
+            soundManager.playTurnChange();
+          }
+        }
+      })
+      .on('broadcast', { event: 'full_sync' }, (payload) => {
+        const { senderId, players, currentTurn, diceValue, phase, timestamp } = payload.payload;
+        if (senderId !== user?.id && timestamp > lastActionRef.current) {
+          lastActionRef.current = timestamp;
+          console.log('[LudoSync] Received full sync');
+          
+          setGameState(prev => {
+            const isMyTurn = players[currentTurn]?.id === user?.id;
+            return {
+              ...prev,
+              players,
+              currentTurn,
+              diceValue,
+              phase,
+              canRoll: isMyTurn,
+              isRolling: false,
+              lastSyncTime: Date.now()
+            };
+          });
+        }
+      })
+      .subscribe();
+
+    gameActionChannelRef.current = channel;
+  }, [user]);
+
+  // Broadcast game action instantly
+  const broadcastAction = useCallback(async (event: string, payload: any) => {
+    if (!gameActionChannelRef.current || !user) return;
+    
+    const timestamp = Date.now();
+    lastActionRef.current = timestamp;
+    
+    await gameActionChannelRef.current.send({
+      type: 'broadcast',
+      event,
+      payload: { ...payload, senderId: user.id, timestamp }
+    });
+  }, [user]);
 
   // Send chat message
   const sendChatMessage = useCallback(async (message: string, isEmoji: boolean) => {
@@ -410,10 +535,11 @@ export const useFriendLudoGame = () => {
     subscribeToRoom(roomId);
     subscribeToPresence(roomId);
     subscribeToChatChannel(roomId);
+    subscribeToGameActions(roomId); // NEW: instant action sync
 
     // Fetch initial room state
     fetchRoomState(roomId);
-  }, [subscribeToRoom, subscribeToPresence, subscribeToChatChannel]);
+  }, [subscribeToRoom, subscribeToPresence, subscribeToChatChannel, subscribeToGameActions]);
 
   // Fetch room state
   const fetchRoomState = async (roomId: string) => {
@@ -558,6 +684,9 @@ export const useFriendLudoGame = () => {
 
     const diceValue = generateDiceValue();
 
+    // Broadcast dice roll immediately to opponent
+    broadcastAction('dice_roll', { diceValue });
+
     setGameState(prev => {
       const player = prev.players[prev.currentTurn];
 
@@ -572,7 +701,7 @@ export const useFriendLudoGame = () => {
         // No valid moves, go to next turn
         const nextTurn = (prev.currentTurn + 1) % prev.players.length;
         
-        // Sync to database
+        // Sync to database (background)
         syncGameState(prev.players, nextTurn, diceValue);
 
         return { ...prev, diceValue, isRolling: false, currentTurn: nextTurn, canRoll: false };
@@ -580,67 +709,75 @@ export const useFriendLudoGame = () => {
 
       return { ...prev, diceValue, isRolling: false };
     });
-  }, [gameState.canRoll, gameState.isRolling, gameState.players, gameState.currentTurn, user, generateDiceValue]);
+  }, [gameState.canRoll, gameState.isRolling, gameState.players, gameState.currentTurn, user, generateDiceValue, broadcastAction]);
 
   // Handle token click
   const handleTokenClick = useCallback((color: string, tokenId: number) => {
     if (!user) return;
 
-    setGameState(prev => {
-      const currentPlayer = prev.players[prev.currentTurn];
-      if (currentPlayer.color !== color || currentPlayer.id !== user.id || prev.canRoll) return prev;
+    // Get current state for validation
+    const currentPlayer = gameState.players[gameState.currentTurn];
+    if (!currentPlayer || currentPlayer.color !== color || currentPlayer.id !== user.id || gameState.canRoll) return;
 
-      const token = currentPlayer.tokens.find(t => t.id === tokenId);
-      if (!token) return prev;
+    const token = currentPlayer.tokens.find(t => t.id === tokenId);
+    if (!token) return;
 
-      const canMove =
-        (token.position === 0 && prev.diceValue === 6) ||
-        (token.position > 0 && token.position + prev.diceValue <= 57);
+    const canMove =
+      (token.position === 0 && gameState.diceValue === 6) ||
+      (token.position > 0 && token.position + gameState.diceValue <= 57);
 
-      if (!canMove) return prev;
+    if (!canMove) return;
 
-      const { updatedPlayers, winner, gotSix } = moveToken(color, tokenId, prev.diceValue, prev.players);
+    const { updatedPlayers, winner, gotSix } = moveToken(color, tokenId, gameState.diceValue, gameState.players);
+    const nextTurn = gotSix ? gameState.currentTurn : (gameState.currentTurn + 1) % gameState.players.length;
 
-      if (winner) {
-        // Handle win
-        handleGameEnd(winner);
-        syncGameState(updatedPlayers, prev.currentTurn, prev.diceValue, winner.id);
-        
-        return {
-          ...prev,
-          players: updatedPlayers,
-          phase: 'result',
-          winner,
-          canRoll: false
-        };
-      }
+    // Broadcast token move immediately to opponent
+    broadcastAction('token_move', {
+      color,
+      tokenId,
+      newPlayers: updatedPlayers,
+      nextTurn,
+      gotSix,
+      winnerId: winner?.id || null
+    });
 
-      if (gotSix) {
-        // Same player's turn again
-        syncGameState(updatedPlayers, prev.currentTurn, prev.diceValue);
-        
-        return {
-          ...prev,
-          players: updatedPlayers,
-          canRoll: true,
-          selectedToken: null
-        };
-      }
-
-      const nextTurn = (prev.currentTurn + 1) % prev.players.length;
-      syncGameState(updatedPlayers, nextTurn, prev.diceValue);
-
-      soundManager.playTurnChange();
-
-      return {
+    if (winner) {
+      handleGameEnd(winner);
+      syncGameState(updatedPlayers, gameState.currentTurn, gameState.diceValue, winner.id);
+      
+      setGameState(prev => ({
         ...prev,
         players: updatedPlayers,
-        currentTurn: nextTurn,
-        canRoll: false,
+        phase: 'result',
+        winner,
+        canRoll: false
+      }));
+      return;
+    }
+
+    if (gotSix) {
+      syncGameState(updatedPlayers, gameState.currentTurn, gameState.diceValue);
+      
+      setGameState(prev => ({
+        ...prev,
+        players: updatedPlayers,
+        canRoll: true,
         selectedToken: null
-      };
-    });
-  }, [user, moveToken]);
+      }));
+      return;
+    }
+
+    syncGameState(updatedPlayers, nextTurn, gameState.diceValue);
+    soundManager.playTurnChange();
+
+    setGameState(prev => ({
+      ...prev,
+      players: updatedPlayers,
+      currentTurn: nextTurn,
+      canRoll: false,
+      selectedToken: null
+    }));
+  }, [user, gameState.players, gameState.currentTurn, gameState.canRoll, gameState.diceValue, moveToken, broadcastAction]);
 
   // Handle game end
   const handleGameEnd = async (winner: Player) => {
@@ -693,6 +830,14 @@ export const useFriendLudoGame = () => {
     if (rematchChannelRef.current) {
       supabase.removeChannel(rematchChannelRef.current);
       rematchChannelRef.current = null;
+    }
+    if (gameActionChannelRef.current) {
+      supabase.removeChannel(gameActionChannelRef.current);
+      gameActionChannelRef.current = null;
+    }
+    if (syncChannelRef.current) {
+      supabase.removeChannel(syncChannelRef.current);
+      syncChannelRef.current = null;
     }
 
     setGameState({
@@ -835,10 +980,10 @@ export const useFriendLudoGame = () => {
       // Subscribe to sync channel
       subscribeToSyncChannel(gameState.roomId);
       
-      // Broadcast checksum every 3 seconds
+      // Broadcast checksum every 1.5 seconds for faster sync detection
       checksumIntervalRef.current = setInterval(() => {
         broadcastChecksum();
-      }, 3000);
+      }, 1500);
 
       return () => {
         if (checksumIntervalRef.current) {
@@ -1043,6 +1188,9 @@ export const useFriendLudoGame = () => {
       }
       if (syncChannelRef.current) {
         supabase.removeChannel(syncChannelRef.current);
+      }
+      if (gameActionChannelRef.current) {
+        supabase.removeChannel(gameActionChannelRef.current);
       }
       if (checksumIntervalRef.current) {
         clearInterval(checksumIntervalRef.current);
