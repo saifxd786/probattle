@@ -560,14 +560,11 @@ const LudoBoard = ({ players, onTokenClick, selectedToken, captureEvent, onCaptu
             <rect x={13} y={8} width="1" height="1" fill={COLORS.yellow.main} />
             <rect x={6} y={13} width="1" height="1" fill={COLORS.blue.main} />
 
-            {/* Center triangles (finish area) - Enhanced with gradients */}
-            <polygon points="6,6 7.5,7.5 6,9" fill={COLORS.red.main} stroke={COLORS.red.dark} strokeWidth="0.05" />
-            <polygon points="6,6 7.5,7.5 9,6" fill={COLORS.green.main} stroke={COLORS.green.dark} strokeWidth="0.05" />
-            <polygon points="9,6 7.5,7.5 9,9" fill={COLORS.yellow.main} stroke={COLORS.yellow.dark} strokeWidth="0.05" />
-            <polygon points="6,9 7.5,7.5 9,9" fill={COLORS.blue.main} stroke={COLORS.blue.dark} strokeWidth="0.05" />
-            
-            {/* Center star */}
-            <circle cx="7.5" cy="7.5" r="0.3" fill="#FFD700" stroke="#FFA500" strokeWidth="0.05" />
+            {/* Center triangles (finish area) - Clean Ludo King style */}
+            <polygon points="6,6 7.5,7.5 6,9" fill={COLORS.red.main} />
+            <polygon points="6,6 7.5,7.5 9,6" fill={COLORS.green.main} />
+            <polygon points="9,6 7.5,7.5 9,9" fill={COLORS.yellow.main} />
+            <polygon points="6,9 7.5,7.5 9,9" fill={COLORS.blue.main} />
 
             {/* Safe spot stars - Ludo King style (white fill, dark outline) */}
             {[
