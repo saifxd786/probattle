@@ -1,8 +1,70 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
-import { User, Bot, Crown } from 'lucide-react';
+import { User, Bot, Crown, Clock } from 'lucide-react';
 import CaptureAnimation from './CaptureAnimation';
+
+// Compact Player Card Component
+const PlayerCard = ({ 
+  player, 
+  position,
+  turnTime = 0
+}: { 
+  player: Player; 
+  position: 'left' | 'right';
+  turnTime?: number;
+}) => {
+  const isLeft = position === 'left';
+  const colors = COLORS[player.color as keyof typeof COLORS];
+  const displayUid = player.uid || '00000';
+  
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      className={cn(
+        "flex items-center gap-2",
+        isLeft ? "flex-row" : "flex-row-reverse"
+      )}
+    >
+      {/* Avatar */}
+      <div 
+        className="relative w-9 h-9 rounded-lg flex items-center justify-center text-white font-bold text-xs shadow-lg"
+        style={{
+          background: `linear-gradient(135deg, ${colors.light} 0%, ${colors.main} 100%)`,
+        }}
+      >
+        {player.isBot ? <Bot className="w-4 h-4" /> : displayUid.slice(0, 1)}
+        {player.isCurrentTurn && (
+          <motion.div 
+            className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-green-500 border border-white"
+            animate={{ scale: [1, 1.2, 1] }}
+            transition={{ duration: 0.8, repeat: Infinity }}
+          />
+        )}
+      </div>
+      
+      {/* Info */}
+      <div className={cn("text-[10px]", isLeft ? "text-left" : "text-right")}>
+        <div className="flex items-center gap-1">
+          <span 
+            className="font-bold text-white"
+            style={{ textShadow: `0 0 6px ${colors.main}` }}
+          >
+            #{displayUid}
+          </span>
+          {player.isCurrentTurn && <Crown className="w-3 h-3 text-yellow-400" />}
+        </div>
+        {player.isCurrentTurn && (
+          <div className="flex items-center gap-0.5 text-white/60">
+            <Clock className="w-2.5 h-2.5" />
+            <span>{Math.floor(turnTime / 60)}:{(turnTime % 60).toString().padStart(2, '0')}</span>
+          </div>
+        )}
+      </div>
+    </motion.div>
+  );
+};
 
 interface Token {
   id: number;
@@ -574,33 +636,39 @@ const LudoBoard = ({ players, onTokenClick, selectedToken, captureEvent, onCaptu
             </div>
           )}
 
-          {/* Player Labels */}
+          {/* Corner Player Labels - Small UID badges on board corners */}
           {players.map((player) => {
             const position = COLOR_POSITIONS[player.color];
             if (!position) return null;
             const colorKey = player.color as keyof typeof COLORS;
-            const displayName = player.uid ? `#${player.uid}` : (player.name || 'Player');
+            const displayUid = player.uid ? `#${player.uid}` : '#00000';
             const posClasses = {
-              'top-left': 'top-0.5 left-0.5',
-              'top-right': 'top-0.5 right-0.5',
-              'bottom-left': 'bottom-0.5 left-0.5',
-              'bottom-right': 'bottom-0.5 right-0.5',
+              'top-left': 'top-1 left-1',
+              'top-right': 'top-1 right-1',
+              'bottom-left': 'bottom-1 left-1',
+              'bottom-right': 'bottom-1 right-1',
             };
             
             return (
               <motion.div
                 key={`label-${player.color}`}
-                className={cn('absolute flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold text-white', posClasses[position])}
+                className={cn(
+                  'absolute flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold text-white backdrop-blur-sm',
+                  posClasses[position]
+                )}
                 style={{ 
-                  background: COLORS[colorKey].main,
-                  border: player.isCurrentTurn ? '2px solid #fff' : 'none',
-                  boxShadow: player.isCurrentTurn ? `0 0 8px ${COLORS[colorKey].main}` : '0 2px 4px rgba(0,0,0,0.3)',
+                  background: `linear-gradient(135deg, ${COLORS[colorKey].main}dd, ${COLORS[colorKey].dark}ee)`,
+                  border: player.isCurrentTurn ? '2px solid rgba(255,255,255,0.9)' : '1px solid rgba(255,255,255,0.2)',
+                  boxShadow: player.isCurrentTurn 
+                    ? `0 0 12px ${COLORS[colorKey].main}, 0 2px 8px rgba(0,0,0,0.3)` 
+                    : '0 2px 6px rgba(0,0,0,0.2)',
                 }}
-                animate={{ scale: player.isCurrentTurn ? 1.05 : 1 }}
+                animate={{ scale: player.isCurrentTurn ? 1.08 : 1 }}
+                transition={{ type: 'spring', stiffness: 400, damping: 20 }}
               >
                 {player.isBot ? <Bot className="w-3 h-3" /> : <User className="w-3 h-3" />}
-                <span className="truncate max-w-[50px]">{displayName}</span>
-                {player.isCurrentTurn && <Crown className="w-3 h-3 text-yellow-300" />}
+                <span className="font-mono tracking-tight">{displayUid}</span>
+                {player.isCurrentTurn && <Crown className="w-3 h-3 text-yellow-300 drop-shadow-lg" />}
               </motion.div>
             );
           })}
@@ -692,29 +760,49 @@ const LudoBoard = ({ players, onTokenClick, selectedToken, captureEvent, onCaptu
         </div>
       </motion.div>
 
-      {/* Current Turn Indicator */}
-      <AnimatePresence mode="wait">
-        {currentTurnPlayer && (
-          <motion.div
-            key={currentTurnPlayer.color}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            className="mt-3 mx-auto flex items-center justify-center gap-2 px-4 py-2 rounded-lg"
-            style={{ 
-              background: COLORS[currentTurnPlayer.color as keyof typeof COLORS].main,
-              maxWidth: 'fit-content',
-              boxShadow: `0 0 15px ${COLORS[currentTurnPlayer.color as keyof typeof COLORS].main}50`,
-            }}
-          >
-            {currentTurnPlayer.isBot ? <Bot className="w-4 h-4 text-white" /> : <User className="w-4 h-4 text-white" />}
-            <span className="text-white font-bold text-sm">
-              {currentTurnPlayer.uid ? `#${currentTurnPlayer.uid}` : currentTurnPlayer.name || 'Player'}'s Turn
-            </span>
-            <Crown className="w-4 h-4 text-yellow-300" />
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* Bottom Player Cards Section */}
+      <div className="mt-3 px-2">
+        <div className="flex items-center justify-between">
+          {/* Left Player Card */}
+          {players[0] && (
+            <PlayerCard 
+              player={players[0]} 
+              position="left"
+            />
+          )}
+          
+          {/* Center Turn Indicator */}
+          <AnimatePresence mode="wait">
+            {currentTurnPlayer && (
+              <motion.div
+                key={currentTurnPlayer.color}
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.9 }}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl"
+                style={{ 
+                  background: `linear-gradient(135deg, ${COLORS[currentTurnPlayer.color as keyof typeof COLORS].main}, ${COLORS[currentTurnPlayer.color as keyof typeof COLORS].dark})`,
+                  boxShadow: `0 0 20px ${COLORS[currentTurnPlayer.color as keyof typeof COLORS].main}40, 0 4px 12px rgba(0,0,0,0.3)`,
+                }}
+              >
+                {currentTurnPlayer.isBot ? <Bot className="w-4 h-4 text-white" /> : <User className="w-4 h-4 text-white" />}
+                <span className="text-white font-bold text-xs font-mono">
+                  #{currentTurnPlayer.uid || '00000'}'s Turn
+                </span>
+                <Crown className="w-4 h-4 text-yellow-300" />
+              </motion.div>
+            )}
+          </AnimatePresence>
+          
+          {/* Right Player Card */}
+          {players[1] && (
+            <PlayerCard 
+              player={players[1]} 
+              position="right"
+            />
+          )}
+        </div>
+      </div>
     </div>
   );
 };
