@@ -554,10 +554,8 @@ const LudoBoard = ({ players, onTokenClick, selectedToken, captureEvent, onCaptu
               <rect key={`blue-home-${i}`} x={7} y={i} width="1" height="1" fill={COLORS.blue.main} stroke={COLORS.blue.dark} strokeWidth="0.03" />
             ))}
 
-            {/* Start positions - colored cells */}
-            <rect x={6} y={1} width="1" height="1" fill={COLORS.green.main} />
+            {/* Start positions - colored cells - Only on the outer track edge */}
             <rect x={1} y={6} width="1" height="1" fill={COLORS.red.main} />
-            <rect x={8} y={13} width="1" height="1" fill={COLORS.blue.main} />
             <rect x={13} y={8} width="1" height="1" fill={COLORS.yellow.main} />
 
             {/* Center triangles (finish area) - Enhanced with gradients */}
