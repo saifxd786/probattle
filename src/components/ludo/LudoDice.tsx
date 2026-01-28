@@ -687,18 +687,7 @@ const LudoDice = ({ value, isRolling, onRoll, disabled, canRoll, compact = false
               </motion.div>
               <span className="font-extrabold">Tap to Roll</span>
             </>
-          ) : (
-            <>
-              <motion.span 
-                className="text-xl"
-                animate={{ opacity: [0.4, 1, 0.4], rotate: [0, 180, 360] }}
-                transition={{ duration: 2, repeat: Infinity }}
-              >
-                ⏳
-              </motion.span>
-              <span className="font-semibold">Waiting...</span>
-            </>
-          )}
+          ) : null}
         </span>
 
         {/* Bottom edge highlight */}

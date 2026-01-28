@@ -292,10 +292,46 @@ const LudoPage = () => {
           />
         </div>
 
-        {/* Bottom Section - Dice Left, Player Profiles Right */}
-        <div className="shrink-0 px-3 py-2 border-t border-white/10 bg-black/40 flex items-center justify-between gap-3">
-          {/* Dice on Left */}
-          <div className="flex-shrink-0">
+        {/* Bottom Section - Profile | Dice | Profile */}
+        <div className="shrink-0 px-3 py-2 border-t border-white/10 bg-black/40 flex items-center justify-between gap-2">
+          {/* Left Player Profile */}
+          {gameState.players[0] && (() => {
+            const player = gameState.players[0];
+            const colorMap: Record<string, string> = {
+              red: '#E53935',
+              green: '#43A047', 
+              yellow: '#FFD600',
+              blue: '#1E88E5'
+            };
+            const isActive = gameState.currentTurn === 0;
+            return (
+              <div 
+                className={`relative flex flex-col items-center p-1.5 rounded-lg transition-all ${
+                  isActive ? 'ring-2 ring-green-400 bg-white/10' : 'bg-black/30'
+                }`}
+              >
+                <div 
+                  className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm"
+                  style={{ 
+                    background: `linear-gradient(135deg, ${colorMap[player.color]}dd, ${colorMap[player.color]}88)`,
+                    border: `2px solid ${colorMap[player.color]}`,
+                    boxShadow: isActive ? `0 0 10px ${colorMap[player.color]}80` : 'none'
+                  }}
+                >
+                  {player.isBot ? '🤖' : player.name.slice(0, 2).toUpperCase()}
+                </div>
+                <span className="text-[9px] text-gray-400 mt-0.5 truncate max-w-[50px]">
+                  {player.uid || player.name.slice(0, 5)}
+                </span>
+                {isActive && (
+                  <div className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-green-400 animate-pulse" />
+                )}
+              </div>
+            );
+          })()}
+
+          {/* Dice in Middle */}
+          <div className="flex-1 flex justify-center">
             <LudoDice
               value={gameState.diceValue}
               isRolling={gameState.isRolling}
@@ -305,47 +341,42 @@ const LudoPage = () => {
               compact
             />
           </div>
-          
-          {/* Player Profiles on Right */}
-          <div className="flex items-center gap-2">
-            {gameState.players.map((player, idx) => {
-              const colorMap: Record<string, string> = {
-                red: '#E53935',
-                green: '#43A047', 
-                yellow: '#FFD600',
-                blue: '#1E88E5'
-              };
-              const isActive = idx === gameState.currentTurn;
-              return (
+
+          {/* Right Player Profile */}
+          {gameState.players[1] && (() => {
+            const player = gameState.players[1];
+            const colorMap: Record<string, string> = {
+              red: '#E53935',
+              green: '#43A047', 
+              yellow: '#FFD600',
+              blue: '#1E88E5'
+            };
+            const isActive = gameState.currentTurn === 1;
+            return (
+              <div 
+                className={`relative flex flex-col items-center p-1.5 rounded-lg transition-all ${
+                  isActive ? 'ring-2 ring-green-400 bg-white/10' : 'bg-black/30'
+                }`}
+              >
                 <div 
-                  key={player.id}
-                  className={`relative flex flex-col items-center p-1.5 rounded-lg transition-all ${
-                    isActive ? 'ring-2 ring-green-400 bg-white/10' : 'bg-black/30'
-                  }`}
+                  className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm"
+                  style={{ 
+                    background: `linear-gradient(135deg, ${colorMap[player.color]}dd, ${colorMap[player.color]}88)`,
+                    border: `2px solid ${colorMap[player.color]}`,
+                    boxShadow: isActive ? `0 0 10px ${colorMap[player.color]}80` : 'none'
+                  }}
                 >
-                  {/* Player Avatar */}
-                  <div 
-                    className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm"
-                    style={{ 
-                      background: `linear-gradient(135deg, ${colorMap[player.color]}dd, ${colorMap[player.color]}88)`,
-                      border: `2px solid ${colorMap[player.color]}`,
-                      boxShadow: isActive ? `0 0 10px ${colorMap[player.color]}80` : 'none'
-                    }}
-                  >
-                    {player.isBot ? '🤖' : player.name.slice(0, 2).toUpperCase()}
-                  </div>
-                  {/* UID */}
-                  <span className="text-[9px] text-gray-400 mt-0.5 truncate max-w-[50px]">
-                    {player.uid || player.name.slice(0, 5)}
-                  </span>
-                  {/* Active Indicator */}
-                  {isActive && (
-                    <div className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-green-400 animate-pulse" />
-                  )}
+                  {player.isBot ? '🤖' : player.name.slice(0, 2).toUpperCase()}
                 </div>
-              );
-            })}
-          </div>
+                <span className="text-[9px] text-gray-400 mt-0.5 truncate max-w-[50px]">
+                  {player.uid || player.name.slice(0, 5)}
+                </span>
+                {isActive && (
+                  <div className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-green-400 animate-pulse" />
+                )}
+              </div>
+            );
+          })()}
         </div>
       </div>
     );
@@ -566,10 +597,47 @@ const LudoPage = () => {
           />
         </div>
 
-        {/* Bottom Section - Dice Left, Player Profiles Right */}
-        <div className="shrink-0 px-3 py-2 border-t border-white/10 bg-black/40 flex items-center justify-between gap-3">
-          {/* Dice on Left */}
-          <div className="flex-shrink-0">
+        {/* Bottom Section - Profile | Dice | Profile */}
+        <div className="shrink-0 px-3 py-2 border-t border-white/10 bg-black/40 flex items-center justify-between gap-2">
+          {/* Left Player Profile */}
+          {friendGameState.players[0] && (() => {
+            const player = friendGameState.players[0];
+            const colorMap: Record<string, string> = {
+              red: '#E53935',
+              green: '#43A047', 
+              yellow: '#FFD600',
+              blue: '#1E88E5'
+            };
+            const isActive = friendGameState.currentTurn === 0;
+            const isCurrentUser = player.id === user?.id;
+            return (
+              <div 
+                className={`relative flex flex-col items-center p-1.5 rounded-lg transition-all ${
+                  isActive ? 'ring-2 ring-green-400 bg-white/10' : 'bg-black/30'
+                }`}
+              >
+                <div 
+                  className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm"
+                  style={{ 
+                    background: `linear-gradient(135deg, ${colorMap[player.color]}dd, ${colorMap[player.color]}88)`,
+                    border: `2px solid ${colorMap[player.color]}`,
+                    boxShadow: isActive ? `0 0 10px ${colorMap[player.color]}80` : 'none'
+                  }}
+                >
+                  {isCurrentUser ? '👤' : player.name.slice(0, 2).toUpperCase()}
+                </div>
+                <span className="text-[9px] text-gray-400 mt-0.5 truncate max-w-[50px]">
+                  {isCurrentUser ? 'You' : (player.uid || player.name.slice(0, 5))}
+                </span>
+                {isActive && (
+                  <div className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-green-400 animate-pulse" />
+                )}
+              </div>
+            );
+          })()}
+
+          {/* Dice in Middle */}
+          <div className="flex-1 flex justify-center">
             <LudoDice
               value={friendGameState.diceValue}
               isRolling={friendGameState.isRolling}
@@ -579,48 +647,43 @@ const LudoPage = () => {
               compact
             />
           </div>
-          
-          {/* Player Profiles on Right */}
-          <div className="flex items-center gap-2">
-            {friendGameState.players.map((player, idx) => {
-              const colorMap: Record<string, string> = {
-                red: '#E53935',
-                green: '#43A047', 
-                yellow: '#FFD600',
-                blue: '#1E88E5'
-              };
-              const isActive = idx === friendGameState.currentTurn;
-              const isCurrentUser = player.id === user?.id;
-              return (
+
+          {/* Right Player Profile */}
+          {friendGameState.players[1] && (() => {
+            const player = friendGameState.players[1];
+            const colorMap: Record<string, string> = {
+              red: '#E53935',
+              green: '#43A047', 
+              yellow: '#FFD600',
+              blue: '#1E88E5'
+            };
+            const isActive = friendGameState.currentTurn === 1;
+            const isCurrentUser = player.id === user?.id;
+            return (
+              <div 
+                className={`relative flex flex-col items-center p-1.5 rounded-lg transition-all ${
+                  isActive ? 'ring-2 ring-green-400 bg-white/10' : 'bg-black/30'
+                }`}
+              >
                 <div 
-                  key={player.id}
-                  className={`relative flex flex-col items-center p-1.5 rounded-lg transition-all ${
-                    isActive ? 'ring-2 ring-green-400 bg-white/10' : 'bg-black/30'
-                  }`}
+                  className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm"
+                  style={{ 
+                    background: `linear-gradient(135deg, ${colorMap[player.color]}dd, ${colorMap[player.color]}88)`,
+                    border: `2px solid ${colorMap[player.color]}`,
+                    boxShadow: isActive ? `0 0 10px ${colorMap[player.color]}80` : 'none'
+                  }}
                 >
-                  {/* Player Avatar */}
-                  <div 
-                    className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm"
-                    style={{ 
-                      background: `linear-gradient(135deg, ${colorMap[player.color]}dd, ${colorMap[player.color]}88)`,
-                      border: `2px solid ${colorMap[player.color]}`,
-                      boxShadow: isActive ? `0 0 10px ${colorMap[player.color]}80` : 'none'
-                    }}
-                  >
-                    {isCurrentUser ? '👤' : player.name.slice(0, 2).toUpperCase()}
-                  </div>
-                  {/* UID + You indicator */}
-                  <span className="text-[9px] text-gray-400 mt-0.5 truncate max-w-[50px]">
-                    {isCurrentUser ? 'You' : (player.uid || player.name.slice(0, 5))}
-                  </span>
-                  {/* Active Indicator */}
-                  {isActive && (
-                    <div className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-green-400 animate-pulse" />
-                  )}
+                  {isCurrentUser ? '👤' : player.name.slice(0, 2).toUpperCase()}
                 </div>
-              );
-            })}
-          </div>
+                <span className="text-[9px] text-gray-400 mt-0.5 truncate max-w-[50px]">
+                  {isCurrentUser ? 'You' : (player.uid || player.name.slice(0, 5))}
+                </span>
+                {isActive && (
+                  <div className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-green-400 animate-pulse" />
+                )}
+              </div>
+            );
+          })()}
         </div>
 
         {/* In-Game Chat */}
