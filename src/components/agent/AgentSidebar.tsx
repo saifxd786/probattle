@@ -1,0 +1,103 @@
+import { Users, Gamepad2, ArrowLeftRight, LogOut, ChevronLeft } from 'lucide-react';
+import { NavLink, useNavigate } from 'react-router-dom';
+import { cn } from '@/lib/utils';
+import { useAuth } from '@/contexts/AuthContext';
+import { Button } from '@/components/ui/button';
+
+interface AgentSidebarProps {
+  collapsed: boolean;
+  onToggle: () => void;
+  onNavigate?: () => void;
+  isMobile?: boolean;
+}
+
+const navItems = [
+  { title: 'Users', url: '/agent', icon: Users },
+  { title: 'BGMI Matches', url: '/agent/matches', icon: Gamepad2 },
+  { title: 'Transactions', url: '/agent/transactions', icon: ArrowLeftRight },
+];
+
+const AgentSidebar = ({ collapsed, onToggle, onNavigate, isMobile }: AgentSidebarProps) => {
+  const { signOut } = useAuth();
+  const navigate = useNavigate();
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate('/');
+  };
+
+  const handleNavClick = () => {
+    if (onNavigate) {
+      onNavigate();
+    }
+  };
+
+  return (
+    <aside
+      className={cn(
+        'h-screen bg-card border-r border-border transition-all duration-300 flex flex-col',
+        isMobile ? 'w-full' : 'fixed left-0 top-0 z-50',
+        !isMobile && (collapsed ? 'w-16' : 'w-64')
+      )}
+    >
+      {/* Header */}
+      <div className="h-16 flex items-center justify-between px-4 border-b border-border">
+        {(!collapsed || isMobile) && (
+          <span className="font-display text-lg font-bold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
+            Agent Panel
+          </span>
+        )}
+        {!isMobile && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onToggle}
+            className={cn('shrink-0', collapsed && 'mx-auto')}
+          >
+            <ChevronLeft className={cn('w-5 h-5 transition-transform', collapsed && 'rotate-180')} />
+          </Button>
+        )}
+      </div>
+
+      {/* Navigation */}
+      <nav className="flex-1 py-4 px-2 space-y-1 overflow-y-auto">
+        {navItems.map((item) => (
+          <NavLink
+            key={item.url}
+            to={item.url}
+            end={item.url === '/agent'}
+            onClick={handleNavClick}
+            className={({ isActive }) =>
+              cn(
+                'flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200',
+                isActive
+                  ? 'bg-blue-600 text-white'
+                  : 'text-muted-foreground hover:bg-secondary hover:text-foreground',
+                collapsed && !isMobile && 'justify-center px-2'
+              )
+            }
+          >
+            <item.icon className="w-5 h-5 shrink-0" />
+            {(!collapsed || isMobile) && <span className="text-sm font-medium">{item.title}</span>}
+          </NavLink>
+        ))}
+      </nav>
+
+      {/* Footer */}
+      <div className="p-2 border-t border-border">
+        <button
+          onClick={handleSignOut}
+          className={cn(
+            'flex items-center gap-3 px-3 py-2.5 rounded-lg w-full text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-all duration-200',
+            collapsed && !isMobile && 'justify-center px-2'
+          )}
+        >
+          <LogOut className="w-5 h-5 shrink-0" />
+          {(!collapsed || isMobile) && <span className="text-sm font-medium">Logout</span>}
+        </button>
+      </div>
+    </aside>
+  );
+};
+
+export default AgentSidebar;

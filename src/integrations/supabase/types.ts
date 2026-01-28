@@ -1244,7 +1244,7 @@ export type Database = {
       spin_wheel: { Args: never; Returns: Json }
     }
     Enums: {
-      app_role: "admin" | "moderator" | "user"
+      app_role: "admin" | "moderator" | "user" | "agent"
       game_type: "bgmi" | "freefire" | "clash_royale" | "ludo"
       ludo_difficulty: "easy" | "normal" | "competitive"
       ludo_match_status: "waiting" | "in_progress" | "completed" | "cancelled"
@@ -1387,7 +1387,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "moderator", "user"],
+      app_role: ["admin", "moderator", "user", "agent"],
       game_type: ["bgmi", "freefire", "clash_royale", "ludo"],
       ludo_difficulty: ["easy", "normal", "competitive"],
       ludo_match_status: ["waiting", "in_progress", "completed", "cancelled"],

@@ -45,6 +45,11 @@ import AdminSupport from "./pages/admin/AdminSupport";
 import AdminSpinWheelSettings from "./pages/admin/AdminSpinWheelSettings";
 import AdminDailyLoginSettings from "./pages/admin/AdminDailyLoginSettings";
 import AdminDeviceBans from "./pages/admin/AdminDeviceBans";
+import AgentLoginPage from "./pages/agent/AgentLoginPage";
+import AgentLayout from "./components/agent/AgentLayout";
+import AgentUsers from "./pages/agent/AgentUsers";
+import AgentMatches from "./pages/agent/AgentMatches";
+import AgentTransactions from "./pages/agent/AgentTransactions";
 
 const queryClient = new QueryClient();
 
@@ -117,6 +122,13 @@ const App = () => {
                 <Route path="redeem-codes" element={<AdminRedeemCodes />} />
                 <Route path="support" element={<AdminSupport />} />
                 <Route path="device-bans" element={<AdminDeviceBans />} />
+              </Route>
+              {/* Agent Routes */}
+              <Route path="/agent/login" element={<AgentLoginPage />} />
+              <Route path="/agent" element={<AgentLayout />}>
+                <Route index element={<AgentUsers />} />
+                <Route path="matches" element={<AgentMatches />} />
+                <Route path="transactions" element={<AgentTransactions />} />
               </Route>
               <Route path="*" element={<NotFound />} />
             </Routes>
