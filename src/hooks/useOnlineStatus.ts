@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 interface OnlineUser {
   id: string;
   online_at: string;
+  username?: string;
 }
 
 export const useOnlineStatus = (userIds: string[]) => {
@@ -35,9 +36,35 @@ export const useOnlineStatus = (userIds: string[]) => {
         
         setOnlineUsers(online);
       })
-      .on('presence', { event: 'join' }, ({ key }) => {
+      .on('presence', { event: 'join' }, async ({ key, newPresences }) => {
         if (userIds.includes(key)) {
           setOnlineUsers(prev => new Set([...prev, key]));
+          
+          // Show notification when friend comes online
+          if (key !== user.id && 'Notification' in window && Notification.permission === 'granted') {
+            // Get friend's username
+            const { data: friendProfile } = await supabase
+              .from('profiles')
+              .select('username')
+              .eq('id', key)
+              .maybeSingle();
+            
+            if (friendProfile) {
+              const notification = new Notification('👋 Friend Online!', {
+                body: `${friendProfile.username} is now online`,
+                icon: '/pwa-192x192.png',
+                tag: `friend-online-${key}`,
+              });
+              
+              notification.onclick = () => {
+                window.focus();
+                window.location.href = '/friends';
+                notification.close();
+              };
+              
+              setTimeout(() => notification.close(), 8000);
+            }
+          }
         }
       })
       .on('presence', { event: 'leave' }, ({ key }) => {
