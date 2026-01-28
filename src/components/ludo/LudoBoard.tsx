@@ -31,6 +31,7 @@ interface LudoBoardProps {
   selectedToken?: { color: string; tokenId: number } | null;
   captureEvent?: CaptureEvent | null;
   onCaptureAnimationComplete?: () => void;
+  diceValue?: number;
 }
 
 // Ludo King authentic colors
@@ -341,11 +342,12 @@ const COLOR_POSITIONS: Record<string, 'top-left' | 'top-right' | 'bottom-left' |
   blue: 'bottom-left',
 };
 
-const LudoBoard = ({ players, onTokenClick, selectedToken, captureEvent, onCaptureAnimationComplete }: LudoBoardProps) => {
+const LudoBoard = ({ players, onTokenClick, selectedToken, captureEvent, onCaptureAnimationComplete, diceValue = 1 }: LudoBoardProps) => {
   const boardRef = useRef<HTMLDivElement>(null);
   // Use viewport-based sizing for mobile optimization - take maximum available space
   const [size, setSize] = useState(Math.min(window.innerWidth - 16, window.innerHeight - 200, 420));
   const [capturePosition, setCapturePosition] = useState<{ x: number; y: number } | null>(null);
+  const [previewToken, setPreviewToken] = useState<{ color: string; tokenId: number; position: number } | null>(null);
   
   useEffect(() => {
     const handleResize = () => {
@@ -415,6 +417,53 @@ const LudoBoard = ({ players, onTokenClick, selectedToken, captureEvent, onCaptu
     
     // Fallback to center
     return { x: 7.5 * cellSize, y: 7.5 * cellSize };
+  };
+
+  // Calculate path cells for preview
+  const getPathPreviewCells = (color: string, currentPos: number, dice: number): { x: number; y: number }[] => {
+    const cells: { x: number; y: number }[] = [];
+    const colorTrack = COLOR_TRACKS[color];
+    const homePath = HOME_PATHS[color];
+    
+    if (!colorTrack) return cells;
+    
+    // Token at home, needs 6 to exit
+    if (currentPos === 0) {
+      if (dice === 6) {
+        // Show entry position
+        cells.push(colorTrack[0]);
+      }
+      return cells;
+    }
+    
+    // Calculate path from current position
+    let pos = currentPos;
+    for (let i = 0; i < dice; i++) {
+      pos++;
+      
+      if (pos <= 51) {
+        // On main track
+        cells.push(colorTrack[pos - 1]);
+      } else if (pos >= 52 && pos <= 57) {
+        // In home stretch
+        const homeIndex = pos - 52;
+        if (homeIndex < homePath.length) {
+          cells.push(homePath[homeIndex]);
+        }
+      } else if (pos > 57) {
+        // Would go past home - invalid move
+        return [];
+      }
+    }
+    
+    return cells;
+  };
+
+  // Check if token can move
+  const canTokenMove = (position: number, dice: number): boolean => {
+    if (position === 0) return dice === 6;
+    if (position > 0 && position + dice <= 57) return true;
+    return false;
   };
 
   return (
@@ -568,6 +617,49 @@ const LudoBoard = ({ players, onTokenClick, selectedToken, captureEvent, onCaptu
         <circle cx="7.5" cy="7.5" r="0.4" fill="#fff" stroke="#d4a574" strokeWidth="0.06" />
       </svg>
 
+      {/* Path Preview Highlights */}
+      {previewToken && (
+        <div className="absolute inset-0 pointer-events-none z-5">
+          {getPathPreviewCells(previewToken.color, previewToken.position, diceValue).map((cell, index, arr) => {
+            const isLast = index === arr.length - 1;
+            const colorKey = previewToken.color as keyof typeof COLORS;
+            return (
+              <motion.div
+                key={`preview-${index}`}
+                className="absolute rounded-sm"
+                initial={{ opacity: 0, scale: 0.5 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.5 }}
+                transition={{ delay: index * 0.05, duration: 0.15 }}
+                style={{
+                  left: cell.x * cellSize - cellSize * 0.4,
+                  top: cell.y * cellSize - cellSize * 0.4,
+                  width: cellSize * 0.8,
+                  height: cellSize * 0.8,
+                  backgroundColor: isLast 
+                    ? `${COLORS[colorKey].main}90` 
+                    : `${COLORS[colorKey].light}60`,
+                  border: isLast 
+                    ? `2px solid ${COLORS[colorKey].dark}` 
+                    : `1px dashed ${COLORS[colorKey].main}80`,
+                  boxShadow: isLast 
+                    ? `0 0 8px ${COLORS[colorKey].main}80` 
+                    : 'none',
+                }}
+              >
+                {/* Step number */}
+                <span 
+                  className="absolute inset-0 flex items-center justify-center text-white font-bold text-xs"
+                  style={{ textShadow: '0 1px 2px rgba(0,0,0,0.5)' }}
+                >
+                  {isLast ? '●' : index + 1}
+                </span>
+              </motion.div>
+            );
+          })}
+        </div>
+      )}
+
       {/* Player Labels at corners */}
       {players.map((player) => {
         const position = COLOR_POSITIONS[player.color];
@@ -587,6 +679,8 @@ const LudoBoard = ({ players, onTokenClick, selectedToken, captureEvent, onCaptu
           const pos = getTokenPosition(token, player.color);
           const isSelected = selectedToken?.color === player.color && selectedToken?.tokenId === token.id;
           const colorKey = player.color as keyof typeof COLORS;
+
+          const canMove = player.isCurrentTurn && canTokenMove(token.position, diceValue);
 
           return (
             <motion.button
@@ -610,6 +704,18 @@ const LudoBoard = ({ players, onTokenClick, selectedToken, captureEvent, onCaptu
               whileHover={onTokenClick && player.isCurrentTurn ? { scale: 1.15 } : {}}
               whileTap={onTokenClick && player.isCurrentTurn ? { scale: 0.95 } : {}}
               onClick={() => onTokenClick?.(player.color, token.id)}
+              onMouseEnter={() => {
+                if (canMove) {
+                  setPreviewToken({ color: player.color, tokenId: token.id, position: token.position });
+                }
+              }}
+              onMouseLeave={() => setPreviewToken(null)}
+              onTouchStart={() => {
+                if (canMove) {
+                  setPreviewToken({ color: player.color, tokenId: token.id, position: token.position });
+                }
+              }}
+              onTouchEnd={() => setPreviewToken(null)}
               disabled={!player.isCurrentTurn || !onTokenClick}
             >
               <PinToken 

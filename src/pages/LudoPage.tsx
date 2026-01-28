@@ -242,6 +242,7 @@ const LudoPage = () => {
             selectedToken={gameState.selectedToken}
             captureEvent={captureEvent}
             onCaptureAnimationComplete={clearCaptureEvent}
+            diceValue={gameState.diceValue}
           />
         </div>
 
@@ -404,6 +405,7 @@ const LudoPage = () => {
             }))}
             onTokenClick={isUserTurn && !friendGameState.canRoll ? friendHandleTokenClick : undefined}
             selectedToken={friendGameState.selectedToken}
+            diceValue={friendGameState.diceValue}
           />
         </div>
 
