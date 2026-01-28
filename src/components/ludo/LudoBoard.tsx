@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { User, Bot } from 'lucide-react';
+import CaptureAnimation from './CaptureAnimation';
 
 interface Token {
   id: number;
@@ -18,10 +19,18 @@ interface Player {
   isBot?: boolean;
 }
 
+interface CaptureEvent {
+  capturedColor: string;
+  position: number;
+  capturingColor: string;
+}
+
 interface LudoBoardProps {
   players: Player[];
   onTokenClick?: (color: string, tokenId: number) => void;
   selectedToken?: { color: string; tokenId: number } | null;
+  captureEvent?: CaptureEvent | null;
+  onCaptureAnimationComplete?: () => void;
 }
 
 // Ludo King authentic colors
@@ -332,9 +341,11 @@ const COLOR_POSITIONS: Record<string, 'top-left' | 'top-right' | 'bottom-left' |
   blue: 'bottom-left',
 };
 
-const LudoBoard = ({ players, onTokenClick, selectedToken }: LudoBoardProps) => {
+const LudoBoard = ({ players, onTokenClick, selectedToken, captureEvent, onCaptureAnimationComplete }: LudoBoardProps) => {
+  const boardRef = useRef<HTMLDivElement>(null);
   // Use viewport-based sizing for mobile optimization - take maximum available space
   const [size, setSize] = useState(Math.min(window.innerWidth - 16, window.innerHeight - 200, 420));
+  const [capturePosition, setCapturePosition] = useState<{ x: number; y: number } | null>(null);
   
   useEffect(() => {
     const handleResize = () => {
@@ -350,6 +361,26 @@ const LudoBoard = ({ players, onTokenClick, selectedToken }: LudoBoardProps) => 
   }, []);
   
   const cellSize = size / 15;
+  
+  // Calculate capture animation position when capture event occurs
+  useEffect(() => {
+    if (captureEvent && boardRef.current) {
+      const boardRect = boardRef.current.getBoundingClientRect();
+      const capturingTrack = COLOR_TRACKS[captureEvent.capturingColor];
+      
+      if (capturingTrack && captureEvent.position >= 1 && captureEvent.position <= 51) {
+        const trackPos = capturingTrack[captureEvent.position - 1];
+        if (trackPos) {
+          setCapturePosition({
+            x: boardRect.left + (trackPos.x * cellSize),
+            y: boardRect.top + (trackPos.y * cellSize)
+          });
+        }
+      }
+    } else {
+      setCapturePosition(null);
+    }
+  }, [captureEvent, cellSize]);
   
   // Find current turn player
   const currentTurnPlayer = players.find(p => p.isCurrentTurn);
@@ -387,7 +418,7 @@ const LudoBoard = ({ players, onTokenClick, selectedToken }: LudoBoardProps) => 
   };
 
   return (
-    <div className="relative mx-auto" style={{ width: size, height: size }}>
+    <div ref={boardRef} className="relative mx-auto" style={{ width: size, height: size }}>
       {/* Main Board SVG */}
       <svg viewBox="0 0 15 15" className="w-full h-full" style={{ filter: 'drop-shadow(0 6px 12px rgba(0,0,0,0.3))' }}>
         <defs>
@@ -653,6 +684,14 @@ const LudoBoard = ({ players, onTokenClick, selectedToken }: LudoBoardProps) => 
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Capture Animation */}
+      <CaptureAnimation
+        isActive={!!captureEvent && !!capturePosition}
+        position={capturePosition || { x: 0, y: 0 }}
+        capturedColor={captureEvent?.capturedColor || 'red'}
+        onComplete={() => onCaptureAnimationComplete?.()}
+      />
     </div>
   );
 };

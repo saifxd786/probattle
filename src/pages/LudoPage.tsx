@@ -46,7 +46,9 @@ const LudoPage = () => {
     rollDice,
     handleTokenClick,
     resetGame,
-    rewardAmount
+    rewardAmount,
+    captureEvent,
+    clearCaptureEvent
   } = useLudoGame();
   
   // Friend multiplayer hook
@@ -220,6 +222,8 @@ const LudoPage = () => {
             }))}
             onTokenClick={isUserTurn && !gameState.canRoll ? handleTokenClick : undefined}
             selectedToken={gameState.selectedToken}
+            captureEvent={captureEvent}
+            onCaptureAnimationComplete={clearCaptureEvent}
           />
         </div>
 
