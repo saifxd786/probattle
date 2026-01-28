@@ -7,6 +7,17 @@ import BottomNav from '@/components/BottomNav';
 import TelegramFloat from '@/components/TelegramFloat';
 import PullToRefresh from '@/components/PullToRefresh';
 import { Button } from '@/components/ui/button';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import EntrySelector from '@/components/ludo/EntrySelector';
 import MatchmakingScreen from '@/components/ludo/MatchmakingScreen';
 import LudoBoard from '@/components/ludo/LudoBoard';
@@ -458,15 +469,32 @@ const LudoPage = () => {
                   >
                     +60s
                   </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={skipCountdownAndClaimWin}
-                    className="h-5 px-1.5 text-[9px] text-green-400 hover:text-green-300 hover:bg-green-500/20"
-                    title="Claim win now"
-                  >
-                    Win
-                  </Button>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-5 px-1.5 text-[9px] text-green-400 hover:text-green-300 hover:bg-green-500/20"
+                        title="Claim win now"
+                      >
+                        Win
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent className="max-w-xs">
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Claim Victory?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Your opponent is disconnected. Are you sure you want to claim the win now? They may reconnect soon.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Wait</AlertDialogCancel>
+                        <AlertDialogAction onClick={skipCountdownAndClaimWin}>
+                          Claim Win
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                 </div>
               </motion.div>
             ) : (
