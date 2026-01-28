@@ -31,7 +31,7 @@ const DiceFace = ({ value, className = "" }: { value: number; className?: string
   const dots = getDotPositions(value);
   
   return (
-    <div className={cn("absolute inset-0 rounded-lg flex items-center justify-center", className)}>
+    <div className={cn("absolute inset-0 rounded-md flex items-center justify-center", className)}>
       <svg viewBox="0 0 100 100" className="w-full h-full p-2">
         <defs>
           <radialGradient id="diceDotGradient" cx="30%" cy="30%">
@@ -76,7 +76,8 @@ const Dice3D = ({ value, isRolling, size = 80 }: { value: number; isRolling: boo
   }, [isRolling, value]);
 
   const getRotation = () => {
-    if (!isRolling) return { rotateX: -15, rotateY: 15, rotateZ: 0 };
+    // Flat (no tilt) when not rolling — avoids the “curved/tilted” look
+    if (!isRolling) return { rotateX: 0, rotateY: 0, rotateZ: 0 };
     
     const rotations = [
       { rotateX: 360, rotateY: 180, rotateZ: 90 },
@@ -103,7 +104,7 @@ const Dice3D = ({ value, isRolling, size = 80 }: { value: number; isRolling: boo
         }}
       >
         <div
-          className="absolute inset-0 rounded-xl"
+          className="absolute inset-0 rounded-lg"
           style={{
             background: 'linear-gradient(145deg, #FFFFFF 0%, #F5F5F5 30%, #E8E8E8 70%, #D0D0D0 100%)',
             boxShadow: `
