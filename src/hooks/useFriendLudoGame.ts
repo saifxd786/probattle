@@ -85,11 +85,16 @@ interface FriendGameState {
 
 const COLORS = ['red', 'green'];
 
-// Simple checksum for state comparison
-const generateChecksum = (players: Player[], currentTurn: number): string => {
+// Enhanced checksum for state comparison - includes more state data
+const generateChecksum = (players: Player[], currentTurn: number, diceValue?: number): string => {
   const stateString = JSON.stringify({
-    tokens: players.map(p => p.tokens.map(t => t.position)),
-    turn: currentTurn
+    tokens: players.map(p => ({
+      color: p.color,
+      positions: p.tokens.map(t => t.position).sort((a, b) => a - b),
+      home: p.tokensHome
+    })),
+    turn: currentTurn,
+    dice: diceValue || 0
   });
   let hash = 0;
   for (let i = 0; i < stateString.length; i++) {
@@ -98,6 +103,11 @@ const generateChecksum = (players: Player[], currentTurn: number): string => {
   }
   return hash.toString(16);
 };
+
+// Checksum verification constants
+const CHECKSUM_INTERVAL_MS = 800; // More frequent: every 800ms
+const CHECKSUM_MISMATCH_THRESHOLD = 2; // Auto-resync after 2 consecutive mismatches
+const CHECKSUM_RESYNC_COOLDOWN_MS = 3000; // Minimum time between auto-resyncs
 
 export const useFriendLudoGame = () => {
   const { user } = useAuth();
@@ -111,6 +121,12 @@ export const useFriendLudoGame = () => {
   const checksumIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const lastActionRef = useRef<number>(0); // Prevent duplicate action processing
   const userIdRef = useRef<string | null>(null); // Track user ID for consistency
+  
+  // Enhanced desync detection refs
+  const consecutiveMismatchesRef = useRef<number>(0);
+  const lastResyncTimeRef = useRef<number>(0);
+  const lastReceivedChecksumRef = useRef<string | null>(null);
+  const checksumHistoryRef = useRef<{ checksum: string; timestamp: number }[]>([]);
   
   // Reconnection handling refs
   const reconnectAttemptsRef = useRef<number>(0);
@@ -1318,19 +1334,23 @@ export const useFriendLudoGame = () => {
       .from('ludo_rooms')
       .select('*')
       .eq('id', gameState.roomId)
-      .single();
+      .maybeSingle();
 
     if (roomData && roomData.game_state) {
       const gameData = roomData.game_state as unknown as GameStateData;
       const isMyTurn = user ? gameData.players[gameData.currentTurn]?.id === user.id : false;
-      const checksum = generateChecksum(gameData.players, gameData.currentTurn);
+      const checksum = generateChecksum(gameData.players, gameData.currentTurn, gameData.diceValue);
+
+      // Reset mismatch tracking after successful resync
+      consecutiveMismatchesRef.current = 0;
+      lastReceivedChecksumRef.current = checksum;
 
       setGameState(prev => ({
         ...prev,
         players: gameData.players,
         currentTurn: gameData.currentTurn,
         diceValue: gameData.diceValue,
-        canRoll: isMyTurn,
+        canRoll: isMyTurn && !prev.isRolling,
         isRolling: false,
         stateChecksum: checksum,
         lastSyncTime: Date.now()
@@ -1339,18 +1359,21 @@ export const useFriendLudoGame = () => {
       setSyncStatus('synced');
       
       if (isAuto) {
-        toast({ 
-          title: '⚠️ State Mismatch Detected', 
-          description: 'Game auto-resynced from server',
-          variant: 'default'
+        console.log('[LudoSync] Auto-resynced from database');
+        sonnerToast.info('Game state synchronized', {
+          description: 'Recovered from state mismatch',
+          duration: 2000,
         });
       } else {
         toast({ title: '✅ Synced!', description: 'Game state updated' });
       }
+    } else if (!roomData) {
+      console.error('[LudoSync] Room not found during resync');
+      setSyncStatus('synced');
     }
   }, [gameState.roomId, user, toast]);
 
-  // Subscribe to sync channel for checksum comparison
+  // Subscribe to sync channel for enhanced checksum comparison
   const subscribeToSyncChannel = useCallback((roomId: string) => {
     if (syncChannelRef.current) {
       supabase.removeChannel(syncChannelRef.current);
@@ -1360,32 +1383,88 @@ export const useFriendLudoGame = () => {
       .channel(`ludo-sync-${roomId}`)
       .on('broadcast', { event: 'checksum' }, (payload) => {
         if (payload.payload.senderId !== user?.id) {
-          // Compare checksums
-          const myChecksum = gameState.stateChecksum;
           const theirChecksum = payload.payload.checksum;
+          const theirTurn = payload.payload.turn;
+          const theirTimestamp = payload.payload.timestamp;
           
-          if (myChecksum && theirChecksum && myChecksum !== theirChecksum) {
-            console.warn('[LudoSync] Checksum mismatch detected!', { mine: myChecksum, theirs: theirChecksum });
+          // Store received checksum for comparison
+          lastReceivedChecksumRef.current = theirChecksum;
+          
+          // Calculate our current checksum
+          const myChecksum = generateChecksum(gameState.players, gameState.currentTurn, gameState.diceValue);
+          
+          // Add to history for pattern detection
+          checksumHistoryRef.current.push({ checksum: theirChecksum, timestamp: theirTimestamp });
+          if (checksumHistoryRef.current.length > 10) {
+            checksumHistoryRef.current.shift();
+          }
+          
+          if (myChecksum !== theirChecksum) {
+            consecutiveMismatchesRef.current += 1;
+            console.warn('[LudoSync] Checksum mismatch!', { 
+              mine: myChecksum, 
+              theirs: theirChecksum,
+              myTurn: gameState.currentTurn,
+              theirTurn,
+              consecutiveMismatches: consecutiveMismatchesRef.current
+            });
+            
             setLastMismatchTime(Date.now());
             setSyncStatus('mismatch');
             
-            // Auto-resync after short delay
-            setTimeout(() => {
-              resyncGameState(true);
-            }, 500);
+            // Only auto-resync if we hit threshold AND cooldown has passed
+            const now = Date.now();
+            const cooldownPassed = now - lastResyncTimeRef.current > CHECKSUM_RESYNC_COOLDOWN_MS;
+            
+            if (consecutiveMismatchesRef.current >= CHECKSUM_MISMATCH_THRESHOLD && cooldownPassed) {
+              console.log('[LudoSync] Threshold reached, triggering auto-resync');
+              lastResyncTimeRef.current = now;
+              consecutiveMismatchesRef.current = 0;
+              
+              setTimeout(() => {
+                resyncGameState(true);
+              }, 300);
+            }
+          } else {
+            // Checksums match - reset counter
+            if (consecutiveMismatchesRef.current > 0) {
+              console.log('[LudoSync] Checksums now match, resetting mismatch counter');
+            }
+            consecutiveMismatchesRef.current = 0;
+            setSyncStatus('synced');
           }
+        }
+      })
+      .on('broadcast', { event: 'state_request' }, async (payload) => {
+        // Respond to state sync requests from opponent
+        if (payload.payload.requesterId !== user?.id && gameState.phase === 'playing') {
+          console.log('[LudoSync] Received state request, broadcasting full sync');
+          broadcastAction('full_sync', {
+            players: gameState.players,
+            currentTurn: gameState.currentTurn,
+            diceValue: gameState.diceValue,
+            phase: gameState.phase
+          });
         }
       })
       .subscribe();
 
     syncChannelRef.current = channel;
-  }, [user, gameState.stateChecksum, resyncGameState]);
+  }, [user, gameState.players, gameState.currentTurn, gameState.diceValue, gameState.phase, resyncGameState, broadcastAction]);
 
-  // Broadcast checksum periodically during gameplay
+  // Enhanced checksum broadcast with more state data
   const broadcastChecksum = useCallback(() => {
     if (!syncChannelRef.current || !user || gameState.phase !== 'playing') return;
     
-    const checksum = generateChecksum(gameState.players, gameState.currentTurn);
+    const checksum = generateChecksum(gameState.players, gameState.currentTurn, gameState.diceValue);
+    
+    // Update local checksum state
+    setGameState(prev => {
+      if (prev.stateChecksum !== checksum) {
+        return { ...prev, stateChecksum: checksum, lastSyncTime: Date.now() };
+      }
+      return prev;
+    });
     
     syncChannelRef.current.send({
       type: 'broadcast',
@@ -1393,21 +1472,43 @@ export const useFriendLudoGame = () => {
       payload: { 
         senderId: user.id, 
         checksum,
+        turn: gameState.currentTurn,
+        dice: gameState.diceValue,
         timestamp: Date.now()
       }
     });
-  }, [user, gameState.players, gameState.currentTurn, gameState.phase]);
+  }, [user, gameState.players, gameState.currentTurn, gameState.diceValue, gameState.phase]);
 
-  // Start/stop checksum verification interval
+  // Request state sync from opponent (for recovery)
+  const requestStateSync = useCallback(() => {
+    if (!syncChannelRef.current || !user) return;
+    
+    console.log('[LudoSync] Requesting state sync from opponent');
+    syncChannelRef.current.send({
+      type: 'broadcast',
+      event: 'state_request',
+      payload: { requesterId: user.id, timestamp: Date.now() }
+    });
+  }, [user]);
+
+  // Start/stop checksum verification interval - now more frequent
   useEffect(() => {
     if (gameState.phase === 'playing' && gameState.roomId) {
       // Subscribe to sync channel
       subscribeToSyncChannel(gameState.roomId);
       
-      // Broadcast checksum every 1.5 seconds for faster sync detection
+      // Reset mismatch tracking on game start
+      consecutiveMismatchesRef.current = 0;
+      lastResyncTimeRef.current = 0;
+      checksumHistoryRef.current = [];
+      
+      // Broadcast checksum more frequently (800ms instead of 1500ms)
       checksumIntervalRef.current = setInterval(() => {
         broadcastChecksum();
-      }, 1500);
+      }, CHECKSUM_INTERVAL_MS);
+
+      // Initial checksum broadcast
+      setTimeout(() => broadcastChecksum(), 500);
 
       return () => {
         if (checksumIntervalRef.current) {
@@ -1651,6 +1752,7 @@ export const useFriendLudoGame = () => {
     triggerCaptureAnimation,
     clearCaptureAnimation,
     resyncGameState,
+    requestStateSync,
     requestRematch,
     respondToRematch,
     manualReconnect,
