@@ -114,7 +114,9 @@ const LudoPage = () => {
     resyncGameState,
     requestRematch,
     respondToRematch,
-    manualReconnect
+    manualReconnect,
+    extendDisconnectCountdown,
+    skipCountdownAndClaimWin
   } = useFriendLudoGame();
 
   const ENTRY_AMOUNTS = [100, 200, 500, 1000];
@@ -431,28 +433,48 @@ const LudoPage = () => {
               </div>
             )}
             {/* Opponent Online Status with Disconnect Countdown */}
-            <div className={`flex items-center gap-1 px-2 py-1 rounded-lg ${
-              opponentOnline ? 'bg-green-500/20' : 
-              opponentDisconnectCountdown !== null ? 'bg-red-500/30 border border-red-500/50' : 'bg-red-500/20'
-            }`}>
-              {opponentOnline ? (
-                <>
-                  <Wifi className="w-3 h-3 text-green-400" />
-                  <span className="text-[10px] text-green-400">Online</span>
-                </>
-              ) : (
-                <>
-                  <WifiOff className="w-3 h-3 text-red-400" />
-                  <span className="text-[10px] text-red-400">
-                    {opponentDisconnectCountdown !== null ? (
-                      <span className="font-mono animate-pulse">
-                        Offline • Win in {opponentDisconnectCountdown}s
-                      </span>
-                    ) : 'Offline'}
-                  </span>
-                </>
-              )}
-            </div>
+            {opponentOnline ? (
+              <div className="flex items-center gap-1 px-2 py-1 rounded-lg bg-green-500/20">
+                <Wifi className="w-3 h-3 text-green-400" />
+                <span className="text-[10px] text-green-400">Online</span>
+              </div>
+            ) : opponentDisconnectCountdown !== null ? (
+              <motion.div 
+                className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-red-500/30 border border-red-500/50"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+              >
+                <WifiOff className="w-3 h-3 text-red-400 animate-pulse" />
+                <span className="text-[10px] text-red-400 font-mono">
+                  Offline • {opponentDisconnectCountdown}s
+                </span>
+                <div className="flex gap-1 ml-1">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={extendDisconnectCountdown}
+                    className="h-5 px-1.5 text-[9px] text-yellow-400 hover:text-yellow-300 hover:bg-yellow-500/20"
+                    title="Give opponent more time"
+                  >
+                    +60s
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={skipCountdownAndClaimWin}
+                    className="h-5 px-1.5 text-[9px] text-green-400 hover:text-green-300 hover:bg-green-500/20"
+                    title="Claim win now"
+                  >
+                    Win
+                  </Button>
+                </div>
+              </motion.div>
+            ) : (
+              <div className="flex items-center gap-1 px-2 py-1 rounded-lg bg-red-500/20">
+                <WifiOff className="w-3 h-3 text-red-400" />
+                <span className="text-[10px] text-red-400">Offline</span>
+              </div>
+            )}
             {/* Sync Status & Button */}
             <Button
               variant="ghost"

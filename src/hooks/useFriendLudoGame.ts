@@ -632,7 +632,24 @@ export const useFriendLudoGame = () => {
     });
   }, [user, gameState.roomId, gameState.phase, gameState.players, gameState.roomCode, gameState.rewardAmount, walletBalance, toast]);
 
-  // Opponent disconnect countdown effect
+  // Extend countdown - give opponent more time
+  const extendDisconnectCountdown = useCallback(() => {
+    if (opponentDisconnectCountdown === null) return;
+    setOpponentDisconnectCountdown(prev => (prev || 0) + 60);
+    sonnerToast.success('Extended wait time by 60 seconds');
+  }, [opponentDisconnectCountdown]);
+
+  // Skip countdown and claim win immediately
+  const skipCountdownAndClaimWin = useCallback(() => {
+    if (opponentDisconnectCountdown === null || gameState.phase !== 'playing') return;
+    // Clear the countdown interval
+    if (countdownIntervalRef.current) {
+      clearInterval(countdownIntervalRef.current);
+      countdownIntervalRef.current = null;
+    }
+    // Trigger claim win
+    claimWinByDisconnect();
+  }, [opponentDisconnectCountdown, gameState.phase, claimWinByDisconnect]);
   useEffect(() => {
     // Only run during active games
     if (gameState.phase !== 'playing') {
@@ -1572,6 +1589,8 @@ export const useFriendLudoGame = () => {
     resyncGameState,
     requestRematch,
     respondToRematch,
-    manualReconnect
+    manualReconnect,
+    extendDisconnectCountdown,
+    skipCountdownAndClaimWin
   };
 };
