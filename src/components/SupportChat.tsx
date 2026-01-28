@@ -1,6 +1,10 @@
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MessageCircle, X, Send, Loader2, Image, Video, Trash2 } from 'lucide-react';
+import { 
+  MessageCircle, X, Send, Loader2, Image, Video, Trash2, 
+  Mic, MicOff, Bot, Gamepad2, Wallet, HelpCircle, ChevronRight,
+  Sparkles, Volume2, ArrowLeft
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -12,6 +16,7 @@ import { format } from 'date-fns';
 import ImageLightbox from '@/components/ImageLightbox';
 import { uploadResumableToBucket } from '@/utils/resumableUpload';
 import { SUPPORT_ATTACHMENTS_BUCKET } from '@/utils/supportAttachments';
+import ReactMarkdown from 'react-markdown';
 
 interface Attachment {
   url: string;
@@ -19,13 +24,12 @@ interface Attachment {
   name: string;
 }
 
-interface Message {
+interface AIMessage {
   id: string;
-  sender_type: 'user' | 'admin';
-  message: string;
-  created_at: string;
-  is_read: boolean;
-  attachments?: Attachment[];
+  role: 'user' | 'assistant';
+  content: string;
+  image?: string;
+  timestamp: Date;
 }
 
 interface Ticket {
@@ -35,371 +39,267 @@ interface Ticket {
   created_at: string;
 }
 
+// Problem categories
+const GAME_CATEGORIES = [
+  { id: 'ludo', name: 'Ludo', icon: '🎲', color: 'from-red-500 to-orange-500' },
+  { id: 'mines', name: 'Mines', icon: '💣', color: 'from-yellow-500 to-amber-500' },
+  { id: 'thimble', name: 'Thimble', icon: '🎯', color: 'from-purple-500 to-pink-500' },
+  { id: 'bgmi', name: 'BGMI Tournament', icon: '🔫', color: 'from-green-500 to-emerald-500' },
+];
+
+const ISSUE_CATEGORIES = [
+  { id: 'deposit', name: 'Deposit Issue', icon: <Wallet className="w-5 h-5" />, color: 'from-green-500 to-emerald-500' },
+  { id: 'withdrawal', name: 'Withdrawal Issue', icon: <Wallet className="w-5 h-5" />, color: 'from-blue-500 to-cyan-500' },
+  { id: 'game', name: 'Game Problem', icon: <Gamepad2 className="w-5 h-5" />, color: 'from-purple-500 to-pink-500' },
+  { id: 'account', name: 'Account Issue', icon: <HelpCircle className="w-5 h-5" />, color: 'from-orange-500 to-red-500' },
+  { id: 'other', name: 'Other', icon: <MessageCircle className="w-5 h-5" />, color: 'from-gray-500 to-slate-500' },
+];
+
 const MAX_IMAGES = 5;
 const MAX_VIDEO_SIZE = 3 * 1024 * 1024 * 1024; // 3GB
 
 const SupportChat = () => {
   const { user } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [ticket, setTicket] = useState<Ticket | null>(null);
+  const [step, setStep] = useState<'category' | 'game' | 'chat'>('category');
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [selectedGame, setSelectedGame] = useState<string | null>(null);
+  
+  // AI Chat state
+  const [aiMessages, setAiMessages] = useState<AIMessage[]>([]);
   const [newMessage, setNewMessage] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [isSending, setIsSending] = useState(false);
-  const [unreadCount, setUnreadCount] = useState(0);
-  const [attachments, setAttachments] = useState<File[]>([]);
+  const [isAiTyping, setIsAiTyping] = useState(false);
+  
+  // Voice input
+  const [isListening, setIsListening] = useState(false);
+  const [speechSupported, setSpeechSupported] = useState(false);
+  const recognitionRef = useRef<any>(null);
+  
+  // Image upload
+  const [pendingImage, setPendingImage] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
-  const [currentUploadName, setCurrentUploadName] = useState<string>('');
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  
+  const [unreadCount, setUnreadCount] = useState(0);
+  const scrollRef = useRef<HTMLDivElement>(null);
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxImages, setLightboxImages] = useState<string[]>([]);
   const [lightboxIndex, setLightboxIndex] = useState(0);
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const imageInputRef = useRef<HTMLInputElement>(null);
-  const videoInputRef = useRef<HTMLInputElement>(null);
 
-  // Collect all images from messages for lightbox
-  const allImages = useMemo(() => {
-    const images: string[] = [];
-    messages.forEach(msg => {
-      if (msg.attachments) {
-        msg.attachments.forEach(att => {
-          if (att.type === 'image') {
-            images.push(att.url);
-          }
+  // Check speech recognition support
+  useEffect(() => {
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (SpeechRecognition) {
+      setSpeechSupported(true);
+      recognitionRef.current = new SpeechRecognition();
+      recognitionRef.current.continuous = false;
+      recognitionRef.current.interimResults = true;
+      recognitionRef.current.lang = 'hi-IN'; // Support Hindi, will auto-detect others
+      
+      recognitionRef.current.onresult = (event: any) => {
+        const transcript = Array.from(event.results)
+          .map((result: any) => result[0].transcript)
+          .join('');
+        setNewMessage(transcript);
+      };
+      
+      recognitionRef.current.onend = () => {
+        setIsListening(false);
+      };
+      
+      recognitionRef.current.onerror = () => {
+        setIsListening(false);
+        toast({
+          title: 'Voice Error',
+          description: 'Could not recognize speech. Please try again.',
+          variant: 'destructive',
         });
-      }
-    });
-    return images;
-  }, [messages]);
-
-  const openLightbox = (imageUrl: string) => {
-    const index = allImages.indexOf(imageUrl);
-    setLightboxImages(allImages);
-    setLightboxIndex(index >= 0 ? index : 0);
-    setLightboxOpen(true);
-  };
-
-  // Fetch or create active ticket
-  useEffect(() => {
-    if (user && isOpen) {
-      fetchActiveTicket();
+      };
     }
-  }, [user, isOpen]);
-
-  // Subscribe to new messages
-  useEffect(() => {
-    if (!ticket) return;
-
-    const channel = supabase
-      .channel(`support-${ticket.id}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'support_messages',
-          filter: `ticket_id=eq.${ticket.id}`,
-        },
-        (payload) => {
-          const newMsg = payload.new as Message;
-          setMessages((prev) => [...prev, newMsg]);
-          
-          // Mark as read if chat is open
-          if (isOpen && newMsg.sender_type === 'admin') {
-            markMessagesAsRead();
-          }
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [ticket, isOpen]);
-
-  // Check for unread messages
-  useEffect(() => {
-    if (user) {
-      checkUnreadMessages();
-    }
-  }, [user]);
+  }, []);
 
   // Scroll to bottom on new messages
   useEffect(() => {
     if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+      const scrollElement = scrollRef.current.querySelector('[data-radix-scroll-area-viewport]');
+      if (scrollElement) {
+        scrollElement.scrollTop = scrollElement.scrollHeight;
+      }
     }
-  }, [messages]);
+  }, [aiMessages, isAiTyping]);
 
-  const checkUnreadMessages = async () => {
-    if (!user) return;
-
-    const { data: tickets } = await supabase
-      .from('support_tickets')
-      .select('id')
-      .eq('user_id', user.id)
-      .in('status', ['open', 'in_progress']);
-
-    if (!tickets || tickets.length === 0) return;
-
-    const { count } = await supabase
-      .from('support_messages')
-      .select('*', { count: 'exact', head: true })
-      .in('ticket_id', tickets.map(t => t.id))
-      .eq('sender_type', 'admin')
-      .eq('is_read', false);
-
-    setUnreadCount(count || 0);
-  };
-
-  const fetchActiveTicket = async () => {
-    if (!user) return;
-    setIsLoading(true);
-
-    // Find active ticket
-    const { data: existingTicket } = await supabase
-      .from('support_tickets')
-      .select('*')
-      .eq('user_id', user.id)
-      .in('status', ['open', 'in_progress'])
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    if (existingTicket) {
-      setTicket(existingTicket);
-      await fetchMessages(existingTicket.id);
-    }
-
-    setIsLoading(false);
-  };
-
-  const fetchMessages = async (ticketId: string) => {
-    const { data } = await supabase
-      .from('support_messages')
-      .select('*')
-      .eq('ticket_id', ticketId)
-      .order('created_at', { ascending: true });
-
-    // Cast properly since attachments is jsonb
-    const parsedMessages = (data || []).map(msg => ({
-      ...msg,
-      sender_type: msg.sender_type as 'user' | 'admin',
-      attachments: (msg.attachments as unknown as Attachment[]) || [],
-    }));
-    setMessages(parsedMessages);
-    markMessagesAsRead();
-  };
-
-  const markMessagesAsRead = async () => {
-    if (!ticket) return;
-
-    await supabase
-      .from('support_messages')
-      .update({ is_read: true })
-      .eq('ticket_id', ticket.id)
-      .eq('sender_type', 'admin')
-      .eq('is_read', false);
-
-    setUnreadCount(0);
-  };
-
-  const createTicket = async () => {
-    if (!user) return null;
-
-    const { data, error } = await supabase
-      .from('support_tickets')
-      .insert({
-        user_id: user.id,
-        subject: 'Support Chat',
-        status: 'open',
-      })
-      .select()
-      .single();
-
-    if (error) {
+  const toggleListening = () => {
+    if (!speechSupported) {
       toast({
-        title: 'Error',
-        description: 'Failed to start chat. Please try again.',
+        title: 'Not Supported',
+        description: 'Voice input is not supported in your browser.',
         variant: 'destructive',
       });
-      return null;
+      return;
     }
 
-    setTicket(data);
-    return data;
+    if (isListening) {
+      recognitionRef.current?.stop();
+      setIsListening(false);
+    } else {
+      recognitionRef.current?.start();
+      setIsListening(true);
+    }
   };
 
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    const imageCount = attachments.filter(f => f.type.startsWith('image/')).length;
-    const newImages = files.filter(f => f.type.startsWith('image/'));
-    
-    if (imageCount + newImages.length > MAX_IMAGES) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
       toast({
-        title: 'Limit Exceeded',
-        description: `Maximum ${MAX_IMAGES} images allowed`,
+        title: 'Invalid File',
+        description: 'Please select an image file.',
         variant: 'destructive',
       });
       return;
     }
 
-    setAttachments(prev => [...prev, ...newImages]);
+    // Convert to base64
+    const reader = new FileReader();
+    reader.onload = () => {
+      setPendingImage(reader.result as string);
+    };
+    reader.readAsDataURL(file);
+    
     if (imageInputRef.current) imageInputRef.current.value = '';
   };
 
-  const handleVideoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    const videos = files.filter(f => f.type.startsWith('video/'));
-    
-    for (const video of videos) {
-      if (video.size > MAX_VIDEO_SIZE) {
-        toast({
-          title: 'File Too Large',
-          description: 'Video must be under 3GB',
-          variant: 'destructive',
-        });
-        return;
-      }
+  const selectCategory = (categoryId: string) => {
+    setSelectedCategory(categoryId);
+    if (categoryId === 'game') {
+      setStep('game');
+    } else {
+      setStep('chat');
+      // Add initial AI greeting
+      addAiGreeting(categoryId);
     }
-
-    // Only allow 1 video per message
-    if (attachments.some(f => f.type.startsWith('video/'))) {
-      toast({
-        title: 'Limit Exceeded',
-        description: 'Only 1 video per message allowed',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    setAttachments(prev => [...prev, ...videos.slice(0, 1)]);
-    if (videoInputRef.current) videoInputRef.current.value = '';
   };
 
-  const removeAttachment = (index: number) => {
-    setAttachments(prev => prev.filter((_, i) => i !== index));
+  const selectGame = (gameId: string) => {
+    setSelectedGame(gameId);
+    setStep('chat');
+    addAiGreeting('game', gameId);
   };
 
-  const uploadAttachments = async (): Promise<Attachment[]> => {
-    if (!user || attachments.length === 0) return [];
-
-    const uploaded: Attachment[] = [];
-    const totalFiles = attachments.length;
-    
-    for (let i = 0; i < attachments.length; i++) {
-      const file = attachments[i];
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${user.id}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
-      
-      setCurrentUploadName(`${file.name} (${i + 1}/${totalFiles})`);
-      setUploadProgress(0);
-
-      const isLargeFile = file.size > 10 * 1024 * 1024; // 10MB threshold
-      
-      try {
-        if (isLargeFile) {
-          // Use resumable upload for large files
-          await uploadResumableToBucket({
-            bucketName: SUPPORT_ATTACHMENTS_BUCKET,
-            objectName: fileName,
-            file,
-            onProgress: ({ percent }) => {
-              setUploadProgress(percent);
-            },
-          });
-        } else {
-          // Standard upload for small files
-          const { error: uploadError } = await supabase.storage
-            .from(SUPPORT_ATTACHMENTS_BUCKET)
-            .upload(fileName, file);
-
-          if (uploadError) {
-            console.error('Upload error:', uploadError);
-            continue;
-          }
-          setUploadProgress(100);
-        }
-
-        // Store bucket + path (not the public URL) for signed URL resolution
-        uploaded.push({
-          url: '', // Will be resolved via signed URL on fetch
-          type: file.type.startsWith('image/') ? 'image' : 'video',
-          name: file.name,
-          bucket: SUPPORT_ATTACHMENTS_BUCKET,
-          path: fileName,
-        } as Attachment & { bucket: string; path: string });
-      } catch (err) {
-        console.error('Upload failed:', err);
-        toast({
-          title: 'Upload Failed',
-          description: `Failed to upload ${file.name}`,
-          variant: 'destructive',
-        });
-      }
-    }
-
-    setCurrentUploadName('');
-    setUploadProgress(0);
-    return uploaded;
-  };
-
-  const sendMessage = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if ((!newMessage.trim() && attachments.length === 0) || !user) return;
-
-    setIsSending(true);
-    setIsUploading(attachments.length > 0);
-
-    let currentTicket = ticket;
-    if (!currentTicket) {
-      currentTicket = await createTicket();
-      if (!currentTicket) {
-        setIsSending(false);
-        setIsUploading(false);
-        return;
-      }
-    }
-
-    // Upload attachments
-    let uploadedAttachments: Attachment[] = [];
-    if (attachments.length > 0) {
-      uploadedAttachments = await uploadAttachments();
-    }
-
-    const messageData: {
-      ticket_id: string;
-      sender_id: string;
-      sender_type: string;
-      message: string;
-      attachments?: Attachment[];
-    } = {
-      ticket_id: currentTicket.id,
-      sender_id: user.id,
-      sender_type: 'user',
-      message: newMessage.trim() || (uploadedAttachments.length > 0 ? '[Attachments]' : ''),
+  const addAiGreeting = (category: string, game?: string) => {
+    const greetings: Record<string, string> = {
+      deposit: "🙏 Namaste! Main ProBattle AI Support hoon.\n\nAapko deposit mein koi problem aa rahi hai? Please apni issue batao ya screenshot share karo - main turant help karunga!\n\n**Common deposit issues:**\n- Payment deducted but not credited\n- UPI transaction failed\n- Minimum deposit amount query",
+      withdrawal: "🙏 Namaste! Withdrawal mein help ke liye main yahan hoon.\n\nAapki withdrawal request mein kya issue hai? UTR number ya transaction screenshot share karein toh jaldi solve ho jayega!\n\n**Note:** Withdrawals 24-48 hours mein process hote hain.",
+      account: "🙏 Hello! Account related help ke liye batao kya problem hai?\n\n- Login issue?\n- Password reset?\n- Profile update?\n- Account verification?\n\nMain ready hoon help karne ke liye! 💪",
+      other: "🙏 Namaste! Main aapki kisi bhi query mein help kar sakta hoon.\n\nBatao kya help chahiye? Screenshots bhi share kar sakte ho agar koi error aa raha ho!",
     };
 
-    if (uploadedAttachments.length > 0) {
-      (messageData as Record<string, unknown>).attachments = uploadedAttachments;
+    let greeting = greetings[category] || greetings.other;
+    
+    if (game) {
+      const gameGreetings: Record<string, string> = {
+        ludo: "🎲 **Ludo Game Support**\n\nLudo mein kya issue aa raha hai?\n- Match not starting?\n- Sync problem with friend?\n- Entry fee issue?\n- Game stuck?\n\nBatao, main solve karunga! Screenshot bhi bhej sakte ho.",
+        mines: "💣 **Mines Game Support**\n\nMines mein kya problem hai?\n- Game freeze?\n- Payout not credited?\n- Multiplier issue?\n\nDetails share karo with screenshots if possible!",
+        thimble: "🎯 **Thimble Game Support**\n\nThimble game mein help chahiye?\n- Animation lag?\n- Result not showing?\n- Balance issue?\n\nMain ready hoon help karne ke liye!",
+        bgmi: "🔫 **BGMI Tournament Support**\n\nTournament mein kya issue hai?\n- Room ID/Password nahi mila?\n- Registration problem?\n- Prize money not received?\n\nMatch details batao, main check karta hoon!",
+      };
+      greeting = gameGreetings[game] || greeting;
     }
 
-    const { error } = await supabase.from('support_messages').insert(messageData as never);
+    setAiMessages([{
+      id: Date.now().toString(),
+      role: 'assistant',
+      content: greeting,
+      timestamp: new Date(),
+    }]);
+  };
 
-    if (error) {
+  const sendMessage = async (e?: React.FormEvent) => {
+    e?.preventDefault();
+    if ((!newMessage.trim() && !pendingImage) || isAiTyping) return;
+
+    const userMessage: AIMessage = {
+      id: Date.now().toString(),
+      role: 'user',
+      content: newMessage.trim() || (pendingImage ? 'Please check this image' : ''),
+      image: pendingImage || undefined,
+      timestamp: new Date(),
+    };
+
+    setAiMessages(prev => [...prev, userMessage]);
+    setNewMessage('');
+    setPendingImage(null);
+    setIsAiTyping(true);
+
+    try {
+      // Build messages for API
+      const messagesForApi = aiMessages.map(msg => ({
+        role: msg.role,
+        content: msg.content,
+        image: msg.image,
+      }));
+      messagesForApi.push({
+        role: userMessage.role,
+        content: userMessage.content,
+        image: userMessage.image,
+      });
+
+      const { data, error } = await supabase.functions.invoke('ai-support-chat', {
+        body: {
+          messages: messagesForApi,
+          category: selectedCategory || 'other',
+          subCategory: selectedGame || selectedCategory || 'general',
+          language: 'auto', // Auto-detect
+          hasImage: !!userMessage.image,
+        },
+      });
+
+      if (error) throw error;
+
+      const aiReply: AIMessage = {
+        id: (Date.now() + 1).toString(),
+        role: 'assistant',
+        content: data.reply || 'Sorry, I could not process that. Please try again.',
+        timestamp: new Date(),
+      };
+
+      setAiMessages(prev => [...prev, aiReply]);
+    } catch (error) {
+      console.error('AI chat error:', error);
       toast({
         title: 'Error',
-        description: 'Failed to send message. Please try again.',
+        description: 'Could not get AI response. Please try again.',
         variant: 'destructive',
       });
-    } else {
-      setNewMessage('');
-      setAttachments([]);
+      
+      // Add fallback message
+      setAiMessages(prev => [...prev, {
+        id: (Date.now() + 1).toString(),
+        role: 'assistant',
+        content: 'Sorry, main abhi respond nahi kar pa raha. Please thodi der baad try karein ya admin se contact karein.',
+        timestamp: new Date(),
+      }]);
+    } finally {
+      setIsAiTyping(false);
     }
+  };
 
-    setIsSending(false);
-    setIsUploading(false);
+  const resetChat = () => {
+    setStep('category');
+    setSelectedCategory(null);
+    setSelectedGame(null);
+    setAiMessages([]);
+    setNewMessage('');
+    setPendingImage(null);
+  };
+
+  const openLightbox = (imageUrl: string) => {
+    const images = aiMessages.filter(m => m.image).map(m => m.image!);
+    const index = images.indexOf(imageUrl);
+    setLightboxImages(images);
+    setLightboxIndex(index >= 0 ? index : 0);
+    setLightboxOpen(true);
   };
 
   if (!user) {
@@ -408,13 +308,16 @@ const SupportChat = () => {
 
   return (
     <>
-      {/* Chat Button in Header - Small Icon */}
+      {/* Chat Button */}
       <button
         onClick={() => setIsOpen(true)}
         className="relative p-2 rounded-lg hover:bg-secondary/50 transition-colors"
-        title="Live Support"
+        title="AI Support"
       >
-        <MessageCircle className="w-5 h-5 text-primary" />
+        <div className="relative">
+          <Bot className="w-5 h-5 text-primary" />
+          <Sparkles className="w-2.5 h-2.5 text-yellow-400 absolute -top-1 -right-1" />
+        </div>
         {unreadCount > 0 && (
           <span className="absolute -top-1 -right-1 w-4 h-4 bg-destructive text-destructive-foreground text-[10px] rounded-full flex items-center justify-center font-bold">
             {unreadCount > 9 ? '9+' : unreadCount}
@@ -422,21 +325,13 @@ const SupportChat = () => {
         )}
       </button>
 
-      {/* Hidden File Inputs */}
+      {/* Hidden File Input */}
       <input
         type="file"
         ref={imageInputRef}
         className="hidden"
         accept="image/*"
-        multiple
         onChange={handleImageSelect}
-      />
-      <input
-        type="file"
-        ref={videoInputRef}
-        className="hidden"
-        accept="video/*"
-        onChange={handleVideoSelect}
       />
 
       {/* Chat Window */}
@@ -446,17 +341,29 @@ const SupportChat = () => {
             initial={{ opacity: 0, y: 20, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
-            className="fixed top-16 right-4 z-50 w-80 sm:w-96 h-[500px] max-h-[70vh] bg-card border border-border rounded-2xl shadow-2xl flex flex-col overflow-hidden"
+            className="fixed top-16 right-4 z-50 w-[340px] sm:w-[400px] h-[550px] max-h-[75vh] bg-card border border-border rounded-2xl shadow-2xl flex flex-col overflow-hidden"
           >
             {/* Header */}
-            <div className="flex items-center justify-between p-4 border-b border-border bg-secondary/30">
+            <div className="flex items-center justify-between p-3 border-b border-border bg-gradient-to-r from-primary/10 via-primary/5 to-transparent">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
-                  <MessageCircle className="w-5 h-5 text-primary" />
+                {step !== 'category' && (
+                  <Button variant="ghost" size="icon" className="w-8 h-8" onClick={resetChat}>
+                    <ArrowLeft className="w-4 h-4" />
+                  </Button>
+                )}
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center shadow-lg">
+                  <Bot className="w-5 h-5 text-primary-foreground" />
                 </div>
                 <div>
-                  <h3 className="font-display font-bold text-sm">Support Chat</h3>
-                  <p className="text-xs text-muted-foreground">We typically reply in minutes</p>
+                  <h3 className="font-display font-bold text-sm flex items-center gap-1">
+                    ProBattle AI Support
+                    <Sparkles className="w-3 h-3 text-yellow-400" />
+                  </h3>
+                  <p className="text-xs text-muted-foreground">
+                    {step === 'category' ? 'Select your issue type' : 
+                     step === 'game' ? 'Select game' : 
+                     'Online • Instant replies'}
+                  </p>
                 </div>
               </div>
               <Button variant="ghost" size="icon" onClick={() => setIsOpen(false)}>
@@ -464,150 +371,230 @@ const SupportChat = () => {
               </Button>
             </div>
 
-            {/* Messages */}
-            <ScrollArea className="flex-1 p-4" ref={scrollRef}>
-              {isLoading ? (
-                <div className="flex items-center justify-center h-full">
-                  <Loader2 className="w-6 h-6 animate-spin text-primary" />
-                </div>
-              ) : messages.length === 0 ? (
-                <div className="text-center py-8">
-                  <MessageCircle className="w-12 h-12 text-muted-foreground/30 mx-auto mb-3" />
-                  <p className="text-sm text-muted-foreground">
-                    Start a conversation with our support team
+            {/* Category Selection */}
+            <AnimatePresence mode="wait">
+              {step === 'category' && (
+                <motion.div
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 20 }}
+                  className="flex-1 p-4 overflow-auto"
+                >
+                  <p className="text-sm text-muted-foreground mb-4 text-center">
+                    🙏 Namaste! Kaise madad kar sakta hoon?
                   </p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {messages.map((msg) => (
-                    <motion.div
-                      key={msg.id}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className={`flex ${msg.sender_type === 'user' ? 'justify-end' : 'justify-start'}`}
-                    >
-                      <div
-                        className={`max-w-[80%] rounded-2xl px-4 py-2 ${
-                          msg.sender_type === 'user'
-                            ? 'bg-primary text-primary-foreground rounded-br-md'
-                            : 'bg-secondary text-foreground rounded-bl-md'
-                        }`}
+                  <div className="space-y-2">
+                    {ISSUE_CATEGORIES.map((category) => (
+                      <motion.button
+                        key={category.id}
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => selectCategory(category.id)}
+                        className={`w-full p-3 rounded-xl bg-gradient-to-r ${category.color} text-white flex items-center justify-between shadow-md hover:shadow-lg transition-shadow`}
                       >
-                        {/* Attachments */}
-                        {msg.attachments && msg.attachments.length > 0 && (
-                          <div className="space-y-2 mb-2">
-                            {(msg.attachments as Attachment[]).map((att, idx) => (
-                              <div key={idx}>
-                                {att.type === 'image' ? (
-                                  <img 
-                                    src={att.url} 
-                                    alt={att.name}
-                                    className="rounded-lg max-w-full cursor-pointer hover:opacity-80 transition-opacity"
-                                    onClick={() => openLightbox(att.url)}
-                                  />
-                                ) : (
-                                  <video 
-                                    src={att.url} 
-                                    controls 
-                                    className="rounded-lg max-w-full"
-                                  />
-                                )}
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                        {msg.message !== '[Attachments]' && (
-                          <p className="text-sm whitespace-pre-wrap">{msg.message}</p>
-                        )}
-                        <p className={`text-[10px] mt-1 ${msg.sender_type === 'user' ? 'text-primary-foreground/70' : 'text-muted-foreground'}`}>
-                          {format(new Date(msg.created_at), 'HH:mm')}
-                        </p>
-                      </div>
-                    </motion.div>
-                  ))}
-                </div>
-              )}
-            </ScrollArea>
-
-            {/* Attachment Preview */}
-            {attachments.length > 0 && (
-              <div className="px-4 py-2 border-t border-border bg-secondary/20">
-                <div className="flex flex-wrap gap-2">
-                  {attachments.map((file, idx) => (
-                    <div key={idx} className="relative group">
-                      {file.type.startsWith('image/') ? (
-                        <img 
-                          src={URL.createObjectURL(file)} 
-                          alt={file.name}
-                          className="w-16 h-16 object-cover rounded-lg"
-                        />
-                      ) : (
-                        <div className="w-16 h-16 bg-secondary rounded-lg flex items-center justify-center">
-                          <Video className="w-6 h-6 text-muted-foreground" />
+                        <div className="flex items-center gap-3">
+                          {category.icon}
+                          <span className="font-medium">{category.name}</span>
                         </div>
-                      )}
-                      <button
-                        onClick={() => removeAttachment(idx)}
-                        className="absolute -top-1 -right-1 w-5 h-5 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                      >
-                        <Trash2 className="w-3 h-3" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Input */}
-            <form onSubmit={sendMessage} className="p-4 border-t border-border bg-secondary/20">
-              <div className="flex gap-2 items-end">
-                <div className="flex gap-1">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="shrink-0"
-                    onClick={() => imageInputRef.current?.click()}
-                    disabled={isSending}
-                  >
-                    <Image className="w-4 h-4" />
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="shrink-0"
-                    onClick={() => videoInputRef.current?.click()}
-                    disabled={isSending}
-                  >
-                    <Video className="w-4 h-4" />
-                  </Button>
-                </div>
-                <Input
-                  value={newMessage}
-                  onChange={(e) => setNewMessage(e.target.value)}
-                  placeholder="Type your message..."
-                  className="flex-1 bg-background/50"
-                  disabled={isSending}
-                />
-                <Button type="submit" size="icon" disabled={isSending || (!newMessage.trim() && attachments.length === 0)}>
-                  {isSending ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <Send className="w-4 h-4" />
-                  )}
-                </Button>
-              </div>
-            {isUploading && (
-                <div className="mt-2 space-y-1">
-                  <div className="flex items-center justify-between text-xs text-muted-foreground">
-                    <span className="truncate max-w-[200px]">{currentUploadName || 'Uploading...'}</span>
-                    <span>{uploadProgress}%</span>
+                        <ChevronRight className="w-5 h-5" />
+                      </motion.button>
+                    ))}
                   </div>
-                  <Progress value={uploadProgress} className="h-1.5" />
-                </div>
+                </motion.div>
               )}
-            </form>
+
+              {/* Game Selection */}
+              {step === 'game' && (
+                <motion.div
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 20 }}
+                  className="flex-1 p-4 overflow-auto"
+                >
+                  <p className="text-sm text-muted-foreground mb-4 text-center">
+                    🎮 Konse game mein problem hai?
+                  </p>
+                  <div className="grid grid-cols-2 gap-3">
+                    {GAME_CATEGORIES.map((game) => (
+                      <motion.button
+                        key={game.id}
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => selectGame(game.id)}
+                        className={`p-4 rounded-xl bg-gradient-to-br ${game.color} text-white flex flex-col items-center gap-2 shadow-md hover:shadow-lg transition-shadow`}
+                      >
+                        <span className="text-3xl">{game.icon}</span>
+                        <span className="font-medium text-sm">{game.name}</span>
+                      </motion.button>
+                    ))}
+                  </div>
+                </motion.div>
+              )}
+
+              {/* Chat Interface */}
+              {step === 'chat' && (
+                <motion.div
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 20 }}
+                  className="flex-1 flex flex-col min-h-0"
+                >
+                  {/* Messages */}
+                  <ScrollArea className="flex-1 p-3" ref={scrollRef}>
+                    <div className="space-y-3">
+                      {aiMessages.map((msg) => (
+                        <motion.div
+                          key={msg.id}
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                        >
+                          <div
+                            className={`max-w-[85%] rounded-2xl px-3 py-2 ${
+                              msg.role === 'user'
+                                ? 'bg-primary text-primary-foreground rounded-br-md'
+                                : 'bg-secondary text-foreground rounded-bl-md'
+                            }`}
+                          >
+                            {msg.role === 'assistant' && (
+                              <div className="flex items-center gap-1.5 mb-1 pb-1 border-b border-border/30">
+                                <Bot className="w-3 h-3" />
+                                <span className="text-[10px] font-medium opacity-70">AI Assistant</span>
+                              </div>
+                            )}
+                            
+                            {/* Image */}
+                            {msg.image && (
+                              <div className="mb-2">
+                                <img
+                                  src={msg.image}
+                                  alt="Uploaded"
+                                  className="max-w-full rounded-lg cursor-pointer hover:opacity-90"
+                                  onClick={() => openLightbox(msg.image!)}
+                                />
+                              </div>
+                            )}
+                            
+                            {/* Message with Markdown */}
+                            <div className={`text-sm ${msg.role === 'assistant' ? 'prose prose-sm dark:prose-invert max-w-none' : ''}`}>
+                              {msg.role === 'assistant' ? (
+                                <ReactMarkdown>{msg.content}</ReactMarkdown>
+                              ) : (
+                                <p>{msg.content}</p>
+                              )}
+                            </div>
+                            
+                            <span className="text-[10px] opacity-50 mt-1 block">
+                              {format(msg.timestamp, 'HH:mm')}
+                            </span>
+                          </div>
+                        </motion.div>
+                      ))}
+                      
+                      {/* AI Typing Indicator */}
+                      {isAiTyping && (
+                        <motion.div
+                          initial={{ opacity: 0, y: 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          className="flex justify-start"
+                        >
+                          <div className="bg-secondary rounded-2xl rounded-bl-md px-4 py-3">
+                            <div className="flex items-center gap-2">
+                              <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                              <span className="text-xs text-muted-foreground">AI typing...</span>
+                            </div>
+                          </div>
+                        </motion.div>
+                      )}
+                    </div>
+                  </ScrollArea>
+
+                  {/* Pending Image Preview */}
+                  {pendingImage && (
+                    <div className="px-3 py-2 border-t border-border bg-secondary/30">
+                      <div className="relative inline-block">
+                        <img
+                          src={pendingImage}
+                          alt="To send"
+                          className="h-16 rounded-lg"
+                        />
+                        <button
+                          onClick={() => setPendingImage(null)}
+                          className="absolute -top-2 -right-2 w-5 h-5 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Input Area */}
+                  <form onSubmit={sendMessage} className="p-3 border-t border-border bg-secondary/20">
+                    <div className="flex items-center gap-2">
+                      {/* Voice Input */}
+                      <Button
+                        type="button"
+                        variant={isListening ? "destructive" : "outline"}
+                        size="icon"
+                        className="shrink-0 w-9 h-9"
+                        onClick={toggleListening}
+                      >
+                        {isListening ? (
+                          <MicOff className="w-4 h-4" />
+                        ) : (
+                          <Mic className="w-4 h-4" />
+                        )}
+                      </Button>
+
+                      {/* Image Upload */}
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        className="shrink-0 w-9 h-9"
+                        onClick={() => imageInputRef.current?.click()}
+                      >
+                        <Image className="w-4 h-4" />
+                      </Button>
+
+                      {/* Text Input */}
+                      <Input
+                        value={newMessage}
+                        onChange={(e) => setNewMessage(e.target.value)}
+                        placeholder={isListening ? "🎤 Listening..." : "Type or speak..."}
+                        className="flex-1 bg-background"
+                        disabled={isAiTyping}
+                      />
+
+                      {/* Send Button */}
+                      <Button
+                        type="submit"
+                        size="icon"
+                        className="shrink-0 w-9 h-9 bg-primary"
+                        disabled={(!newMessage.trim() && !pendingImage) || isAiTyping}
+                      >
+                        <Send className="w-4 h-4" />
+                      </Button>
+                    </div>
+                    
+                    {isListening && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        className="mt-2 flex items-center justify-center gap-2 text-xs text-primary"
+                      >
+                        <motion.div
+                          animate={{ scale: [1, 1.2, 1] }}
+                          transition={{ duration: 1, repeat: Infinity }}
+                          className="w-2 h-2 bg-primary rounded-full"
+                        />
+                        <span>Listening... Speak now</span>
+                      </motion.div>
+                    )}
+                  </form>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </motion.div>
         )}
       </AnimatePresence>
