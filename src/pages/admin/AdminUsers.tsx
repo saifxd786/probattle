@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Search, Ban, CheckCircle, Shield, ShieldOff, Gamepad2, Trash2, Eye, KeyRound } from 'lucide-react';
+import { Search, Ban, CheckCircle, Shield, ShieldOff, Gamepad2, Trash2, Eye, KeyRound, UserCog } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -197,6 +197,34 @@ const AdminUsers = () => {
     }
   };
 
+  const toggleAgentRole = async (userId: string, isAgent: boolean) => {
+    if (isAgent) {
+      const { error } = await supabase
+        .from('user_roles')
+        .delete()
+        .eq('user_id', userId)
+        .eq('role', 'agent');
+
+      if (error) {
+        toast({ title: 'Error', description: error.message, variant: 'destructive' });
+      } else {
+        toast({ title: 'Success', description: 'Agent role removed' });
+        fetchUsers();
+      }
+    } else {
+      const { error } = await supabase
+        .from('user_roles')
+        .insert({ user_id: userId, role: 'agent' });
+
+      if (error) {
+        toast({ title: 'Error', description: error.message, variant: 'destructive' });
+      } else {
+        toast({ title: 'Success', description: 'Agent role granted' });
+        fetchUsers();
+      }
+    }
+  };
+
   const updateWallet = async (userId: string, amount: number) => {
     const user = users.find((u) => u.id === userId);
     if (!user) return;
@@ -318,6 +346,7 @@ const AdminUsers = () => {
                 ) : (
                   filteredUsers.map((user) => {
                     const isAdmin = userRoles[user.id]?.includes('admin');
+                    const isAgent = userRoles[user.id]?.includes('agent');
                     const banStatus = getBanStatus(user);
                     return (
                       <tr key={user.id} className="border-b border-border/50 hover:bg-secondary/20">
@@ -381,15 +410,23 @@ const AdminUsers = () => {
                           </div>
                         </td>
                         <td className="p-4">
-                          <span
-                            className={`text-xs px-2 py-1 rounded-full ${
-                              isAdmin
-                                ? 'bg-primary/20 text-primary'
-                                : 'bg-secondary text-muted-foreground'
-                            }`}
-                          >
-                            {isAdmin ? 'Admin' : 'User'}
-                          </span>
+                          <div className="flex flex-wrap gap-1">
+                            {isAdmin && (
+                              <span className="text-xs px-2 py-1 rounded-full bg-primary/20 text-primary">
+                                Admin
+                              </span>
+                            )}
+                            {isAgent && (
+                              <span className="text-xs px-2 py-1 rounded-full bg-orange-500/20 text-orange-500">
+                                Agent
+                              </span>
+                            )}
+                            {!isAdmin && !isAgent && (
+                              <span className="text-xs px-2 py-1 rounded-full bg-secondary text-muted-foreground">
+                                User
+                              </span>
+                            )}
+                          </div>
                         </td>
                         <td className="p-4">
                           <div className="flex items-center gap-1">
@@ -429,6 +466,14 @@ const AdminUsers = () => {
                               ) : (
                                 <Shield className="w-4 h-4 text-primary" />
                               )}
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => toggleAgentRole(user.id, isAgent)}
+                              title={isAgent ? 'Remove agent' : 'Make agent'}
+                            >
+                              <UserCog className={`w-4 h-4 ${isAgent ? 'text-orange-500' : 'text-muted-foreground'}`} />
                             </Button>
                             <Button
                               variant="ghost"
