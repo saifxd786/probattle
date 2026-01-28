@@ -49,12 +49,12 @@ const generateUID = () => {
   return String(Math.floor(10000 + Math.random() * 90000));
 };
 
-// Home positions for each color (token slots in corners) - 2x2 grid style
+// Home positions for each color - aligned with circle centers
 const HOME_POSITIONS: { [color: string]: { x: number; y: number }[] } = {
-  red: [{ x: 1.8, y: 1.8 }, { x: 4.2, y: 1.8 }, { x: 1.8, y: 4.2 }, { x: 4.2, y: 4.2 }],
-  green: [{ x: 10.8, y: 1.8 }, { x: 13.2, y: 1.8 }, { x: 10.8, y: 4.2 }, { x: 13.2, y: 4.2 }],
-  yellow: [{ x: 10.8, y: 10.8 }, { x: 13.2, y: 10.8 }, { x: 10.8, y: 13.2 }, { x: 13.2, y: 13.2 }],
-  blue: [{ x: 1.8, y: 10.8 }, { x: 4.2, y: 10.8 }, { x: 1.8, y: 13.2 }, { x: 4.2, y: 13.2 }]
+  red: [{ x: 1.5, y: 1.5 }, { x: 4.5, y: 1.5 }, { x: 1.5, y: 4.5 }, { x: 4.5, y: 4.5 }],
+  green: [{ x: 10.5, y: 1.5 }, { x: 13.5, y: 1.5 }, { x: 10.5, y: 4.5 }, { x: 13.5, y: 4.5 }],
+  yellow: [{ x: 10.5, y: 10.5 }, { x: 13.5, y: 10.5 }, { x: 10.5, y: 13.5 }, { x: 13.5, y: 13.5 }],
+  blue: [{ x: 1.5, y: 10.5 }, { x: 4.5, y: 10.5 }, { x: 1.5, y: 13.5 }, { x: 4.5, y: 13.5 }]
 };
 
 // Track paths
