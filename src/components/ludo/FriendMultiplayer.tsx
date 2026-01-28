@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Users, Copy, Check, ArrowLeft, Loader2 } from 'lucide-react';
+import { Users, Copy, Check, ArrowLeft, Loader2, Signal, Wifi, WifiOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
@@ -11,13 +11,17 @@ interface FriendMultiplayerProps {
   walletBalance: number;
   onRoomCreated: (roomId: string, roomCode: string, isHost: boolean, entryAmount: number, rewardAmount: number) => void;
   onBack: () => void;
+  pingLatency?: number | null;
+  opponentOnline?: boolean;
 }
 
 const FriendMultiplayer = ({ 
   entryAmount, 
   walletBalance, 
   onRoomCreated, 
-  onBack 
+  onBack,
+  pingLatency,
+  opponentOnline
 }: FriendMultiplayerProps) => {
   const [mode, setMode] = useState<'select' | 'create' | 'join'>('select');
   const [roomCode, setRoomCode] = useState('');
@@ -264,6 +268,47 @@ const FriendMultiplayer = ({
                 transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
               />
               <p className="mt-4 text-gray-400">Waiting for friend to join...</p>
+              
+              {/* Connection Status in Waiting Room */}
+              <div className="flex items-center justify-center gap-3 mt-4">
+                {/* Ping Indicator */}
+                {pingLatency !== null && pingLatency !== undefined && (
+                  <div className={`flex items-center gap-1 px-3 py-1.5 rounded-lg ${
+                    pingLatency < 100 ? 'bg-green-500/20' : 
+                    pingLatency < 200 ? 'bg-yellow-500/20' : 'bg-red-500/20'
+                  }`}>
+                    <Signal className={`w-4 h-4 ${
+                      pingLatency < 100 ? 'text-green-400' : 
+                      pingLatency < 200 ? 'text-yellow-400' : 'text-red-400'
+                    }`} />
+                    <span className={`text-xs font-mono ${
+                      pingLatency < 100 ? 'text-green-400' : 
+                      pingLatency < 200 ? 'text-yellow-400' : 'text-red-400'
+                    }`}>
+                      {pingLatency}ms
+                    </span>
+                  </div>
+                )}
+                
+                {/* Opponent Status */}
+                {opponentOnline !== undefined && (
+                  <div className={`flex items-center gap-1 px-3 py-1.5 rounded-lg ${
+                    opponentOnline ? 'bg-green-500/20' : 'bg-gray-500/20'
+                  }`}>
+                    {opponentOnline ? (
+                      <>
+                        <Wifi className="w-4 h-4 text-green-400" />
+                        <span className="text-xs text-green-400">Friend Connected</span>
+                      </>
+                    ) : (
+                      <>
+                        <WifiOff className="w-4 h-4 text-gray-400" />
+                        <span className="text-xs text-gray-400">Waiting...</span>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Prize Info */}

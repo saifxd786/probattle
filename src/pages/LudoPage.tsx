@@ -584,6 +584,8 @@ const LudoPage = () => {
         <FriendMultiplayer
           entryAmount={entryAmount}
           walletBalance={walletBalance}
+          pingLatency={pingLatency}
+          opponentOnline={opponentOnline}
           onRoomCreated={(roomId, roomCode, isHost, entryAmt, rewardAmt) => {
             startRoom(roomId, roomCode, isHost, entryAmt, rewardAmt);
           }}

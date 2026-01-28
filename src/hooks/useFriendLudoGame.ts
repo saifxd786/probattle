@@ -406,9 +406,10 @@ export const useFriendLudoGame = () => {
     gameActionChannelRef.current = channel;
   }, [user]);
 
-  // Ping interval for latency measurement
+  // Ping interval for latency measurement (runs in waiting room AND during game)
   useEffect(() => {
-    if (gameState.phase !== 'playing' || !gameActionChannelRef.current || !user) {
+    const isActivePhase = gameState.phase === 'playing' || gameState.phase === 'waiting';
+    if (!isActivePhase || !gameActionChannelRef.current || !user) {
       if (pingIntervalRef.current) {
         clearInterval(pingIntervalRef.current);
         pingIntervalRef.current = null;
