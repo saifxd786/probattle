@@ -883,7 +883,9 @@ export type Database = {
           email: string | null
           id: string
           is_banned: boolean | null
+          notification_permission_granted: boolean | null
           phone: string | null
+          push_token: string | null
           referral_code: string | null
           referred_by: string | null
           security_answer: string | null
@@ -905,7 +907,9 @@ export type Database = {
           email?: string | null
           id: string
           is_banned?: boolean | null
+          notification_permission_granted?: boolean | null
           phone?: string | null
+          push_token?: string | null
           referral_code?: string | null
           referred_by?: string | null
           security_answer?: string | null
@@ -927,7 +931,9 @@ export type Database = {
           email?: string | null
           id?: string
           is_banned?: boolean | null
+          notification_permission_granted?: boolean | null
           phone?: string | null
+          push_token?: string | null
           referral_code?: string | null
           referred_by?: string | null
           security_answer?: string | null
