@@ -57,6 +57,8 @@ const LudoPage = () => {
     walletBalance: friendWalletBalance,
     opponentOnline,
     syncStatus,
+    connectionStatus,
+    reconnectAttempts,
     startRoom,
     rollDice: friendRollDice,
     handleTokenClick: friendHandleTokenClick,
@@ -65,7 +67,8 @@ const LudoPage = () => {
     clearCaptureAnimation,
     resyncGameState,
     requestRematch,
-    respondToRematch
+    respondToRematch,
+    manualReconnect
   } = useFriendLudoGame();
 
   const ENTRY_AMOUNTS = [100, 200, 500, 1000];
@@ -318,6 +321,43 @@ const LudoPage = () => {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            {/* Connection Status Indicator */}
+            {connectionStatus !== 'connected' && (
+              <motion.div 
+                className={`flex items-center gap-1 px-2 py-1 rounded-lg ${
+                  connectionStatus === 'reconnecting' ? 'bg-yellow-500/20' : 'bg-red-500/20'
+                }`}
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+              >
+                {connectionStatus === 'reconnecting' ? (
+                  <>
+                    <motion.div
+                      animate={{ rotate: 360 }}
+                      transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                    >
+                      <RefreshCw className="w-3 h-3 text-yellow-400" />
+                    </motion.div>
+                    <span className="text-[10px] text-yellow-400">
+                      Reconnecting ({reconnectAttempts}/5)...
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <WifiOff className="w-3 h-3 text-red-400" />
+                    <span className="text-[10px] text-red-400">Disconnected</span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={manualReconnect}
+                      className="h-5 px-1 text-[10px] text-red-400 hover:text-red-300"
+                    >
+                      <RotateCcw className="w-3 h-3" />
+                    </Button>
+                  </>
+                )}
+              </motion.div>
+            )}
             {/* Opponent Online Status */}
             <div className={`flex items-center gap-1 px-2 py-1 rounded-lg ${opponentOnline ? 'bg-green-500/20' : 'bg-red-500/20'}`}>
               {opponentOnline ? (
