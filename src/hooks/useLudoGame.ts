@@ -143,7 +143,7 @@ const generateUID = (): string => {
 };
 
 export const useLudoGame = () => {
-  const { user } = useAuth();
+  const { user, isRefreshing, lastUserId } = useAuth();
   const { toast } = useToast();
   const botTurnRef = useRef<boolean>(false);
   const gameInProgressRef = useRef<boolean>(false);
@@ -168,17 +168,31 @@ export const useLudoGame = () => {
     winner: null
   });
   
-  // Track user ID changes
+  // Track user ID changes - but ignore during token refresh to preserve game state
   useEffect(() => {
+    // Skip user ID change detection during token refresh
+    if (isRefreshing) {
+      console.log('[LudoGame] Token refresh in progress - preserving game state');
+      return;
+    }
+    
     if (user?.id) {
       if (userIdRef.current && userIdRef.current !== user.id) {
+        // Check if this is just a token refresh (same user)
+        if (lastUserId === user.id) {
+          console.log('[LudoGame] Same user after token refresh:', user.id);
+          userIdRef.current = user.id;
+          return;
+        }
+        
         console.warn('[LudoGame] User ID changed during session!', {
           old: userIdRef.current,
-          new: user.id
+          new: user.id,
+          lastUserId
         });
-        // Reset game state if user changes
+        // Reset game state if user changes (not during token refresh)
         if (gameState.phase !== 'idle') {
-          console.log('[LudoGame] Resetting game due to user change');
+          console.log('[LudoGame] Resetting game due to actual user change');
           setGameState({
             phase: 'idle',
             matchId: null,
@@ -194,7 +208,7 @@ export const useLudoGame = () => {
       }
       userIdRef.current = user.id;
     }
-  }, [user?.id, gameState.phase]);
+  }, [user?.id, isRefreshing, lastUserId, gameState.phase]);
   
   const [entryAmount, setEntryAmount] = useState(100);
   const [playerMode, setPlayerMode] = useState<2 | 4>(2);
@@ -868,8 +882,15 @@ export const useLudoGame = () => {
 
   // User roll dice
   const rollDice = useCallback(async () => {
+    // Use lastUserId during token refresh for continuity
+    const effectiveUserId = user?.id || (isRefreshing ? lastUserId : null);
+    
     if (!gameState.canRoll || gameState.isRolling) {
-      console.log('[LudoGame Bot] Roll blocked:', { canRoll: gameState.canRoll, isRolling: gameState.isRolling });
+      console.log('[LudoGame Bot] Roll blocked:', { 
+        canRoll: gameState.canRoll, 
+        isRolling: gameState.isRolling,
+        isRefreshing 
+      });
       return;
     }
     
@@ -884,13 +905,17 @@ export const useLudoGame = () => {
       return;
     }
     
-    // Validate user is the current player
-    if (user && currentPlayer.id !== user.id) {
-      console.error('[LudoGame Bot] User ID mismatch!', { currentPlayerId: currentPlayer.id, userId: user.id });
+    // Validate user is the current player (use effective ID during refresh)
+    if (effectiveUserId && currentPlayer.id !== effectiveUserId) {
+      console.error('[LudoGame Bot] User ID mismatch!', { 
+        currentPlayerId: currentPlayer.id, 
+        userId: effectiveUserId,
+        isRefreshing 
+      });
       return;
     }
 
-    console.log('[LudoGame Bot] User rolling dice');
+    console.log('[LudoGame Bot] User rolling dice, effectiveUserId:', effectiveUserId);
     setGameState(prev => ({ ...prev, isRolling: true, canRoll: false }));
 
     await new Promise(resolve => setTimeout(resolve, 800));
@@ -933,7 +958,7 @@ export const useLudoGame = () => {
 
       return { ...prev, diceValue, isRolling: false };
     });
-  }, [gameState.canRoll, gameState.isRolling, gameState.players, gameState.currentTurn, user, generateDiceValue, executeBotTurn]);
+  }, [gameState.canRoll, gameState.isRolling, gameState.players, gameState.currentTurn, user, isRefreshing, lastUserId, generateDiceValue, executeBotTurn]);
 
   // Handle user token click
   const handleTokenClick = useCallback((color: string, tokenId: number) => {
