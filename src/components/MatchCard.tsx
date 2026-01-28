@@ -19,6 +19,11 @@ import mapSanhok from '@/assets/map-sanhok.jpg';
 import mapLivik from '@/assets/map-livik.jpg';
 import mapTdm from '@/assets/map-tdm.jpg';
 
+// Gun category images
+import gunM416 from '@/assets/gun-m416.jpg';
+import gunShotgun from '@/assets/gun-shotgun.jpg';
+import gunAny from '@/assets/gun-any.jpg';
+
 // Map name to image mapping
 const mapImages: Record<string, string> = {
   'erangel': mapErangel,
@@ -29,6 +34,20 @@ const mapImages: Record<string, string> = {
   'warehouse': mapTdm,
   'hangar': mapTdm,
   'ruins': mapTdm,
+};
+
+// Gun category to image mapping
+const gunCategoryImages: Record<string, string> = {
+  'm416_only': gunM416,
+  'shotgun_only': gunShotgun,
+  'any_gun': gunAny,
+};
+
+// Gun category labels
+const gunCategoryLabels: Record<string, string> = {
+  'm416_only': 'M416 ONLY',
+  'shotgun_only': 'SHOTGUN ONLY',
+  'any_gun': 'ANY GUN',
 };
 
 interface MatchCardProps {
@@ -51,6 +70,7 @@ interface MatchCardProps {
   isRegistered?: boolean;
   isFreeMatch?: boolean;
   isClassicMatch?: boolean;
+  gunCategory?: string | null;
   onRegister?: () => void;
   delay?: number;
 }
@@ -75,6 +95,7 @@ const MatchCard = ({
   isRegistered = false,
   isFreeMatch = false,
   isClassicMatch = false,
+  gunCategory = null,
   onRegister,
   delay = 0 
 }: MatchCardProps) => {
@@ -94,11 +115,19 @@ const MatchCard = ({
   // Generate short match ID from UUID
   const shortMatchId = id.slice(0, 8).toUpperCase();
   
-  // Get map image based on map name
+  // Get map image based on map name OR gun category for TDM
   const getMapImage = () => {
+    // For TDM matches with gun category, use gun category image
+    if (gunCategory && gunCategoryImages[gunCategory]) {
+      return gunCategoryImages[gunCategory];
+    }
     const mapKey = map.toLowerCase().replace(/\s+/g, '');
     return mapImages[mapKey] || mapErangel;
   };
+  
+  // Check if this is a TDM match with gun category
+  const isTdmMatch = mode.toLowerCase().includes('tdm');
+  const displayGunCategory = gunCategory && gunCategoryLabels[gunCategory];
   
   // Form fields
   const [bgmiIngameName, setBgmiIngameName] = useState('');
@@ -351,9 +380,17 @@ const MatchCard = ({
           />
           <div className="absolute inset-0 bg-gradient-to-t from-background via-background/50 to-transparent" />
           <div className="absolute bottom-2 left-2 right-2 flex items-center justify-between">
-            <span className="px-2 py-0.5 bg-background/80 backdrop-blur-sm rounded text-xs font-medium border border-border/50">
-              {map}
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="px-2 py-0.5 bg-background/80 backdrop-blur-sm rounded text-xs font-medium border border-border/50">
+                {map}
+              </span>
+              {/* Gun category badge for TDM matches */}
+              {displayGunCategory && (
+                <span className="px-2 py-0.5 bg-primary/90 backdrop-blur-sm rounded text-xs font-bold text-primary-foreground border border-primary/50">
+                  {displayGunCategory}
+                </span>
+              )}
+            </div>
             {isBanned && (
               <span className="flex items-center gap-1 px-2 py-0.5 bg-destructive/80 backdrop-blur-sm rounded text-xs text-white">
                 <Ban className="w-3 h-3" />
