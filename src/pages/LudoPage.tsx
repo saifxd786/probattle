@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Dices, Wallet, Info, Trophy, Users, Zap, Ban, UserPlus, WifiOff, Wifi } from 'lucide-react';
+import { Dices, Wallet, Info, Trophy, Users, Zap, Ban, UserPlus, WifiOff, Wifi, RefreshCw, RotateCcw } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import Header from '@/components/Header';
 import BottomNav from '@/components/BottomNav';
@@ -15,6 +15,8 @@ import GameResult from '@/components/ludo/GameResult';
 import FriendMultiplayer from '@/components/ludo/FriendMultiplayer';
 import SoundToggle from '@/components/ludo/SoundToggle';
 import LudoChat from '@/components/ludo/LudoChat';
+import CaptureAnimation from '@/components/ludo/CaptureAnimation';
+import RematchDialog from '@/components/ludo/RematchDialog';
 import { useLudoGame } from '@/hooks/useLudoGame';
 import { useFriendLudoGame } from '@/hooks/useFriendLudoGame';
 import { useAuth } from '@/contexts/AuthContext';
@@ -29,6 +31,7 @@ const LudoPage = () => {
   const { handleRefresh } = usePullToRefresh();
   const { isBanned, isLoading: isBanLoading } = useGameBan('ludo');
   const [gameMode, setGameMode] = useState<GameMode>('select');
+  const [showRematchDialog, setShowRematchDialog] = useState(false);
   
   // Bot game hook
   const {
@@ -55,7 +58,11 @@ const LudoPage = () => {
     rollDice: friendRollDice,
     handleTokenClick: friendHandleTokenClick,
     resetGame: friendResetGame,
-    sendChatMessage
+    sendChatMessage,
+    clearCaptureAnimation,
+    resyncGameState,
+    requestRematch,
+    respondToRematch
   } = useFriendLudoGame();
 
   const ENTRY_AMOUNTS = [100, 200, 500, 1000];
@@ -297,6 +304,16 @@ const LudoPage = () => {
                 {opponentOnline ? 'Online' : 'Offline'}
               </span>
             </div>
+            {/* Resync Button */}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={resyncGameState}
+              className="h-7 px-2 text-[10px] text-muted-foreground hover:text-white"
+            >
+              <RefreshCw className="w-3 h-3 mr-1" />
+              Sync
+            </Button>
             <SoundToggle compact />
             <motion.div 
               className="px-3 py-1.5 rounded-lg bg-gradient-to-br from-yellow-500/20 to-orange-500/10 border border-yellow-500/30"
@@ -387,6 +404,16 @@ const LudoPage = () => {
             playerColor={friendGameState.players.find(p => p.id === user.id)?.color || 'red'}
           />
         )}
+
+        {/* Capture Animation */}
+        {friendGameState.captureAnimation && (
+          <CaptureAnimation
+            isActive={friendGameState.captureAnimation.isActive}
+            position={friendGameState.captureAnimation.position}
+            capturedColor={friendGameState.captureAnimation.capturedColor}
+            onComplete={clearCaptureAnimation}
+          />
+        )}
       </div>
     );
   }
@@ -394,22 +421,49 @@ const LudoPage = () => {
   // Friend Multiplayer - Result Screen
   if (gameMode === 'vs-friend' && friendGameState.phase === 'result' && friendGameState.winner) {
     const isUserWinner = friendGameState.winner.id === user?.id;
+    const opponentPlayer = friendGameState.players.find(p => p.id !== user?.id);
 
     return (
-      <GameResult
-        isWinner={isUserWinner}
-        rewardAmount={friendGameState.rewardAmount}
-        entryAmount={friendGameState.entryAmount}
-        playerName={friendGameState.winner.name}
-        onPlayAgain={() => {
-          friendResetGame();
-          setGameMode('vs-friend');
-        }}
-        onGoHome={() => {
-          friendResetGame();
-          setGameMode('select');
-        }}
-      />
+      <>
+        <GameResult
+          isWinner={isUserWinner}
+          rewardAmount={friendGameState.rewardAmount}
+          entryAmount={friendGameState.entryAmount}
+          playerName={friendGameState.winner.name}
+          onPlayAgain={() => {
+            setShowRematchDialog(true);
+          }}
+          onGoHome={() => {
+            friendResetGame();
+            setGameMode('select');
+          }}
+          showRematch={true}
+          onRematch={() => setShowRematchDialog(true)}
+        />
+
+        {/* Rematch Dialog */}
+        <RematchDialog
+          isOpen={showRematchDialog}
+          onClose={() => setShowRematchDialog(false)}
+          onAccept={() => {
+            if (friendGameState.rematchStatus === 'idle') {
+              requestRematch();
+            } else if (friendGameState.rematchStatus === 'pending' && friendGameState.rematchRequester !== user?.id) {
+              respondToRematch(true);
+            }
+          }}
+          onDecline={() => {
+            if (friendGameState.rematchStatus === 'pending') {
+              respondToRematch(false);
+            }
+            setShowRematchDialog(false);
+          }}
+          entryAmount={friendGameState.entryAmount}
+          opponentName={opponentPlayer?.name || 'Opponent'}
+          isRequester={friendGameState.rematchRequester === user?.id}
+          rematchStatus={friendGameState.rematchStatus}
+        />
+      </>
     );
   }
 

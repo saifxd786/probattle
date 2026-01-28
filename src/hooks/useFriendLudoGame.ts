@@ -67,9 +67,35 @@ interface FriendGameState {
   entryAmount: number;
   rewardAmount: number;
   chatMessages: ChatMessage[];
+  // Capture animation state
+  captureAnimation: {
+    isActive: boolean;
+    position: { x: number; y: number };
+    capturedColor: string;
+  } | null;
+  // Rematch state
+  rematchStatus: 'idle' | 'pending' | 'accepted' | 'declined' | 'timeout';
+  rematchRequester: string | null;
+  // State checksum for desync detection
+  stateChecksum: string | null;
+  lastSyncTime: number;
 }
 
 const COLORS = ['red', 'green'];
+
+// Simple checksum for state comparison
+const generateChecksum = (players: Player[], currentTurn: number): string => {
+  const stateString = JSON.stringify({
+    tokens: players.map(p => p.tokens.map(t => t.position)),
+    turn: currentTurn
+  });
+  let hash = 0;
+  for (let i = 0; i < stateString.length; i++) {
+    hash = ((hash << 5) - hash) + stateString.charCodeAt(i);
+    hash = hash & hash;
+  }
+  return hash.toString(16);
+};
 
 export const useFriendLudoGame = () => {
   const { user } = useAuth();
@@ -77,6 +103,7 @@ export const useFriendLudoGame = () => {
   const channelRef = useRef<RealtimeChannel | null>(null);
   const presenceChannelRef = useRef<RealtimeChannel | null>(null);
   const chatChannelRef = useRef<RealtimeChannel | null>(null);
+  const rematchChannelRef = useRef<RealtimeChannel | null>(null);
 
   const [gameState, setGameState] = useState<FriendGameState>({
     phase: 'idle',
@@ -92,7 +119,12 @@ export const useFriendLudoGame = () => {
     winner: null,
     entryAmount: 0,
     rewardAmount: 0,
-    chatMessages: []
+    chatMessages: [],
+    captureAnimation: null,
+    rematchStatus: 'idle',
+    rematchRequester: null,
+    stateChecksum: null,
+    lastSyncTime: Date.now()
   });
 
   const [walletBalance, setWalletBalance] = useState(0);
@@ -648,6 +680,10 @@ export const useFriendLudoGame = () => {
       supabase.removeChannel(chatChannelRef.current);
       chatChannelRef.current = null;
     }
+    if (rematchChannelRef.current) {
+      supabase.removeChannel(rematchChannelRef.current);
+      rematchChannelRef.current = null;
+    }
 
     setGameState({
       phase: 'idle',
@@ -663,10 +699,163 @@ export const useFriendLudoGame = () => {
       winner: null,
       entryAmount: 0,
       rewardAmount: 0,
-      chatMessages: []
+      chatMessages: [],
+      captureAnimation: null,
+      rematchStatus: 'idle',
+      rematchRequester: null,
+      stateChecksum: null,
+      lastSyncTime: Date.now()
     });
     setOpponentOnline(false);
   }, []);
+
+  // Trigger capture animation
+  const triggerCaptureAnimation = useCallback((position: { x: number; y: number }, color: string) => {
+    setGameState(prev => ({
+      ...prev,
+      captureAnimation: { isActive: true, position, capturedColor: color }
+    }));
+  }, []);
+
+  // Clear capture animation
+  const clearCaptureAnimation = useCallback(() => {
+    setGameState(prev => ({
+      ...prev,
+      captureAnimation: null
+    }));
+  }, []);
+
+  // Force resync from database
+  const resyncGameState = useCallback(async () => {
+    if (!gameState.roomId) return;
+
+    toast({ title: 'Syncing...', description: 'Fetching latest game state' });
+
+    const { data: roomData } = await supabase
+      .from('ludo_rooms')
+      .select('*')
+      .eq('id', gameState.roomId)
+      .single();
+
+    if (roomData && roomData.game_state) {
+      const gameData = roomData.game_state as unknown as GameStateData;
+      const isMyTurn = user ? gameData.players[gameData.currentTurn]?.id === user.id : false;
+      const checksum = generateChecksum(gameData.players, gameData.currentTurn);
+
+      setGameState(prev => ({
+        ...prev,
+        players: gameData.players,
+        currentTurn: gameData.currentTurn,
+        diceValue: gameData.diceValue,
+        canRoll: isMyTurn,
+        isRolling: false,
+        stateChecksum: checksum,
+        lastSyncTime: Date.now()
+      }));
+
+      toast({ title: '✅ Synced!', description: 'Game state updated' });
+    }
+  }, [gameState.roomId, user, toast]);
+
+  // Subscribe to rematch channel
+  const subscribeToRematchChannel = useCallback((roomId: string) => {
+    if (rematchChannelRef.current) {
+      supabase.removeChannel(rematchChannelRef.current);
+    }
+
+    const channel = supabase
+      .channel(`ludo-rematch-${roomId}`)
+      .on('broadcast', { event: 'rematch_request' }, (payload) => {
+        if (payload.payload.requesterId !== user?.id) {
+          setGameState(prev => ({
+            ...prev,
+            rematchStatus: 'pending',
+            rematchRequester: payload.payload.requesterId
+          }));
+        }
+      })
+      .on('broadcast', { event: 'rematch_response' }, (payload) => {
+        const { accepted } = payload.payload;
+        setGameState(prev => ({
+          ...prev,
+          rematchStatus: accepted ? 'accepted' : 'declined'
+        }));
+
+        if (accepted) {
+          // Start new game after short delay
+          setTimeout(() => {
+            // Reset for new game while keeping room info
+            setGameState(prev => ({
+              ...prev,
+              phase: 'waiting',
+              players: [],
+              currentTurn: 0,
+              diceValue: 1,
+              isRolling: false,
+              canRoll: false,
+              selectedToken: null,
+              winner: null,
+              rematchStatus: 'idle',
+              rematchRequester: null,
+              captureAnimation: null
+            }));
+          }, 1500);
+        }
+      })
+      .subscribe();
+
+    rematchChannelRef.current = channel;
+  }, [user]);
+
+  // Request rematch
+  const requestRematch = useCallback(async () => {
+    if (!gameState.roomId || !rematchChannelRef.current || !user) return;
+
+    setGameState(prev => ({
+      ...prev,
+      rematchStatus: 'pending',
+      rematchRequester: user.id
+    }));
+
+    await rematchChannelRef.current.send({
+      type: 'broadcast',
+      event: 'rematch_request',
+      payload: { requesterId: user.id }
+    });
+
+    // Timeout after 30 seconds
+    setTimeout(() => {
+      setGameState(prev => {
+        if (prev.rematchStatus === 'pending' && prev.rematchRequester === user.id) {
+          return { ...prev, rematchStatus: 'timeout' };
+        }
+        return prev;
+      });
+    }, 30000);
+  }, [gameState.roomId, user]);
+
+  // Respond to rematch
+  const respondToRematch = useCallback(async (accepted: boolean) => {
+    if (!rematchChannelRef.current) return;
+
+    await rematchChannelRef.current.send({
+      type: 'broadcast',
+      event: 'rematch_response',
+      payload: { accepted }
+    });
+
+    setGameState(prev => ({
+      ...prev,
+      rematchStatus: accepted ? 'accepted' : 'declined'
+    }));
+  }, []);
+
+  // Subscribe to rematch when room starts
+  useEffect(() => {
+    if (gameState.roomId && gameState.phase !== 'idle') {
+      subscribeToRematchChannel(gameState.roomId);
+    }
+  }, [gameState.roomId, gameState.phase, subscribeToRematchChannel]);
 
   // Clean up on unmount
   useEffect(() => {
@@ -680,6 +869,9 @@ export const useFriendLudoGame = () => {
       if (chatChannelRef.current) {
         supabase.removeChannel(chatChannelRef.current);
       }
+      if (rematchChannelRef.current) {
+        supabase.removeChannel(rematchChannelRef.current);
+      }
     };
   }, []);
 
@@ -691,6 +883,11 @@ export const useFriendLudoGame = () => {
     rollDice,
     handleTokenClick,
     resetGame,
-    sendChatMessage
+    sendChatMessage,
+    triggerCaptureAnimation,
+    clearCaptureAnimation,
+    resyncGameState,
+    requestRematch,
+    respondToRematch
   };
 };

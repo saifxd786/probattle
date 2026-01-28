@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Trophy, XCircle, Sparkles, ArrowRight, Volume2, VolumeX } from 'lucide-react';
+import { Trophy, XCircle, Sparkles, ArrowRight, Volume2, VolumeX, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { useEffect, useState } from 'react';
@@ -13,6 +13,8 @@ interface GameResultProps {
   playerName: string;
   onPlayAgain: () => void;
   onGoHome: () => void;
+  showRematch?: boolean;
+  onRematch?: () => void;
 }
 
 // Confetti particles
@@ -154,7 +156,7 @@ const StarBurst = () => (
   </div>
 );
 
-const GameResult = ({ isWinner, rewardAmount, entryAmount, playerName, onPlayAgain, onGoHome }: GameResultProps) => {
+const GameResult = ({ isWinner, rewardAmount, entryAmount, playerName, onPlayAgain, onGoHome, showRematch, onRematch }: GameResultProps) => {
   const [soundEnabled, setSoundEnabled] = useState(true);
 
   useEffect(() => {
@@ -327,17 +329,31 @@ const GameResult = ({ isWinner, rewardAmount, entryAmount, playerName, onPlayAga
           transition={{ delay: 0.7 }}
           className="space-y-3"
         >
-          <Button
-            onClick={() => {
-              soundManager.playClick();
-              hapticManager.buttonTap();
-              onPlayAgain();
-            }}
-            className="w-full bg-gradient-to-r from-primary to-cyan-500 hover:opacity-90 text-primary-foreground font-semibold py-6 shadow-lg"
-          >
-            Play Again
-            <ArrowRight className="w-4 h-4 ml-2" />
-          </Button>
+          {showRematch && onRematch ? (
+            <Button
+              onClick={() => {
+                soundManager.playClick();
+                hapticManager.buttonTap();
+                onRematch();
+              }}
+              className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:opacity-90 text-white font-semibold py-6 shadow-lg"
+            >
+              <RotateCcw className="w-4 h-4 mr-2" />
+              Rematch
+            </Button>
+          ) : (
+            <Button
+              onClick={() => {
+                soundManager.playClick();
+                hapticManager.buttonTap();
+                onPlayAgain();
+              }}
+              className="w-full bg-gradient-to-r from-primary to-cyan-500 hover:opacity-90 text-primary-foreground font-semibold py-6 shadow-lg"
+            >
+              Play Again
+              <ArrowRight className="w-4 h-4 ml-2" />
+            </Button>
+          )}
           
           <Button
             onClick={() => {
