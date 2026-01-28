@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
-import { MapPin, Crown, Gift, MessageCircle } from 'lucide-react';
+import { MapPin, Crown } from 'lucide-react';
 import CaptureAnimation from './CaptureAnimation';
 
 interface Token {
@@ -36,12 +36,17 @@ interface LudoBoardProps {
   diceValue?: number;
 }
 
-// Ludo King exact colors
+// Enhanced Ludo King colors - more vibrant
 const COLORS = {
-  red: { main: '#E53935', light: '#EF5350', dark: '#C62828', bg: '#E53935' },
-  green: { main: '#43A047', light: '#66BB6A', dark: '#2E7D32', bg: '#43A047' },
-  yellow: { main: '#FDD835', light: '#FFEE58', dark: '#F9A825', bg: '#FDD835' },
-  blue: { main: '#1E88E5', light: '#42A5F5', dark: '#1565C0', bg: '#1E88E5' }
+  red: { main: '#E53935', light: '#FF5252', dark: '#B71C1C', bg: '#E53935' },
+  green: { main: '#43A047', light: '#69F0AE', dark: '#1B5E20', bg: '#43A047' },
+  yellow: { main: '#FFD600', light: '#FFFF00', dark: '#F9A825', bg: '#FFD600' },
+  blue: { main: '#1E88E5', light: '#64B5F6', dark: '#0D47A1', bg: '#1E88E5' }
+};
+
+// Generate random 5-digit UID
+const generateUID = () => {
+  return String(Math.floor(10000 + Math.random() * 90000));
 };
 
 // Home positions for each color (token slots in corners) - 2x2 grid style
@@ -196,19 +201,17 @@ const LudoKingToken = ({
   );
 };
 
-// Player Profile Card - Ludo King style at bottom corners
+// Player Profile Card - Clean style with UID
 const PlayerProfileCard = ({ 
   player, 
-  position,
   isLeft
 }: { 
   player: Player; 
-  position: 'left' | 'right';
   isLeft: boolean;
 }) => {
   const colors = COLORS[player.color as keyof typeof COLORS];
-  const displayName = player.name || player.uid || 'Player';
-  const coins = player.coins || 1250;
+  // Use player.uid if available, otherwise generate a random 5-digit UID
+  const displayUID = player.uid || useMemo(() => generateUID(), []);
   
   return (
     <motion.div
@@ -219,56 +222,79 @@ const PlayerProfileCard = ({
       {/* Player card with avatar */}
       <div 
         className={cn(
-          "relative rounded-lg overflow-hidden",
-          player.isCurrentTurn && "ring-4 ring-green-400"
+          "relative rounded-xl overflow-hidden",
+          player.isCurrentTurn && "ring-2 ring-green-400"
         )}
         style={{
-          width: 70,
-          height: 85,
-          background: 'linear-gradient(180deg, #2a4a7a 0%, #1a3a5a 100%)',
-          border: player.isCurrentTurn ? '2px solid #4ade80' : '2px solid #3b5998'
+          width: 72,
+          height: 90,
+          background: `linear-gradient(180deg, ${colors.main}40 0%, ${colors.dark}60 100%)`,
+          border: player.isCurrentTurn ? '2px solid #4ade80' : `2px solid ${colors.main}80`
         }}
       >
         {/* Avatar area */}
         <div className="flex items-center justify-center pt-2">
           <div 
-            className="w-12 h-12 rounded-lg overflow-hidden bg-gray-600"
-            style={{ border: '2px solid #5a7aa8' }}
+            className="w-12 h-12 rounded-full overflow-hidden"
+            style={{ 
+              border: `3px solid ${colors.main}`,
+              boxShadow: `0 0 10px ${colors.main}50`
+            }}
           >
             {player.avatar ? (
-              <img src={player.avatar} alt={displayName} className="w-full h-full object-cover" />
+              <img src={player.avatar} alt={displayUID} className="w-full h-full object-cover" />
             ) : (
-              <div className="w-full h-full flex items-center justify-center text-white text-xl font-bold bg-gradient-to-br from-gray-500 to-gray-700">
-                {displayName.charAt(0).toUpperCase()}
+              <div 
+                className="w-full h-full flex items-center justify-center text-white text-lg font-bold"
+                style={{ background: `linear-gradient(135deg, ${colors.light} 0%, ${colors.dark} 100%)` }}
+              >
+                <MapPin className="w-6 h-6" />
               </div>
             )}
           </div>
         </div>
         
-        {/* Globe/level icon */}
-        <div className="absolute bottom-6 left-1/2 -translate-x-1/2">
-          <div className="w-6 h-6 rounded-full bg-blue-400 flex items-center justify-center">
-            <span className="text-white text-xs">🌍</span>
+        {/* UID Display */}
+        <div className="absolute bottom-2 left-1/2 -translate-x-1/2 w-full px-2">
+          <div 
+            className="text-center py-1 rounded-md text-xs font-bold text-white"
+            style={{ 
+              background: 'rgba(0,0,0,0.5)',
+              textShadow: '0 1px 2px rgba(0,0,0,0.5)'
+            }}
+          >
+            {displayUID}
           </div>
         </div>
       </div>
       
-      {/* Color indicator pin at corner */}
+      {/* Color indicator at corner */}
       <div 
-        className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full flex items-center justify-center"
+        className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full flex items-center justify-center"
         style={{ 
           background: colors.main,
           border: '2px solid white',
-          boxShadow: '0 2px 4px rgba(0,0,0,0.3)'
+          boxShadow: `0 2px 8px ${colors.main}80`
         }}
       >
         <MapPin className="w-3 h-3 text-white" />
       </div>
+      
+      {/* Crown for current turn */}
+      {player.isCurrentTurn && (
+        <motion.div 
+          className="absolute -top-3 left-1/2 -translate-x-1/2"
+          animate={{ y: [0, -3, 0] }}
+          transition={{ duration: 1, repeat: Infinity }}
+        >
+          <Crown className="w-5 h-5 text-yellow-400 drop-shadow-lg" />
+        </motion.div>
+      )}
     </motion.div>
   );
 };
 
-// Bottom info bar - Ludo King style
+// Bottom info bar - Clean style
 const BottomInfoBar = ({ 
   players 
 }: { 
@@ -276,74 +302,65 @@ const BottomInfoBar = ({
 }) => {
   const leftPlayer = players[0];
   const rightPlayer = players[1];
+  const leftUID = leftPlayer?.uid || useMemo(() => generateUID(), []);
+  const rightUID = rightPlayer?.uid || useMemo(() => generateUID(), []);
   
   return (
     <div 
-      className="flex items-center justify-between px-2 py-2 rounded-lg"
+      className="flex items-center justify-between px-3 py-2 rounded-xl"
       style={{
-        background: 'linear-gradient(180deg, #1a5fb4 0%, #0d3a7a 100%)',
-        border: '2px solid #2a7fd4'
+        background: 'linear-gradient(180deg, rgba(30,60,100,0.9) 0%, rgba(15,35,70,0.95) 100%)',
+        border: '1px solid rgba(100,150,200,0.3)',
+        boxShadow: '0 4px 20px rgba(0,0,0,0.3)'
       }}
     >
       {/* Left Player Info */}
       <div className="flex items-center gap-2">
-        <div className="w-8 h-8 rounded-full flex items-center justify-center"
-          style={{ background: COLORS[leftPlayer?.color as keyof typeof COLORS]?.main || '#1E88E5' }}
+        <div 
+          className="w-8 h-8 rounded-full flex items-center justify-center"
+          style={{ 
+            background: COLORS[leftPlayer?.color as keyof typeof COLORS]?.main || '#1E88E5',
+            boxShadow: `0 0 8px ${COLORS[leftPlayer?.color as keyof typeof COLORS]?.main || '#1E88E5'}50`
+          }}
         >
           <MapPin className="w-4 h-4 text-white" />
         </div>
         <div className="text-left">
-          <div className="flex items-center gap-1">
-            <span className="text-[10px] text-blue-200">🏆 50</span>
-          </div>
-          <div className="text-white font-bold text-sm">{leftPlayer?.name || leftPlayer?.uid || 'Player 1'}</div>
+          <div className="text-white font-bold text-sm">{leftUID}</div>
           <div className="flex items-center gap-1">
             <span className="text-yellow-400 text-xs">💰</span>
             <span className="text-yellow-300 text-xs font-medium">{leftPlayer?.coins || 1250}</span>
           </div>
         </div>
-        <div className="flex gap-0.5">
-          {[1,2,3,4,5].map(i => (
-            <div key={i} className="w-1.5 h-1.5 rounded-full bg-green-400" />
-          ))}
-        </div>
       </div>
 
-      {/* Center Dice Area */}
+      {/* VS Badge */}
       <div 
-        className="w-14 h-12 rounded-lg flex items-center justify-center"
+        className="px-3 py-1 rounded-lg font-bold text-sm"
         style={{
-          background: 'linear-gradient(180deg, #f5e6d3 0%, #e6d5c3 100%)',
-          border: '2px solid #c9b8a8'
+          background: 'linear-gradient(135deg, #FFD700 0%, #FFA500 100%)',
+          color: '#1a1a2e',
+          boxShadow: '0 2px 10px rgba(255,215,0,0.3)'
         }}
       >
-        <div 
-          className="w-10 h-10 rounded-lg flex items-center justify-center"
-          style={{
-            background: 'linear-gradient(135deg, #4ade80 0%, #22c55e 100%)',
-            boxShadow: 'inset 0 2px 4px rgba(255,255,255,0.3)'
-          }}
-        >
-          <div className="grid grid-cols-2 gap-0.5">
-            <div className="w-2 h-2 rounded-full bg-white" />
-            <div className="w-2 h-2 rounded-full bg-white" />
-            <div className="w-2 h-2 rounded-full bg-white" />
-            <div className="w-2 h-2 rounded-full bg-white" />
-          </div>
-        </div>
+        VS
       </div>
 
       {/* Right Player Info */}
       <div className="flex items-center gap-2">
         <div className="text-right">
-          <div className="text-white font-bold text-sm">{rightPlayer?.name || rightPlayer?.uid || 'Player 2'}</div>
+          <div className="text-white font-bold text-sm">{rightUID}</div>
           <div className="flex items-center justify-end gap-1">
             <span className="text-yellow-400 text-xs">💰</span>
             <span className="text-yellow-300 text-xs font-medium">{rightPlayer?.coins || 1250}</span>
           </div>
         </div>
-        <div className="w-8 h-8 rounded-full flex items-center justify-center"
-          style={{ background: COLORS[rightPlayer?.color as keyof typeof COLORS]?.main || '#43A047' }}
+        <div 
+          className="w-8 h-8 rounded-full flex items-center justify-center"
+          style={{ 
+            background: COLORS[rightPlayer?.color as keyof typeof COLORS]?.main || '#43A047',
+            boxShadow: `0 0 8px ${COLORS[rightPlayer?.color as keyof typeof COLORS]?.main || '#43A047'}50`
+          }}
         >
           <MapPin className="w-4 h-4 text-white" />
         </div>
@@ -356,7 +373,6 @@ const LudoBoard = ({ players, onTokenClick, selectedToken, captureEvent, onCaptu
   const boardRef = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState(Math.min(window.innerWidth - 16, window.innerHeight - 280, 380));
   const [capturePosition, setCapturePosition] = useState<{ x: number; y: number } | null>(null);
-  const [previewToken, setPreviewToken] = useState<{ color: string; tokenId: number; position: number } | null>(null);
   
   useEffect(() => {
     const handleResize = () => {
@@ -422,78 +438,76 @@ const LudoBoard = ({ players, onTokenClick, selectedToken, captureEvent, onCaptu
     return false;
   };
 
-  const SAFE_SPOTS = [1, 9, 14, 22, 27, 35, 40, 48];
-
   return (
     <div className="relative mx-auto flex flex-col">
-      {/* Ludo King Blue Pattern Background */}
+      {/* Enhanced Blue Pattern Background */}
       <div 
         className="absolute inset-0 -z-10"
         style={{
           background: 'linear-gradient(180deg, #1565C0 0%, #0D47A1 50%, #0A2472 100%)',
         }}
       />
-      
-      {/* Chat and Gift buttons at top */}
-      <div className="flex justify-between items-center px-2 py-3">
-        <motion.button 
-          className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center"
-          whileTap={{ scale: 0.95 }}
-        >
-          <MessageCircle className="w-6 h-6 text-white" />
-        </motion.button>
-        <motion.button 
-          className="w-12 h-12 rounded-full bg-yellow-500/20 flex items-center justify-center border-2 border-yellow-500"
-          whileTap={{ scale: 0.95 }}
-        >
-          <Gift className="w-6 h-6 text-yellow-400" />
-        </motion.button>
-      </div>
 
       {/* Board Container */}
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.4 }}
-        className="relative mx-auto"
+        className="relative mx-auto mt-4"
       >
         <div ref={boardRef} className="relative" style={{ width: size, height: size }}>
-          {/* Main Board SVG - Ludo King Style */}
-          <svg viewBox="0 0 15 15" className="w-full h-full">
-            {/* White base */}
-            <rect x="0" y="0" width="15" height="15" fill="#F8F8F8" />
+          {/* Main Board SVG - Enhanced Ludo King Style */}
+          <svg viewBox="0 0 15 15" className="w-full h-full drop-shadow-2xl">
+            {/* White base with subtle shadow */}
+            <defs>
+              <filter id="boardShadow" x="-10%" y="-10%" width="120%" height="120%">
+                <feDropShadow dx="0" dy="2" stdDeviation="3" floodOpacity="0.3"/>
+              </filter>
+            </defs>
+            <rect x="0" y="0" width="15" height="15" fill="#FAFAFA" filter="url(#boardShadow)" rx="0.3" />
 
-            {/* RED Home Base (top-left) */}
+            {/* RED Home Base (top-left) - Enhanced */}
             <rect x="0" y="0" width="6" height="6" fill={COLORS.red.main} />
-            <rect x="0.4" y="0.4" width="5.2" height="5.2" fill="#FFFFFF" rx="0.2" />
-            {/* Token slots - simple circles */}
+            <rect x="0.3" y="0.3" width="5.4" height="5.4" fill="#FFFFFF" rx="0.3" />
             {[[1.5, 1.5], [4.5, 1.5], [1.5, 4.5], [4.5, 4.5]].map(([cx, cy], i) => (
-              <circle key={`red-slot-${i}`} cx={cx} cy={cy} r="0.7" fill={COLORS.red.main} />
+              <g key={`red-slot-${i}`}>
+                <circle cx={cx} cy={cy} r="0.75" fill={COLORS.red.dark} />
+                <circle cx={cx} cy={cy} r="0.65" fill={COLORS.red.main} />
+              </g>
             ))}
 
-            {/* GREEN Home Base (top-right) */}
+            {/* GREEN Home Base (top-right) - Enhanced */}
             <rect x="9" y="0" width="6" height="6" fill={COLORS.green.main} />
-            <rect x="9.4" y="0.4" width="5.2" height="5.2" fill="#FFFFFF" rx="0.2" />
+            <rect x="9.3" y="0.3" width="5.4" height="5.4" fill="#FFFFFF" rx="0.3" />
             {[[10.5, 1.5], [13.5, 1.5], [10.5, 4.5], [13.5, 4.5]].map(([cx, cy], i) => (
-              <circle key={`green-slot-${i}`} cx={cx} cy={cy} r="0.7" fill={COLORS.green.main} />
+              <g key={`green-slot-${i}`}>
+                <circle cx={cx} cy={cy} r="0.75" fill={COLORS.green.dark} />
+                <circle cx={cx} cy={cy} r="0.65" fill={COLORS.green.main} />
+              </g>
             ))}
 
-            {/* BLUE Home Base (bottom-left) */}
+            {/* BLUE Home Base (bottom-left) - Enhanced */}
             <rect x="0" y="9" width="6" height="6" fill={COLORS.blue.main} />
-            <rect x="0.4" y="9.4" width="5.2" height="5.2" fill="#FFFFFF" rx="0.2" />
+            <rect x="0.3" y="9.3" width="5.4" height="5.4" fill="#FFFFFF" rx="0.3" />
             {[[1.5, 10.5], [4.5, 10.5], [1.5, 13.5], [4.5, 13.5]].map(([cx, cy], i) => (
-              <circle key={`blue-slot-${i}`} cx={cx} cy={cy} r="0.7" fill={COLORS.blue.main} />
+              <g key={`blue-slot-${i}`}>
+                <circle cx={cx} cy={cy} r="0.75" fill={COLORS.blue.dark} />
+                <circle cx={cx} cy={cy} r="0.65" fill={COLORS.blue.main} />
+              </g>
             ))}
 
-            {/* YELLOW Home Base (bottom-right) */}
+            {/* YELLOW Home Base (bottom-right) - Enhanced */}
             <rect x="9" y="9" width="6" height="6" fill={COLORS.yellow.main} />
-            <rect x="9.4" y="9.4" width="5.2" height="5.2" fill="#FFFFFF" rx="0.2" />
+            <rect x="9.3" y="9.3" width="5.4" height="5.4" fill="#FFFFFF" rx="0.3" />
             {[[10.5, 10.5], [13.5, 10.5], [10.5, 13.5], [13.5, 13.5]].map(([cx, cy], i) => (
-              <circle key={`yellow-slot-${i}`} cx={cx} cy={cy} r="0.7" fill={COLORS.yellow.main} />
+              <g key={`yellow-slot-${i}`}>
+                <circle cx={cx} cy={cy} r="0.75" fill={COLORS.yellow.dark} />
+                <circle cx={cx} cy={cy} r="0.65" fill={COLORS.yellow.main} />
+              </g>
             ))}
 
             {/* Track Cells - White with light borders */}
-            <g fill="#FFFFFF" stroke="#E0E0E0" strokeWidth="0.03">
+            <g fill="#FFFFFF" stroke="#D0D0D0" strokeWidth="0.04">
               {/* Top path columns */}
               {[0, 1, 2, 3, 4, 5].map(i => (
                 <g key={`top-${i}`}>
@@ -528,22 +542,22 @@ const LudoBoard = ({ players, onTokenClick, selectedToken, captureEvent, onCaptu
               ))}
             </g>
 
-            {/* Home stretch colored cells */}
-            {/* Green home stretch (top center) */}
+            {/* Home stretch colored cells - FIXED POSITIONS */}
+            {/* Green home stretch (top center - going DOWN from y=1 to y=6) */}
             {[1, 2, 3, 4, 5, 6].map(i => (
-              <rect key={`green-home-${i}`} x={7} y={i} width="1" height="1" fill={COLORS.green.main} stroke={COLORS.green.dark} strokeWidth="0.02" />
+              <rect key={`green-home-${i}`} x={7} y={i} width="1" height="1" fill={COLORS.green.main} stroke={COLORS.green.dark} strokeWidth="0.03" />
             ))}
-            {/* Red home stretch (left center) */}
+            {/* Red home stretch (left center - going RIGHT from x=1 to x=6) */}
             {[1, 2, 3, 4, 5, 6].map(i => (
-              <rect key={`red-home-${i}`} x={i} y={7} width="1" height="1" fill={COLORS.red.main} stroke={COLORS.red.dark} strokeWidth="0.02" />
+              <rect key={`red-home-${i}`} x={i} y={7} width="1" height="1" fill={COLORS.red.main} stroke={COLORS.red.dark} strokeWidth="0.03" />
             ))}
-            {/* Yellow home stretch (right center) */}
+            {/* Yellow home stretch (right center - going LEFT from x=13 to x=8) */}
             {[8, 9, 10, 11, 12, 13].map(i => (
-              <rect key={`yellow-home-${i}`} x={i} y={7} width="1" height="1" fill={COLORS.yellow.main} stroke={COLORS.yellow.dark} strokeWidth="0.02" />
+              <rect key={`yellow-home-${i}`} x={i} y={7} width="1" height="1" fill={COLORS.yellow.main} stroke={COLORS.yellow.dark} strokeWidth="0.03" />
             ))}
-            {/* Blue home stretch (bottom center) */}
+            {/* Blue home stretch (bottom center - going UP from y=13 to y=8) */}
             {[8, 9, 10, 11, 12, 13].map(i => (
-              <rect key={`blue-home-${i}`} x={7} y={i} width="1" height="1" fill={COLORS.blue.main} stroke={COLORS.blue.dark} strokeWidth="0.02" />
+              <rect key={`blue-home-${i}`} x={7} y={i} width="1" height="1" fill={COLORS.blue.main} stroke={COLORS.blue.dark} strokeWidth="0.03" />
             ))}
 
             {/* Start positions - colored cells */}
@@ -552,13 +566,16 @@ const LudoBoard = ({ players, onTokenClick, selectedToken, captureEvent, onCaptu
             <rect x={8} y={13} width="1" height="1" fill={COLORS.blue.main} />
             <rect x={13} y={8} width="1" height="1" fill={COLORS.yellow.main} />
 
-            {/* Center triangles (finish area) */}
-            <polygon points="6,6 7.5,7.5 6,9" fill={COLORS.red.main} />
-            <polygon points="6,6 7.5,7.5 9,6" fill={COLORS.green.main} />
-            <polygon points="9,6 7.5,7.5 9,9" fill={COLORS.yellow.main} />
-            <polygon points="6,9 7.5,7.5 9,9" fill={COLORS.blue.main} />
+            {/* Center triangles (finish area) - Enhanced with gradients */}
+            <polygon points="6,6 7.5,7.5 6,9" fill={COLORS.red.main} stroke={COLORS.red.dark} strokeWidth="0.05" />
+            <polygon points="6,6 7.5,7.5 9,6" fill={COLORS.green.main} stroke={COLORS.green.dark} strokeWidth="0.05" />
+            <polygon points="9,6 7.5,7.5 9,9" fill={COLORS.yellow.main} stroke={COLORS.yellow.dark} strokeWidth="0.05" />
+            <polygon points="6,9 7.5,7.5 9,9" fill={COLORS.blue.main} stroke={COLORS.blue.dark} strokeWidth="0.05" />
+            
+            {/* Center star */}
+            <circle cx="7.5" cy="7.5" r="0.3" fill="#FFD700" stroke="#FFA500" strokeWidth="0.05" />
 
-            {/* Safe spot stars */}
+            {/* Safe spot stars - Enhanced */}
             {[
               { x: 2.5, y: 6.5 },
               { x: 6.5, y: 2.5 },
@@ -571,19 +588,19 @@ const LudoBoard = ({ players, onTokenClick, selectedToken, captureEvent, onCaptu
             ].map(({ x, y }, i) => (
               <g key={`star-${i}`} transform={`translate(${x}, ${y})`}>
                 <polygon
-                  points="0,-0.3 0.08,-0.1 0.3,0 0.08,0.1 0,0.3 -0.08,0.1 -0.3,0 -0.08,-0.1"
-                  fill="#9E9E9E"
-                  stroke="#757575"
-                  strokeWidth="0.02"
+                  points="0,-0.32 0.09,-0.11 0.32,0 0.09,0.11 0,0.32 -0.09,0.11 -0.32,0 -0.09,-0.11"
+                  fill="#FFD700"
+                  stroke="#FFA500"
+                  strokeWidth="0.03"
                 />
               </g>
             ))}
 
-            {/* Direction arrows */}
-            <text x="7.5" y="0.7" textAnchor="middle" fontSize="0.5" fill={COLORS.green.dark}>↓</text>
-            <text x="7.5" y="14.7" textAnchor="middle" fontSize="0.5" fill={COLORS.blue.dark}>↑</text>
-            <text x="0.5" y="7.7" textAnchor="middle" fontSize="0.5" fill={COLORS.red.dark}>→</text>
-            <text x="14.5" y="7.7" textAnchor="middle" fontSize="0.5" fill={COLORS.yellow.dark}>←</text>
+            {/* Direction arrows - Enhanced */}
+            <text x="7.5" y="0.7" textAnchor="middle" fontSize="0.5" fill={COLORS.green.dark} fontWeight="bold">↓</text>
+            <text x="7.5" y="14.7" textAnchor="middle" fontSize="0.5" fill={COLORS.blue.dark} fontWeight="bold">↑</text>
+            <text x="0.5" y="7.7" textAnchor="middle" fontSize="0.5" fill={COLORS.red.dark} fontWeight="bold">→</text>
+            <text x="14.5" y="7.7" textAnchor="middle" fontSize="0.5" fill={COLORS.yellow.dark} fontWeight="bold">←</text>
           </svg>
 
           {/* Pin Tokens */}
@@ -651,36 +668,24 @@ const LudoBoard = ({ players, onTokenClick, selectedToken, captureEvent, onCaptu
       </motion.div>
 
       {/* Player Profile Cards at bottom corners */}
-      <div className="flex justify-between items-end px-2 mt-4">
+      <div className="flex justify-between items-end px-4 mt-4">
         {players[0] && (
           <PlayerProfileCard 
             player={players[0]} 
-            position="left"
             isLeft={true}
           />
         )}
         
-        {/* Empty space with small avatars */}
-        <div className="flex gap-4">
-          <div className="w-10 h-10 rounded-lg bg-blue-400/30 flex items-center justify-center">
-            <span className="text-white text-lg">🌍</span>
-          </div>
-          <div className="w-10 h-10 rounded-lg bg-blue-400/30 flex items-center justify-center">
-            <span className="text-white text-lg">🌍</span>
-          </div>
-        </div>
-        
         {players[1] && (
           <PlayerProfileCard 
             player={players[1]} 
-            position="right"
             isLeft={false}
           />
         )}
       </div>
 
-      {/* Bottom Info Bar with player names and coins */}
-      <div className="mt-2 px-2">
+      {/* Bottom Info Bar with player UIDs and coins */}
+      <div className="mt-3 px-4">
         <BottomInfoBar players={players} />
       </div>
     </div>
