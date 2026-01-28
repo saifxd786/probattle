@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Dices, Wallet, Info, Trophy, Users, Zap, Ban, UserPlus, WifiOff, Wifi, RefreshCw, RotateCcw } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
@@ -69,7 +69,24 @@ const LudoPage = () => {
 
   const ENTRY_AMOUNTS = [100, 200, 500, 1000];
 
-  // Show banned message
+  // Auto-open rematch dialog when opponent requests
+  useEffect(() => {
+    if (
+      friendGameState.phase === 'result' &&
+      friendGameState.rematchStatus === 'pending' &&
+      friendGameState.rematchRequester !== user?.id
+    ) {
+      setShowRematchDialog(true);
+    }
+  }, [friendGameState.rematchStatus, friendGameState.rematchRequester, friendGameState.phase, user?.id]);
+
+  // Close dialog and reset when game restarts
+  useEffect(() => {
+    if (friendGameState.phase === 'playing' && showRematchDialog) {
+      setShowRematchDialog(false);
+    }
+  }, [friendGameState.phase, showRematchDialog]);
+
   if (isBanned && !isBanLoading) {
     return (
       <PullToRefresh onRefresh={handleRefresh}>
