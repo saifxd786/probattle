@@ -1,6 +1,6 @@
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
-import { Coins, Users, Crown, Swords, Sparkles, TrendingUp } from 'lucide-react';
+import { Coins, Users, Crown, Swords, Sparkles, TrendingUp, Zap, Trophy } from 'lucide-react';
 
 interface EntrySelectorProps {
   amounts: number[];
@@ -22,234 +22,387 @@ const EntrySelector = ({
   const rewardAmount = selectedAmount * rewardMultiplier;
 
   return (
-    <div className="space-y-5">
-      {/* Game Mode Selection - Premium Cards */}
-      <div className="space-y-2">
-        <div className="flex items-center gap-2 mb-3">
-          <div className="w-1 h-4 rounded-full bg-gradient-to-b from-primary to-primary/50" />
-          <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+    <div className="space-y-6">
+      {/* Premium Game Mode Selection */}
+      <div className="space-y-3">
+        <div className="flex items-center gap-2.5">
+          <div 
+            className="w-1.5 h-5 rounded-full"
+            style={{
+              background: 'linear-gradient(180deg, #FFD54F 0%, #FF8F00 100%)',
+              boxShadow: '0 0 10px rgba(255,152,0,0.4)',
+            }}
+          />
+          <span 
+            className="text-xs font-bold uppercase tracking-widest"
+            style={{ color: 'rgba(255,255,255,0.5)' }}
+          >
             Game Mode
           </span>
         </div>
         
         <div className="grid grid-cols-2 gap-3">
+          {/* 1v1 Mode Card */}
           <motion.button
-            whileHover={{ scale: 1.02, y: -2 }}
+            whileHover={{ scale: 1.02, y: -3 }}
             whileTap={{ scale: 0.98 }}
             onClick={() => onPlayerModeChange(2)}
-            className={cn(
-              'relative p-4 rounded-2xl transition-all duration-300 overflow-hidden group',
-              playerMode === 2
-                ? 'bg-gradient-to-br from-primary/20 via-primary/10 to-transparent border-2 border-primary/50 shadow-[0_0_30px_rgba(var(--primary-rgb),0.15)]'
-                : 'bg-card/50 border border-border/50 hover:border-border hover:bg-card/80'
-            )}
+            className="relative p-5 rounded-2xl transition-all duration-300 overflow-hidden"
+            style={{
+              background: playerMode === 2
+                ? 'linear-gradient(135deg, rgba(239,83,80,0.15) 0%, rgba(198,40,40,0.08) 100%)'
+                : 'linear-gradient(135deg, rgba(40,38,35,0.6) 0%, rgba(30,28,25,0.5) 100%)',
+              border: playerMode === 2
+                ? '2px solid rgba(239,83,80,0.5)'
+                : '2px solid rgba(255,255,255,0.08)',
+              boxShadow: playerMode === 2
+                ? '0 0 35px rgba(239,83,80,0.25), inset 0 1px 2px rgba(255,255,255,0.1)'
+                : 'inset 0 1px 2px rgba(255,255,255,0.05)',
+            }}
           >
-            {/* Animated background glow */}
+            {/* Animated background pulse */}
             {playerMode === 2 && (
               <motion.div
-                className="absolute inset-0 bg-gradient-to-br from-primary/10 to-transparent"
-                animate={{ opacity: [0.5, 0.8, 0.5] }}
-                transition={{ duration: 2, repeat: Infinity }}
+                className="absolute inset-0 pointer-events-none"
+                style={{
+                  background: 'radial-gradient(circle at 50% 30%, rgba(239,83,80,0.2) 0%, transparent 60%)',
+                }}
+                animate={{ opacity: [0.4, 0.7, 0.4] }}
+                transition={{ duration: 2.5, repeat: Infinity }}
               />
             )}
             
             <div className="relative z-10">
-              <div className={cn(
-                'w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-3 transition-all',
-                playerMode === 2 
-                  ? 'bg-gradient-to-br from-primary to-primary/70 shadow-lg shadow-primary/30' 
-                  : 'bg-muted'
-              )}>
+              <motion.div 
+                className="w-14 h-14 rounded-xl flex items-center justify-center mx-auto mb-3"
+                style={{
+                  background: playerMode === 2 
+                    ? 'linear-gradient(135deg, #EF5350 0%, #C62828 100%)'
+                    : 'linear-gradient(135deg, rgba(60,55,50,0.8) 0%, rgba(45,40,35,0.6) 100%)',
+                  boxShadow: playerMode === 2 
+                    ? '0 6px 20px rgba(239,83,80,0.4), inset 0 2px 4px rgba(255,255,255,0.2)'
+                    : 'inset 0 1px 2px rgba(255,255,255,0.1)',
+                  border: playerMode === 2
+                    ? '2px solid rgba(255,255,255,0.2)'
+                    : '1px solid rgba(255,255,255,0.08)',
+                }}
+                animate={playerMode === 2 ? { scale: [1, 1.05, 1] } : {}}
+                transition={{ duration: 2, repeat: Infinity }}
+              >
                 <Swords className={cn(
-                  'w-6 h-6 transition-colors',
-                  playerMode === 2 ? 'text-primary-foreground' : 'text-muted-foreground'
+                  'w-7 h-7 transition-colors drop-shadow-lg',
+                  playerMode === 2 ? 'text-white' : 'text-white/30'
                 )} />
-              </div>
-              <p className={cn(
-                'font-display font-bold text-lg transition-colors',
-                playerMode === 2 ? 'text-foreground' : 'text-muted-foreground'
-              )}>
+              </motion.div>
+              
+              <p 
+                className="font-display font-black text-xl transition-colors tracking-wide"
+                style={{ 
+                  color: playerMode === 2 ? '#FFFFFF' : 'rgba(255,255,255,0.4)',
+                }}
+              >
                 1 vs 1
               </p>
-              <p className={cn(
-                'text-xs transition-colors',
-                playerMode === 2 ? 'text-primary' : 'text-muted-foreground'
-              )}>
+              <p 
+                className="text-xs font-semibold mt-0.5"
+                style={{ 
+                  color: playerMode === 2 ? '#EF5350' : 'rgba(255,255,255,0.3)',
+                }}
+              >
                 Head to Head
               </p>
             </div>
 
-            {/* Selection indicator */}
-            {playerMode === 2 && (
-              <motion.div
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                className="absolute top-2 right-2 w-5 h-5 rounded-full bg-primary flex items-center justify-center"
-              >
-                <span className="text-[10px] text-primary-foreground">✓</span>
-              </motion.div>
-            )}
+            {/* Selection checkmark */}
+            <AnimatePresence>
+              {playerMode === 2 && (
+                <motion.div
+                  initial={{ scale: 0, rotate: -180 }}
+                  animate={{ scale: 1, rotate: 0 }}
+                  exit={{ scale: 0, rotate: 180 }}
+                  transition={{ type: 'spring', stiffness: 400, damping: 15 }}
+                  className="absolute top-3 right-3 w-6 h-6 rounded-full flex items-center justify-center"
+                  style={{
+                    background: 'linear-gradient(135deg, #EF5350 0%, #C62828 100%)',
+                    boxShadow: '0 3px 10px rgba(239,83,80,0.5)',
+                    border: '2px solid rgba(255,255,255,0.3)',
+                  }}
+                >
+                  <span className="text-[10px] text-white font-black">✓</span>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </motion.button>
 
+          {/* 2v2 Mode Card */}
           <motion.button
-            whileHover={{ scale: 1.02, y: -2 }}
+            whileHover={{ scale: 1.02, y: -3 }}
             whileTap={{ scale: 0.98 }}
             onClick={() => onPlayerModeChange(4)}
-            className={cn(
-              'relative p-4 rounded-2xl transition-all duration-300 overflow-hidden group',
-              playerMode === 4
-                ? 'bg-gradient-to-br from-primary/20 via-primary/10 to-transparent border-2 border-primary/50 shadow-[0_0_30px_rgba(var(--primary-rgb),0.15)]'
-                : 'bg-card/50 border border-border/50 hover:border-border hover:bg-card/80'
-            )}
+            className="relative p-5 rounded-2xl transition-all duration-300 overflow-hidden"
+            style={{
+              background: playerMode === 4
+                ? 'linear-gradient(135deg, rgba(255,193,7,0.15) 0%, rgba(255,143,0,0.08) 100%)'
+                : 'linear-gradient(135deg, rgba(40,38,35,0.6) 0%, rgba(30,28,25,0.5) 100%)',
+              border: playerMode === 4
+                ? '2px solid rgba(255,193,7,0.5)'
+                : '2px solid rgba(255,255,255,0.08)',
+              boxShadow: playerMode === 4
+                ? '0 0 35px rgba(255,193,7,0.25), inset 0 1px 2px rgba(255,255,255,0.1)'
+                : 'inset 0 1px 2px rgba(255,255,255,0.05)',
+            }}
           >
             {playerMode === 4 && (
               <motion.div
-                className="absolute inset-0 bg-gradient-to-br from-primary/10 to-transparent"
-                animate={{ opacity: [0.5, 0.8, 0.5] }}
-                transition={{ duration: 2, repeat: Infinity }}
+                className="absolute inset-0 pointer-events-none"
+                style={{
+                  background: 'radial-gradient(circle at 50% 30%, rgba(255,193,7,0.2) 0%, transparent 60%)',
+                }}
+                animate={{ opacity: [0.4, 0.7, 0.4] }}
+                transition={{ duration: 2.5, repeat: Infinity }}
               />
             )}
             
             <div className="relative z-10">
-              <div className={cn(
-                'w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-3 transition-all',
-                playerMode === 4 
-                  ? 'bg-gradient-to-br from-primary to-primary/70 shadow-lg shadow-primary/30' 
-                  : 'bg-muted'
-              )}>
+              <motion.div 
+                className="w-14 h-14 rounded-xl flex items-center justify-center mx-auto mb-3"
+                style={{
+                  background: playerMode === 4 
+                    ? 'linear-gradient(135deg, #FFD54F 0%, #FF8F00 100%)'
+                    : 'linear-gradient(135deg, rgba(60,55,50,0.8) 0%, rgba(45,40,35,0.6) 100%)',
+                  boxShadow: playerMode === 4 
+                    ? '0 6px 20px rgba(255,152,0,0.4), inset 0 2px 4px rgba(255,255,255,0.3)'
+                    : 'inset 0 1px 2px rgba(255,255,255,0.1)',
+                  border: playerMode === 4
+                    ? '2px solid rgba(255,255,255,0.3)'
+                    : '1px solid rgba(255,255,255,0.08)',
+                }}
+                animate={playerMode === 4 ? { scale: [1, 1.05, 1] } : {}}
+                transition={{ duration: 2, repeat: Infinity }}
+              >
                 <Crown className={cn(
-                  'w-6 h-6 transition-colors',
-                  playerMode === 4 ? 'text-primary-foreground' : 'text-muted-foreground'
+                  'w-7 h-7 transition-colors drop-shadow-lg',
+                  playerMode === 4 ? 'text-amber-900' : 'text-white/30'
                 )} />
-              </div>
-              <p className={cn(
-                'font-display font-bold text-lg transition-colors',
-                playerMode === 4 ? 'text-foreground' : 'text-muted-foreground'
-              )}>
+              </motion.div>
+              
+              <p 
+                className="font-display font-black text-xl transition-colors tracking-wide"
+                style={{ 
+                  color: playerMode === 4 ? '#FFFFFF' : 'rgba(255,255,255,0.4)',
+                }}
+              >
                 2 vs 2
               </p>
-              <p className={cn(
-                'text-xs transition-colors',
-                playerMode === 4 ? 'text-primary' : 'text-muted-foreground'
-              )}>
+              <p 
+                className="text-xs font-semibold mt-0.5"
+                style={{ 
+                  color: playerMode === 4 ? '#FFC107' : 'rgba(255,255,255,0.3)',
+                }}
+              >
                 4 Players
               </p>
             </div>
 
-            {playerMode === 4 && (
-              <motion.div
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                className="absolute top-2 right-2 w-5 h-5 rounded-full bg-primary flex items-center justify-center"
-              >
-                <span className="text-[10px] text-primary-foreground">✓</span>
-              </motion.div>
-            )}
+            <AnimatePresence>
+              {playerMode === 4 && (
+                <motion.div
+                  initial={{ scale: 0, rotate: -180 }}
+                  animate={{ scale: 1, rotate: 0 }}
+                  exit={{ scale: 0, rotate: 180 }}
+                  transition={{ type: 'spring', stiffness: 400, damping: 15 }}
+                  className="absolute top-3 right-3 w-6 h-6 rounded-full flex items-center justify-center"
+                  style={{
+                    background: 'linear-gradient(135deg, #FFD54F 0%, #FF8F00 100%)',
+                    boxShadow: '0 3px 10px rgba(255,152,0,0.5)',
+                    border: '2px solid rgba(255,255,255,0.3)',
+                  }}
+                >
+                  <span className="text-[10px] text-amber-900 font-black">✓</span>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </motion.button>
         </div>
       </div>
 
-      {/* Entry Amount Selection - Premium Chips */}
-      <div className="space-y-2">
-        <div className="flex items-center gap-2 mb-3">
-          <div className="w-1 h-4 rounded-full bg-gradient-to-b from-green-500 to-green-500/50" />
-          <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+      {/* Premium Entry Amount Selection */}
+      <div className="space-y-3">
+        <div className="flex items-center gap-2.5">
+          <div 
+            className="w-1.5 h-5 rounded-full"
+            style={{
+              background: 'linear-gradient(180deg, #4CAF50 0%, #2E7D32 100%)',
+              boxShadow: '0 0 10px rgba(76,175,80,0.4)',
+            }}
+          />
+          <span 
+            className="text-xs font-bold uppercase tracking-widest"
+            style={{ color: 'rgba(255,255,255,0.5)' }}
+          >
             Entry Amount
           </span>
         </div>
         
-        <div className="grid grid-cols-4 gap-2">
-          {amounts.map((amount, idx) => (
-            <motion.button
-              key={amount}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: idx * 0.05 }}
-              whileHover={{ scale: 1.05, y: -2 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => onSelect(amount)}
-              className={cn(
-                'relative py-3 px-2 rounded-xl transition-all duration-300 overflow-hidden',
-                selectedAmount === amount
-                  ? 'bg-gradient-to-br from-green-500/20 to-emerald-500/10 border-2 border-green-500/50 shadow-[0_0_20px_rgba(34,197,94,0.2)]'
-                  : 'bg-card/50 border border-border/50 hover:border-green-500/30 hover:bg-card/80'
-              )}
-            >
-              {selectedAmount === amount && (
-                <motion.div
-                  className="absolute inset-0 bg-gradient-to-br from-green-500/10 to-transparent"
-                  animate={{ opacity: [0.5, 0.8, 0.5] }}
-                  transition={{ duration: 2, repeat: Infinity }}
-                />
-              )}
-              
-              <div className="relative z-10">
-                <p className={cn(
-                  'font-display font-bold text-base transition-colors',
-                  selectedAmount === amount ? 'text-green-400' : 'text-foreground'
-                )}>
-                  ₹{amount}
-                </p>
-              </div>
-
-              {/* Popular badge */}
-              {amount === 200 && (
-                <div className="absolute -top-1 -right-1 z-20">
+        <div className="grid grid-cols-4 gap-2.5">
+          {amounts.map((amount, idx) => {
+            const isSelected = selectedAmount === amount;
+            const isHot = amount === 200;
+            
+            return (
+              <motion.button
+                key={amount}
+                initial={{ opacity: 0, y: 15, scale: 0.9 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                transition={{ delay: idx * 0.04, type: 'spring', stiffness: 300 }}
+                whileHover={{ scale: 1.06, y: -3 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => onSelect(amount)}
+                className="relative py-3.5 px-2 rounded-xl transition-all duration-300 overflow-hidden"
+                style={{
+                  background: isSelected
+                    ? 'linear-gradient(135deg, rgba(76,175,80,0.2) 0%, rgba(46,125,50,0.12) 100%)'
+                    : 'linear-gradient(135deg, rgba(40,38,35,0.6) 0%, rgba(30,28,25,0.5) 100%)',
+                  border: isSelected
+                    ? '2px solid rgba(76,175,80,0.6)'
+                    : '2px solid rgba(255,255,255,0.08)',
+                  boxShadow: isSelected
+                    ? '0 0 25px rgba(76,175,80,0.3), inset 0 1px 2px rgba(255,255,255,0.1)'
+                    : 'inset 0 1px 2px rgba(255,255,255,0.05)',
+                }}
+              >
+                {/* Selection glow */}
+                {isSelected && (
                   <motion.div
-                    animate={{ scale: [1, 1.1, 1] }}
-                    transition={{ duration: 1.5, repeat: Infinity }}
-                    className="bg-gradient-to-r from-yellow-500 to-orange-500 text-[8px] text-black font-bold px-1.5 py-0.5 rounded-full shadow-lg"
+                    className="absolute inset-0 pointer-events-none"
+                    style={{
+                      background: 'radial-gradient(circle at 50% 50%, rgba(76,175,80,0.25) 0%, transparent 70%)',
+                    }}
+                    animate={{ opacity: [0.5, 0.8, 0.5] }}
+                    transition={{ duration: 2, repeat: Infinity }}
+                  />
+                )}
+                
+                <div className="relative z-10">
+                  <p 
+                    className="font-display font-black text-lg tracking-wide"
+                    style={{
+                      background: isSelected 
+                        ? 'linear-gradient(135deg, #4CAF50 0%, #A5D6A7 50%, #4CAF50 100%)'
+                        : 'linear-gradient(135deg, #FFFFFF 0%, #B0B0B0 100%)',
+                      WebkitBackgroundClip: 'text',
+                      WebkitTextFillColor: 'transparent',
+                    }}
                   >
-                    HOT
-                  </motion.div>
+                    ₹{amount}
+                  </p>
                 </div>
-              )}
-            </motion.button>
-          ))}
+
+                {/* HOT badge */}
+                {isHot && (
+                  <div className="absolute -top-1.5 -right-1.5 z-20">
+                    <motion.div
+                      animate={{ scale: [1, 1.1, 1], rotate: [0, 3, -3, 0] }}
+                      transition={{ duration: 1.5, repeat: Infinity }}
+                      className="px-2 py-0.5 rounded-full shadow-lg flex items-center gap-0.5"
+                      style={{
+                        background: 'linear-gradient(135deg, #FF6B00 0%, #FF8F00 50%, #FFB300 100%)',
+                        boxShadow: '0 3px 10px rgba(255,107,0,0.5)',
+                        border: '1px solid rgba(255,255,255,0.3)',
+                      }}
+                    >
+                      <Zap className="w-2.5 h-2.5 text-white" />
+                      <span className="text-[8px] text-white font-black tracking-wide">HOT</span>
+                    </motion.div>
+                  </div>
+                )}
+
+                {/* Selection indicator ring */}
+                {isSelected && (
+                  <motion.div
+                    className="absolute inset-0 rounded-xl pointer-events-none"
+                    style={{ border: '2px solid rgba(76,175,80,0.4)' }}
+                    animate={{ scale: [1, 1.05, 1], opacity: [0.6, 0.3, 0.6] }}
+                    transition={{ duration: 2, repeat: Infinity }}
+                  />
+                )}
+              </motion.button>
+            );
+          })}
         </div>
       </div>
 
-      {/* Reward Preview - Premium Card */}
+      {/* Premium Reward Preview Card */}
       <motion.div
         key={selectedAmount}
-        initial={{ opacity: 0, scale: 0.95, y: 10 }}
+        initial={{ opacity: 0, scale: 0.95, y: 15 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
+        transition={{ type: 'spring', stiffness: 300, damping: 20 }}
         className="relative overflow-hidden rounded-2xl"
+        style={{
+          background: 'linear-gradient(135deg, rgba(30,28,25,0.95) 0%, rgba(20,18,15,0.98) 100%)',
+          border: '2px solid rgba(76,175,80,0.4)',
+          boxShadow: '0 0 40px rgba(76,175,80,0.2), 0 10px 30px rgba(0,0,0,0.4)',
+        }}
       >
-        {/* Background with animated gradient */}
-        <div 
-          className="absolute inset-0"
-          style={{
-            background: 'linear-gradient(135deg, rgba(34,197,94,0.15) 0%, rgba(16,185,129,0.08) 50%, rgba(5,150,105,0.05) 100%)',
-          }}
-        />
+        {/* Animated background glow */}
         <motion.div
-          className="absolute inset-0"
+          className="absolute inset-0 pointer-events-none"
           style={{
-            background: 'radial-gradient(circle at 50% 50%, rgba(34,197,94,0.2) 0%, transparent 60%)',
+            background: 'radial-gradient(ellipse at 30% 50%, rgba(76,175,80,0.15) 0%, transparent 50%), radial-gradient(ellipse at 70% 50%, rgba(255,193,7,0.1) 0%, transparent 50%)',
           }}
-          animate={{ scale: [1, 1.3, 1], opacity: [0.3, 0.6, 0.3] }}
+          animate={{ opacity: [0.5, 0.8, 0.5] }}
           transition={{ duration: 3, repeat: Infinity }}
+        />
+        
+        {/* Shimmer effect */}
+        <motion.div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            background: 'linear-gradient(105deg, transparent 40%, rgba(255,255,255,0.1) 50%, transparent 60%)',
+          }}
+          animate={{ x: ['-150%', '150%'] }}
+          transition={{ duration: 3, repeat: Infinity, repeatDelay: 2 }}
         />
         
         {/* Content */}
         <div className="relative z-10 p-5">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
+            {/* Left - Winner Gets */}
+            <div className="flex items-center gap-4">
               <motion.div
-                animate={{ rotate: [0, 10, -10, 0] }}
-                transition={{ duration: 2, repeat: Infinity }}
-                className="w-12 h-12 rounded-xl bg-gradient-to-br from-yellow-500 to-orange-500 flex items-center justify-center shadow-lg shadow-yellow-500/30"
+                animate={{ rotate: [0, 8, -8, 0], scale: [1, 1.05, 1] }}
+                transition={{ duration: 3, repeat: Infinity }}
+                className="w-14 h-14 rounded-xl flex items-center justify-center relative"
+                style={{
+                  background: 'linear-gradient(135deg, #FFE082 0%, #FFD54F 25%, #FFCA28 50%, #FFB300 75%, #FF8F00 100%)',
+                  boxShadow: '0 6px 25px rgba(255,152,0,0.5), inset 0 2px 4px rgba(255,255,255,0.4)',
+                  border: '2px solid rgba(255,255,255,0.3)',
+                }}
               >
-                <Crown className="w-6 h-6 text-white" />
+                {/* Inner highlight */}
+                <div 
+                  className="absolute inset-1 rounded-lg opacity-30 pointer-events-none"
+                  style={{
+                    background: 'linear-gradient(180deg, rgba(255,255,255,0.6) 0%, transparent 50%)',
+                  }}
+                />
+                <Trophy className="w-7 h-7 text-amber-900 drop-shadow relative z-10" />
               </motion.div>
+              
               <div>
-                <p className="text-xs text-muted-foreground flex items-center gap-1">
-                  <Sparkles className="w-3 h-3 text-yellow-500" />
+                <p className="flex items-center gap-1.5 text-xs font-semibold" style={{ color: 'rgba(255,255,255,0.5)' }}>
+                  <Sparkles className="w-3.5 h-3.5 text-yellow-400" />
                   Winner Gets
                 </p>
                 <motion.p 
-                  className="font-display text-3xl font-bold text-green-400"
+                  className="font-display text-4xl font-black tracking-wide"
+                  style={{
+                    background: 'linear-gradient(135deg, #4CAF50 0%, #81C784 30%, #FFFFFF 50%, #81C784 70%, #4CAF50 100%)',
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent',
+                    textShadow: '0 0 30px rgba(76,175,80,0.5)',
+                  }}
                   animate={{ scale: [1, 1.02, 1] }}
                   transition={{ duration: 2, repeat: Infinity }}
                 >
@@ -258,18 +411,31 @@ const EntrySelector = ({
               </div>
             </div>
             
-            <div className="text-right">
-              <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                <TrendingUp className="w-3 h-3 text-green-500" />
+            {/* Right - Multiplier */}
+            <div 
+              className="text-right px-4 py-3 rounded-xl"
+              style={{
+                background: 'linear-gradient(135deg, rgba(76,175,80,0.15) 0%, rgba(46,125,50,0.1) 100%)',
+                border: '1px solid rgba(76,175,80,0.3)',
+              }}
+            >
+              <div className="flex items-center justify-end gap-1 text-xs font-semibold" style={{ color: 'rgba(255,255,255,0.5)' }}>
+                <TrendingUp className="w-3.5 h-3.5 text-green-400" />
                 Multiplier
               </div>
-              <p className="text-lg font-bold text-foreground">{rewardMultiplier}x</p>
+              <p 
+                className="text-2xl font-black"
+                style={{
+                  background: 'linear-gradient(135deg, #4CAF50 0%, #81C784 100%)',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                }}
+              >
+                {rewardMultiplier}x
+              </p>
             </div>
           </div>
         </div>
-
-        {/* Border glow */}
-        <div className="absolute inset-0 rounded-2xl border border-green-500/30 pointer-events-none" />
       </motion.div>
     </div>
   );
