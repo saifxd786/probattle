@@ -43,6 +43,15 @@ interface GameStateData {
   phase: 'waiting' | 'playing' | 'result';
 }
 
+interface ChatMessage {
+  id: string;
+  senderId: string;
+  senderName: string;
+  message: string;
+  isEmoji: boolean;
+  timestamp: Date;
+}
+
 interface FriendGameState {
   phase: 'idle' | 'waiting' | 'playing' | 'result';
   roomId: string | null;
@@ -57,6 +66,7 @@ interface FriendGameState {
   winner: Player | null;
   entryAmount: number;
   rewardAmount: number;
+  chatMessages: ChatMessage[];
 }
 
 const COLORS = ['red', 'green'];
@@ -66,6 +76,7 @@ export const useFriendLudoGame = () => {
   const { toast } = useToast();
   const channelRef = useRef<RealtimeChannel | null>(null);
   const presenceChannelRef = useRef<RealtimeChannel | null>(null);
+  const chatChannelRef = useRef<RealtimeChannel | null>(null);
 
   const [gameState, setGameState] = useState<FriendGameState>({
     phase: 'idle',
@@ -80,7 +91,8 @@ export const useFriendLudoGame = () => {
     selectedToken: null,
     winner: null,
     entryAmount: 0,
-    rewardAmount: 0
+    rewardAmount: 0,
+    chatMessages: []
   });
 
   const [walletBalance, setWalletBalance] = useState(0);
@@ -167,6 +179,56 @@ export const useFriendLudoGame = () => {
 
     presenceChannelRef.current = channel;
   }, [user]);
+
+  // Subscribe to chat messages via broadcast
+  const subscribeToChatChannel = useCallback((roomId: string) => {
+    if (chatChannelRef.current) {
+      supabase.removeChannel(chatChannelRef.current);
+    }
+
+    const channel = supabase
+      .channel(`ludo-chat-${roomId}`)
+      .on('broadcast', { event: 'chat_message' }, (payload) => {
+        const msg = payload.payload as ChatMessage;
+        setGameState(prev => ({
+          ...prev,
+          chatMessages: [...prev.chatMessages, { ...msg, timestamp: new Date(msg.timestamp) }]
+        }));
+      })
+      .subscribe();
+
+    chatChannelRef.current = channel;
+  }, []);
+
+  // Send chat message
+  const sendChatMessage = useCallback(async (message: string, isEmoji: boolean) => {
+    if (!gameState.roomId || !user) return;
+
+    const currentPlayer = gameState.players.find(p => p.id === user.id);
+    const chatMessage: ChatMessage = {
+      id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      senderId: user.id,
+      senderName: currentPlayer?.name || 'You',
+      message,
+      isEmoji,
+      timestamp: new Date()
+    };
+
+    // Add to local state immediately
+    setGameState(prev => ({
+      ...prev,
+      chatMessages: [...prev.chatMessages, chatMessage]
+    }));
+
+    // Broadcast to other player
+    if (chatChannelRef.current) {
+      await chatChannelRef.current.send({
+        type: 'broadcast',
+        event: 'chat_message',
+        payload: chatMessage
+      });
+    }
+  }, [gameState.roomId, gameState.players, user]);
 
   // Handle room updates from database
   const handleRoomUpdate = useCallback((roomData: RoomData) => {
@@ -305,10 +367,11 @@ export const useFriendLudoGame = () => {
 
     subscribeToRoom(roomId);
     subscribeToPresence(roomId);
+    subscribeToChatChannel(roomId);
 
     // Fetch initial room state
     fetchRoomState(roomId);
-  }, [subscribeToRoom, subscribeToPresence]);
+  }, [subscribeToRoom, subscribeToPresence, subscribeToChatChannel]);
 
   // Fetch room state
   const fetchRoomState = async (roomId: string) => {
@@ -581,6 +644,10 @@ export const useFriendLudoGame = () => {
       supabase.removeChannel(presenceChannelRef.current);
       presenceChannelRef.current = null;
     }
+    if (chatChannelRef.current) {
+      supabase.removeChannel(chatChannelRef.current);
+      chatChannelRef.current = null;
+    }
 
     setGameState({
       phase: 'idle',
@@ -595,7 +662,8 @@ export const useFriendLudoGame = () => {
       selectedToken: null,
       winner: null,
       entryAmount: 0,
-      rewardAmount: 0
+      rewardAmount: 0,
+      chatMessages: []
     });
     setOpponentOnline(false);
   }, []);
@@ -609,6 +677,9 @@ export const useFriendLudoGame = () => {
       if (presenceChannelRef.current) {
         supabase.removeChannel(presenceChannelRef.current);
       }
+      if (chatChannelRef.current) {
+        supabase.removeChannel(chatChannelRef.current);
+      }
     };
   }, []);
 
@@ -619,6 +690,7 @@ export const useFriendLudoGame = () => {
     startRoom,
     rollDice,
     handleTokenClick,
-    resetGame
+    resetGame,
+    sendChatMessage
   };
 };
