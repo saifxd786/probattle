@@ -96,12 +96,21 @@ interface LudoBoardProps {
   diceValue?: number;
 }
 
-// Ludo King authentic colors - Bright and vibrant
+// ProBattle Cyber Theme Colors - Neon with dark backgrounds
 const COLORS = {
-  red: { main: '#E53935', light: '#EF5350', dark: '#C62828', bg: '#FFCDD2', track: '#FFEBEE' },
-  green: { main: '#43A047', light: '#66BB6A', dark: '#2E7D32', bg: '#C8E6C9', track: '#E8F5E9' },
-  yellow: { main: '#FDD835', light: '#FFEE58', dark: '#F9A825', bg: '#FFF9C4', track: '#FFFDE7' },
-  blue: { main: '#1E88E5', light: '#42A5F5', dark: '#1565C0', bg: '#BBDEFB', track: '#E3F2FD' }
+  red: { main: '#EF4444', light: '#F87171', dark: '#DC2626', bg: '#450a0a', track: '#1f1515' },
+  green: { main: '#22C55E', light: '#4ADE80', dark: '#16A34A', bg: '#052e16', track: '#0d1f14' },
+  yellow: { main: '#EAB308', light: '#FACC15', dark: '#CA8A04', bg: '#422006', track: '#1f1a0a' },
+  blue: { main: '#3B82F6', light: '#60A5FA', dark: '#2563EB', bg: '#172554', track: '#0f172a' }
+};
+
+// Board theme colors
+const BOARD_THEME = {
+  background: '#0a0f1a',
+  cellBg: '#1e293b',
+  cellBorder: '#334155',
+  trackCell: '#0f172a',
+  centerGlow: 'rgba(59, 130, 246, 0.3)',
 };
 
 // Home positions for each color (token slots in corners)
@@ -412,60 +421,81 @@ const LudoBoard = ({ players, onTokenClick, selectedToken, captureEvent, onCaptu
 
   return (
     <div className="relative mx-auto">
-      {/* Board Container with subtle shadow */}
+      {/* Board Container with ProBattle glow effect */}
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.4 }}
-        className="relative rounded-lg overflow-hidden"
+        className="relative rounded-xl overflow-hidden"
         style={{
-          boxShadow: '0 8px 32px rgba(0,0,0,0.3), 0 2px 8px rgba(0,0,0,0.2)',
+          boxShadow: '0 0 40px rgba(59, 130, 246, 0.2), 0 8px 32px rgba(0,0,0,0.5)',
+          border: '2px solid rgba(59, 130, 246, 0.3)',
         }}
       >
         <div ref={boardRef} className="relative" style={{ width: size, height: size }}>
-          {/* Main Board SVG - Ludo King Style */}
+          {/* Main Board SVG - ProBattle Dark Theme */}
           <svg viewBox="0 0 15 15" className="w-full h-full">
             <defs>
-              {/* Grid pattern for cells */}
+              {/* Neon glow filter */}
+              <filter id="neonGlow" x="-50%" y="-50%" width="200%" height="200%">
+                <feGaussianBlur stdDeviation="0.15" result="blur"/>
+                <feMerge>
+                  <feMergeNode in="blur"/>
+                  <feMergeNode in="SourceGraphic"/>
+                </feMerge>
+              </filter>
+              {/* Grid pattern for cyber look */}
               <pattern id="gridPattern" width="1" height="1" patternUnits="userSpaceOnUse">
-                <rect width="1" height="1" fill="#fff" stroke="#ddd" strokeWidth="0.03"/>
+                <rect width="1" height="1" fill={BOARD_THEME.cellBg} stroke={BOARD_THEME.cellBorder} strokeWidth="0.02"/>
               </pattern>
             </defs>
 
-            {/* White background */}
-            <rect x="0" y="0" width="15" height="15" fill="#f5f5f5" />
+            {/* Dark background */}
+            <rect x="0" y="0" width="15" height="15" fill={BOARD_THEME.background} />
 
-            {/* RED Home Base (top-left) */}
-            <rect x="0" y="0" width="6" height="6" fill={COLORS.red.main} />
-            <rect x="0.5" y="0.5" width="5" height="5" fill="#fff" rx="0.15" />
-            {/* Token slots */}
+            {/* RED Home Base (top-left) - Neon border */}
+            <rect x="0" y="0" width="6" height="6" fill={COLORS.red.bg} stroke={COLORS.red.main} strokeWidth="0.1" filter="url(#neonGlow)" />
+            <rect x="0.4" y="0.4" width="5.2" height="5.2" fill={BOARD_THEME.background} rx="0.2" />
+            {/* Token slots with glow */}
             {[[1.5, 1.5], [4.5, 1.5], [1.5, 4.5], [4.5, 4.5]].map(([cx, cy], i) => (
-              <circle key={`red-slot-${i}`} cx={cx} cy={cy} r="0.7" fill={COLORS.red.main} opacity="0.3" />
+              <g key={`red-slot-${i}`}>
+                <circle cx={cx} cy={cy} r="0.75" fill={COLORS.red.bg} stroke={COLORS.red.main} strokeWidth="0.08" />
+                <circle cx={cx} cy={cy} r="0.4" fill={COLORS.red.main} opacity="0.15" />
+              </g>
             ))}
 
-            {/* GREEN Home Base (top-right) */}
-            <rect x="9" y="0" width="6" height="6" fill={COLORS.green.main} />
-            <rect x="9.5" y="0.5" width="5" height="5" fill="#fff" rx="0.15" />
+            {/* GREEN Home Base (top-right) - Neon border */}
+            <rect x="9" y="0" width="6" height="6" fill={COLORS.green.bg} stroke={COLORS.green.main} strokeWidth="0.1" filter="url(#neonGlow)" />
+            <rect x="9.4" y="0.4" width="5.2" height="5.2" fill={BOARD_THEME.background} rx="0.2" />
             {[[10.5, 1.5], [13.5, 1.5], [10.5, 4.5], [13.5, 4.5]].map(([cx, cy], i) => (
-              <circle key={`green-slot-${i}`} cx={cx} cy={cy} r="0.7" fill={COLORS.green.main} opacity="0.3" />
+              <g key={`green-slot-${i}`}>
+                <circle cx={cx} cy={cy} r="0.75" fill={COLORS.green.bg} stroke={COLORS.green.main} strokeWidth="0.08" />
+                <circle cx={cx} cy={cy} r="0.4" fill={COLORS.green.main} opacity="0.15" />
+              </g>
             ))}
 
-            {/* BLUE Home Base (bottom-left) */}
-            <rect x="0" y="9" width="6" height="6" fill={COLORS.blue.main} />
-            <rect x="0.5" y="9.5" width="5" height="5" fill="#fff" rx="0.15" />
+            {/* BLUE Home Base (bottom-left) - Neon border */}
+            <rect x="0" y="9" width="6" height="6" fill={COLORS.blue.bg} stroke={COLORS.blue.main} strokeWidth="0.1" filter="url(#neonGlow)" />
+            <rect x="0.4" y="9.4" width="5.2" height="5.2" fill={BOARD_THEME.background} rx="0.2" />
             {[[1.5, 10.5], [4.5, 10.5], [1.5, 13.5], [4.5, 13.5]].map(([cx, cy], i) => (
-              <circle key={`blue-slot-${i}`} cx={cx} cy={cy} r="0.7" fill={COLORS.blue.main} opacity="0.3" />
+              <g key={`blue-slot-${i}`}>
+                <circle cx={cx} cy={cy} r="0.75" fill={COLORS.blue.bg} stroke={COLORS.blue.main} strokeWidth="0.08" />
+                <circle cx={cx} cy={cy} r="0.4" fill={COLORS.blue.main} opacity="0.15" />
+              </g>
             ))}
 
-            {/* YELLOW Home Base (bottom-right) */}
-            <rect x="9" y="9" width="6" height="6" fill={COLORS.yellow.main} />
-            <rect x="9.5" y="9.5" width="5" height="5" fill="#fff" rx="0.15" />
+            {/* YELLOW Home Base (bottom-right) - Neon border */}
+            <rect x="9" y="9" width="6" height="6" fill={COLORS.yellow.bg} stroke={COLORS.yellow.main} strokeWidth="0.1" filter="url(#neonGlow)" />
+            <rect x="9.4" y="9.4" width="5.2" height="5.2" fill={BOARD_THEME.background} rx="0.2" />
             {[[10.5, 10.5], [13.5, 10.5], [10.5, 13.5], [13.5, 13.5]].map(([cx, cy], i) => (
-              <circle key={`yellow-slot-${i}`} cx={cx} cy={cy} r="0.7" fill={COLORS.yellow.main} opacity="0.3" />
+              <g key={`yellow-slot-${i}`}>
+                <circle cx={cx} cy={cy} r="0.75" fill={COLORS.yellow.bg} stroke={COLORS.yellow.main} strokeWidth="0.08" />
+                <circle cx={cx} cy={cy} r="0.4" fill={COLORS.yellow.main} opacity="0.15" />
+              </g>
             ))}
 
-            {/* Track Cells - White with grid lines */}
-            <g fill="#fff" stroke="#ccc" strokeWidth="0.03">
+            {/* Track Cells - Dark with subtle borders */}
+            <g fill={BOARD_THEME.cellBg} stroke={BOARD_THEME.cellBorder} strokeWidth="0.02">
               {/* Top path */}
               {[0, 1, 2, 3, 4, 5].map(i => (
                 <g key={`top-${i}`}>
@@ -500,67 +530,71 @@ const LudoBoard = ({ players, onTokenClick, selectedToken, captureEvent, onCaptu
               ))}
             </g>
 
-            {/* Home stretch colored cells */}
+            {/* Home stretch colored cells with glow */}
             {/* Green home stretch (top) */}
             {[1, 2, 3, 4, 5, 6].map(i => (
-              <rect key={`green-home-${i}`} x={7} y={i} width="1" height="1" fill={COLORS.green.main} stroke="#fff" strokeWidth="0.03" />
+              <rect key={`green-home-${i}`} x={7} y={i} width="1" height="1" fill={COLORS.green.bg} stroke={COLORS.green.main} strokeWidth="0.05" />
             ))}
             {/* Red home stretch (left) */}
             {[1, 2, 3, 4, 5, 6].map(i => (
-              <rect key={`red-home-${i}`} x={i} y={7} width="1" height="1" fill={COLORS.red.main} stroke="#fff" strokeWidth="0.03" />
+              <rect key={`red-home-${i}`} x={i} y={7} width="1" height="1" fill={COLORS.red.bg} stroke={COLORS.red.main} strokeWidth="0.05" />
             ))}
             {/* Yellow home stretch (right) */}
             {[8, 9, 10, 11, 12, 13].map(i => (
-              <rect key={`yellow-home-${i}`} x={i} y={7} width="1" height="1" fill={COLORS.yellow.main} stroke="#fff" strokeWidth="0.03" />
+              <rect key={`yellow-home-${i}`} x={i} y={7} width="1" height="1" fill={COLORS.yellow.bg} stroke={COLORS.yellow.main} strokeWidth="0.05" />
             ))}
             {/* Blue home stretch (bottom) */}
             {[8, 9, 10, 11, 12, 13].map(i => (
-              <rect key={`blue-home-${i}`} x={7} y={i} width="1" height="1" fill={COLORS.blue.main} stroke="#fff" strokeWidth="0.03" />
+              <rect key={`blue-home-${i}`} x={7} y={i} width="1" height="1" fill={COLORS.blue.bg} stroke={COLORS.blue.main} strokeWidth="0.05" />
             ))}
 
-            {/* Start position cells - colored */}
-            <rect x={6} y={1} width="1" height="1" fill={COLORS.green.main} stroke="#fff" strokeWidth="0.03" />
-            <rect x={1} y={6} width="1" height="1" fill={COLORS.red.main} stroke="#fff" strokeWidth="0.03" />
-            <rect x={8} y={13} width="1" height="1" fill={COLORS.blue.main} stroke="#fff" strokeWidth="0.03" />
-            <rect x={13} y={8} width="1" height="1" fill={COLORS.yellow.main} stroke="#fff" strokeWidth="0.03" />
+            {/* Start position cells - neon colored */}
+            <rect x={6} y={1} width="1" height="1" fill={COLORS.green.bg} stroke={COLORS.green.main} strokeWidth="0.08" />
+            <rect x={1} y={6} width="1" height="1" fill={COLORS.red.bg} stroke={COLORS.red.main} strokeWidth="0.08" />
+            <rect x={8} y={13} width="1" height="1" fill={COLORS.blue.bg} stroke={COLORS.blue.main} strokeWidth="0.08" />
+            <rect x={13} y={8} width="1" height="1" fill={COLORS.yellow.bg} stroke={COLORS.yellow.main} strokeWidth="0.08" />
 
-            {/* Center triangles (finish area) */}
-            <polygon points="6,6 7.5,7.5 6,9" fill={COLORS.red.main} />
-            <polygon points="6,6 7.5,7.5 9,6" fill={COLORS.green.main} />
-            <polygon points="9,6 7.5,7.5 9,9" fill={COLORS.yellow.main} />
-            <polygon points="6,9 7.5,7.5 9,9" fill={COLORS.blue.main} />
-            {/* Center border */}
-            <polygon points="6,6 9,6 9,9 6,9" fill="none" stroke="#fff" strokeWidth="0.08" />
+            {/* Center triangles (finish area) with glow */}
+            <g filter="url(#neonGlow)">
+              <polygon points="6,6 7.5,7.5 6,9" fill={COLORS.red.main} opacity="0.9" />
+              <polygon points="6,6 7.5,7.5 9,6" fill={COLORS.green.main} opacity="0.9" />
+              <polygon points="9,6 7.5,7.5 9,9" fill={COLORS.yellow.main} opacity="0.9" />
+              <polygon points="6,9 7.5,7.5 9,9" fill={COLORS.blue.main} opacity="0.9" />
+            </g>
+            {/* Center border with glow */}
+            <polygon points="6,6 9,6 9,9 6,9" fill="none" stroke="rgba(255,255,255,0.5)" strokeWidth="0.08" />
+            {/* Center dot */}
+            <circle cx="7.5" cy="7.5" r="0.3" fill="rgba(255,255,255,0.8)" />
 
-            {/* Safe spot stars */}
+            {/* Safe spot stars - glowing */}
             {[
-              { x: 2.5, y: 6.5 }, // Red safe
-              { x: 6.5, y: 2.5 }, // Green safe
-              { x: 12.5, y: 8.5 }, // Yellow safe
-              { x: 8.5, y: 12.5 }, // Blue safe
-              { x: 8.5, y: 2.5 }, // Top right
-              { x: 2.5, y: 8.5 }, // Bottom left
-              { x: 6.5, y: 12.5 }, // Bottom
-              { x: 12.5, y: 6.5 }, // Right
-            ].map(({ x, y }, i) => (
+              { x: 2.5, y: 6.5, color: COLORS.red.main },
+              { x: 6.5, y: 2.5, color: COLORS.green.main },
+              { x: 12.5, y: 8.5, color: COLORS.yellow.main },
+              { x: 8.5, y: 12.5, color: COLORS.blue.main },
+              { x: 8.5, y: 2.5, color: '#fff' },
+              { x: 2.5, y: 8.5, color: '#fff' },
+              { x: 6.5, y: 12.5, color: '#fff' },
+              { x: 12.5, y: 6.5, color: '#fff' },
+            ].map(({ x, y, color }, i) => (
               <g key={`star-${i}`} transform={`translate(${x}, ${y})`}>
                 <polygon
                   points="0,-0.35 0.1,-0.1 0.35,0 0.1,0.1 0,0.35 -0.1,0.1 -0.35,0 -0.1,-0.1"
-                  fill="#888"
-                  opacity="0.5"
+                  fill={color}
+                  opacity="0.7"
                 />
               </g>
             ))}
 
-            {/* Direction arrows */}
+            {/* Direction arrows - neon colored */}
             {/* Down arrow (green entry) */}
-            <path d="M7.5,0.5 L7.5,0.85 M7.35,0.7 L7.5,0.85 L7.65,0.7" stroke={COLORS.green.dark} strokeWidth="0.08" fill="none" />
+            <path d="M7.5,0.5 L7.5,0.85 M7.35,0.7 L7.5,0.85 L7.65,0.7" stroke={COLORS.green.main} strokeWidth="0.1" fill="none" />
             {/* Up arrow (blue entry) */}
-            <path d="M7.5,14.5 L7.5,14.15 M7.35,14.3 L7.5,14.15 L7.65,14.3" stroke={COLORS.blue.dark} strokeWidth="0.08" fill="none" />
+            <path d="M7.5,14.5 L7.5,14.15 M7.35,14.3 L7.5,14.15 L7.65,14.3" stroke={COLORS.blue.main} strokeWidth="0.1" fill="none" />
             {/* Right arrow (red entry) */}
-            <path d="M0.5,7.5 L0.85,7.5 M0.7,7.35 L0.85,7.5 L0.7,7.65" stroke={COLORS.red.dark} strokeWidth="0.08" fill="none" />
+            <path d="M0.5,7.5 L0.85,7.5 M0.7,7.35 L0.85,7.5 L0.7,7.65" stroke={COLORS.red.main} strokeWidth="0.1" fill="none" />
             {/* Left arrow (yellow entry) */}
-            <path d="M14.5,7.5 L14.15,7.5 M14.3,7.35 L14.15,7.5 L14.3,7.65" stroke={COLORS.yellow.dark} strokeWidth="0.08" fill="none" />
+            <path d="M14.5,7.5 L14.15,7.5 M14.3,7.35 L14.15,7.5 L14.3,7.65" stroke={COLORS.yellow.main} strokeWidth="0.1" fill="none" />
           </svg>
 
           {/* Path Preview Overlay */}
