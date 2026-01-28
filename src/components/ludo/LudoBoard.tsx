@@ -960,8 +960,15 @@ const LudoBoard = ({ players, onTokenClick, selectedToken, captureEvent, onCaptu
               {/* Pulse effect for current turn */}
               {player.isCurrentTurn && (
                 <motion.div
-                  className="absolute inset-0 rounded-full"
-                  style={{ background: `radial-gradient(circle, ${COLORS[colorKey].light}40 0%, transparent 70%)` }}
+                  className="absolute rounded-full pointer-events-none"
+                  style={{ 
+                    width: cellSize * 0.8,
+                    height: cellSize * 0.8,
+                    top: cellSize * 0.15,
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    background: `radial-gradient(circle, ${COLORS[colorKey].light}40 0%, transparent 70%)` 
+                  }}
                   animate={{ scale: [1, 1.5, 1], opacity: [0.6, 0, 0.6] }}
                   transition={{ duration: 1.5, repeat: Infinity }}
                 />
