@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import SplashScreen from './components/SplashScreen';
 import UpdatePrompt from './components/UpdatePrompt';
 import OfflineIndicator from './components/OfflineIndicator';
+import NotificationPermissionGate from './components/NotificationPermissionGate';
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -85,55 +86,57 @@ const App = () => {
           <UpdatePrompt />
           <OfflineIndicator />
           <BrowserRouter>
-            <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/bgmi" element={<BGMIPage />} />
-              <Route path="/matches" element={<MatchesPage />} />
-              <Route path="/my-games" element={<MyGamesPage />} />
-              <Route path="/wallet" element={<WalletPage />} />
-              <Route path="/support" element={<SupportPage />} />
-              <Route path="/auth" element={<AuthPage />} />
-              <Route path="/profile" element={<ProfilePage />} />
-              <Route path="/activity" element={<ActivityPage />} />
-              <Route path="/install" element={<InstallPage />} />
-              <Route path="/rules" element={<RulesPage />} />
-              <Route path="/fair-play" element={<FairPlayPage />} />
-              <Route path="/terms" element={<TermsPage />} />
-              <Route path="/faqs" element={<FAQsPage />} />
-              <Route path="/ludo" element={<LudoPage />} />
-              <Route path="/ludo/rules" element={<LudoRulesPage />} />
-              <Route path="/thimble" element={<ThimblePage />} />
-              <Route path="/mines" element={<MinesPage />} />
-              <Route path="/game-history" element={<GameHistoryPage />} />
-              <Route path="/friends" element={<FriendsPage />} />
-              {/* Admin Routes */}
-              <Route path="/admin/login" element={<AdminLoginPage />} />
-              <Route path="/admin" element={<AdminLayout />}>
-                <Route index element={<AdminDashboard />} />
-                <Route path="matches" element={<AdminMatches />} />
-                <Route path="users" element={<AdminUsers />} />
-                <Route path="payments" element={<AdminPayments />} />
-                <Route path="transactions" element={<AdminTransactions />} />
-                <Route path="notifications" element={<AdminNotificationsPage />} />
-                <Route path="settings" element={<AdminSettings />} />
-                <Route path="ludo" element={<AdminLudoSettings />} />
-                <Route path="thimble" element={<AdminThimbleSettings />} />
-                <Route path="mines" element={<AdminMinesSettings />} />
-                <Route path="spin-wheel" element={<AdminSpinWheelSettings />} />
-                <Route path="daily-login" element={<AdminDailyLoginSettings />} />
-                <Route path="redeem-codes" element={<AdminRedeemCodes />} />
-                <Route path="support" element={<AdminSupport />} />
-                <Route path="device-bans" element={<AdminDeviceBans />} />
-              </Route>
-              {/* Agent Routes */}
-              <Route path="/agent/login" element={<AgentLoginPage />} />
-              <Route path="/agent" element={<AgentLayout />}>
-                <Route index element={<AgentUsers />} />
-                <Route path="matches" element={<AgentMatches />} />
-                <Route path="transactions" element={<AgentTransactions />} />
-              </Route>
-              <Route path="*" element={<NotFound />} />
-            </Routes>
+            <NotificationPermissionGate>
+              <Routes>
+                <Route path="/" element={<Index />} />
+                <Route path="/bgmi" element={<BGMIPage />} />
+                <Route path="/matches" element={<MatchesPage />} />
+                <Route path="/my-games" element={<MyGamesPage />} />
+                <Route path="/wallet" element={<WalletPage />} />
+                <Route path="/support" element={<SupportPage />} />
+                <Route path="/auth" element={<AuthPage />} />
+                <Route path="/profile" element={<ProfilePage />} />
+                <Route path="/activity" element={<ActivityPage />} />
+                <Route path="/install" element={<InstallPage />} />
+                <Route path="/rules" element={<RulesPage />} />
+                <Route path="/fair-play" element={<FairPlayPage />} />
+                <Route path="/terms" element={<TermsPage />} />
+                <Route path="/faqs" element={<FAQsPage />} />
+                <Route path="/ludo" element={<LudoPage />} />
+                <Route path="/ludo/rules" element={<LudoRulesPage />} />
+                <Route path="/thimble" element={<ThimblePage />} />
+                <Route path="/mines" element={<MinesPage />} />
+                <Route path="/game-history" element={<GameHistoryPage />} />
+                <Route path="/friends" element={<FriendsPage />} />
+                {/* Admin Routes */}
+                <Route path="/admin/login" element={<AdminLoginPage />} />
+                <Route path="/admin" element={<AdminLayout />}>
+                  <Route index element={<AdminDashboard />} />
+                  <Route path="matches" element={<AdminMatches />} />
+                  <Route path="users" element={<AdminUsers />} />
+                  <Route path="payments" element={<AdminPayments />} />
+                  <Route path="transactions" element={<AdminTransactions />} />
+                  <Route path="notifications" element={<AdminNotificationsPage />} />
+                  <Route path="settings" element={<AdminSettings />} />
+                  <Route path="ludo" element={<AdminLudoSettings />} />
+                  <Route path="thimble" element={<AdminThimbleSettings />} />
+                  <Route path="mines" element={<AdminMinesSettings />} />
+                  <Route path="spin-wheel" element={<AdminSpinWheelSettings />} />
+                  <Route path="daily-login" element={<AdminDailyLoginSettings />} />
+                  <Route path="redeem-codes" element={<AdminRedeemCodes />} />
+                  <Route path="support" element={<AdminSupport />} />
+                  <Route path="device-bans" element={<AdminDeviceBans />} />
+                </Route>
+                {/* Agent Routes */}
+                <Route path="/agent/login" element={<AgentLoginPage />} />
+                <Route path="/agent" element={<AgentLayout />}>
+                  <Route index element={<AgentUsers />} />
+                  <Route path="matches" element={<AgentMatches />} />
+                  <Route path="transactions" element={<AgentTransactions />} />
+                </Route>
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </NotificationPermissionGate>
           </BrowserRouter>
         </TooltipProvider>
       </AuthProvider>
