@@ -27,6 +27,7 @@ import LudoRulesPage from "./pages/LudoRulesPage";
 import ThimblePage from "./pages/ThimblePage";
 import MinesPage from "./pages/MinesPage";
 import GameHistoryPage from "./pages/GameHistoryPage";
+import FriendsPage from "./pages/FriendsPage";
 import NotFound from "./pages/NotFound";
 import AdminLayout from "./components/admin/AdminLayout";
 import AdminDashboard from "./pages/admin/AdminDashboard";
@@ -104,6 +105,7 @@ const App = () => {
               <Route path="/thimble" element={<ThimblePage />} />
               <Route path="/mines" element={<MinesPage />} />
               <Route path="/game-history" element={<GameHistoryPage />} />
+              <Route path="/friends" element={<FriendsPage />} />
               {/* Admin Routes */}
               <Route path="/admin/login" element={<AdminLoginPage />} />
               <Route path="/admin" element={<AdminLayout />}>
