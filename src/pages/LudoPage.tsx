@@ -4,7 +4,7 @@ import { Dices, Wallet, Info, Trophy, Users, Zap, Ban, UserPlus, WifiOff, Wifi, 
 import { Link, useNavigate } from 'react-router-dom';
 import Header from '@/components/Header';
 import BottomNav from '@/components/BottomNav';
-import TelegramFloat from '@/components/TelegramFloat';
+
 import PullToRefresh from '@/components/PullToRefresh';
 import { Button } from '@/components/ui/button';
 import {
@@ -920,7 +920,6 @@ const LudoPage = () => {
         </main>
 
         <BottomNav />
-        <TelegramFloat />
       </div>
     </PullToRefresh>
   );
