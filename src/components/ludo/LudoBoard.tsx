@@ -1,8 +1,9 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
-import { User, Bot, Crown, Sparkles } from 'lucide-react';
+import { User, Bot, Crown, Sparkles, Zap, Star } from 'lucide-react';
 import CaptureAnimation from './CaptureAnimation';
+
 interface Token {
   id: number;
   position: number;
@@ -519,30 +520,72 @@ const LudoBoard = ({ players, onTokenClick, selectedToken, captureEvent, onCaptu
     return currentPos + dice;
   };
 
+  // Get current turn player color for dynamic effects
+  const currentTurnColor = useMemo(() => {
+    const current = players.find(p => p.isCurrentTurn);
+    return current ? (current.color as keyof typeof COLORS) : null;
+  }, [players]);
+
   return (
     <div className="relative mx-auto">
-      {/* Premium Board Frame */}
+      {/* Premium Board Frame with dynamic glow based on current player */}
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.5 }}
-        className="relative p-2 rounded-2xl"
+        className="relative p-2.5 rounded-2xl"
         style={{
           background: 'linear-gradient(145deg, #2a1810 0%, #1a0f0a 50%, #2a1810 100%)',
-          boxShadow: '0 10px 40px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1), inset 0 -1px 0 rgba(0,0,0,0.3)',
+          boxShadow: currentTurnColor 
+            ? `0 0 40px ${COLORS[currentTurnColor].main}25, 0 15px 50px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1)`
+            : '0 15px 50px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1)',
         }}
       >
-        {/* Decorative corner accents */}
-        <div className="absolute top-1 left-1 w-4 h-4 border-t-2 border-l-2 border-yellow-600/50 rounded-tl-lg" />
-        <div className="absolute top-1 right-1 w-4 h-4 border-t-2 border-r-2 border-yellow-600/50 rounded-tr-lg" />
-        <div className="absolute bottom-1 left-1 w-4 h-4 border-b-2 border-l-2 border-yellow-600/50 rounded-bl-lg" />
-        <div className="absolute bottom-1 right-1 w-4 h-4 border-b-2 border-r-2 border-yellow-600/50 rounded-br-lg" />
+        {/* Animated border glow for current player */}
+        {currentTurnColor && (
+          <motion.div
+            className="absolute inset-0 rounded-2xl pointer-events-none"
+            style={{
+              border: `2px solid ${COLORS[currentTurnColor].main}`,
+              opacity: 0.4,
+            }}
+            animate={{
+              opacity: [0.2, 0.5, 0.2],
+              boxShadow: [
+                `0 0 10px ${COLORS[currentTurnColor].main}40`,
+                `0 0 25px ${COLORS[currentTurnColor].main}60`,
+                `0 0 10px ${COLORS[currentTurnColor].main}40`,
+              ],
+            }}
+            transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+          />
+        )}
         
-        {/* Inner glow effect */}
+        {/* Premium corner accents with animation */}
+        {['top-1 left-1 border-t-2 border-l-2 rounded-tl-lg', 
+          'top-1 right-1 border-t-2 border-r-2 rounded-tr-lg',
+          'bottom-1 left-1 border-b-2 border-l-2 rounded-bl-lg',
+          'bottom-1 right-1 border-b-2 border-r-2 rounded-br-lg'].map((pos, i) => (
+          <motion.div
+            key={i}
+            className={`absolute w-5 h-5 ${pos}`}
+            style={{ 
+              borderColor: currentTurnColor 
+                ? COLORS[currentTurnColor].main 
+                : 'rgba(202, 138, 4, 0.5)'
+            }}
+            animate={{ opacity: [0.5, 0.8, 0.5] }}
+            transition={{ duration: 2, repeat: Infinity, delay: i * 0.2 }}
+          />
+        ))}
+        
+        {/* Inner glow effect - enhanced */}
         <div 
-          className="absolute inset-2 rounded-xl pointer-events-none"
+          className="absolute inset-2.5 rounded-xl pointer-events-none"
           style={{
-            boxShadow: 'inset 0 0 30px rgba(212,165,116,0.15)',
+            boxShadow: currentTurnColor
+              ? `inset 0 0 40px ${COLORS[currentTurnColor].main}15, inset 0 0 20px rgba(212,165,116,0.1)`
+              : 'inset 0 0 30px rgba(212,165,116,0.15)',
           }}
         />
         
@@ -941,11 +984,17 @@ const LudoBoard = ({ players, onTokenClick, selectedToken, captureEvent, onCaptu
               animate={{
                 left: pos.x - (cellSize * 0.42),
                 top: pos.y - (cellSize * 0.7),
-                scale: isSelected ? 1.3 : canMove ? 1.1 : player.isCurrentTurn ? 1.05 : 1,
+                scale: isSelected ? 1.35 : canMove ? 1.15 : player.isCurrentTurn ? 1.05 : 1,
+                rotate: isSelected ? [0, -3, 3, 0] : 0,
               }}
-              transition={{ type: 'spring', stiffness: 400, damping: 25 }}
-              whileHover={onTokenClick && player.isCurrentTurn ? { scale: 1.15 } : {}}
-              whileTap={onTokenClick && player.isCurrentTurn ? { scale: 0.95 } : {}}
+              transition={{ 
+                type: 'spring', 
+                stiffness: 350, 
+                damping: 22,
+                rotate: isSelected ? { duration: 0.3, repeat: Infinity, repeatType: 'reverse' } : undefined,
+              }}
+              whileHover={onTokenClick && player.isCurrentTurn ? { scale: 1.2, y: -3 } : {}}
+              whileTap={onTokenClick && player.isCurrentTurn ? { scale: 0.92 } : {}}
               onClick={() => onTokenClick?.(player.color, token.id)}
               onMouseEnter={() => {
                 if (canMove) {
@@ -961,6 +1010,23 @@ const LudoBoard = ({ players, onTokenClick, selectedToken, captureEvent, onCaptu
               onTouchEnd={() => setPreviewToken(null)}
               disabled={!player.isCurrentTurn || !onTokenClick}
             >
+              {/* Token shadow for depth */}
+              <motion.div
+                className="absolute rounded-full pointer-events-none"
+                style={{
+                  width: cellSize * 0.5,
+                  height: cellSize * 0.2,
+                  bottom: -cellSize * 0.05,
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  background: 'radial-gradient(ellipse, rgba(0,0,0,0.4) 0%, transparent 70%)',
+                }}
+                animate={{
+                  scale: isSelected ? 1.3 : canMove ? 1.1 : 1,
+                  opacity: isSelected ? 0.6 : 0.4,
+                }}
+              />
+              
               <PinToken 
                 color={colorKey} 
                 isActive={player.isCurrentTurn} 
@@ -968,41 +1034,61 @@ const LudoBoard = ({ players, onTokenClick, selectedToken, captureEvent, onCaptu
                 size={cellSize * 0.75}
               />
               
-              {/* Movable token indicator - glowing ring */}
+              {/* Movable token indicator - enhanced glowing ring */}
               {canMove && !isSelected && (
-                <motion.div
-                  className="absolute rounded-full pointer-events-none"
-                  style={{
-                    width: cellSize * 0.8,
-                    height: cellSize * 0.8,
-                    top: cellSize * 0.15,
-                    left: '50%',
-                    transform: 'translateX(-50%)',
-                    border: `3px solid ${COLORS[colorKey].main}`,
-                    boxShadow: `0 0 12px ${COLORS[colorKey].main}, 0 0 20px ${COLORS[colorKey].light}80`,
-                  }}
-                  animate={{ 
-                    scale: [1, 1.15, 1],
-                    opacity: [0.9, 0.5, 0.9],
-                  }}
-                  transition={{ duration: 1.2, repeat: Infinity, ease: 'easeInOut' }}
-                />
+                <>
+                  <motion.div
+                    className="absolute rounded-full pointer-events-none"
+                    style={{
+                      width: cellSize * 0.85,
+                      height: cellSize * 0.85,
+                      top: cellSize * 0.12,
+                      left: '50%',
+                      transform: 'translateX(-50%)',
+                      border: `3px solid ${COLORS[colorKey].main}`,
+                      boxShadow: `0 0 15px ${COLORS[colorKey].main}, 0 0 30px ${COLORS[colorKey].light}60`,
+                    }}
+                    animate={{ 
+                      scale: [1, 1.2, 1],
+                      opacity: [0.8, 0.4, 0.8],
+                    }}
+                    transition={{ duration: 1, repeat: Infinity, ease: 'easeInOut' }}
+                  />
+                  {/* Outer pulse ring */}
+                  <motion.div
+                    className="absolute rounded-full pointer-events-none"
+                    style={{
+                      width: cellSize * 0.9,
+                      height: cellSize * 0.9,
+                      top: cellSize * 0.1,
+                      left: '50%',
+                      transform: 'translateX(-50%)',
+                      border: `2px solid ${COLORS[colorKey].light}`,
+                    }}
+                    animate={{ 
+                      scale: [1, 1.5, 1],
+                      opacity: [0.5, 0, 0.5],
+                    }}
+                    transition={{ duration: 1.5, repeat: Infinity, ease: 'easeOut' }}
+                  />
+                </>
               )}
               
-              {/* "TAP" hint badge for movable tokens */}
+              {/* Premium "TAP" hint badge for movable tokens */}
               {canMove && !isSelected && !isHoveredToken && (
                 <motion.div
-                  className="absolute px-1.5 py-0.5 rounded-full text-white font-bold shadow-lg pointer-events-none"
+                  className="absolute px-2 py-0.5 rounded-full text-white font-black shadow-lg pointer-events-none"
                   style={{
-                    fontSize: cellSize * 0.18,
-                    background: `linear-gradient(135deg, ${COLORS[colorKey].main} 0%, ${COLORS[colorKey].dark} 100%)`,
-                    border: '1px solid white',
-                    top: cellSize * -0.05,
-                    right: cellSize * -0.15,
+                    fontSize: cellSize * 0.16,
+                    background: `linear-gradient(135deg, ${COLORS[colorKey].light} 0%, ${COLORS[colorKey].main} 50%, ${COLORS[colorKey].dark} 100%)`,
+                    border: '1.5px solid white',
+                    top: cellSize * -0.1,
+                    right: cellSize * -0.2,
+                    boxShadow: `0 2px 8px ${COLORS[colorKey].main}80`,
                   }}
-                  initial={{ scale: 0 }}
-                  animate={{ scale: [1, 1.1, 1] }}
-                  transition={{ duration: 0.8, repeat: Infinity }}
+                  initial={{ scale: 0, rotate: -15 }}
+                  animate={{ scale: [1, 1.1, 1], rotate: 0 }}
+                  transition={{ duration: 0.8, repeat: Infinity, repeatType: 'reverse' }}
                 >
                   TAP
                 </motion.div>
@@ -1044,63 +1130,108 @@ const LudoBoard = ({ players, onTokenClick, selectedToken, captureEvent, onCaptu
         {currentTurnPlayer && (
           <motion.div
             key={currentTurnPlayer.color}
-            initial={{ opacity: 0, y: 20, scale: 0.9 }}
+            initial={{ opacity: 0, y: 25, scale: 0.85 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -10, scale: 0.9 }}
-            className="mt-4 mx-auto flex items-center justify-center gap-3 px-5 py-2.5 rounded-xl"
-            style={{ 
-              background: `linear-gradient(135deg, ${COLORS[currentTurnPlayer.color as keyof typeof COLORS].main}20 0%, ${COLORS[currentTurnPlayer.color as keyof typeof COLORS].dark}10 100%)`,
-              border: `2px solid ${COLORS[currentTurnPlayer.color as keyof typeof COLORS].main}50`,
-              boxShadow: `0 4px 20px ${COLORS[currentTurnPlayer.color as keyof typeof COLORS].main}30, inset 0 1px 0 rgba(255,255,255,0.1)`,
-              maxWidth: 'fit-content',
-            }}
+            exit={{ opacity: 0, y: -15, scale: 0.9 }}
+            transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+            className="mt-4 mx-auto relative overflow-hidden"
+            style={{ maxWidth: 'fit-content' }}
           >
-            {/* Animated sparkle */}
+            {/* Glowing background */}
             <motion.div
-              animate={{ rotate: 360 }}
-              transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
+              className="absolute inset-0 rounded-xl"
+              style={{ 
+                background: `linear-gradient(135deg, ${COLORS[currentTurnPlayer.color as keyof typeof COLORS].main}30 0%, ${COLORS[currentTurnPlayer.color as keyof typeof COLORS].dark}15 100%)`,
+              }}
+              animate={{
+                boxShadow: [
+                  `0 0 20px ${COLORS[currentTurnPlayer.color as keyof typeof COLORS].main}20`,
+                  `0 0 35px ${COLORS[currentTurnPlayer.color as keyof typeof COLORS].main}40`,
+                  `0 0 20px ${COLORS[currentTurnPlayer.color as keyof typeof COLORS].main}20`,
+                ],
+              }}
+              transition={{ duration: 2, repeat: Infinity }}
+            />
+            
+            {/* Shimmer effect */}
+            <motion.div
+              className="absolute inset-0 -translate-x-full"
+              animate={{ translateX: ['100%', '-100%'] }}
+              transition={{ duration: 3, repeat: Infinity, ease: 'linear', repeatDelay: 1 }}
             >
-              <Sparkles className="w-4 h-4" style={{ color: COLORS[currentTurnPlayer.color as keyof typeof COLORS].main }} />
+              <div className="h-full w-1/2 bg-gradient-to-r from-transparent via-white/10 to-transparent skew-x-12" />
             </motion.div>
             
-            {/* Mini token indicator */}
-            <div className="relative">
-              <PinToken 
-                color={currentTurnPlayer.color as keyof typeof COLORS} 
-                isActive 
-                isSelected={false}
-                size={18}
-              />
-            </div>
-            
-            {/* Player info */}
-            <div className="flex items-center gap-2">
-              <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-background/50">
+            <div 
+              className="relative flex items-center justify-center gap-3 px-5 py-2.5 rounded-xl"
+              style={{ 
+                border: `2px solid ${COLORS[currentTurnPlayer.color as keyof typeof COLORS].main}50`,
+              }}
+            >
+              {/* Animated icon */}
+              <motion.div
+                animate={{ rotate: 360, scale: [1, 1.1, 1] }}
+                transition={{ 
+                  rotate: { duration: 4, repeat: Infinity, ease: 'linear' },
+                  scale: { duration: 1.5, repeat: Infinity }
+                }}
+              >
                 {currentTurnPlayer.isBot ? (
-                  <Bot className="w-3.5 h-3.5 text-muted-foreground" />
+                  <Zap className="w-4 h-4" style={{ color: COLORS[currentTurnPlayer.color as keyof typeof COLORS].main }} />
                 ) : (
-                  <User className="w-3.5 h-3.5 text-muted-foreground" />
+                  <Sparkles className="w-4 h-4" style={{ color: COLORS[currentTurnPlayer.color as keyof typeof COLORS].main }} />
                 )}
-                <span className="font-bold text-sm" style={{ color: COLORS[currentTurnPlayer.color as keyof typeof COLORS].main }}>
-                  {currentTurnPlayer.name || (currentTurnPlayer.isBot ? 'Computer' : 'Your Turn')}
-                </span>
-              </div>
-            </div>
-            
-            {/* Animated turn indicator */}
-            <div className="flex gap-1">
-              {[0, 1, 2].map((i) => (
+              </motion.div>
+              
+              {/* Mini token indicator with glow */}
+              <div className="relative">
                 <motion.div
-                  key={i}
-                  className="w-1.5 h-1.5 rounded-full"
-                  style={{ backgroundColor: COLORS[currentTurnPlayer.color as keyof typeof COLORS].main }}
-                  animate={{ 
-                    scale: [1, 1.3, 1],
-                    opacity: [0.4, 1, 0.4] 
-                  }}
-                  transition={{ duration: 1.2, repeat: Infinity, delay: i * 0.15 }}
+                  className="absolute -inset-1 rounded-full"
+                  style={{ background: `radial-gradient(circle, ${COLORS[currentTurnPlayer.color as keyof typeof COLORS].main}40 0%, transparent 70%)` }}
+                  animate={{ scale: [1, 1.3, 1], opacity: [0.5, 0.8, 0.5] }}
+                  transition={{ duration: 1.5, repeat: Infinity }}
                 />
-              ))}
+                <PinToken 
+                  color={currentTurnPlayer.color as keyof typeof COLORS} 
+                  isActive 
+                  isSelected={false}
+                  size={20}
+                />
+              </div>
+              
+              {/* Player info - enhanced */}
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-background/60 backdrop-blur-sm border border-white/10">
+                  {currentTurnPlayer.isBot ? (
+                    <Bot className="w-3.5 h-3.5" style={{ color: COLORS[currentTurnPlayer.color as keyof typeof COLORS].main }} />
+                  ) : (
+                    <Crown className="w-3.5 h-3.5" style={{ color: COLORS[currentTurnPlayer.color as keyof typeof COLORS].main }} />
+                  )}
+                  <span className="font-bold text-sm" style={{ color: COLORS[currentTurnPlayer.color as keyof typeof COLORS].main }}>
+                    {currentTurnPlayer.name || (currentTurnPlayer.isBot ? 'Computer' : 'Your Turn')}
+                  </span>
+                </div>
+              </div>
+              
+              {/* Animated dots indicator */}
+              <div className="flex gap-1.5">
+                {[0, 1, 2].map((i) => (
+                  <motion.div
+                    key={i}
+                    className="w-2 h-2 rounded-full"
+                    style={{ 
+                      backgroundColor: COLORS[currentTurnPlayer.color as keyof typeof COLORS].main,
+                      boxShadow: `0 0 6px ${COLORS[currentTurnPlayer.color as keyof typeof COLORS].main}`,
+                    }}
+                    animate={{ 
+                      scale: [1, 1.4, 1],
+                      opacity: [0.4, 1, 0.4],
+                      y: [0, -3, 0],
+                    }}
+                    transition={{ duration: 1, repeat: Infinity, delay: i * 0.15 }}
+                  />
+                ))}
+              </div>
             </div>
           </motion.div>
         )}
