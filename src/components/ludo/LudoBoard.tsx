@@ -569,7 +569,7 @@ const LudoBoard = ({ players, onTokenClick, selectedToken, captureEvent, onCaptu
             {/* Center star */}
             <circle cx="7.5" cy="7.5" r="0.3" fill="#FFD700" stroke="#FFA500" strokeWidth="0.05" />
 
-            {/* Safe spot stars - Enhanced */}
+            {/* Safe spot stars - Ludo King style (white fill, dark outline) */}
             {[
               { x: 2.5, y: 6.5 },
               { x: 6.5, y: 2.5 },
@@ -581,11 +581,13 @@ const LudoBoard = ({ players, onTokenClick, selectedToken, captureEvent, onCaptu
               { x: 12.5, y: 6.5 },
             ].map(({ x, y }, i) => (
               <g key={`star-${i}`} transform={`translate(${x}, ${y})`}>
+                {/* 5-pointed star - white fill with dark gray stroke */}
                 <polygon
-                  points="0,-0.32 0.09,-0.11 0.32,0 0.09,0.11 0,0.32 -0.09,0.11 -0.32,0 -0.09,-0.11"
-                  fill="#1a1a1a"
-                  stroke="#000000"
-                  strokeWidth="0.03"
+                  points="0,-0.38 0.09,-0.12 0.36,-0.12 0.14,0.05 0.22,0.31 0,0.15 -0.22,0.31 -0.14,0.05 -0.36,-0.12 -0.09,-0.12"
+                  fill="#FFFFFF"
+                  stroke="#4a4a4a"
+                  strokeWidth="0.05"
+                  strokeLinejoin="round"
                 />
               </g>
             ))}
