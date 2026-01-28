@@ -200,7 +200,7 @@ const HOME_PATHS: { [color: string]: { x: number; y: number }[] } = {
   ],
 };
 
-// Teardrop/Pin Token SVG Component
+// Premium 3D Teardrop/Pin Token SVG Component
 const PinToken = ({ 
   color, 
   isActive, 
@@ -216,21 +216,57 @@ const PinToken = ({
   const id = `pin-${color}-${Math.random().toString(36).substr(2, 9)}`;
   
   return (
-    <svg width={size} height={size * 1.4} viewBox="0 0 24 34" className="drop-shadow-lg">
+    <svg width={size} height={size * 1.4} viewBox="0 0 24 34" className="drop-shadow-xl">
       <defs>
+        {/* Premium 3D gradient with more depth */}
         <linearGradient id={`${id}-grad`} x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor={colors.light} />
-          <stop offset="50%" stopColor={colors.main} />
+          <stop offset="0%" stopColor={colors.light}>
+            <animate attributeName="stop-color" values={`${colors.light};${colors.main};${colors.light}`} dur="3s" repeatCount="indefinite"/>
+          </stop>
+          <stop offset="40%" stopColor={colors.main} />
           <stop offset="100%" stopColor={colors.dark} />
         </linearGradient>
+        
+        {/* Metallic edge highlight */}
+        <linearGradient id={`${id}-edge`} x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stopColor="rgba(255,255,255,0.5)" />
+          <stop offset="50%" stopColor="rgba(255,255,255,0)" />
+          <stop offset="100%" stopColor="rgba(0,0,0,0.2)" />
+        </linearGradient>
+        
+        {/* Inner gem gradient */}
+        <radialGradient id={`${id}-gem`} cx="40%" cy="40%" r="60%">
+          <stop offset="0%" stopColor={colors.light} />
+          <stop offset="60%" stopColor={colors.main} />
+          <stop offset="100%" stopColor={colors.dark} />
+        </radialGradient>
+        
+        {/* Premium shadow filter */}
         <filter id={`${id}-shadow`} x="-50%" y="-50%" width="200%" height="200%">
-          <feDropShadow dx="0" dy="2" stdDeviation="2" floodColor="#000" floodOpacity="0.4"/>
+          <feDropShadow dx="0" dy="3" stdDeviation="2.5" floodColor="#000" floodOpacity="0.5"/>
         </filter>
-        {isActive && (
-          <filter id={`${id}-glow`} x="-100%" y="-100%" width="300%" height="300%">
-            <feGaussianBlur stdDeviation="3" result="blur"/>
+        
+        {/* Active glow filter with color */}
+        <filter id={`${id}-glow`} x="-100%" y="-100%" width="300%" height="300%">
+          <feGaussianBlur in="SourceGraphic" stdDeviation="2" result="blur"/>
+          <feFlood floodColor={colors.main} floodOpacity="0.6" result="color"/>
+          <feComposite in="color" in2="blur" operator="in" result="coloredBlur"/>
+          <feMerge>
+            <feMergeNode in="coloredBlur"/>
+            <feMergeNode in="coloredBlur"/>
+            <feMergeNode in="SourceGraphic"/>
+          </feMerge>
+        </filter>
+        
+        {/* Selected ring glow */}
+        {isSelected && (
+          <filter id={`${id}-selected`} x="-100%" y="-100%" width="300%" height="300%">
+            <feGaussianBlur in="SourceGraphic" stdDeviation="3" result="blur"/>
+            <feFlood floodColor="#fff" floodOpacity="0.8" result="color"/>
+            <feComposite in="color" in2="blur" operator="in" result="coloredBlur"/>
             <feMerge>
-              <feMergeNode in="blur"/>
+              <feMergeNode in="coloredBlur"/>
+              <feMergeNode in="coloredBlur"/>
               <feMergeNode in="SourceGraphic"/>
             </feMerge>
           </filter>
@@ -238,41 +274,69 @@ const PinToken = ({
       </defs>
       
       {/* Pin/Teardrop shape */}
-      <g filter={isActive ? `url(#${id}-glow)` : `url(#${id}-shadow)`}>
-        {/* Main pin body */}
+      <g filter={isSelected ? `url(#${id}-selected)` : isActive ? `url(#${id}-glow)` : `url(#${id}-shadow)`}>
+        {/* Main pin body - premium teardrop shape */}
         <path
-          d="M12 2 C6 2 2 7 2 12 C2 18 12 32 12 32 C12 32 22 18 22 12 C22 7 18 2 12 2 Z"
+          d="M12 1.5 C5.5 1.5 1.5 7 1.5 12.5 C1.5 19 12 33 12 33 C12 33 22.5 19 22.5 12.5 C22.5 7 18.5 1.5 12 1.5 Z"
           fill={`url(#${id}-grad)`}
           stroke={isSelected ? '#fff' : colors.dark}
-          strokeWidth={isSelected ? 2 : 1}
+          strokeWidth={isSelected ? 2.5 : 1.2}
         />
         
-        {/* Inner circle (white) */}
+        {/* 3D highlight overlay */}
+        <path
+          d="M12 1.5 C5.5 1.5 1.5 7 1.5 12.5 C1.5 19 12 33 12 33 C12 33 22.5 19 22.5 12.5 C22.5 7 18.5 1.5 12 1.5 Z"
+          fill={`url(#${id}-edge)`}
+          opacity="0.5"
+        />
+        
+        {/* Inner white ring - premium border */}
         <circle
           cx="12"
           cy="12"
-          r="7"
+          r="7.5"
           fill="#fff"
           stroke={colors.main}
-          strokeWidth="0.5"
+          strokeWidth="1"
         />
         
-        {/* Inner color circle */}
+        {/* Premium inner gem with radial gradient */}
         <circle
           cx="12"
           cy="12"
-          r="5"
-          fill={colors.main}
+          r="5.5"
+          fill={`url(#${id}-gem)`}
+          stroke={colors.dark}
+          strokeWidth="0.3"
         />
         
-        {/* Shine effect */}
+        {/* Multiple shine highlights for 3D depth */}
         <ellipse
           cx="9"
           cy="9"
-          rx="2.5"
-          ry="2"
-          fill="rgba(255,255,255,0.6)"
+          rx="2.8"
+          ry="2.2"
+          fill="rgba(255,255,255,0.7)"
         />
+        <ellipse
+          cx="10"
+          cy="10"
+          rx="1.2"
+          ry="0.8"
+          fill="rgba(255,255,255,0.9)"
+        />
+        
+        {/* Bottom reflection */}
+        <ellipse
+          cx="14"
+          cy="14"
+          rx="1.5"
+          ry="1"
+          fill="rgba(255,255,255,0.25)"
+        />
+        
+        {/* Tiny sparkle for premium look */}
+        <circle cx="8" cy="8" r="0.5" fill="#fff" opacity="0.9" />
       </g>
     </svg>
   );
@@ -607,6 +671,53 @@ const LudoBoard = ({ players, onTokenClick, selectedToken, captureEvent, onCaptu
               <pattern id="boardPattern" patternUnits="userSpaceOnUse" width="1" height="1">
                 <rect width="1" height="1" fill="rgba(0,0,0,0.02)" />
               </pattern>
+              
+              {/* Premium home base gradients */}
+              <linearGradient id="redHomeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor={COLORS.red.light} />
+                <stop offset="50%" stopColor={COLORS.red.main} />
+                <stop offset="100%" stopColor={COLORS.red.dark} />
+              </linearGradient>
+              <linearGradient id="greenHomeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor={COLORS.green.light} />
+                <stop offset="50%" stopColor={COLORS.green.main} />
+                <stop offset="100%" stopColor={COLORS.green.dark} />
+              </linearGradient>
+              <linearGradient id="yellowHomeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor={COLORS.yellow.light} />
+                <stop offset="50%" stopColor={COLORS.yellow.main} />
+                <stop offset="100%" stopColor={COLORS.yellow.dark} />
+              </linearGradient>
+              <linearGradient id="blueHomeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor={COLORS.blue.light} />
+                <stop offset="50%" stopColor={COLORS.blue.main} />
+                <stop offset="100%" stopColor={COLORS.blue.dark} />
+              </linearGradient>
+              
+              {/* Token slot gradients for 3D depth */}
+              <radialGradient id="tokenSlotRed" cx="30%" cy="30%">
+                <stop offset="0%" stopColor={COLORS.red.light} stopOpacity="0.3" />
+                <stop offset="100%" stopColor={COLORS.red.main} stopOpacity="0.15" />
+              </radialGradient>
+              <radialGradient id="tokenSlotGreen" cx="30%" cy="30%">
+                <stop offset="0%" stopColor={COLORS.green.light} stopOpacity="0.3" />
+                <stop offset="100%" stopColor={COLORS.green.main} stopOpacity="0.15" />
+              </radialGradient>
+              <radialGradient id="tokenSlotYellow" cx="30%" cy="30%">
+                <stop offset="0%" stopColor={COLORS.yellow.light} stopOpacity="0.3" />
+                <stop offset="100%" stopColor={COLORS.yellow.main} stopOpacity="0.15" />
+              </radialGradient>
+              <radialGradient id="tokenSlotBlue" cx="30%" cy="30%">
+                <stop offset="0%" stopColor={COLORS.blue.light} stopOpacity="0.3" />
+                <stop offset="100%" stopColor={COLORS.blue.main} stopOpacity="0.15" />
+              </radialGradient>
+              
+              {/* Inner shadow filter for token slots */}
+              <filter id="innerShadow" x="-50%" y="-50%" width="200%" height="200%">
+                <feGaussianBlur in="SourceAlpha" stdDeviation="0.05" result="blur"/>
+                <feOffset in="blur" dx="0.02" dy="0.02" result="offsetBlur"/>
+                <feComposite in="SourceGraphic" in2="offsetBlur" operator="over"/>
+              </filter>
             </defs>
 
             {/* Board background with subtle texture */}
@@ -616,42 +727,42 @@ const LudoBoard = ({ players, onTokenClick, selectedToken, captureEvent, onCaptu
             {/* Board border - premium wood frame look */}
             <rect x="0" y="0" width="15" height="15" fill="none" stroke="url(#woodFrame)" strokeWidth="0.15" />
 
-        {/* RED Home Base (top-left) */}
-        <rect x="0" y="0" width="6" height="6" fill={COLORS.red.main} />
-        <rect x="0.4" y="0.4" width="5.2" height="5.2" fill={COLORS.red.main} stroke={COLORS.red.dark} strokeWidth="0.08" />
-        <rect x="0.8" y="0.8" width="4.4" height="4.4" fill="#fff" rx="0.2" />
-        {/* Token spots */}
-        <circle cx="1.8" cy="1.8" r="0.6" fill={COLORS.red.bg} stroke={COLORS.red.main} strokeWidth="0.08" />
-        <circle cx="4.2" cy="1.8" r="0.6" fill={COLORS.red.bg} stroke={COLORS.red.main} strokeWidth="0.08" />
-        <circle cx="1.8" cy="4.2" r="0.6" fill={COLORS.red.bg} stroke={COLORS.red.main} strokeWidth="0.08" />
-        <circle cx="4.2" cy="4.2" r="0.6" fill={COLORS.red.bg} stroke={COLORS.red.main} strokeWidth="0.08" />
+            {/* RED Home Base (top-left) - Premium Design */}
+            <rect x="0" y="0" width="6" height="6" fill="url(#redHomeGrad)" />
+            <rect x="0.3" y="0.3" width="5.4" height="5.4" fill={COLORS.red.main} stroke={COLORS.red.dark} strokeWidth="0.1" rx="0.15" />
+            <rect x="0.7" y="0.7" width="4.6" height="4.6" fill="#fff" stroke="rgba(0,0,0,0.1)" strokeWidth="0.05" rx="0.2" />
+            {/* Premium token slots with inner shadow */}
+            <circle cx="1.8" cy="1.8" r="0.65" fill="url(#tokenSlotRed)" stroke={COLORS.red.main} strokeWidth="0.1" filter="url(#innerShadow)" />
+            <circle cx="4.2" cy="1.8" r="0.65" fill="url(#tokenSlotRed)" stroke={COLORS.red.main} strokeWidth="0.1" filter="url(#innerShadow)" />
+            <circle cx="1.8" cy="4.2" r="0.65" fill="url(#tokenSlotRed)" stroke={COLORS.red.main} strokeWidth="0.1" filter="url(#innerShadow)" />
+            <circle cx="4.2" cy="4.2" r="0.65" fill="url(#tokenSlotRed)" stroke={COLORS.red.main} strokeWidth="0.1" filter="url(#innerShadow)" />
 
-        {/* GREEN Home Base (top-right) */}
-        <rect x="9" y="0" width="6" height="6" fill={COLORS.green.main} />
-        <rect x="9.4" y="0.4" width="5.2" height="5.2" fill={COLORS.green.main} stroke={COLORS.green.dark} strokeWidth="0.08" />
-        <rect x="9.8" y="0.8" width="4.4" height="4.4" fill="#fff" rx="0.2" />
-        <circle cx="10.8" cy="1.8" r="0.6" fill={COLORS.green.bg} stroke={COLORS.green.main} strokeWidth="0.08" />
-        <circle cx="13.2" cy="1.8" r="0.6" fill={COLORS.green.bg} stroke={COLORS.green.main} strokeWidth="0.08" />
-        <circle cx="10.8" cy="4.2" r="0.6" fill={COLORS.green.bg} stroke={COLORS.green.main} strokeWidth="0.08" />
-        <circle cx="13.2" cy="4.2" r="0.6" fill={COLORS.green.bg} stroke={COLORS.green.main} strokeWidth="0.08" />
+            {/* GREEN Home Base (top-right) - Premium Design */}
+            <rect x="9" y="0" width="6" height="6" fill="url(#greenHomeGrad)" />
+            <rect x="9.3" y="0.3" width="5.4" height="5.4" fill={COLORS.green.main} stroke={COLORS.green.dark} strokeWidth="0.1" rx="0.15" />
+            <rect x="9.7" y="0.7" width="4.6" height="4.6" fill="#fff" stroke="rgba(0,0,0,0.1)" strokeWidth="0.05" rx="0.2" />
+            <circle cx="10.8" cy="1.8" r="0.65" fill="url(#tokenSlotGreen)" stroke={COLORS.green.main} strokeWidth="0.1" filter="url(#innerShadow)" />
+            <circle cx="13.2" cy="1.8" r="0.65" fill="url(#tokenSlotGreen)" stroke={COLORS.green.main} strokeWidth="0.1" filter="url(#innerShadow)" />
+            <circle cx="10.8" cy="4.2" r="0.65" fill="url(#tokenSlotGreen)" stroke={COLORS.green.main} strokeWidth="0.1" filter="url(#innerShadow)" />
+            <circle cx="13.2" cy="4.2" r="0.65" fill="url(#tokenSlotGreen)" stroke={COLORS.green.main} strokeWidth="0.1" filter="url(#innerShadow)" />
 
-        {/* YELLOW Home Base (bottom-right) */}
-        <rect x="9" y="9" width="6" height="6" fill={COLORS.yellow.main} />
-        <rect x="9.4" y="9.4" width="5.2" height="5.2" fill={COLORS.yellow.main} stroke={COLORS.yellow.dark} strokeWidth="0.08" />
-        <rect x="9.8" y="9.8" width="4.4" height="4.4" fill="#fff" rx="0.2" />
-        <circle cx="10.8" cy="10.8" r="0.6" fill={COLORS.yellow.bg} stroke={COLORS.yellow.main} strokeWidth="0.08" />
-        <circle cx="13.2" cy="10.8" r="0.6" fill={COLORS.yellow.bg} stroke={COLORS.yellow.main} strokeWidth="0.08" />
-        <circle cx="10.8" cy="13.2" r="0.6" fill={COLORS.yellow.bg} stroke={COLORS.yellow.main} strokeWidth="0.08" />
-        <circle cx="13.2" cy="13.2" r="0.6" fill={COLORS.yellow.bg} stroke={COLORS.yellow.main} strokeWidth="0.08" />
+            {/* YELLOW Home Base (bottom-right) - Premium Design */}
+            <rect x="9" y="9" width="6" height="6" fill="url(#yellowHomeGrad)" />
+            <rect x="9.3" y="9.3" width="5.4" height="5.4" fill={COLORS.yellow.main} stroke={COLORS.yellow.dark} strokeWidth="0.1" rx="0.15" />
+            <rect x="9.7" y="9.7" width="4.6" height="4.6" fill="#fff" stroke="rgba(0,0,0,0.1)" strokeWidth="0.05" rx="0.2" />
+            <circle cx="10.8" cy="10.8" r="0.65" fill="url(#tokenSlotYellow)" stroke={COLORS.yellow.main} strokeWidth="0.1" filter="url(#innerShadow)" />
+            <circle cx="13.2" cy="10.8" r="0.65" fill="url(#tokenSlotYellow)" stroke={COLORS.yellow.main} strokeWidth="0.1" filter="url(#innerShadow)" />
+            <circle cx="10.8" cy="13.2" r="0.65" fill="url(#tokenSlotYellow)" stroke={COLORS.yellow.main} strokeWidth="0.1" filter="url(#innerShadow)" />
+            <circle cx="13.2" cy="13.2" r="0.65" fill="url(#tokenSlotYellow)" stroke={COLORS.yellow.main} strokeWidth="0.1" filter="url(#innerShadow)" />
 
-        {/* BLUE Home Base (bottom-left) */}
-        <rect x="0" y="9" width="6" height="6" fill={COLORS.blue.main} />
-        <rect x="0.4" y="9.4" width="5.2" height="5.2" fill={COLORS.blue.main} stroke={COLORS.blue.dark} strokeWidth="0.08" />
-        <rect x="0.8" y="9.8" width="4.4" height="4.4" fill="#fff" rx="0.2" />
-        <circle cx="1.8" cy="10.8" r="0.6" fill={COLORS.blue.bg} stroke={COLORS.blue.main} strokeWidth="0.08" />
-        <circle cx="4.2" cy="10.8" r="0.6" fill={COLORS.blue.bg} stroke={COLORS.blue.main} strokeWidth="0.08" />
-        <circle cx="1.8" cy="13.2" r="0.6" fill={COLORS.blue.bg} stroke={COLORS.blue.main} strokeWidth="0.08" />
-        <circle cx="4.2" cy="13.2" r="0.6" fill={COLORS.blue.bg} stroke={COLORS.blue.main} strokeWidth="0.08" />
+            {/* BLUE Home Base (bottom-left) - Premium Design */}
+            <rect x="0" y="9" width="6" height="6" fill="url(#blueHomeGrad)" />
+            <rect x="0.3" y="9.3" width="5.4" height="5.4" fill={COLORS.blue.main} stroke={COLORS.blue.dark} strokeWidth="0.1" rx="0.15" />
+            <rect x="0.7" y="9.7" width="4.6" height="4.6" fill="#fff" stroke="rgba(0,0,0,0.1)" strokeWidth="0.05" rx="0.2" />
+            <circle cx="1.8" cy="10.8" r="0.65" fill="url(#tokenSlotBlue)" stroke={COLORS.blue.main} strokeWidth="0.1" filter="url(#innerShadow)" />
+            <circle cx="4.2" cy="10.8" r="0.65" fill="url(#tokenSlotBlue)" stroke={COLORS.blue.main} strokeWidth="0.1" filter="url(#innerShadow)" />
+            <circle cx="1.8" cy="13.2" r="0.65" fill="url(#tokenSlotBlue)" stroke={COLORS.blue.main} strokeWidth="0.1" filter="url(#innerShadow)" />
+            <circle cx="4.2" cy="13.2" r="0.65" fill="url(#tokenSlotBlue)" stroke={COLORS.blue.main} strokeWidth="0.1" filter="url(#innerShadow)" />
 
         {/* Track Cells - White cells with grid */}
         <g fill="#fff" stroke="#ccc" strokeWidth="0.02">
@@ -707,47 +818,59 @@ const LudoBoard = ({ players, onTokenClick, selectedToken, captureEvent, onCaptu
           <rect key={`hp-right-${i}`} x={i} y={7} width="1" height="1" fill={COLORS.yellow.main} stroke={COLORS.yellow.dark} strokeWidth="0.04" />
         ))}
 
-        {/* Safe spots / Stars on track */}
-        <g fontSize="0.4" textAnchor="middle" dominantBaseline="central" fill="#999">
-          {/* Arrow indicators for entry points */}
-          <text x="6.5" y="12.5">↓</text>
-          <text x="2.5" y="6.5">→</text>
-          <text x="8.5" y="2.5">↑</text>
-          <text x="12.5" y="8.5">←</text>
+        {/* Safe spots / Entry indicators - Premium arrows */}
+        <g fontSize="0.35" textAnchor="middle" dominantBaseline="central" fontWeight="bold">
+          {/* Arrow indicators for entry points with color coding */}
+          <text x="6.5" y="12.5" fill={COLORS.blue.dark}>↓</text>
+          <text x="2.5" y="6.5" fill={COLORS.red.dark}>→</text>
+          <text x="8.5" y="2.5" fill={COLORS.green.dark}>↑</text>
+          <text x="12.5" y="8.5" fill={COLORS.yellow.dark}>←</text>
         </g>
 
-        {/* Starting stars (colored) - aligned with corner homes */}
-        <g fontSize="0.5" textAnchor="middle" dominantBaseline="central">
-          {/* bottom start */}
-          <text x="6.5" y="13.5" fill={COLORS.blue.main}>★</text>
-          {/* left start */}
-          <text x="1.5" y="6.5" fill={COLORS.red.main}>★</text>
-          {/* top start */}
-          <text x="8.5" y="1.5" fill={COLORS.green.main}>★</text>
-          {/* right start */}
-          <text x="13.5" y="8.5" fill={COLORS.yellow.main}>★</text>
+        {/* Starting stars (colored) - Premium SVG stars */}
+        {/* Blue start star */}
+        <g transform="translate(6.5, 13.5)">
+          <polygon points="0,-0.35 0.1,-0.1 0.35,-0.1 0.15,0.05 0.22,0.3 0,0.15 -0.22,0.3 -0.15,0.05 -0.35,-0.1 -0.1,-0.1" 
+            fill={COLORS.blue.light} stroke={COLORS.blue.dark} strokeWidth="0.03" />
+        </g>
+        {/* Red start star */}
+        <g transform="translate(1.5, 6.5)">
+          <polygon points="0,-0.35 0.1,-0.1 0.35,-0.1 0.15,0.05 0.22,0.3 0,0.15 -0.22,0.3 -0.15,0.05 -0.35,-0.1 -0.1,-0.1" 
+            fill={COLORS.red.light} stroke={COLORS.red.dark} strokeWidth="0.03" />
+        </g>
+        {/* Green start star */}
+        <g transform="translate(8.5, 1.5)">
+          <polygon points="0,-0.35 0.1,-0.1 0.35,-0.1 0.15,0.05 0.22,0.3 0,0.15 -0.22,0.3 -0.15,0.05 -0.35,-0.1 -0.1,-0.1" 
+            fill={COLORS.green.light} stroke={COLORS.green.dark} strokeWidth="0.03" />
+        </g>
+        {/* Yellow start star */}
+        <g transform="translate(13.5, 8.5)">
+          <polygon points="0,-0.35 0.1,-0.1 0.35,-0.1 0.15,0.05 0.22,0.3 0,0.15 -0.22,0.3 -0.15,0.05 -0.35,-0.1 -0.1,-0.1" 
+            fill={COLORS.yellow.light} stroke={COLORS.yellow.dark} strokeWidth="0.03" />
         </g>
 
-        {/* Safe spots (gray stars) */}
-        <g fontSize="0.4" textAnchor="middle" dominantBaseline="central" fill="#aaa">
-          <text x="2.5" y="7.5">★</text>
-          <text x="7.5" y="2.5">★</text>
-          <text x="12.5" y="7.5">★</text>
-          <text x="7.5" y="12.5">★</text>
-        </g>
+        {/* Safe spots - Premium silver stars with glow */}
+        {[{ x: 2.5, y: 7.5 }, { x: 7.5, y: 2.5 }, { x: 12.5, y: 7.5 }, { x: 7.5, y: 12.5 }].map((pos, i) => (
+          <g key={`safe-${i}`} transform={`translate(${pos.x}, ${pos.y})`}>
+            <polygon points="0,-0.3 0.08,-0.08 0.3,-0.08 0.12,0.04 0.18,0.26 0,0.12 -0.18,0.26 -0.12,0.04 -0.3,-0.08 -0.08,-0.08" 
+              fill="#e8e8e8" stroke="#999" strokeWidth="0.025" />
+          </g>
+        ))}
 
-        {/* Center Home Triangle (aligned with lanes) */}
-        {/* left */}
-        <polygon points="6,6 7.5,7.5 6,9" fill={COLORS.red.main} stroke="#fff" strokeWidth="0.04" />
-        {/* top */}
-        <polygon points="6,6 7.5,7.5 9,6" fill={COLORS.green.main} stroke="#fff" strokeWidth="0.04" />
-        {/* right */}
-        <polygon points="9,6 7.5,7.5 9,9" fill={COLORS.yellow.main} stroke="#fff" strokeWidth="0.04" />
-        {/* bottom */}
-        <polygon points="6,9 7.5,7.5 9,9" fill={COLORS.blue.main} stroke="#fff" strokeWidth="0.04" />
+        {/* Center Home Triangle (aligned with lanes) - Premium with gradients */}
+        {/* left - red */}
+        <polygon points="6,6 7.5,7.5 6,9" fill="url(#redHomeGrad)" stroke="#fff" strokeWidth="0.06" />
+        {/* top - green */}
+        <polygon points="6,6 7.5,7.5 9,6" fill="url(#greenHomeGrad)" stroke="#fff" strokeWidth="0.06" />
+        {/* right - yellow */}
+        <polygon points="9,6 7.5,7.5 9,9" fill="url(#yellowHomeGrad)" stroke="#fff" strokeWidth="0.06" />
+        {/* bottom - blue */}
+        <polygon points="6,9 7.5,7.5 9,9" fill="url(#blueHomeGrad)" stroke="#fff" strokeWidth="0.06" />
 
-        {/* Center circle */}
-        <circle cx="7.5" cy="7.5" r="0.4" fill="#fff" stroke="#d4a574" strokeWidth="0.06" />
+        {/* Center circle - Premium gold finish */}
+        <circle cx="7.5" cy="7.5" r="0.5" fill="url(#woodFrame)" stroke="#fff" strokeWidth="0.08" />
+        <circle cx="7.5" cy="7.5" r="0.35" fill="#f5e6d3" stroke="#d4a574" strokeWidth="0.05" />
+        <circle cx="7.5" cy="7.5" r="0.15" fill="#d4a574" />
       </svg>
 
       {/* Path Preview Highlights */}
