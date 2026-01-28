@@ -31,7 +31,7 @@ const FriendMultiplayer = ({
   const [waitingForPlayer, setWaitingForPlayer] = useState(false);
   const [currentRoomId, setCurrentRoomId] = useState<string | null>(null);
 
-  const rewardAmount = Math.floor(entryAmount * 2 * 1.5);
+  const rewardAmount = Math.floor(entryAmount * 2 * 0.9); // 90% of pool (10% platform fee)
 
   const handleCreateRoom = async () => {
     if (walletBalance < entryAmount) {
@@ -175,7 +175,7 @@ const FriendMultiplayer = ({
             </div>
           </div>
           <p className="text-xs text-gray-500 mt-2 text-center">
-            1.5x of total pool (₹{entryAmount} × 2 = ₹{entryAmount * 2})
+            Pool: ₹{entryAmount * 2} (10% platform fee)
           </p>
         </div>
 
