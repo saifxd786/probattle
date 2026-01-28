@@ -292,16 +292,60 @@ const LudoPage = () => {
           />
         </div>
 
-        {/* Compact Dice Area */}
-        <div className="shrink-0 px-3 py-1.5 border-t border-white/10 bg-black/40">
-          <LudoDice
-            value={gameState.diceValue}
-            isRolling={gameState.isRolling}
-            onRoll={rollDice}
-            disabled={!isUserTurn}
-            canRoll={gameState.canRoll && isUserTurn}
-            compact
-          />
+        {/* Bottom Section - Dice Left, Player Profiles Right */}
+        <div className="shrink-0 px-3 py-2 border-t border-white/10 bg-black/40 flex items-center justify-between gap-3">
+          {/* Dice on Left */}
+          <div className="flex-shrink-0">
+            <LudoDice
+              value={gameState.diceValue}
+              isRolling={gameState.isRolling}
+              onRoll={rollDice}
+              disabled={!isUserTurn}
+              canRoll={gameState.canRoll && isUserTurn}
+              compact
+            />
+          </div>
+          
+          {/* Player Profiles on Right */}
+          <div className="flex items-center gap-2">
+            {gameState.players.map((player, idx) => {
+              const colorMap: Record<string, string> = {
+                red: '#E53935',
+                green: '#43A047', 
+                yellow: '#FFD600',
+                blue: '#1E88E5'
+              };
+              const isActive = idx === gameState.currentTurn;
+              return (
+                <div 
+                  key={player.id}
+                  className={`relative flex flex-col items-center p-1.5 rounded-lg transition-all ${
+                    isActive ? 'ring-2 ring-green-400 bg-white/10' : 'bg-black/30'
+                  }`}
+                >
+                  {/* Player Avatar */}
+                  <div 
+                    className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm"
+                    style={{ 
+                      background: `linear-gradient(135deg, ${colorMap[player.color]}dd, ${colorMap[player.color]}88)`,
+                      border: `2px solid ${colorMap[player.color]}`,
+                      boxShadow: isActive ? `0 0 10px ${colorMap[player.color]}80` : 'none'
+                    }}
+                  >
+                    {player.isBot ? '🤖' : player.name.slice(0, 2).toUpperCase()}
+                  </div>
+                  {/* UID */}
+                  <span className="text-[9px] text-gray-400 mt-0.5 truncate max-w-[50px]">
+                    {player.uid || player.name.slice(0, 5)}
+                  </span>
+                  {/* Active Indicator */}
+                  {isActive && (
+                    <div className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-green-400 animate-pulse" />
+                  )}
+                </div>
+              );
+            })}
+          </div>
         </div>
       </div>
     );
@@ -505,41 +549,6 @@ const LudoPage = () => {
           </div>
         </div>
 
-        {/* Players Status Bar with UID */}
-        <div className="shrink-0 flex justify-around py-1.5 px-2 bg-black/30">
-          {friendGameState.players.map((player, idx) => (
-            <motion.div
-              key={player.id}
-              className={`flex items-center gap-1 px-1.5 py-0.5 rounded transition-all ${
-                idx === friendGameState.currentTurn 
-                  ? 'bg-white/10 ring-1 ring-white/30' 
-                  : 'opacity-60'
-              }`}
-              animate={idx === friendGameState.currentTurn ? { scale: [1, 1.02, 1] } : {}}
-              transition={{ duration: 1, repeat: Infinity }}
-            >
-              <div
-                className={`w-4 h-4 rounded-full bg-gradient-to-br ${colorStyles[player.color]} border border-white/30`}
-              />
-              <div>
-                <p className="text-[8px] text-white font-medium">
-                  #{player.uid || '00000'} {player.id === user?.id && '(You)'}
-                </p>
-                <div className="flex gap-0.5">
-                  {[0, 1, 2, 3].map(i => (
-                    <div
-                      key={i}
-                      className={`w-1 h-1 rounded-full ${
-                        i < player.tokensHome ? 'bg-green-400' : 'bg-gray-600'
-                      }`}
-                    />
-                  ))}
-                </div>
-              </div>
-            </motion.div>
-          ))}
-        </div>
-
         {/* Game Board */}
         <div className="flex-1 flex items-center justify-center p-2 min-h-0 overflow-hidden">
           <LudoBoard
@@ -557,23 +566,61 @@ const LudoPage = () => {
           />
         </div>
 
-        {/* Dice Area */}
-        <div className="shrink-0 px-4 py-3 border-t border-white/10 bg-black/40">
-          <LudoDice
-            value={friendGameState.diceValue}
-            isRolling={friendGameState.isRolling}
-            onRoll={friendRollDice}
-            disabled={!isUserTurn}
-            canRoll={friendGameState.canRoll && isUserTurn}
-            compact
-          />
+        {/* Bottom Section - Dice Left, Player Profiles Right */}
+        <div className="shrink-0 px-3 py-2 border-t border-white/10 bg-black/40 flex items-center justify-between gap-3">
+          {/* Dice on Left */}
+          <div className="flex-shrink-0">
+            <LudoDice
+              value={friendGameState.diceValue}
+              isRolling={friendGameState.isRolling}
+              onRoll={friendRollDice}
+              disabled={!isUserTurn}
+              canRoll={friendGameState.canRoll && isUserTurn}
+              compact
+            />
+          </div>
           
-          <AnimatedStatus 
-            isUserTurn={isUserTurn} 
-            canRoll={friendGameState.canRoll} 
-            isRolling={friendGameState.isRolling} 
-            playerName={currentPlayer?.name || ''} 
-          />
+          {/* Player Profiles on Right */}
+          <div className="flex items-center gap-2">
+            {friendGameState.players.map((player, idx) => {
+              const colorMap: Record<string, string> = {
+                red: '#E53935',
+                green: '#43A047', 
+                yellow: '#FFD600',
+                blue: '#1E88E5'
+              };
+              const isActive = idx === friendGameState.currentTurn;
+              const isCurrentUser = player.id === user?.id;
+              return (
+                <div 
+                  key={player.id}
+                  className={`relative flex flex-col items-center p-1.5 rounded-lg transition-all ${
+                    isActive ? 'ring-2 ring-green-400 bg-white/10' : 'bg-black/30'
+                  }`}
+                >
+                  {/* Player Avatar */}
+                  <div 
+                    className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm"
+                    style={{ 
+                      background: `linear-gradient(135deg, ${colorMap[player.color]}dd, ${colorMap[player.color]}88)`,
+                      border: `2px solid ${colorMap[player.color]}`,
+                      boxShadow: isActive ? `0 0 10px ${colorMap[player.color]}80` : 'none'
+                    }}
+                  >
+                    {isCurrentUser ? '👤' : player.name.slice(0, 2).toUpperCase()}
+                  </div>
+                  {/* UID + You indicator */}
+                  <span className="text-[9px] text-gray-400 mt-0.5 truncate max-w-[50px]">
+                    {isCurrentUser ? 'You' : (player.uid || player.name.slice(0, 5))}
+                  </span>
+                  {/* Active Indicator */}
+                  {isActive && (
+                    <div className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-green-400 animate-pulse" />
+                  )}
+                </div>
+              );
+            })}
+          </div>
         </div>
 
         {/* In-Game Chat */}
