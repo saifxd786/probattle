@@ -22,20 +22,20 @@ const EntrySelector = ({
   const rewardAmount = selectedAmount * rewardMultiplier;
 
   return (
-    <div className="space-y-6">
-      {/* Player Mode Selection */}
+    <div className="space-y-4">
+      {/* Player Mode Selection - Compact */}
       <div>
-        <p className="text-sm text-gray-400 mb-3 flex items-center gap-2">
-          <Users className="w-4 h-4 text-blue-400" />
+        <p className="text-xs text-gray-400 mb-2 flex items-center gap-1.5">
+          <Users className="w-3.5 h-3.5 text-blue-400" />
           Select Mode
         </p>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-2">
           <motion.button
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             onClick={() => onPlayerModeChange(2)}
             className={cn(
-              'p-4 rounded-xl border-2 transition-all relative overflow-hidden',
+              'p-2.5 rounded-lg border-2 transition-all relative overflow-hidden',
               playerMode === 2
                 ? 'border-yellow-500/50 bg-gradient-to-br from-yellow-500/20 to-orange-500/10'
                 : 'border-white/10 bg-white/5 hover:border-white/20'
@@ -47,10 +47,12 @@ const EntrySelector = ({
                 className="absolute inset-0 bg-gradient-to-br from-yellow-500/10 to-orange-500/5"
               />
             )}
-            <div className="relative z-10">
-              <Swords className={cn('w-6 h-6 mx-auto mb-2', playerMode === 2 ? 'text-yellow-400' : 'text-gray-500')} />
-              <p className={cn('font-bold text-lg', playerMode === 2 ? 'text-white' : 'text-gray-400')}>1v1</p>
-              <p className="text-xs text-gray-500">Head to Head</p>
+            <div className="relative z-10 flex items-center justify-center gap-2">
+              <Swords className={cn('w-4 h-4', playerMode === 2 ? 'text-yellow-400' : 'text-gray-500')} />
+              <div className="text-left">
+                <p className={cn('font-bold text-sm', playerMode === 2 ? 'text-white' : 'text-gray-400')}>1v1</p>
+                <p className="text-[10px] text-gray-500">Head to Head</p>
+              </div>
             </div>
           </motion.button>
 
@@ -59,7 +61,7 @@ const EntrySelector = ({
             whileTap={{ scale: 0.98 }}
             onClick={() => onPlayerModeChange(4)}
             className={cn(
-              'p-4 rounded-xl border-2 transition-all relative overflow-hidden',
+              'p-2.5 rounded-lg border-2 transition-all relative overflow-hidden',
               playerMode === 4
                 ? 'border-yellow-500/50 bg-gradient-to-br from-yellow-500/20 to-orange-500/10'
                 : 'border-white/10 bg-white/5 hover:border-white/20'
@@ -71,33 +73,35 @@ const EntrySelector = ({
                 className="absolute inset-0 bg-gradient-to-br from-yellow-500/10 to-orange-500/5"
               />
             )}
-            <div className="relative z-10">
-              <Crown className={cn('w-6 h-6 mx-auto mb-2', playerMode === 4 ? 'text-yellow-400' : 'text-gray-500')} />
-              <p className={cn('font-bold text-lg', playerMode === 4 ? 'text-white' : 'text-gray-400')}>4 Players</p>
-              <p className="text-xs text-gray-500">Battle Royale</p>
+            <div className="relative z-10 flex items-center justify-center gap-2">
+              <Crown className={cn('w-4 h-4', playerMode === 4 ? 'text-yellow-400' : 'text-gray-500')} />
+              <div className="text-left">
+                <p className={cn('font-bold text-sm', playerMode === 4 ? 'text-white' : 'text-gray-400')}>2v2</p>
+                <p className="text-[10px] text-gray-500">4 Players</p>
+              </div>
             </div>
           </motion.button>
         </div>
       </div>
 
-      {/* Entry Amount Selection */}
+      {/* Entry Amount Selection - Compact */}
       <div>
-        <p className="text-sm text-gray-400 mb-3 flex items-center gap-2">
-          <Coins className="w-4 h-4 text-yellow-400" />
-          Select Entry Amount
+        <p className="text-xs text-gray-400 mb-2 flex items-center gap-1.5">
+          <Coins className="w-3.5 h-3.5 text-yellow-400" />
+          Entry Amount
         </p>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-4 gap-2">
           {amounts.map((amount, idx) => (
             <motion.button
               key={amount}
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: idx * 0.05 }}
+              transition={{ delay: idx * 0.03 }}
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               onClick={() => onSelect(amount)}
               className={cn(
-                'relative p-4 rounded-xl border-2 transition-all overflow-hidden',
+                'relative p-2 rounded-lg border-2 transition-all overflow-hidden',
                 selectedAmount === amount
                   ? 'border-green-500/50 bg-gradient-to-br from-green-500/20 to-emerald-500/10'
                   : 'border-white/10 bg-white/5 hover:border-white/20'
@@ -111,17 +115,16 @@ const EntrySelector = ({
               )}
               <div className="relative z-10">
                 <p className={cn(
-                  'font-bold text-2xl',
+                  'font-bold text-base',
                   selectedAmount === amount ? 'text-green-400' : 'text-white'
                 )}>
                   ₹{amount}
                 </p>
-                <p className="text-xs text-gray-500 mt-1">Entry Fee</p>
               </div>
-              {/* Popular badge for middle amounts */}
+              {/* Popular badge */}
               {amount === 200 && (
-                <div className="absolute top-1 right-1 bg-yellow-500 text-[8px] text-black font-bold px-1.5 py-0.5 rounded-full">
-                  POPULAR
+                <div className="absolute -top-0.5 -right-0.5 bg-yellow-500 text-[6px] text-black font-bold px-1 py-0.5 rounded-full">
+                  HOT
                 </div>
               )}
             </motion.button>
@@ -129,12 +132,12 @@ const EntrySelector = ({
         </div>
       </div>
 
-      {/* Reward Preview */}
+      {/* Reward Preview - Compact */}
       <motion.div
         key={selectedAmount}
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="relative p-5 rounded-2xl text-center overflow-hidden"
+        className="relative p-3 rounded-xl text-center overflow-hidden"
         style={{
           background: 'linear-gradient(135deg, rgba(34,197,94,0.15) 0%, rgba(22,163,74,0.05) 100%)',
           border: '1px solid rgba(34,197,94,0.3)',
@@ -150,19 +153,19 @@ const EntrySelector = ({
           transition={{ duration: 3, repeat: Infinity }}
         />
         
-        <div className="relative z-10">
-          <p className="text-sm text-gray-400 mb-1 flex items-center justify-center gap-1">
-            <Crown className="w-4 h-4 text-yellow-500" />
-            Winner Gets
-          </p>
-          <motion.p 
-            className="text-4xl font-bold text-green-400"
-            animate={{ scale: [1, 1.03, 1] }}
-            transition={{ duration: 2, repeat: Infinity }}
-          >
-            ₹{rewardAmount}
-          </motion.p>
-          <p className="text-xs text-gray-500 mt-2">{rewardMultiplier}x your entry • Instant withdrawal</p>
+        <div className="relative z-10 flex items-center justify-center gap-3">
+          <Crown className="w-5 h-5 text-yellow-500" />
+          <div>
+            <p className="text-[10px] text-gray-400">Winner Gets</p>
+            <motion.p 
+              className="text-2xl font-bold text-green-400"
+              animate={{ scale: [1, 1.02, 1] }}
+              transition={{ duration: 2, repeat: Infinity }}
+            >
+              ₹{rewardAmount}
+            </motion.p>
+          </div>
+          <p className="text-[10px] text-gray-500">{rewardMultiplier}x</p>
         </div>
       </motion.div>
     </div>

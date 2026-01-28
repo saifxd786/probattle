@@ -39,42 +39,125 @@ const HOME_POSITIONS: { [color: string]: { x: number; y: number }[] } = {
   blue: [{ x: 1.8, y: 10.8 }, { x: 4.2, y: 10.8 }, { x: 1.8, y: 13.2 }, { x: 4.2, y: 13.2 }]
 };
 
-// Full track coordinates - 52 positions going clockwise
-const FULL_TRACK: { x: number; y: number }[] = [
-  // Red start (position 1) - bottom left column going up
+// Each color has its own complete track - 51 positions on main track, then 6 in home stretch
+// RED starts at bottom-left, goes up, clockwise around the board
+const RED_TRACK: { x: number; y: number }[] = [
+  // Position 1-5: Going up from red start
   { x: 6.5, y: 13.5 }, { x: 6.5, y: 12.5 }, { x: 6.5, y: 11.5 }, { x: 6.5, y: 10.5 }, { x: 6.5, y: 9.5 },
-  // Turn left at top of red zone
+  // Position 6-11: Left along top of blue zone
   { x: 5.5, y: 8.5 }, { x: 4.5, y: 8.5 }, { x: 3.5, y: 8.5 }, { x: 2.5, y: 8.5 }, { x: 1.5, y: 8.5 }, { x: 0.5, y: 8.5 },
-  // Turn up on left edge
+  // Position 12: Corner
   { x: 0.5, y: 7.5 },
-  // Turn right going across top of left zone
+  // Position 13-18: Up along left edge (green entry)
   { x: 0.5, y: 6.5 }, { x: 1.5, y: 6.5 }, { x: 2.5, y: 6.5 }, { x: 3.5, y: 6.5 }, { x: 4.5, y: 6.5 }, { x: 5.5, y: 6.5 },
-  // Turn up in top-left
+  // Position 19-24: Up through red zone top
   { x: 6.5, y: 5.5 }, { x: 6.5, y: 4.5 }, { x: 6.5, y: 3.5 }, { x: 6.5, y: 2.5 }, { x: 6.5, y: 1.5 }, { x: 6.5, y: 0.5 },
-  // Turn right at top
+  // Position 25: Top corner
   { x: 7.5, y: 0.5 },
-  // Turn down on right side of top section
+  // Position 26-31: Down right side of top (yellow entry)
   { x: 8.5, y: 0.5 }, { x: 8.5, y: 1.5 }, { x: 8.5, y: 2.5 }, { x: 8.5, y: 3.5 }, { x: 8.5, y: 4.5 }, { x: 8.5, y: 5.5 },
-  // Turn right at green zone
+  // Position 32-37: Right along green zone bottom
   { x: 9.5, y: 6.5 }, { x: 10.5, y: 6.5 }, { x: 11.5, y: 6.5 }, { x: 12.5, y: 6.5 }, { x: 13.5, y: 6.5 }, { x: 14.5, y: 6.5 },
-  // Turn down on right edge
+  // Position 38: Right corner
   { x: 14.5, y: 7.5 },
-  // Turn left going across bottom of right zone
+  // Position 39-44: Down right edge (blue entry)
   { x: 14.5, y: 8.5 }, { x: 13.5, y: 8.5 }, { x: 12.5, y: 8.5 }, { x: 11.5, y: 8.5 }, { x: 10.5, y: 8.5 }, { x: 9.5, y: 8.5 },
-  // Turn down in bottom-right
+  // Position 45-50: Down through yellow zone
   { x: 8.5, y: 9.5 }, { x: 8.5, y: 10.5 }, { x: 8.5, y: 11.5 }, { x: 8.5, y: 12.5 }, { x: 8.5, y: 13.5 }, { x: 8.5, y: 14.5 },
-  // Turn left at bottom
+  // Position 51: Bottom corner (before red entry to home)
   { x: 7.5, y: 14.5 },
-  // Turn up on left side of bottom section (back to red start)
-  { x: 6.5, y: 14.5 }
 ];
 
-// Starting position index on the track for each color
-const COLOR_START_INDEX: { [color: string]: number } = {
-  red: 0,
-  green: 13,
-  yellow: 26,
-  blue: 39
+// GREEN starts at top-left, goes right, clockwise
+const GREEN_TRACK: { x: number; y: number }[] = [
+  // Position 1-5: Going right from green start
+  { x: 1.5, y: 6.5 }, { x: 2.5, y: 6.5 }, { x: 3.5, y: 6.5 }, { x: 4.5, y: 6.5 }, { x: 5.5, y: 6.5 },
+  // Position 6-11: Up through red zone
+  { x: 6.5, y: 5.5 }, { x: 6.5, y: 4.5 }, { x: 6.5, y: 3.5 }, { x: 6.5, y: 2.5 }, { x: 6.5, y: 1.5 }, { x: 6.5, y: 0.5 },
+  // Position 12: Top-left corner
+  { x: 7.5, y: 0.5 },
+  // Position 13-18: Down right side (yellow entry)
+  { x: 8.5, y: 0.5 }, { x: 8.5, y: 1.5 }, { x: 8.5, y: 2.5 }, { x: 8.5, y: 3.5 }, { x: 8.5, y: 4.5 }, { x: 8.5, y: 5.5 },
+  // Position 19-24: Right along green zone bottom
+  { x: 9.5, y: 6.5 }, { x: 10.5, y: 6.5 }, { x: 11.5, y: 6.5 }, { x: 12.5, y: 6.5 }, { x: 13.5, y: 6.5 }, { x: 14.5, y: 6.5 },
+  // Position 25: Right corner
+  { x: 14.5, y: 7.5 },
+  // Position 26-31: Down right edge (blue entry)
+  { x: 14.5, y: 8.5 }, { x: 13.5, y: 8.5 }, { x: 12.5, y: 8.5 }, { x: 11.5, y: 8.5 }, { x: 10.5, y: 8.5 }, { x: 9.5, y: 8.5 },
+  // Position 32-37: Down through yellow zone
+  { x: 8.5, y: 9.5 }, { x: 8.5, y: 10.5 }, { x: 8.5, y: 11.5 }, { x: 8.5, y: 12.5 }, { x: 8.5, y: 13.5 }, { x: 8.5, y: 14.5 },
+  // Position 38: Bottom corner
+  { x: 7.5, y: 14.5 },
+  // Position 39-44: Left along red zone (red entry)
+  { x: 6.5, y: 14.5 }, { x: 6.5, y: 13.5 }, { x: 6.5, y: 12.5 }, { x: 6.5, y: 11.5 }, { x: 6.5, y: 10.5 }, { x: 6.5, y: 9.5 },
+  // Position 45-50: Left along blue zone top
+  { x: 5.5, y: 8.5 }, { x: 4.5, y: 8.5 }, { x: 3.5, y: 8.5 }, { x: 2.5, y: 8.5 }, { x: 1.5, y: 8.5 }, { x: 0.5, y: 8.5 },
+  // Position 51: Left corner (before green entry to home)
+  { x: 0.5, y: 7.5 },
+];
+
+// YELLOW starts at top-right, goes down, clockwise
+const YELLOW_TRACK: { x: number; y: number }[] = [
+  // Position 1-5: Going down from yellow start
+  { x: 8.5, y: 1.5 }, { x: 8.5, y: 2.5 }, { x: 8.5, y: 3.5 }, { x: 8.5, y: 4.5 }, { x: 8.5, y: 5.5 },
+  // Position 6-11: Right along green zone bottom
+  { x: 9.5, y: 6.5 }, { x: 10.5, y: 6.5 }, { x: 11.5, y: 6.5 }, { x: 12.5, y: 6.5 }, { x: 13.5, y: 6.5 }, { x: 14.5, y: 6.5 },
+  // Position 12: Right corner
+  { x: 14.5, y: 7.5 },
+  // Position 13-18: Down right edge (blue entry)
+  { x: 14.5, y: 8.5 }, { x: 13.5, y: 8.5 }, { x: 12.5, y: 8.5 }, { x: 11.5, y: 8.5 }, { x: 10.5, y: 8.5 }, { x: 9.5, y: 8.5 },
+  // Position 19-24: Down through yellow zone
+  { x: 8.5, y: 9.5 }, { x: 8.5, y: 10.5 }, { x: 8.5, y: 11.5 }, { x: 8.5, y: 12.5 }, { x: 8.5, y: 13.5 }, { x: 8.5, y: 14.5 },
+  // Position 25: Bottom corner
+  { x: 7.5, y: 14.5 },
+  // Position 26-31: Left and up through red zone (red entry)
+  { x: 6.5, y: 14.5 }, { x: 6.5, y: 13.5 }, { x: 6.5, y: 12.5 }, { x: 6.5, y: 11.5 }, { x: 6.5, y: 10.5 }, { x: 6.5, y: 9.5 },
+  // Position 32-37: Left along blue zone top
+  { x: 5.5, y: 8.5 }, { x: 4.5, y: 8.5 }, { x: 3.5, y: 8.5 }, { x: 2.5, y: 8.5 }, { x: 1.5, y: 8.5 }, { x: 0.5, y: 8.5 },
+  // Position 38: Left corner
+  { x: 0.5, y: 7.5 },
+  // Position 39-44: Up along left edge (green entry)
+  { x: 0.5, y: 6.5 }, { x: 1.5, y: 6.5 }, { x: 2.5, y: 6.5 }, { x: 3.5, y: 6.5 }, { x: 4.5, y: 6.5 }, { x: 5.5, y: 6.5 },
+  // Position 45-50: Up through red zone top
+  { x: 6.5, y: 5.5 }, { x: 6.5, y: 4.5 }, { x: 6.5, y: 3.5 }, { x: 6.5, y: 2.5 }, { x: 6.5, y: 1.5 }, { x: 6.5, y: 0.5 },
+  // Position 51: Top corner (before yellow entry to home)
+  { x: 7.5, y: 0.5 },
+];
+
+// BLUE starts at bottom-right, goes left, clockwise
+const BLUE_TRACK: { x: number; y: number }[] = [
+  // Position 1-5: Going left from blue start
+  { x: 13.5, y: 8.5 }, { x: 12.5, y: 8.5 }, { x: 11.5, y: 8.5 }, { x: 10.5, y: 8.5 }, { x: 9.5, y: 8.5 },
+  // Position 6-11: Down through yellow zone
+  { x: 8.5, y: 9.5 }, { x: 8.5, y: 10.5 }, { x: 8.5, y: 11.5 }, { x: 8.5, y: 12.5 }, { x: 8.5, y: 13.5 }, { x: 8.5, y: 14.5 },
+  // Position 12: Bottom corner
+  { x: 7.5, y: 14.5 },
+  // Position 13-18: Left and up through red zone (red entry)
+  { x: 6.5, y: 14.5 }, { x: 6.5, y: 13.5 }, { x: 6.5, y: 12.5 }, { x: 6.5, y: 11.5 }, { x: 6.5, y: 10.5 }, { x: 6.5, y: 9.5 },
+  // Position 19-24: Left along blue zone top
+  { x: 5.5, y: 8.5 }, { x: 4.5, y: 8.5 }, { x: 3.5, y: 8.5 }, { x: 2.5, y: 8.5 }, { x: 1.5, y: 8.5 }, { x: 0.5, y: 8.5 },
+  // Position 25: Left corner
+  { x: 0.5, y: 7.5 },
+  // Position 26-31: Up along left edge (green entry)
+  { x: 0.5, y: 6.5 }, { x: 1.5, y: 6.5 }, { x: 2.5, y: 6.5 }, { x: 3.5, y: 6.5 }, { x: 4.5, y: 6.5 }, { x: 5.5, y: 6.5 },
+  // Position 32-37: Up through red zone top
+  { x: 6.5, y: 5.5 }, { x: 6.5, y: 4.5 }, { x: 6.5, y: 3.5 }, { x: 6.5, y: 2.5 }, { x: 6.5, y: 1.5 }, { x: 6.5, y: 0.5 },
+  // Position 38: Top corner
+  { x: 7.5, y: 0.5 },
+  // Position 39-44: Down right side (yellow entry)
+  { x: 8.5, y: 0.5 }, { x: 8.5, y: 1.5 }, { x: 8.5, y: 2.5 }, { x: 8.5, y: 3.5 }, { x: 8.5, y: 4.5 }, { x: 8.5, y: 5.5 },
+  // Position 45-50: Right along green zone bottom
+  { x: 9.5, y: 6.5 }, { x: 10.5, y: 6.5 }, { x: 11.5, y: 6.5 }, { x: 12.5, y: 6.5 }, { x: 13.5, y: 6.5 }, { x: 14.5, y: 6.5 },
+  // Position 51: Right corner (before blue entry to home)
+  { x: 14.5, y: 7.5 },
+];
+
+// Color-specific track mapping
+const COLOR_TRACKS: { [color: string]: { x: number; y: number }[] } = {
+  red: RED_TRACK,
+  green: GREEN_TRACK,
+  yellow: YELLOW_TRACK,
+  blue: BLUE_TRACK
 };
 
 // Home stretch paths for each color (positions 52-57 lead to center)
@@ -258,28 +341,34 @@ const LudoBoard = ({ players, onTokenClick, selectedToken }: LudoBoardProps) => 
   const currentTurnPlayer = players.find(p => p.isCurrentTurn);
 
   const getTokenPosition = (token: Token, color: string): { x: number; y: number } => {
+    // Token at home base (position 0)
     if (token.position === 0) {
       const homePos = HOME_POSITIONS[color][token.id];
       return { x: homePos.x * cellSize, y: homePos.y * cellSize };
     }
     
+    // Token in home stretch (position 52-57)
     if (token.position >= 52) {
       const homePathIndex = token.position - 52;
       if (homePathIndex < HOME_PATHS[color].length) {
         const pos = HOME_PATHS[color][homePathIndex];
         return { x: pos.x * cellSize, y: pos.y * cellSize };
       }
+      // At center/home
       return { x: 7.5 * cellSize, y: 7.5 * cellSize };
     }
     
-    const startIndex = COLOR_START_INDEX[color];
-    const trackIndex = (startIndex + token.position - 1) % 52;
+    // Token on main track (position 1-51)
+    // Each color has its own track array
+    const colorTrack = COLOR_TRACKS[color];
+    const trackIndex = token.position - 1; // Convert to 0-indexed
     
-    if (trackIndex >= 0 && trackIndex < FULL_TRACK.length) {
-      const pos = FULL_TRACK[trackIndex];
+    if (colorTrack && trackIndex >= 0 && trackIndex < colorTrack.length) {
+      const pos = colorTrack[trackIndex];
       return { x: pos.x * cellSize, y: pos.y * cellSize };
     }
     
+    // Fallback to center
     return { x: 7.5 * cellSize, y: 7.5 * cellSize };
   };
 

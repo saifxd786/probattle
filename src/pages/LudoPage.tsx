@@ -14,6 +14,7 @@ import LudoDice from '@/components/ludo/LudoDice';
 import GameResult from '@/components/ludo/GameResult';
 import FriendMultiplayer from '@/components/ludo/FriendMultiplayer';
 import SoundToggle from '@/components/ludo/SoundToggle';
+import LudoChat from '@/components/ludo/LudoChat';
 import { useLudoGame } from '@/hooks/useLudoGame';
 import { useFriendLudoGame } from '@/hooks/useFriendLudoGame';
 import { useAuth } from '@/contexts/AuthContext';
@@ -53,7 +54,8 @@ const LudoPage = () => {
     startRoom,
     rollDice: friendRollDice,
     handleTokenClick: friendHandleTokenClick,
-    resetGame: friendResetGame
+    resetGame: friendResetGame,
+    sendChatMessage
   } = useFriendLudoGame();
 
   const ENTRY_AMOUNTS = [100, 200, 500, 1000];
@@ -375,6 +377,16 @@ const LudoPage = () => {
             playerName={currentPlayer?.name || ''} 
           />
         </div>
+
+        {/* In-Game Chat */}
+        {user && (
+          <LudoChat
+            messages={friendGameState.chatMessages}
+            onSendMessage={sendChatMessage}
+            currentUserId={user.id}
+            playerColor={friendGameState.players.find(p => p.id === user.id)?.color || 'red'}
+          />
+        )}
       </div>
     );
   }
@@ -561,49 +573,56 @@ const LudoPage = () => {
             />
           </motion.div>
 
-          {/* Play Buttons */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            className="space-y-3"
-          >
-            {user ? (
-              <>
-                {/* Play vs Bot */}
-                <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-                  <Button
-                    onClick={startMatchmaking}
-                    disabled={walletBalance < entryAmount}
-                    className="w-full py-6 text-lg font-bold rounded-2xl shadow-xl"
-                    style={{
-                      background: walletBalance >= entryAmount 
-                        ? 'linear-gradient(135deg, #FFD700 0%, #FFA500 50%, #FF8C00 100%)'
-                        : undefined,
-                      boxShadow: walletBalance >= entryAmount 
-                        ? '0 10px 40px rgba(255,165,0,0.3)'
-                        : undefined,
-                    }}
-                  >
-                    {walletBalance < entryAmount ? '💰 Insufficient Balance' : '🎲 Play vs Bot'}
-                  </Button>
-                </motion.div>
+          {/* Play Mode Buttons - Top */}
+          {user && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="grid grid-cols-2 gap-2 mb-4"
+            >
+              {/* Play vs Bot - Compact */}
+              <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                <Button
+                  onClick={startMatchmaking}
+                  disabled={walletBalance < entryAmount}
+                  className="w-full py-4 text-sm font-bold rounded-xl"
+                  style={{
+                    background: walletBalance >= entryAmount 
+                      ? 'linear-gradient(135deg, #FFD700 0%, #FFA500 100%)'
+                      : undefined,
+                    boxShadow: walletBalance >= entryAmount 
+                      ? '0 4px 20px rgba(255,165,0,0.3)'
+                      : undefined,
+                  }}
+                >
+                  🎲 Play vs Bot
+                </Button>
+              </motion.div>
 
-                {/* Play with Friend */}
-                <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-                  <Button
-                    onClick={() => setGameMode('vs-friend')}
-                    className="w-full py-6 text-lg font-bold rounded-2xl bg-gradient-to-r from-purple-600 to-pink-600 hover:opacity-90"
-                  >
-                    <UserPlus className="w-5 h-5 mr-2" />
-                    Play with Friend
-                  </Button>
-                </motion.div>
-              </>
-            ) : (
+              {/* Play with Friend - Compact */}
+              <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                <Button
+                  onClick={() => setGameMode('vs-friend')}
+                  className="w-full py-4 text-sm font-bold rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 hover:opacity-90"
+                >
+                  <UserPlus className="w-4 h-4 mr-1" />
+                  With Friend
+                </Button>
+              </motion.div>
+            </motion.div>
+          )}
+
+          {!user && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="mb-4"
+            >
               <Link to="/auth" className="block">
                 <Button 
-                  className="w-full py-7 text-xl font-bold rounded-2xl"
+                  className="w-full py-5 text-lg font-bold rounded-xl"
                   style={{
                     background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                   }}
@@ -611,8 +630,39 @@ const LudoPage = () => {
                   Login to Play
                 </Button>
               </Link>
-            )}
+            </motion.div>
+          )}
+
+          {/* Entry Selector */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.25 }}
+            className="mb-4"
+          >
+            <EntrySelector
+              amounts={ENTRY_AMOUNTS.filter(a => a >= settings.minEntryAmount)}
+              selectedAmount={entryAmount}
+              onSelect={setEntryAmount}
+              rewardMultiplier={settings.rewardMultiplier}
+              playerMode={playerMode}
+              onPlayerModeChange={setPlayerMode}
+            />
           </motion.div>
+
+          {/* Insufficient Balance Warning */}
+          {user && walletBalance < entryAmount && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="mb-4 p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-center"
+            >
+              <p className="text-red-400 text-sm font-medium">💰 Insufficient Balance</p>
+              <Link to="/wallet" className="text-xs text-red-300 hover:underline">
+                Add money to wallet →
+              </Link>
+            </motion.div>
+          )}
 
           {/* Rules Link */}
           <motion.div
