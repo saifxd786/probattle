@@ -267,41 +267,45 @@ export const useFriendLudoGame = () => {
 
     const channel = supabase
       .channel(`ludo-actions-${roomId}`)
+      // Rolling start event - sync animation instantly
+      .on('broadcast', { event: 'dice_rolling' }, (payload) => {
+        const { senderId, timestamp } = payload.payload;
+        if (senderId !== user?.id && timestamp > lastActionRef.current) {
+          console.log('[LudoSync] Received dice rolling start - syncing animation');
+          setGameState(prev => ({ ...prev, isRolling: true, canRoll: false }));
+        }
+      })
       .on('broadcast', { event: 'dice_roll' }, (payload) => {
         const { senderId, diceValue, timestamp } = payload.payload;
         if (senderId !== user?.id && timestamp > lastActionRef.current) {
           lastActionRef.current = timestamp;
-          console.log('[LudoSync] Received dice roll:', diceValue);
+          console.log('[LudoSync] Received dice result:', diceValue);
           
-          // Show opponent rolling animation then update dice
-          setGameState(prev => ({ ...prev, isRolling: true }));
-          
-          setTimeout(() => {
-            setGameState(prev => {
-              const player = prev.players[prev.currentTurn];
-              const canMove = player?.tokens.some(token => {
-                if (token.position === 0 && diceValue === 6) return true;
-                if (token.position > 0 && token.position + diceValue <= 57) return true;
-                return false;
-              });
-
-              if (!canMove) {
-                // Opponent has no moves, turn changes
-                const nextTurn = (prev.currentTurn + 1) % prev.players.length;
-                const isMyTurn = prev.players[nextTurn]?.id === user?.id;
-                return { 
-                  ...prev, 
-                  diceValue, 
-                  isRolling: false, 
-                  currentTurn: nextTurn,
-                  canRoll: isMyTurn
-                };
-              }
-
-              return { ...prev, diceValue, isRolling: false };
+          // Update immediately - animation was already synced via dice_rolling event
+          setGameState(prev => {
+            const player = prev.players[prev.currentTurn];
+            const canMove = player?.tokens.some(token => {
+              if (token.position === 0 && diceValue === 6) return true;
+              if (token.position > 0 && token.position + diceValue <= 57) return true;
+              return false;
             });
+
+            if (!canMove) {
+              const nextTurn = (prev.currentTurn + 1) % prev.players.length;
+              const isMyTurn = prev.players[nextTurn]?.id === user?.id;
+              soundManager.playDiceResult(diceValue);
+              return { 
+                ...prev, 
+                diceValue, 
+                isRolling: false, 
+                currentTurn: nextTurn,
+                canRoll: isMyTurn
+              };
+            }
+
             soundManager.playDiceResult(diceValue);
-          }, 600);
+            return { ...prev, diceValue, isRolling: false };
+          });
         }
       })
       .on('broadcast', { event: 'token_move' }, (payload) => {
@@ -872,13 +876,17 @@ export const useFriendLudoGame = () => {
     const currentPlayer = gameState.players[gameState.currentTurn];
     if (currentPlayer?.id !== user.id) return;
 
+    // Broadcast rolling START immediately - opponent sees animation in sync
+    broadcastAction('dice_rolling', {});
+    
     setGameState(prev => ({ ...prev, isRolling: true, canRoll: false }));
 
+    // Generate dice value immediately but wait for animation
+    const diceValue = generateDiceValue();
+    
     await new Promise(resolve => setTimeout(resolve, 800));
 
-    const diceValue = generateDiceValue();
-
-    // Broadcast dice roll immediately to opponent
+    // Broadcast dice result - opponent updates immediately (already animated)
     broadcastAction('dice_roll', { diceValue });
 
     setGameState(prev => {
