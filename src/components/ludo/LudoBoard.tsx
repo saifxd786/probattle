@@ -466,6 +466,45 @@ const LudoBoard = ({ players, onTokenClick, selectedToken, captureEvent, onCaptu
     return false;
   };
 
+  // Safe spots where tokens cannot be captured
+  const SAFE_SPOTS = [1, 9, 14, 22, 27, 35, 40, 48]; // Star positions on the board
+
+  // Check if a position has an opponent token that can be captured
+  const getOpponentAtPosition = (movingColor: string, targetPosition: number): { color: string; tokenId: number } | null => {
+    if (targetPosition <= 0 || targetPosition >= 52) return null; // Can't capture in home stretch or at home
+    if (SAFE_SPOTS.includes(targetPosition)) return null; // Safe spots
+    
+    // Get the board coordinate for the target position
+    const movingTrack = COLOR_TRACKS[movingColor];
+    if (!movingTrack || targetPosition < 1 || targetPosition > 51) return null;
+    const targetCoord = movingTrack[targetPosition - 1];
+    
+    // Check all other players' tokens
+    for (const player of players) {
+      if (player.color === movingColor) continue;
+      
+      for (const token of player.tokens) {
+        if (token.position <= 0 || token.position >= 52) continue;
+        
+        const opponentTrack = COLOR_TRACKS[player.color];
+        if (!opponentTrack || token.position < 1 || token.position > 51) continue;
+        const opponentCoord = opponentTrack[token.position - 1];
+        
+        // Check if coordinates match (same cell on board)
+        if (Math.abs(opponentCoord.x - targetCoord.x) < 0.1 && Math.abs(opponentCoord.y - targetCoord.y) < 0.1) {
+          return { color: player.color, tokenId: token.id };
+        }
+      }
+    }
+    return null;
+  };
+
+  // Calculate final position after a move
+  const getFinalPosition = (currentPos: number, dice: number): number => {
+    if (currentPos === 0) return dice === 6 ? 1 : currentPos;
+    return currentPos + dice;
+  };
+
   return (
     <div ref={boardRef} className="relative mx-auto" style={{ width: size, height: size }}>
       {/* Main Board SVG */}
@@ -679,6 +718,11 @@ const LudoBoard = ({ players, onTokenClick, selectedToken, captureEvent, onCaptu
             const colorKey = previewToken.color as keyof typeof COLORS;
             const isHomeExit = previewToken.position === 0 && diceValue === 6;
             
+            // Check for capture opportunity on final cell
+            const finalPos = getFinalPosition(previewToken.position, diceValue);
+            const captureTarget = isLast ? getOpponentAtPosition(previewToken.color, finalPos) : null;
+            const isCapture = isLast && captureTarget !== null;
+            
             return (
               <motion.div
                 key={`preview-${index}`}
@@ -686,46 +730,69 @@ const LudoBoard = ({ players, onTokenClick, selectedToken, captureEvent, onCaptu
                 initial={{ opacity: 0, scale: 0.5 }}
                 animate={{ 
                   opacity: 1, 
-                  scale: isHomeExit ? [1, 1.1, 1] : 1,
+                  scale: isCapture ? [1, 1.15, 1] : isHomeExit ? [1, 1.1, 1] : 1,
                 }}
                 exit={{ opacity: 0, scale: 0.5 }}
                 transition={{ 
                   delay: index * 0.05, 
                   duration: 0.15,
-                  scale: isHomeExit ? { duration: 0.8, repeat: Infinity } : undefined
+                  scale: isCapture ? { duration: 0.5, repeat: Infinity } : isHomeExit ? { duration: 0.8, repeat: Infinity } : undefined
                 }}
                 style={{
                   left: cell.x * cellSize - cellSize * 0.4,
                   top: cell.y * cellSize - cellSize * 0.4,
                   width: cellSize * 0.8,
                   height: cellSize * 0.8,
-                  backgroundColor: isHomeExit 
-                    ? `${COLORS[colorKey].main}` 
-                    : isLast 
-                      ? `${COLORS[colorKey].main}90` 
-                      : `${COLORS[colorKey].light}60`,
-                  border: isHomeExit
-                    ? `3px solid ${COLORS[colorKey].dark}`
-                    : isLast 
-                      ? `2px solid ${COLORS[colorKey].dark}` 
-                      : `1px dashed ${COLORS[colorKey].main}80`,
-                  boxShadow: isHomeExit
-                    ? `0 0 15px ${COLORS[colorKey].main}, 0 0 25px ${COLORS[colorKey].light}80`
-                    : isLast 
-                      ? `0 0 8px ${COLORS[colorKey].main}80` 
-                      : 'none',
+                  backgroundColor: isCapture
+                    ? '#DC2626'
+                    : isHomeExit 
+                      ? `${COLORS[colorKey].main}` 
+                      : isLast 
+                        ? `${COLORS[colorKey].main}90` 
+                        : `${COLORS[colorKey].light}60`,
+                  border: isCapture
+                    ? '3px solid #991B1B'
+                    : isHomeExit
+                      ? `3px solid ${COLORS[colorKey].dark}`
+                      : isLast 
+                        ? `2px solid ${COLORS[colorKey].dark}` 
+                        : `1px dashed ${COLORS[colorKey].main}80`,
+                  boxShadow: isCapture
+                    ? '0 0 15px #DC2626, 0 0 25px #EF444480'
+                    : isHomeExit
+                      ? `0 0 15px ${COLORS[colorKey].main}, 0 0 25px ${COLORS[colorKey].light}80`
+                      : isLast 
+                        ? `0 0 8px ${COLORS[colorKey].main}80` 
+                        : 'none',
                 }}
               >
-                {/* Step number or START label */}
+                {/* Step number, START label, or capture indicator */}
                 <span 
                   className="absolute inset-0 flex items-center justify-center text-white font-bold"
                   style={{ 
                     textShadow: '0 1px 2px rgba(0,0,0,0.5)',
-                    fontSize: isHomeExit ? cellSize * 0.22 : cellSize * 0.3,
+                    fontSize: isCapture ? cellSize * 0.35 : isHomeExit ? cellSize * 0.22 : cellSize * 0.3,
                   }}
                 >
-                  {isHomeExit ? 'START' : isLast ? '●' : index + 1}
+                  {isCapture ? '💀' : isHomeExit ? 'START' : isLast ? '●' : index + 1}
                 </span>
+                
+                {/* Capture warning badge */}
+                {isCapture && captureTarget && (
+                  <motion.div
+                    className="absolute -top-2 -right-2 px-1.5 py-0.5 rounded-full text-white font-bold shadow-lg"
+                    style={{
+                      fontSize: cellSize * 0.18,
+                      background: `linear-gradient(135deg, ${COLORS[captureTarget.color as keyof typeof COLORS].main} 0%, ${COLORS[captureTarget.color as keyof typeof COLORS].dark} 100%)`,
+                      border: '2px solid white',
+                    }}
+                    initial={{ scale: 0, rotate: -10 }}
+                    animate={{ scale: 1, rotate: 0 }}
+                    transition={{ delay: 0.2, type: 'spring', stiffness: 400 }}
+                  >
+                    CAPTURE!
+                  </motion.div>
+                )}
               </motion.div>
             );
           })}
