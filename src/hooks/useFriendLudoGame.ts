@@ -105,6 +105,8 @@ export const useFriendLudoGame = () => {
   const presenceChannelRef = useRef<RealtimeChannel | null>(null);
   const chatChannelRef = useRef<RealtimeChannel | null>(null);
   const rematchChannelRef = useRef<RealtimeChannel | null>(null);
+  const syncChannelRef = useRef<RealtimeChannel | null>(null);
+  const checksumIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   const [gameState, setGameState] = useState<FriendGameState>({
     phase: 'idle',
@@ -127,6 +129,9 @@ export const useFriendLudoGame = () => {
     stateChecksum: null,
     lastSyncTime: Date.now()
   });
+
+  const [syncStatus, setSyncStatus] = useState<'synced' | 'checking' | 'mismatch' | 'resyncing'>('synced');
+  const [lastMismatchTime, setLastMismatchTime] = useState<number | null>(null);
 
   const [walletBalance, setWalletBalance] = useState(0);
   const [opponentOnline, setOpponentOnline] = useState(false);
@@ -730,11 +735,15 @@ export const useFriendLudoGame = () => {
     }));
   }, []);
 
-  // Force resync from database
-  const resyncGameState = useCallback(async () => {
+  // Force resync from database (auto or manual)
+  const resyncGameState = useCallback(async (isAuto: boolean = false) => {
     if (!gameState.roomId) return;
 
-    toast({ title: 'Syncing...', description: 'Fetching latest game state' });
+    if (isAuto) {
+      setSyncStatus('resyncing');
+    } else {
+      toast({ title: '🔄 Syncing...', description: 'Fetching latest game state' });
+    }
 
     const { data: roomData } = await supabase
       .from('ludo_rooms')
@@ -758,9 +767,87 @@ export const useFriendLudoGame = () => {
         lastSyncTime: Date.now()
       }));
 
-      toast({ title: '✅ Synced!', description: 'Game state updated' });
+      setSyncStatus('synced');
+      
+      if (isAuto) {
+        toast({ 
+          title: '⚠️ State Mismatch Detected', 
+          description: 'Game auto-resynced from server',
+          variant: 'default'
+        });
+      } else {
+        toast({ title: '✅ Synced!', description: 'Game state updated' });
+      }
     }
   }, [gameState.roomId, user, toast]);
+
+  // Subscribe to sync channel for checksum comparison
+  const subscribeToSyncChannel = useCallback((roomId: string) => {
+    if (syncChannelRef.current) {
+      supabase.removeChannel(syncChannelRef.current);
+    }
+
+    const channel = supabase
+      .channel(`ludo-sync-${roomId}`)
+      .on('broadcast', { event: 'checksum' }, (payload) => {
+        if (payload.payload.senderId !== user?.id) {
+          // Compare checksums
+          const myChecksum = gameState.stateChecksum;
+          const theirChecksum = payload.payload.checksum;
+          
+          if (myChecksum && theirChecksum && myChecksum !== theirChecksum) {
+            console.warn('[LudoSync] Checksum mismatch detected!', { mine: myChecksum, theirs: theirChecksum });
+            setLastMismatchTime(Date.now());
+            setSyncStatus('mismatch');
+            
+            // Auto-resync after short delay
+            setTimeout(() => {
+              resyncGameState(true);
+            }, 500);
+          }
+        }
+      })
+      .subscribe();
+
+    syncChannelRef.current = channel;
+  }, [user, gameState.stateChecksum, resyncGameState]);
+
+  // Broadcast checksum periodically during gameplay
+  const broadcastChecksum = useCallback(() => {
+    if (!syncChannelRef.current || !user || gameState.phase !== 'playing') return;
+    
+    const checksum = generateChecksum(gameState.players, gameState.currentTurn);
+    
+    syncChannelRef.current.send({
+      type: 'broadcast',
+      event: 'checksum',
+      payload: { 
+        senderId: user.id, 
+        checksum,
+        timestamp: Date.now()
+      }
+    });
+  }, [user, gameState.players, gameState.currentTurn, gameState.phase]);
+
+  // Start/stop checksum verification interval
+  useEffect(() => {
+    if (gameState.phase === 'playing' && gameState.roomId) {
+      // Subscribe to sync channel
+      subscribeToSyncChannel(gameState.roomId);
+      
+      // Broadcast checksum every 3 seconds
+      checksumIntervalRef.current = setInterval(() => {
+        broadcastChecksum();
+      }, 3000);
+
+      return () => {
+        if (checksumIntervalRef.current) {
+          clearInterval(checksumIntervalRef.current);
+          checksumIntervalRef.current = null;
+        }
+      };
+    }
+  }, [gameState.phase, gameState.roomId, subscribeToSyncChannel, broadcastChecksum]);
 
   // Subscribe to rematch channel
   const subscribeToRematchChannel = useCallback((roomId: string) => {
@@ -954,6 +1041,12 @@ export const useFriendLudoGame = () => {
       if (rematchChannelRef.current) {
         supabase.removeChannel(rematchChannelRef.current);
       }
+      if (syncChannelRef.current) {
+        supabase.removeChannel(syncChannelRef.current);
+      }
+      if (checksumIntervalRef.current) {
+        clearInterval(checksumIntervalRef.current);
+      }
     };
   }, []);
 
@@ -961,6 +1054,7 @@ export const useFriendLudoGame = () => {
     gameState,
     walletBalance,
     opponentOnline,
+    syncStatus,
     startRoom,
     rollDice,
     handleTokenClick,
