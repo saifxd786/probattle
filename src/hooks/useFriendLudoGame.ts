@@ -110,7 +110,7 @@ const CHECKSUM_MISMATCH_THRESHOLD = 2; // Auto-resync after 2 consecutive mismat
 const CHECKSUM_RESYNC_COOLDOWN_MS = 3000; // Minimum time between auto-resyncs
 
 export const useFriendLudoGame = () => {
-  const { user } = useAuth();
+  const { user, isRefreshing, lastUserId } = useAuth();
   const { toast } = useToast();
   const channelRef = useRef<RealtimeChannel | null>(null);
   const presenceChannelRef = useRef<RealtimeChannel | null>(null);
@@ -138,13 +138,27 @@ export const useFriendLudoGame = () => {
   const lastEntryAmountRef = useRef<number>(0);
   const lastRewardAmountRef = useRef<number>(0);
 
-  // Track user ID changes to prevent token mixups
+  // Track user ID changes to prevent token mixups - but ignore during token refresh
   useEffect(() => {
+    // Skip user ID change detection during token refresh
+    if (isRefreshing) {
+      console.log('[FriendLudo] Token refresh in progress - preserving game state');
+      return;
+    }
+    
     if (user?.id) {
       if (userIdRef.current && userIdRef.current !== user.id) {
+        // Check if this is just a token refresh (same user)
+        if (lastUserId === user.id) {
+          console.log('[FriendLudo] Same user after token refresh:', user.id);
+          userIdRef.current = user.id;
+          return;
+        }
+        
         console.warn('[FriendLudo] User ID changed during session!', {
           old: userIdRef.current,
-          new: user.id
+          new: user.id,
+          lastUserId
         });
         // This is a critical issue - user changed mid-game
         toast({
@@ -156,7 +170,7 @@ export const useFriendLudoGame = () => {
       userIdRef.current = user.id;
       console.log('[FriendLudo] User ID set:', user.id);
     }
-  }, [user?.id, toast]);
+  }, [user?.id, isRefreshing, lastUserId, toast]);
 
   const [gameState, setGameState] = useState<FriendGameState>({
     phase: 'idle',
@@ -1068,8 +1082,16 @@ export const useFriendLudoGame = () => {
 
   // Roll dice
   const rollDice = useCallback(async () => {
-    if (!gameState.canRoll || gameState.isRolling || !user) {
-      console.log('[LudoGame] Roll blocked:', { canRoll: gameState.canRoll, isRolling: gameState.isRolling, hasUser: !!user });
+    // Use lastUserId during token refresh for continuity
+    const effectiveUserId = user?.id || (isRefreshing ? lastUserId : null);
+    
+    if (!gameState.canRoll || gameState.isRolling || !effectiveUserId) {
+      console.log('[LudoGame] Roll blocked:', { 
+        canRoll: gameState.canRoll, 
+        isRolling: gameState.isRolling, 
+        hasUser: !!effectiveUserId,
+        isRefreshing 
+      });
       return;
     }
 
@@ -1079,14 +1101,18 @@ export const useFriendLudoGame = () => {
       return;
     }
     
-    // CRITICAL: Validate user ID matches current player
-    if (currentPlayer.id !== user.id) {
-      console.error('[LudoGame] User ID mismatch!', { currentPlayerId: currentPlayer.id, userId: user.id });
+    // CRITICAL: Validate user ID matches current player (use effective ID during refresh)
+    if (currentPlayer.id !== effectiveUserId) {
+      console.error('[LudoGame] User ID mismatch!', { 
+        currentPlayerId: currentPlayer.id, 
+        userId: effectiveUserId,
+        isRefreshing 
+      });
       toast({ title: 'Not your turn!', variant: 'destructive' });
       return;
     }
 
-    console.log('[LudoGame] Rolling dice for user:', user.id);
+    console.log('[LudoGame] Rolling dice for user:', effectiveUserId);
 
     // Broadcast rolling START immediately - opponent sees animation in sync
     broadcastAction('dice_rolling', {});
@@ -1129,11 +1155,14 @@ export const useFriendLudoGame = () => {
 
       return { ...prev, diceValue, isRolling: false };
     });
-  }, [gameState.canRoll, gameState.isRolling, gameState.players, gameState.currentTurn, user, generateDiceValue, broadcastAction, toast]);
+  }, [gameState.canRoll, gameState.isRolling, gameState.players, gameState.currentTurn, user, isRefreshing, lastUserId, generateDiceValue, broadcastAction, toast]);
 
   // Handle token click
   const handleTokenClick = useCallback((color: string, tokenId: number) => {
-    if (!user) {
+    // Use lastUserId during token refresh for continuity
+    const effectiveUserId = user?.id || (isRefreshing ? lastUserId : null);
+    
+    if (!effectiveUserId) {
       console.error('[LudoGame] No user for token click');
       return;
     }
@@ -1150,8 +1179,12 @@ export const useFriendLudoGame = () => {
       console.log('[LudoGame] Token click blocked: wrong color');
       return;
     }
-    if (currentPlayer.id !== user.id) {
-      console.error('[LudoGame] Token click blocked: user ID mismatch', { currentPlayerId: currentPlayer.id, userId: user.id });
+    if (currentPlayer.id !== effectiveUserId) {
+      console.error('[LudoGame] Token click blocked: user ID mismatch', { 
+        currentPlayerId: currentPlayer.id, 
+        userId: effectiveUserId,
+        isRefreshing 
+      });
       return;
     }
     if (gameState.canRoll) {
@@ -1217,7 +1250,7 @@ export const useFriendLudoGame = () => {
       canRoll: false,
       selectedToken: null
     }));
-  }, [user, gameState.players, gameState.currentTurn, gameState.canRoll, gameState.diceValue, moveToken, broadcastAction]);
+  }, [user, isRefreshing, lastUserId, gameState.players, gameState.currentTurn, gameState.canRoll, gameState.diceValue, moveToken, broadcastAction]);
 
   // Handle game end
   const handleGameEnd = async (winner: Player) => {
