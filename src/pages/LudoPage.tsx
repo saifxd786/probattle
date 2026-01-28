@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Dices, Wallet, Info, Trophy, Users, Zap, Ban, UserPlus, WifiOff, Wifi, RefreshCw, RotateCcw } from 'lucide-react';
+import { Dices, Wallet, Info, Trophy, Users, Zap, Ban, UserPlus, WifiOff, Wifi, RefreshCw, RotateCcw, Signal } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import Header from '@/components/Header';
 import BottomNav from '@/components/BottomNav';
@@ -59,6 +59,7 @@ const LudoPage = () => {
     syncStatus,
     connectionStatus,
     reconnectAttempts,
+    pingLatency,
     startRoom,
     rollDice: friendRollDice,
     handleTokenClick: friendHandleTokenClick,
@@ -357,6 +358,24 @@ const LudoPage = () => {
                   </>
                 )}
               </motion.div>
+            )}
+            {/* Ping/Latency Indicator */}
+            {pingLatency !== null && connectionStatus === 'connected' && (
+              <div className={`flex items-center gap-1 px-2 py-1 rounded-lg ${
+                pingLatency < 100 ? 'bg-green-500/20' : 
+                pingLatency < 200 ? 'bg-yellow-500/20' : 'bg-red-500/20'
+              }`}>
+                <Signal className={`w-3 h-3 ${
+                  pingLatency < 100 ? 'text-green-400' : 
+                  pingLatency < 200 ? 'text-yellow-400' : 'text-red-400'
+                }`} />
+                <span className={`text-[10px] font-mono ${
+                  pingLatency < 100 ? 'text-green-400' : 
+                  pingLatency < 200 ? 'text-yellow-400' : 'text-red-400'
+                }`}>
+                  {pingLatency}ms
+                </span>
+              </div>
             )}
             {/* Opponent Online Status */}
             <div className={`flex items-center gap-1 px-2 py-1 rounded-lg ${opponentOnline ? 'bg-green-500/20' : 'bg-red-500/20'}`}>
