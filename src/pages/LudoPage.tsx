@@ -760,128 +760,195 @@ const LudoPage = () => {
           </AlertDialogContent>
         </AlertDialog>
         
-        <main className="container mx-auto px-3 pt-16">
-          {/* Compact Hero */}
+        <main className="container mx-auto px-4 pt-20 pb-8">
+          {/* Premium Hero Section */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="relative mb-6"
+          >
+            {/* Background glow */}
+            <div className="absolute inset-0 -top-10 bg-gradient-to-b from-primary/10 via-transparent to-transparent rounded-3xl blur-2xl" />
+            
+            <div className="relative text-center">
+              <motion.div
+                className="inline-flex relative mb-4"
+                animate={{ y: [0, -8, 0] }}
+                transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+              >
+                <div className="relative">
+                  <div 
+                    className="p-4 rounded-2xl shadow-2xl"
+                    style={{
+                      background: 'linear-gradient(145deg, hsl(var(--primary)) 0%, hsl(var(--primary)/0.8) 100%)',
+                      boxShadow: '0 10px 40px rgba(var(--primary-rgb), 0.4)',
+                    }}
+                  >
+                    <Dices className="w-10 h-10 text-primary-foreground" />
+                  </div>
+                  {/* Sparkle effects */}
+                  <motion.div
+                    className="absolute -top-1 -right-1 w-3 h-3 bg-yellow-400 rounded-full"
+                    animate={{ scale: [1, 1.5, 1], opacity: [1, 0.5, 1] }}
+                    transition={{ duration: 2, repeat: Infinity }}
+                  />
+                </div>
+              </motion.div>
+              
+              <h1 className="font-display text-3xl font-bold mb-1">
+                <span className="text-gradient">Ludo King</span>
+              </h1>
+              <p className="text-muted-foreground text-sm flex items-center justify-center gap-1.5">
+                <Zap className="w-4 h-4 text-yellow-500" />
+                Play & Win Real Cash
+              </p>
+            </div>
+          </motion.div>
+
+          {/* Stats Bar - Premium Design */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="text-center mb-4"
+            transition={{ delay: 0.1 }}
+            className="grid grid-cols-3 gap-3 mb-6"
           >
-            <motion.div
-              className="inline-flex relative mb-2"
-              animate={{ y: [0, -5, 0] }}
-              transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
-            >
-              <div 
-                className="p-3 rounded-xl"
-                style={{
-                  background: 'linear-gradient(145deg, #FFD700 0%, #FFA500 100%)',
-                  boxShadow: '0 6px 20px rgba(255,165,0,0.3)',
-                }}
-              >
-                <Dices className="w-8 h-8 text-white" />
+            <div className="relative p-3 rounded-2xl bg-gradient-to-br from-yellow-500/10 to-orange-500/5 border border-yellow-500/20 text-center overflow-hidden group">
+              <motion.div
+                className="absolute inset-0 bg-gradient-to-br from-yellow-500/5 to-transparent"
+                animate={{ opacity: [0.5, 1, 0.5] }}
+                transition={{ duration: 3, repeat: Infinity }}
+              />
+              <div className="relative z-10">
+                <Trophy className="w-5 h-5 text-yellow-500 mx-auto mb-1" />
+                <p className="text-lg font-display font-bold text-foreground">10K+</p>
+                <p className="text-[10px] text-muted-foreground">Winners</p>
               </div>
-            </motion.div>
-            <h1 className="font-display text-2xl font-bold text-white">
-              <span className="text-gradient">Ludo King</span>
-            </h1>
-            <p className="text-gray-400 text-xs flex items-center justify-center gap-1">
-              <Zap className="w-3 h-3 text-yellow-500" />
-              Play & Win Real Cash
-            </p>
+            </div>
+            
+            <div className="relative p-3 rounded-2xl bg-gradient-to-br from-green-500/10 to-emerald-500/5 border border-green-500/20 text-center overflow-hidden">
+              <motion.div
+                className="absolute inset-0 bg-gradient-to-br from-green-500/5 to-transparent"
+                animate={{ opacity: [0.5, 1, 0.5] }}
+                transition={{ duration: 3, repeat: Infinity, delay: 0.5 }}
+              />
+              <div className="relative z-10">
+                <motion.div animate={{ scale: [1, 1.1, 1] }} transition={{ duration: 2, repeat: Infinity }}>
+                  <Users className="w-5 h-5 text-green-500 mx-auto mb-1" />
+                </motion.div>
+                <p className="text-lg font-display font-bold text-foreground">{liveUsers}+</p>
+                <p className="text-[10px] text-muted-foreground">Online</p>
+              </div>
+            </div>
+            
+            <div className="relative p-3 rounded-2xl bg-gradient-to-br from-blue-500/10 to-cyan-500/5 border border-blue-500/20 text-center overflow-hidden">
+              <motion.div
+                className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-transparent"
+                animate={{ opacity: [0.5, 1, 0.5] }}
+                transition={{ duration: 3, repeat: Infinity, delay: 1 }}
+              />
+              <div className="relative z-10">
+                <Dices className="w-5 h-5 text-blue-500 mx-auto mb-1" />
+                <p className="text-lg font-display font-bold text-foreground">₹50L+</p>
+                <p className="text-[10px] text-muted-foreground">Paid</p>
+              </div>
+            </div>
           </motion.div>
 
-          {/* Compact Stats */}
+          {/* Wallet Card - Premium */}
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="grid grid-cols-3 gap-2 mb-4"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.15 }}
+            className="mb-6 p-4 rounded-2xl bg-gradient-to-br from-card to-card/50 border border-border/50 backdrop-blur-sm"
           >
-            <div className="text-center p-2 rounded-lg bg-white/5 border border-white/10">
-              <Trophy className="w-4 h-4 text-yellow-500 mx-auto" />
-              <p className="text-sm font-bold text-white">10K+</p>
-              <p className="text-[8px] text-gray-500">Winners</p>
-            </div>
-            <div className="text-center p-2 rounded-lg bg-white/5 border border-white/10">
-              <Users className="w-4 h-4 text-green-500 mx-auto animate-pulse" />
-              <p className="text-sm font-bold text-white">{liveUsers}+</p>
-              <p className="text-[8px] text-gray-500">Online</p>
-            </div>
-            <div className="text-center p-2 rounded-lg bg-white/5 border border-white/10">
-              <Dices className="w-4 h-4 text-blue-500 mx-auto" />
-              <p className="text-sm font-bold text-white">₹50L+</p>
-              <p className="text-[8px] text-gray-500">Paid</p>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-green-500/20 to-emerald-500/10 border border-green-500/30 flex items-center justify-center">
+                  <Wallet className="w-6 h-6 text-green-400" />
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Balance</p>
+                  <p className="font-display font-bold text-2xl text-foreground">₹{walletBalance.toFixed(0)}</p>
+                </div>
+              </div>
+              <Link to="/wallet">
+                <Button 
+                  size="sm" 
+                  className="h-10 px-5 font-semibold bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 shadow-lg shadow-green-500/20"
+                >
+                  ADD
+                </Button>
+              </Link>
             </div>
           </motion.div>
 
-          {/* Compact Wallet */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="p-3 rounded-lg mb-4 flex items-center justify-between"
-            style={{
-              background: 'rgba(255,255,255,0.03)',
-              border: '1px solid rgba(255,255,255,0.08)',
-            }}
-          >
-            <div className="flex items-center gap-2">
-              <div className="p-1.5 rounded-md bg-green-500/20">
-                <Wallet className="w-4 h-4 text-green-400" />
-              </div>
-              <div>
-                <p className="text-[10px] text-gray-400">Balance</p>
-                <p className="font-bold text-lg text-white">₹{walletBalance.toFixed(0)}</p>
-              </div>
-            </div>
-            <Link to="/wallet">
-              <Button size="sm" className="h-8 text-xs bg-green-600 hover:bg-green-700">
-                Add
-              </Button>
-            </Link>
-          </motion.div>
-
-          {/* Play Buttons - Top (Compact) */}
+          {/* Play Buttons - Premium */}
           {user && (
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              className="grid grid-cols-2 gap-2 mb-4"
+              transition={{ delay: 0.2 }}
+              className="grid grid-cols-2 gap-3 mb-6"
             >
               <Button
                 onClick={startMatchmaking}
                 disabled={walletBalance < entryAmount}
-                className="h-10 text-xs font-bold rounded-lg"
+                className="relative h-14 text-sm font-bold rounded-2xl overflow-hidden group"
                 style={{
                   background: walletBalance >= entryAmount 
-                    ? 'linear-gradient(135deg, #FFD700 0%, #FFA500 100%)'
+                    ? 'linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--primary)/0.85) 100%)'
                     : undefined,
                 }}
               >
-                🎲 Play vs Bot
+                <motion.div
+                  className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0"
+                  animate={{ x: ['-100%', '100%'] }}
+                  transition={{ duration: 2, repeat: Infinity, repeatDelay: 1 }}
+                />
+                <span className="relative z-10 flex items-center gap-2">
+                  <Dices className="w-5 h-5" />
+                  PLAY VS BOT
+                </span>
               </Button>
+              
               <Button
                 onClick={() => setGameMode('vs-friend')}
-                className="h-10 text-xs font-bold rounded-lg bg-gradient-to-r from-purple-600 to-pink-600"
+                className="relative h-14 text-sm font-bold rounded-2xl overflow-hidden bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
               >
-                <UserPlus className="w-3 h-3 mr-1" />
-                With Friend
+                <motion.div
+                  className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0"
+                  animate={{ x: ['-100%', '100%'] }}
+                  transition={{ duration: 2, repeat: Infinity, repeatDelay: 1.5 }}
+                />
+                <span className="relative z-10 flex items-center gap-2">
+                  <UserPlus className="w-5 h-5" />
+                  WITH FRIEND
+                </span>
               </Button>
             </motion.div>
           )}
 
           {!user && (
-            <Link to="/auth" className="block mb-4">
-              <Button className="w-full h-10 text-sm font-bold rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600">
-                Login to Play
-              </Button>
-            </Link>
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="mb-6"
+            >
+              <Link to="/auth">
+                <Button className="w-full h-14 text-sm font-bold rounded-2xl bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 shadow-lg shadow-primary/20">
+                  Login to Play
+                </Button>
+              </Link>
+            </motion.div>
           )}
 
           {/* Entry Selector */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mb-4"
+            transition={{ delay: 0.25 }}
+            className="mb-6"
           >
             <EntrySelector
               amounts={ENTRY_AMOUNTS.filter(a => a >= settings.minEntryAmount)}
@@ -893,30 +960,45 @@ const LudoPage = () => {
             />
           </motion.div>
 
-          {/* Insufficient Balance */}
+          {/* Insufficient Balance Warning */}
           {user && walletBalance < entryAmount && (
             <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="mb-3 p-2 rounded-lg bg-red-500/10 border border-red-500/20 text-center"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="mb-6 p-4 rounded-2xl bg-gradient-to-br from-red-500/10 to-red-600/5 border border-red-500/30"
             >
-              <p className="text-red-400 text-xs">💰 Insufficient Balance</p>
-              <Link to="/wallet" className="text-[10px] text-red-300 hover:underline">
-                Add money →
-              </Link>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-red-500/20 flex items-center justify-center">
+                  <Wallet className="w-5 h-5 text-red-400" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-red-400 text-sm font-medium">Insufficient Balance</p>
+                  <p className="text-xs text-muted-foreground">Add ₹{entryAmount - walletBalance} more to play</p>
+                </div>
+                <Link to="/wallet">
+                  <Button size="sm" variant="outline" className="border-red-500/30 text-red-400 hover:bg-red-500/10">
+                    Add Money
+                  </Button>
+                </Link>
+              </div>
             </motion.div>
           )}
 
-          {/* Rules */}
-          <div className="text-center mt-4">
+          {/* Rules Link */}
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.3 }}
+            className="text-center"
+          >
             <Link 
               to="/ludo/rules" 
-              className="inline-flex items-center gap-1 text-xs text-gray-400 hover:text-white"
+              className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
             >
-              <Info className="w-3 h-3" />
+              <Info className="w-4 h-4" />
               Rules & Fair Play
             </Link>
-          </div>
+          </motion.div>
         </main>
 
         <BottomNav />
