@@ -4,68 +4,6 @@ import { cn } from '@/lib/utils';
 import { User, Bot, Crown, Clock } from 'lucide-react';
 import CaptureAnimation from './CaptureAnimation';
 
-// Compact Player Card Component
-const PlayerCard = ({ 
-  player, 
-  position,
-  turnTime = 0
-}: { 
-  player: Player; 
-  position: 'left' | 'right';
-  turnTime?: number;
-}) => {
-  const isLeft = position === 'left';
-  const colors = COLORS[player.color as keyof typeof COLORS];
-  const displayUid = player.uid || '00000';
-  
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      className={cn(
-        "flex items-center gap-2",
-        isLeft ? "flex-row" : "flex-row-reverse"
-      )}
-    >
-      {/* Avatar */}
-      <div 
-        className="relative w-9 h-9 rounded-lg flex items-center justify-center text-white font-bold text-xs shadow-lg"
-        style={{
-          background: `linear-gradient(135deg, ${colors.light} 0%, ${colors.main} 100%)`,
-        }}
-      >
-        {player.isBot ? <Bot className="w-4 h-4" /> : displayUid.slice(0, 1)}
-        {player.isCurrentTurn && (
-          <motion.div 
-            className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-green-500 border border-white"
-            animate={{ scale: [1, 1.2, 1] }}
-            transition={{ duration: 0.8, repeat: Infinity }}
-          />
-        )}
-      </div>
-      
-      {/* Info */}
-      <div className={cn("text-[10px]", isLeft ? "text-left" : "text-right")}>
-        <div className="flex items-center gap-1">
-          <span 
-            className="font-bold text-white"
-            style={{ textShadow: `0 0 6px ${colors.main}` }}
-          >
-            #{displayUid}
-          </span>
-          {player.isCurrentTurn && <Crown className="w-3 h-3 text-yellow-400" />}
-        </div>
-        {player.isCurrentTurn && (
-          <div className="flex items-center gap-0.5 text-white/60">
-            <Clock className="w-2.5 h-2.5" />
-            <span>{Math.floor(turnTime / 60)}:{(turnTime % 60).toString().padStart(2, '0')}</span>
-          </div>
-        )}
-      </div>
-    </motion.div>
-  );
-};
-
 interface Token {
   id: number;
   position: number;
@@ -96,21 +34,104 @@ interface LudoBoardProps {
   diceValue?: number;
 }
 
-// ProBattle Cyber Theme Colors - Neon with dark backgrounds
+// Classic Traditional Ludo Colors - Bright and vibrant
 const COLORS = {
-  red: { main: '#EF4444', light: '#F87171', dark: '#DC2626', bg: '#450a0a', track: '#1f1515' },
-  green: { main: '#22C55E', light: '#4ADE80', dark: '#16A34A', bg: '#052e16', track: '#0d1f14' },
-  yellow: { main: '#EAB308', light: '#FACC15', dark: '#CA8A04', bg: '#422006', track: '#1f1a0a' },
-  blue: { main: '#3B82F6', light: '#60A5FA', dark: '#2563EB', bg: '#172554', track: '#0f172a' }
+  red: { main: '#E53935', light: '#EF5350', dark: '#C62828', bg: '#FFCDD2', track: '#EF9A9A' },
+  green: { main: '#43A047', light: '#66BB6A', dark: '#2E7D32', bg: '#C8E6C9', track: '#A5D6A7' },
+  yellow: { main: '#FDD835', light: '#FFEE58', dark: '#F9A825', bg: '#FFF9C4', track: '#FFF59D' },
+  blue: { main: '#1E88E5', light: '#42A5F5', dark: '#1565C0', bg: '#BBDEFB', track: '#90CAF9' }
 };
 
-// Board theme colors
+// Classic Board theme - Light and clean
 const BOARD_THEME = {
-  background: '#0a0f1a',
-  cellBg: '#1e293b',
-  cellBorder: '#334155',
-  trackCell: '#0f172a',
-  centerGlow: 'rgba(59, 130, 246, 0.3)',
+  background: '#F5F0E6',
+  cellBg: '#FFFFFF',
+  cellBorder: '#D4C8B8',
+  trackCell: '#FAFAFA',
+};
+
+// Bottom Player Card Component with 10s Timer
+const PlayerCard = ({ 
+  player, 
+  position,
+  turnTime = 10
+}: { 
+  player: Player; 
+  position: 'left' | 'right';
+  turnTime?: number;
+}) => {
+  const isLeft = position === 'left';
+  const colors = COLORS[player.color as keyof typeof COLORS];
+  const displayUid = player.uid || '00000';
+  
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className={cn(
+        "flex items-center gap-3 px-3 py-2.5 rounded-xl",
+        isLeft ? "flex-row" : "flex-row-reverse"
+      )}
+      style={{
+        background: player.isCurrentTurn 
+          ? `linear-gradient(135deg, ${colors.main}20, ${colors.light}30)` 
+          : 'rgba(255,255,255,0.9)',
+        border: player.isCurrentTurn 
+          ? `2px solid ${colors.main}` 
+          : '1px solid rgba(0,0,0,0.1)',
+        boxShadow: player.isCurrentTurn 
+          ? `0 4px 12px ${colors.main}30` 
+          : '0 2px 8px rgba(0,0,0,0.08)',
+      }}
+    >
+      {/* Avatar */}
+      <div 
+        className="relative w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm shadow-lg"
+        style={{
+          background: `linear-gradient(135deg, ${colors.light} 0%, ${colors.main} 100%)`,
+        }}
+      >
+        {player.isBot ? <Bot className="w-5 h-5" /> : displayUid.slice(0, 1).toUpperCase()}
+        {player.isCurrentTurn && (
+          <motion.div 
+            className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-green-500 border-2 border-white"
+            animate={{ scale: [1, 1.2, 1] }}
+            transition={{ duration: 0.8, repeat: Infinity }}
+          />
+        )}
+      </div>
+      
+      {/* Info */}
+      <div className={cn("flex flex-col", isLeft ? "items-start" : "items-end")}>
+        <div className="flex items-center gap-1.5">
+          <span 
+            className="font-bold text-sm"
+            style={{ color: colors.dark }}
+          >
+            #{displayUid}
+          </span>
+          {player.isCurrentTurn && <Crown className="w-4 h-4 text-yellow-500" />}
+        </div>
+        
+        {/* Timer - Shows 10s countdown for current turn */}
+        {player.isCurrentTurn && (
+          <motion.div 
+            className="flex items-center gap-1 mt-0.5"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+          >
+            <Clock className="w-3.5 h-3.5" style={{ color: colors.main }} />
+            <span 
+              className="font-mono font-semibold text-xs"
+              style={{ color: colors.main }}
+            >
+              0:{turnTime.toString().padStart(2, '0')}
+            </span>
+          </motion.div>
+        )}
+      </div>
+    </motion.div>
+  );
 };
 
 // Home positions for each color (token slots in corners)
@@ -121,7 +142,7 @@ const HOME_POSITIONS: { [color: string]: { x: number; y: number }[] } = {
   blue: [{ x: 1.8, y: 10.8 }, { x: 4.2, y: 10.8 }, { x: 1.8, y: 13.2 }, { x: 4.2, y: 13.2 }]
 };
 
-// BOTTOM lane start (previously used as RED)
+// Track paths for each color
 const RED_TRACK: { x: number; y: number }[] = [
   { x: 6.5, y: 13.5 }, { x: 6.5, y: 12.5 }, { x: 6.5, y: 11.5 }, { x: 6.5, y: 10.5 }, { x: 6.5, y: 9.5 },
   { x: 5.5, y: 8.5 }, { x: 4.5, y: 8.5 }, { x: 3.5, y: 8.5 }, { x: 2.5, y: 8.5 }, { x: 1.5, y: 8.5 }, { x: 0.5, y: 8.5 },
@@ -204,7 +225,7 @@ const HOME_PATHS: { [color: string]: { x: number; y: number }[] } = {
   ],
 };
 
-// Ludo King Style 3D Pin Token
+// Classic 3D Pin Token
 const PinToken = ({ 
   color, 
   isActive, 
@@ -233,11 +254,11 @@ const PinToken = ({
           <stop offset="100%" stopColor={colors.dark} />
         </radialGradient>
         <filter id={`${id}-shadow`} x="-50%" y="-50%" width="200%" height="200%">
-          <feDropShadow dx="0" dy="2" stdDeviation="2" floodColor="#000" floodOpacity="0.5"/>
+          <feDropShadow dx="0" dy="2" stdDeviation="2" floodColor="#000" floodOpacity="0.4"/>
         </filter>
         <filter id={`${id}-glow`} x="-100%" y="-100%" width="300%" height="300%">
           <feGaussianBlur in="SourceGraphic" stdDeviation="2" result="blur"/>
-          <feFlood floodColor={colors.main} floodOpacity="0.6" result="color"/>
+          <feFlood floodColor={colors.main} floodOpacity="0.5" result="color"/>
           <feComposite in="color" in2="blur" operator="in" result="coloredBlur"/>
           <feMerge>
             <feMergeNode in="coloredBlur"/>
@@ -269,18 +290,12 @@ const PinToken = ({
   );
 };
 
-const COLOR_POSITIONS: Record<string, 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'> = {
-  red: 'top-left',
-  green: 'top-right',
-  yellow: 'bottom-right',
-  blue: 'bottom-left',
-};
-
 const LudoBoard = ({ players, onTokenClick, selectedToken, captureEvent, onCaptureAnimationComplete, diceValue = 1 }: LudoBoardProps) => {
   const boardRef = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState(Math.min(window.innerWidth - 16, window.innerHeight - 200, 420));
   const [capturePosition, setCapturePosition] = useState<{ x: number; y: number } | null>(null);
   const [previewToken, setPreviewToken] = useState<{ color: string; tokenId: number; position: number } | null>(null);
+  const [turnTimer, setTurnTimer] = useState(10);
   
   useEffect(() => {
     const handleResize = () => {
@@ -292,6 +307,15 @@ const LudoBoard = ({ players, onTokenClick, selectedToken, captureEvent, onCaptu
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  // Reset timer when turn changes
+  useEffect(() => {
+    setTurnTimer(10);
+    const interval = setInterval(() => {
+      setTurnTimer(prev => Math.max(0, prev - 1));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [players.find(p => p.isCurrentTurn)?.color]);
   
   const cellSize = size / 15;
   
@@ -313,8 +337,6 @@ const LudoBoard = ({ players, onTokenClick, selectedToken, captureEvent, onCaptu
       setCapturePosition(null);
     }
   }, [captureEvent, cellSize]);
-
-  const currentTurnPlayer = players.find(p => p.isCurrentTurn);
 
   const getTokenPosition = (token: Token, color: string): { x: number; y: number } => {
     if (token.position === 0) {
@@ -414,88 +436,75 @@ const LudoBoard = ({ players, onTokenClick, selectedToken, captureEvent, onCaptu
     return currentPos + dice;
   };
 
-  const currentTurnColor = useMemo(() => {
-    const current = players.find(p => p.isCurrentTurn);
-    return current ? (current.color as keyof typeof COLORS) : null;
-  }, [players]);
-
   return (
     <div className="relative mx-auto">
-      {/* Board Container with ProBattle glow effect */}
+      {/* Board Container - Classic wooden frame look */}
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.4 }}
         className="relative rounded-xl overflow-hidden"
         style={{
-          boxShadow: '0 0 40px rgba(59, 130, 246, 0.2), 0 8px 32px rgba(0,0,0,0.5)',
-          border: '2px solid rgba(59, 130, 246, 0.3)',
+          boxShadow: '0 8px 32px rgba(139, 69, 19, 0.3), inset 0 2px 4px rgba(255,255,255,0.3)',
+          border: '4px solid #8B4513',
         }}
       >
         <div ref={boardRef} className="relative" style={{ width: size, height: size }}>
-          {/* Main Board SVG - ProBattle Dark Theme */}
+          {/* Main Board SVG - Classic Traditional Design */}
           <svg viewBox="0 0 15 15" className="w-full h-full">
             <defs>
-              {/* Neon glow filter */}
-              <filter id="neonGlow" x="-50%" y="-50%" width="200%" height="200%">
-                <feGaussianBlur stdDeviation="0.15" result="blur"/>
-                <feMerge>
-                  <feMergeNode in="blur"/>
-                  <feMergeNode in="SourceGraphic"/>
-                </feMerge>
-              </filter>
-              {/* Grid pattern for cyber look */}
-              <pattern id="gridPattern" width="1" height="1" patternUnits="userSpaceOnUse">
-                <rect width="1" height="1" fill={BOARD_THEME.cellBg} stroke={BOARD_THEME.cellBorder} strokeWidth="0.02"/>
+              {/* Wooden texture pattern */}
+              <pattern id="woodPattern" width="0.5" height="0.5" patternUnits="userSpaceOnUse">
+                <rect width="0.5" height="0.5" fill={BOARD_THEME.background} />
               </pattern>
             </defs>
 
-            {/* Dark background */}
+            {/* Light cream background */}
             <rect x="0" y="0" width="15" height="15" fill={BOARD_THEME.background} />
 
-            {/* RED Home Base (top-left) - Neon border */}
-            <rect x="0" y="0" width="6" height="6" fill={COLORS.red.bg} stroke={COLORS.red.main} strokeWidth="0.1" filter="url(#neonGlow)" />
-            <rect x="0.4" y="0.4" width="5.2" height="5.2" fill={BOARD_THEME.background} rx="0.2" />
-            {/* Token slots with glow */}
+            {/* RED Home Base (top-left) - Traditional bright */}
+            <rect x="0" y="0" width="6" height="6" fill={COLORS.red.bg} stroke={COLORS.red.main} strokeWidth="0.15" />
+            <rect x="0.5" y="0.5" width="5" height="5" fill="#FFFFFF" rx="0.3" />
+            {/* Token slots */}
             {[[1.5, 1.5], [4.5, 1.5], [1.5, 4.5], [4.5, 4.5]].map(([cx, cy], i) => (
               <g key={`red-slot-${i}`}>
-                <circle cx={cx} cy={cy} r="0.75" fill={COLORS.red.bg} stroke={COLORS.red.main} strokeWidth="0.08" />
-                <circle cx={cx} cy={cy} r="0.4" fill={COLORS.red.main} opacity="0.15" />
+                <circle cx={cx} cy={cy} r="0.8" fill={COLORS.red.bg} stroke={COLORS.red.main} strokeWidth="0.1" />
+                <circle cx={cx} cy={cy} r="0.5" fill={COLORS.red.main} opacity="0.3" />
               </g>
             ))}
 
-            {/* GREEN Home Base (top-right) - Neon border */}
-            <rect x="9" y="0" width="6" height="6" fill={COLORS.green.bg} stroke={COLORS.green.main} strokeWidth="0.1" filter="url(#neonGlow)" />
-            <rect x="9.4" y="0.4" width="5.2" height="5.2" fill={BOARD_THEME.background} rx="0.2" />
+            {/* GREEN Home Base (top-right) */}
+            <rect x="9" y="0" width="6" height="6" fill={COLORS.green.bg} stroke={COLORS.green.main} strokeWidth="0.15" />
+            <rect x="9.5" y="0.5" width="5" height="5" fill="#FFFFFF" rx="0.3" />
             {[[10.5, 1.5], [13.5, 1.5], [10.5, 4.5], [13.5, 4.5]].map(([cx, cy], i) => (
               <g key={`green-slot-${i}`}>
-                <circle cx={cx} cy={cy} r="0.75" fill={COLORS.green.bg} stroke={COLORS.green.main} strokeWidth="0.08" />
-                <circle cx={cx} cy={cy} r="0.4" fill={COLORS.green.main} opacity="0.15" />
+                <circle cx={cx} cy={cy} r="0.8" fill={COLORS.green.bg} stroke={COLORS.green.main} strokeWidth="0.1" />
+                <circle cx={cx} cy={cy} r="0.5" fill={COLORS.green.main} opacity="0.3" />
               </g>
             ))}
 
-            {/* BLUE Home Base (bottom-left) - Neon border */}
-            <rect x="0" y="9" width="6" height="6" fill={COLORS.blue.bg} stroke={COLORS.blue.main} strokeWidth="0.1" filter="url(#neonGlow)" />
-            <rect x="0.4" y="9.4" width="5.2" height="5.2" fill={BOARD_THEME.background} rx="0.2" />
+            {/* BLUE Home Base (bottom-left) */}
+            <rect x="0" y="9" width="6" height="6" fill={COLORS.blue.bg} stroke={COLORS.blue.main} strokeWidth="0.15" />
+            <rect x="0.5" y="9.5" width="5" height="5" fill="#FFFFFF" rx="0.3" />
             {[[1.5, 10.5], [4.5, 10.5], [1.5, 13.5], [4.5, 13.5]].map(([cx, cy], i) => (
               <g key={`blue-slot-${i}`}>
-                <circle cx={cx} cy={cy} r="0.75" fill={COLORS.blue.bg} stroke={COLORS.blue.main} strokeWidth="0.08" />
-                <circle cx={cx} cy={cy} r="0.4" fill={COLORS.blue.main} opacity="0.15" />
+                <circle cx={cx} cy={cy} r="0.8" fill={COLORS.blue.bg} stroke={COLORS.blue.main} strokeWidth="0.1" />
+                <circle cx={cx} cy={cy} r="0.5" fill={COLORS.blue.main} opacity="0.3" />
               </g>
             ))}
 
-            {/* YELLOW Home Base (bottom-right) - Neon border */}
-            <rect x="9" y="9" width="6" height="6" fill={COLORS.yellow.bg} stroke={COLORS.yellow.main} strokeWidth="0.1" filter="url(#neonGlow)" />
-            <rect x="9.4" y="9.4" width="5.2" height="5.2" fill={BOARD_THEME.background} rx="0.2" />
+            {/* YELLOW Home Base (bottom-right) */}
+            <rect x="9" y="9" width="6" height="6" fill={COLORS.yellow.bg} stroke={COLORS.yellow.main} strokeWidth="0.15" />
+            <rect x="9.5" y="9.5" width="5" height="5" fill="#FFFFFF" rx="0.3" />
             {[[10.5, 10.5], [13.5, 10.5], [10.5, 13.5], [13.5, 13.5]].map(([cx, cy], i) => (
               <g key={`yellow-slot-${i}`}>
-                <circle cx={cx} cy={cy} r="0.75" fill={COLORS.yellow.bg} stroke={COLORS.yellow.main} strokeWidth="0.08" />
-                <circle cx={cx} cy={cy} r="0.4" fill={COLORS.yellow.main} opacity="0.15" />
+                <circle cx={cx} cy={cy} r="0.8" fill={COLORS.yellow.bg} stroke={COLORS.yellow.main} strokeWidth="0.1" />
+                <circle cx={cx} cy={cy} r="0.5" fill={COLORS.yellow.main} opacity="0.3" />
               </g>
             ))}
 
-            {/* Track Cells - Dark with subtle borders */}
-            <g fill={BOARD_THEME.cellBg} stroke={BOARD_THEME.cellBorder} strokeWidth="0.02">
+            {/* Track Cells - Clean white with borders */}
+            <g fill={BOARD_THEME.cellBg} stroke={BOARD_THEME.cellBorder} strokeWidth="0.03">
               {/* Top path */}
               {[0, 1, 2, 3, 4, 5].map(i => (
                 <g key={`top-${i}`}>
@@ -530,71 +539,64 @@ const LudoBoard = ({ players, onTokenClick, selectedToken, captureEvent, onCaptu
               ))}
             </g>
 
-            {/* Home stretch colored cells with glow */}
+            {/* Home stretch colored cells */}
             {/* Green home stretch (top) */}
             {[1, 2, 3, 4, 5, 6].map(i => (
-              <rect key={`green-home-${i}`} x={7} y={i} width="1" height="1" fill={COLORS.green.bg} stroke={COLORS.green.main} strokeWidth="0.05" />
+              <rect key={`green-home-${i}`} x={7} y={i} width="1" height="1" fill={COLORS.green.track} stroke={COLORS.green.main} strokeWidth="0.05" />
             ))}
             {/* Red home stretch (left) */}
             {[1, 2, 3, 4, 5, 6].map(i => (
-              <rect key={`red-home-${i}`} x={i} y={7} width="1" height="1" fill={COLORS.red.bg} stroke={COLORS.red.main} strokeWidth="0.05" />
+              <rect key={`red-home-${i}`} x={i} y={7} width="1" height="1" fill={COLORS.red.track} stroke={COLORS.red.main} strokeWidth="0.05" />
             ))}
             {/* Yellow home stretch (right) */}
             {[8, 9, 10, 11, 12, 13].map(i => (
-              <rect key={`yellow-home-${i}`} x={i} y={7} width="1" height="1" fill={COLORS.yellow.bg} stroke={COLORS.yellow.main} strokeWidth="0.05" />
+              <rect key={`yellow-home-${i}`} x={i} y={7} width="1" height="1" fill={COLORS.yellow.track} stroke={COLORS.yellow.main} strokeWidth="0.05" />
             ))}
             {/* Blue home stretch (bottom) */}
             {[8, 9, 10, 11, 12, 13].map(i => (
-              <rect key={`blue-home-${i}`} x={7} y={i} width="1" height="1" fill={COLORS.blue.bg} stroke={COLORS.blue.main} strokeWidth="0.05" />
+              <rect key={`blue-home-${i}`} x={7} y={i} width="1" height="1" fill={COLORS.blue.track} stroke={COLORS.blue.main} strokeWidth="0.05" />
             ))}
 
-            {/* Start position cells - neon colored */}
-            <rect x={6} y={1} width="1" height="1" fill={COLORS.green.bg} stroke={COLORS.green.main} strokeWidth="0.08" />
-            <rect x={1} y={6} width="1" height="1" fill={COLORS.red.bg} stroke={COLORS.red.main} strokeWidth="0.08" />
-            <rect x={8} y={13} width="1" height="1" fill={COLORS.blue.bg} stroke={COLORS.blue.main} strokeWidth="0.08" />
-            <rect x={13} y={8} width="1" height="1" fill={COLORS.yellow.bg} stroke={COLORS.yellow.main} strokeWidth="0.08" />
+            {/* Start position cells - Colored */}
+            <rect x={6} y={1} width="1" height="1" fill={COLORS.green.main} stroke={COLORS.green.dark} strokeWidth="0.08" />
+            <rect x={1} y={6} width="1" height="1" fill={COLORS.red.main} stroke={COLORS.red.dark} strokeWidth="0.08" />
+            <rect x={8} y={13} width="1" height="1" fill={COLORS.blue.main} stroke={COLORS.blue.dark} strokeWidth="0.08" />
+            <rect x={13} y={8} width="1" height="1" fill={COLORS.yellow.main} stroke={COLORS.yellow.dark} strokeWidth="0.08" />
 
-            {/* Center triangles (finish area) with glow */}
-            <g filter="url(#neonGlow)">
-              <polygon points="6,6 7.5,7.5 6,9" fill={COLORS.red.main} opacity="0.9" />
-              <polygon points="6,6 7.5,7.5 9,6" fill={COLORS.green.main} opacity="0.9" />
-              <polygon points="9,6 7.5,7.5 9,9" fill={COLORS.yellow.main} opacity="0.9" />
-              <polygon points="6,9 7.5,7.5 9,9" fill={COLORS.blue.main} opacity="0.9" />
-            </g>
-            {/* Center border with glow */}
-            <polygon points="6,6 9,6 9,9 6,9" fill="none" stroke="rgba(255,255,255,0.5)" strokeWidth="0.08" />
-            {/* Center dot */}
-            <circle cx="7.5" cy="7.5" r="0.3" fill="rgba(255,255,255,0.8)" />
+            {/* Center triangles (finish area) */}
+            <polygon points="6,6 7.5,7.5 6,9" fill={COLORS.red.main} />
+            <polygon points="6,6 7.5,7.5 9,6" fill={COLORS.green.main} />
+            <polygon points="9,6 7.5,7.5 9,9" fill={COLORS.yellow.main} />
+            <polygon points="6,9 7.5,7.5 9,9" fill={COLORS.blue.main} />
+            {/* Center border */}
+            <polygon points="6,6 9,6 9,9 6,9" fill="none" stroke="#8B4513" strokeWidth="0.12" />
+            {/* Center white circle */}
+            <circle cx="7.5" cy="7.5" r="0.4" fill="#FFFFFF" stroke="#8B4513" strokeWidth="0.1" />
 
-            {/* Safe spot stars - glowing */}
+            {/* Safe spot stars */}
             {[
               { x: 2.5, y: 6.5, color: COLORS.red.main },
               { x: 6.5, y: 2.5, color: COLORS.green.main },
               { x: 12.5, y: 8.5, color: COLORS.yellow.main },
               { x: 8.5, y: 12.5, color: COLORS.blue.main },
-              { x: 8.5, y: 2.5, color: '#fff' },
-              { x: 2.5, y: 8.5, color: '#fff' },
-              { x: 6.5, y: 12.5, color: '#fff' },
-              { x: 12.5, y: 6.5, color: '#fff' },
+              { x: 8.5, y: 2.5, color: '#6B6B6B' },
+              { x: 2.5, y: 8.5, color: '#6B6B6B' },
+              { x: 6.5, y: 12.5, color: '#6B6B6B' },
+              { x: 12.5, y: 6.5, color: '#6B6B6B' },
             ].map(({ x, y, color }, i) => (
               <g key={`star-${i}`} transform={`translate(${x}, ${y})`}>
                 <polygon
                   points="0,-0.35 0.1,-0.1 0.35,0 0.1,0.1 0,0.35 -0.1,0.1 -0.35,0 -0.1,-0.1"
                   fill={color}
-                  opacity="0.7"
                 />
               </g>
             ))}
 
-            {/* Direction arrows - neon colored */}
-            {/* Down arrow (green entry) */}
-            <path d="M7.5,0.5 L7.5,0.85 M7.35,0.7 L7.5,0.85 L7.65,0.7" stroke={COLORS.green.main} strokeWidth="0.1" fill="none" />
-            {/* Up arrow (blue entry) */}
-            <path d="M7.5,14.5 L7.5,14.15 M7.35,14.3 L7.5,14.15 L7.65,14.3" stroke={COLORS.blue.main} strokeWidth="0.1" fill="none" />
-            {/* Right arrow (red entry) */}
-            <path d="M0.5,7.5 L0.85,7.5 M0.7,7.35 L0.85,7.5 L0.7,7.65" stroke={COLORS.red.main} strokeWidth="0.1" fill="none" />
-            {/* Left arrow (yellow entry) */}
-            <path d="M14.5,7.5 L14.15,7.5 M14.3,7.35 L14.15,7.5 L14.3,7.65" stroke={COLORS.yellow.main} strokeWidth="0.1" fill="none" />
+            {/* Direction arrows */}
+            <path d="M7.5,0.5 L7.5,0.85 M7.35,0.7 L7.5,0.85 L7.65,0.7" stroke={COLORS.green.dark} strokeWidth="0.1" fill="none" />
+            <path d="M7.5,14.5 L7.5,14.15 M7.35,14.3 L7.5,14.15 L7.65,14.3" stroke={COLORS.blue.dark} strokeWidth="0.1" fill="none" />
+            <path d="M0.5,7.5 L0.85,7.5 M0.7,7.35 L0.85,7.5 L0.7,7.65" stroke={COLORS.red.dark} strokeWidth="0.1" fill="none" />
+            <path d="M14.5,7.5 L14.15,7.5 M14.3,7.35 L14.15,7.5 L14.3,7.65" stroke={COLORS.yellow.dark} strokeWidth="0.1" fill="none" />
           </svg>
 
           {/* Path Preview Overlay */}
@@ -670,43 +672,6 @@ const LudoBoard = ({ players, onTokenClick, selectedToken, captureEvent, onCaptu
             </div>
           )}
 
-          {/* Corner Player Labels - Small UID badges on board corners */}
-          {players.map((player) => {
-            const position = COLOR_POSITIONS[player.color];
-            if (!position) return null;
-            const colorKey = player.color as keyof typeof COLORS;
-            const displayUid = player.uid ? `#${player.uid}` : '#00000';
-            const posClasses = {
-              'top-left': 'top-1 left-1',
-              'top-right': 'top-1 right-1',
-              'bottom-left': 'bottom-1 left-1',
-              'bottom-right': 'bottom-1 right-1',
-            };
-            
-            return (
-              <motion.div
-                key={`label-${player.color}`}
-                className={cn(
-                  'absolute flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold text-white backdrop-blur-sm',
-                  posClasses[position]
-                )}
-                style={{ 
-                  background: `linear-gradient(135deg, ${COLORS[colorKey].main}dd, ${COLORS[colorKey].dark}ee)`,
-                  border: player.isCurrentTurn ? '2px solid rgba(255,255,255,0.9)' : '1px solid rgba(255,255,255,0.2)',
-                  boxShadow: player.isCurrentTurn 
-                    ? `0 0 12px ${COLORS[colorKey].main}, 0 2px 8px rgba(0,0,0,0.3)` 
-                    : '0 2px 6px rgba(0,0,0,0.2)',
-                }}
-                animate={{ scale: player.isCurrentTurn ? 1.08 : 1 }}
-                transition={{ type: 'spring', stiffness: 400, damping: 20 }}
-              >
-                {player.isBot ? <Bot className="w-3 h-3" /> : <User className="w-3 h-3" />}
-                <span className="font-mono tracking-tight">{displayUid}</span>
-                {player.isCurrentTurn && <Crown className="w-3 h-3 text-yellow-300 drop-shadow-lg" />}
-              </motion.div>
-            );
-          })}
-
           {/* Pin Tokens */}
           {players.map((player) => (
             player.tokens.map((token) => {
@@ -755,7 +720,7 @@ const LudoBoard = ({ players, onTokenClick, selectedToken, captureEvent, onCaptu
                         left: '50%',
                         transform: 'translateX(-50%)',
                         border: `2px solid ${COLORS[colorKey].main}`,
-                        boxShadow: `0 0 10px ${COLORS[colorKey].main}`,
+                        boxShadow: `0 0 8px ${COLORS[colorKey].main}`,
                       }}
                       animate={{ scale: [1, 1.2, 1], opacity: [0.8, 0.4, 0.8] }}
                       transition={{ duration: 1, repeat: Infinity }}
@@ -794,45 +759,24 @@ const LudoBoard = ({ players, onTokenClick, selectedToken, captureEvent, onCaptu
         </div>
       </motion.div>
 
-      {/* Bottom Player Cards Section */}
-      <div className="mt-3 px-2">
-        <div className="flex items-center justify-between">
+      {/* Bottom Player Cards Section - Fixed at corners with 10s timer */}
+      <div className="mt-4 px-1">
+        <div className="flex items-end justify-between">
           {/* Left Player Card */}
           {players[0] && (
             <PlayerCard 
               player={players[0]} 
               position="left"
+              turnTime={players[0].isCurrentTurn ? turnTimer : 10}
             />
           )}
-          
-          {/* Center Turn Indicator */}
-          <AnimatePresence mode="wait">
-            {currentTurnPlayer && (
-              <motion.div
-                key={currentTurnPlayer.color}
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.9 }}
-                className="flex items-center gap-2 px-4 py-2 rounded-xl"
-                style={{ 
-                  background: `linear-gradient(135deg, ${COLORS[currentTurnPlayer.color as keyof typeof COLORS].main}, ${COLORS[currentTurnPlayer.color as keyof typeof COLORS].dark})`,
-                  boxShadow: `0 0 20px ${COLORS[currentTurnPlayer.color as keyof typeof COLORS].main}40, 0 4px 12px rgba(0,0,0,0.3)`,
-                }}
-              >
-                {currentTurnPlayer.isBot ? <Bot className="w-4 h-4 text-white" /> : <User className="w-4 h-4 text-white" />}
-                <span className="text-white font-bold text-xs font-mono">
-                  #{currentTurnPlayer.uid || '00000'}'s Turn
-                </span>
-                <Crown className="w-4 h-4 text-yellow-300" />
-              </motion.div>
-            )}
-          </AnimatePresence>
           
           {/* Right Player Card */}
           {players[1] && (
             <PlayerCard 
               player={players[1]} 
               position="right"
+              turnTime={players[1].isCurrentTurn ? turnTimer : 10}
             />
           )}
         </div>
