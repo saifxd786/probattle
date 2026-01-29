@@ -227,8 +227,8 @@ const PlayerProfileCard = ({
   isLeft: boolean;
 }) => {
   const colors = COLORS[player.color as keyof typeof COLORS];
-  // Use player.uid if available, otherwise generate a random 5-digit UID
-  const displayUID = player.uid || useMemo(() => generateUID(), []);
+  // Use player name for display
+  const displayName = player.name || 'Player';
   
   return (
     <motion.div
@@ -259,28 +259,28 @@ const PlayerProfileCard = ({
             }}
           >
             {player.avatar ? (
-              <img src={player.avatar} alt={displayUID} className="w-full h-full object-cover" />
+              <img src={player.avatar} alt={displayName} className="w-full h-full object-cover" />
             ) : (
               <div 
-                className="w-full h-full flex items-center justify-center text-white text-2xl font-bold"
+                className="w-full h-full flex items-center justify-center text-white text-xl font-bold"
                 style={{ background: `linear-gradient(135deg, ${colors.light} 0%, ${colors.dark} 100%)` }}
               >
-                {displayUID.slice(0, 2)}
+                {displayName.slice(0, 2).toUpperCase()}
               </div>
             )}
           </div>
         </div>
         
-        {/* UID Display */}
-        <div className="absolute bottom-2 left-1/2 -translate-x-1/2 w-full px-2">
+        {/* Name Display */}
+        <div className="absolute bottom-2 left-1/2 -translate-x-1/2 w-full px-1">
           <div 
-            className="text-center py-1 rounded-md text-xs font-bold text-white"
+            className="text-center py-1 rounded-md text-[10px] font-bold text-white truncate"
             style={{ 
               background: 'rgba(0,0,0,0.5)',
               textShadow: '0 1px 2px rgba(0,0,0,0.5)'
             }}
           >
-            {displayUID}
+            {displayName}
           </div>
         </div>
       </div>
