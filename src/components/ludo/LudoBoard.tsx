@@ -309,7 +309,7 @@ const PlayerProfileCard = ({
   );
 };
 
-// Circular Timer Avatar Component with animated ring
+// Square Timer Avatar Component with animated border
 const TimerAvatar = ({
   player,
   uid,
@@ -333,52 +333,59 @@ const TimerAvatar = ({
   const isLowTime = timeLeft <= 5;
   const isOffline = offlineTimeLeft !== undefined && offlineTimeLeft < 60;
   
-  // Circle calculations
-  const size = 52;
+  // Square border path calculation
+  const size = 48;
   const strokeWidth = 3;
-  const radius = (size - strokeWidth) / 2;
-  const circumference = 2 * Math.PI * radius;
-  const strokeDashoffset = circumference - (progress / 100) * circumference;
+  const innerSize = size - strokeWidth;
+  const perimeter = innerSize * 4;
+  const strokeDashoffset = perimeter - (progress / 100) * perimeter;
   
   return (
     <div className="relative" style={{ width: size, height: size }}>
-      {/* SVG Timer Ring */}
+      {/* SVG Square Timer Border */}
       <svg 
-        className="absolute inset-0 -rotate-90"
+        className="absolute inset-0"
         width={size} 
         height={size}
         style={{ zIndex: 10 }}
       >
-        {/* Background ring */}
-        <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
+        {/* Background border */}
+        <rect
+          x={strokeWidth / 2}
+          y={strokeWidth / 2}
+          width={innerSize}
+          height={innerSize}
+          rx={8}
+          ry={8}
           fill="none"
-          stroke="rgba(255,255,255,0.1)"
+          stroke="rgba(255,255,255,0.15)"
           strokeWidth={strokeWidth}
         />
         
-        {/* Timer progress ring - only show when it's this player's turn */}
+        {/* Timer progress border - only show when it's this player's turn */}
         {isCurrentTurn && (
-          <motion.circle
-            cx={size / 2}
-            cy={size / 2}
-            r={radius}
+          <motion.rect
+            x={strokeWidth / 2}
+            y={strokeWidth / 2}
+            width={innerSize}
+            height={innerSize}
+            rx={8}
+            ry={8}
             fill="none"
             stroke={isOffline ? '#EF4444' : isLowTime ? '#F59E0B' : colors?.main || '#1E88E5'}
             strokeWidth={strokeWidth}
             strokeLinecap="round"
-            strokeDasharray={circumference}
+            strokeDasharray={perimeter}
             strokeDashoffset={strokeDashoffset}
             className="transition-all duration-1000 ease-linear"
             style={{
               filter: isLowTime 
                 ? 'drop-shadow(0 0 6px #F59E0B)' 
                 : `drop-shadow(0 0 6px ${colors?.main})`,
+              transformOrigin: 'center',
             }}
             animate={isLowTime ? { 
-              filter: ['drop-shadow(0 0 4px #F59E0B)', 'drop-shadow(0 0 8px #F59E0B)', 'drop-shadow(0 0 4px #F59E0B)']
+              filter: ['drop-shadow(0 0 4px #F59E0B)', 'drop-shadow(0 0 10px #F59E0B)', 'drop-shadow(0 0 4px #F59E0B)']
             } : {}}
             transition={{ duration: 0.5, repeat: Infinity }}
           />
@@ -387,12 +394,12 @@ const TimerAvatar = ({
       
       {/* Avatar container */}
       <div 
-        className="absolute rounded-full overflow-hidden"
+        className="absolute rounded-lg overflow-hidden"
         style={{
-          top: strokeWidth + 1,
-          left: strokeWidth + 1,
-          width: size - (strokeWidth * 2) - 2,
-          height: size - (strokeWidth * 2) - 2,
+          top: strokeWidth,
+          left: strokeWidth,
+          width: size - (strokeWidth * 2),
+          height: size - (strokeWidth * 2),
           background: colors?.main || '#1E88E5',
         }}
       >
@@ -408,7 +415,7 @@ const TimerAvatar = ({
         
         {/* Offline indicator */}
         {isOffline && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-full">
+          <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-lg">
             <span className="text-[7px] font-bold text-red-400 uppercase">Offline</span>
           </div>
         )}
@@ -416,7 +423,7 @@ const TimerAvatar = ({
         {/* Current turn glow pulse */}
         {isCurrentTurn && !isOffline && (
           <motion.div
-            className="absolute inset-0 rounded-full pointer-events-none"
+            className="absolute inset-0 rounded-lg pointer-events-none"
             style={{
               boxShadow: `inset 0 0 12px ${colors?.main}60`,
             }}
@@ -429,7 +436,7 @@ const TimerAvatar = ({
       {/* Timer text badge */}
       {isCurrentTurn && (
         <motion.div 
-          className="absolute -bottom-1 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-full text-[9px] font-bold shadow-lg"
+          className="absolute -bottom-2 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded text-[9px] font-bold shadow-lg"
           style={{
             background: isOffline ? '#EF4444' : isLowTime ? '#F59E0B' : colors?.main,
             color: '#fff',
@@ -445,7 +452,7 @@ const TimerAvatar = ({
       {/* "TURN" badge */}
       {isCurrentTurn && !isOffline && (
         <motion.div
-          className="absolute -top-1 left-1/2 -translate-x-1/2 px-1.5 py-0.5 rounded text-[7px] font-bold uppercase"
+          className="absolute -top-2 left-1/2 -translate-x-1/2 px-1.5 py-0.5 rounded text-[7px] font-bold uppercase"
           style={{
             background: 'linear-gradient(135deg, #22C55E 0%, #16A34A 100%)',
             color: '#fff',
