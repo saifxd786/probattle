@@ -383,9 +383,12 @@ const MatchCard = ({
           <div className="absolute inset-0 bg-gradient-to-t from-background via-background/50 to-transparent" />
           <div className="absolute bottom-2 left-2 right-2 flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <span className="px-2 py-0.5 bg-background/80 backdrop-blur-sm rounded text-xs font-medium border border-border/50">
-                {map}
-              </span>
+              {/* Show map badge only for non-TDM or when no gun category */}
+              {(!gunCategory || !gunCategoryLabels[gunCategory]) && (
+                <span className="px-2 py-0.5 bg-background/80 backdrop-blur-sm rounded text-xs font-medium border border-border/50">
+                  {map}
+                </span>
+              )}
               {/* Gun category badge for TDM matches */}
               {displayGunCategory && (
                 <span className="px-2 py-0.5 bg-primary/90 backdrop-blur-sm rounded text-xs font-bold text-primary-foreground border border-primary/50">
@@ -440,7 +443,9 @@ const MatchCard = ({
               
               <h4 className="font-display text-base font-bold tracking-wide">{title}</h4>
               <div className="flex items-center gap-2 mt-0.5">
-                <p className="text-xs text-muted-foreground">{mode} • {map}</p>
+                <p className="text-xs text-muted-foreground">
+                  {mode}{displayGunCategory ? ` • ${displayGunCategory}` : (map && map.toLowerCase() !== 'tbd' ? ` • ${map}` : '')}
+                </p>
                 <button 
                   onClick={() => handleCopy(shortMatchId, 'matchId')}
                   className="flex items-center gap-1 text-[10px] text-primary/80 hover:text-primary transition-colors"
