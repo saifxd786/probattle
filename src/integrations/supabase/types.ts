@@ -122,6 +122,30 @@ export type Database = {
         }
         Relationships: []
       }
+      deposit_cleanup_logs: {
+        Row: {
+          error_message: string | null
+          id: string
+          rejected_count: number
+          run_at: string
+          success: boolean
+        }
+        Insert: {
+          error_message?: string | null
+          id?: string
+          rejected_count?: number
+          run_at?: string
+          success?: boolean
+        }
+        Update: {
+          error_message?: string | null
+          id?: string
+          rejected_count?: number
+          run_at?: string
+          success?: boolean
+        }
+        Relationships: []
+      }
       device_bans: {
         Row: {
           banned_at: string
