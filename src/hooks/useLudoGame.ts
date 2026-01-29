@@ -705,10 +705,42 @@ export const useLudoGame = () => {
       players: [userPlayer]
     }));
 
-    // Simulate bot joining
+    // Calculate matchmaking delay based on entry amount
+    // Lower amounts = faster matchmaking, higher amounts = slower (more realistic)
+    const getMatchmakingDelay = (amount: number): { botJoinBase: number; botJoinRandom: number; readyDelay: number; gameStartBase: number } => {
+      if (amount <= 20) {
+        // ₹10-20: Very fast (1-2 seconds per bot)
+        return { botJoinBase: 800, botJoinRandom: 600, readyDelay: 400, gameStartBase: 1200 };
+      } else if (amount <= 50) {
+        // ₹50: Fast (2-3 seconds per bot)
+        return { botJoinBase: 1500, botJoinRandom: 1000, readyDelay: 500, gameStartBase: 1800 };
+      } else if (amount <= 100) {
+        // ₹100: Medium (3-5 seconds per bot)
+        return { botJoinBase: 2500, botJoinRandom: 1500, readyDelay: 600, gameStartBase: 2500 };
+      } else if (amount <= 500) {
+        // ₹200-500: Slower (5-8 seconds per bot)
+        return { botJoinBase: 4000, botJoinRandom: 2500, readyDelay: 800, gameStartBase: 3500 };
+      } else if (amount <= 1000) {
+        // ₹1000: Slow (8-12 seconds per bot)
+        return { botJoinBase: 6000, botJoinRandom: 4000, readyDelay: 1000, gameStartBase: 4500 };
+      } else {
+        // ₹5000+: Very slow (12-18 seconds per bot) - high rollers are rare
+        return { botJoinBase: 10000, botJoinRandom: 6000, readyDelay: 1200, gameStartBase: 6000 };
+      }
+    };
+
+    const delays = getMatchmakingDelay(entryAmount);
+
+    // Simulate bot joining with realistic delays
     const usedNames: string[] = [];
     const usedAvatars: number[] = [];
+    let totalBotJoinTime = 0;
+    
     for (let i = 1; i < playerMode; i++) {
+      // Each subsequent bot takes the base delay + random variance
+      const botJoinDelay = delays.botJoinBase + Math.random() * delays.botJoinRandom;
+      totalBotJoinTime += botJoinDelay;
+      
       setTimeout(async () => {
         const botName = getRandomBotName(usedNames);
         usedNames.push(botName);
@@ -755,11 +787,12 @@ export const useLudoGame = () => {
               p.id === botPlayer.id ? { ...p, status: 'ready' } : p
             )
           }));
-        }, 500 + Math.random() * 500);
-      }, 1000 * i + Math.random() * 800);
+        }, delays.readyDelay + Math.random() * 400);
+      }, totalBotJoinTime);
     }
 
-    // Start game
+    // Start game after all bots have joined and are ready
+    const gameStartDelay = totalBotJoinTime + delays.gameStartBase + Math.random() * 1000;
     setTimeout(() => {
       gameInProgressRef.current = true;
       setGameState(prev => ({
@@ -773,7 +806,7 @@ export const useLudoGame = () => {
         status: 'in_progress',
         started_at: new Date().toISOString()
       }).eq('id', match.id);
-    }, 1500 * playerMode + 500);
+    }, gameStartDelay);
   }, [user, walletBalance, entryAmount, playerMode, settings, toast, getRandomBotName, createInitialTokens, userUID, userAvatar, userName]);
 
   // Generate dice value - HIGH STAKES (>₹100) makes bots smarter BUT SUBTLE
