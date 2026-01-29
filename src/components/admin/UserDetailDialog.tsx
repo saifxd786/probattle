@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { format } from 'date-fns';
+import { format, formatDistanceToNow } from 'date-fns';
 import { supabase } from '@/integrations/supabase/client';
 import {
   Dialog,
@@ -11,7 +11,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Loader2, User, Wallet, Phone, Mail, Calendar, Shield, ArrowUpCircle, ArrowDownCircle, Clock, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
+import { Loader2, User, Wallet, Phone, Mail, Calendar, Shield, ArrowUpCircle, ArrowDownCircle, Clock, CheckCircle, XCircle, AlertCircle, Globe, Smartphone, MapPin } from 'lucide-react';
 
 interface UserDetailDialogProps {
   isOpen: boolean;
@@ -47,10 +47,30 @@ interface Transaction {
   description: string | null;
 }
 
+interface LoginSession {
+  id: string;
+  ip_address: string | null;
+  device_name: string | null;
+  device_fingerprint: string | null;
+  created_at: string;
+}
+
+interface GeoLocation {
+  ip: string;
+  country: string;
+  countryCode: string;
+  city: string;
+  regionName: string;
+  isp: string;
+}
+
 const UserDetailDialog = ({ isOpen, onClose, userId }: UserDetailDialogProps) => {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [loginSessions, setLoginSessions] = useState<LoginSession[]>([]);
+  const [geoLocations, setGeoLocations] = useState<Record<string, GeoLocation | null>>({});
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingGeo, setIsLoadingGeo] = useState(false);
   const [stats, setStats] = useState({
     totalDeposits: 0,
     totalWithdrawals: 0,
@@ -61,6 +81,31 @@ const UserDetailDialog = ({ isOpen, onClose, userId }: UserDetailDialogProps) =>
     thimbleGames: 0,
     ludoGames: 0,
   });
+
+  useEffect(() => {
+    if (userId && isOpen) {
+      fetchUserDetails();
+    }
+  }, [userId, isOpen]);
+
+  const fetchGeoLocations = async (ipAddresses: string[]) => {
+    const uniqueIps = [...new Set(ipAddresses.filter(ip => ip && !geoLocations[ip]))];
+    if (uniqueIps.length === 0) return;
+    
+    setIsLoadingGeo(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('ip-geolocation', {
+        body: { ip_addresses: uniqueIps }
+      });
+      
+      if (!error && data?.locations) {
+        setGeoLocations(prev => ({ ...prev, ...data.locations }));
+      }
+    } catch (err) {
+      console.error('Failed to fetch geolocation:', err);
+    }
+    setIsLoadingGeo(false);
+  };
 
   useEffect(() => {
     if (userId && isOpen) {
@@ -101,12 +146,21 @@ const UserDetailDialog = ({ isOpen, onClose, userId }: UserDetailDialogProps) =>
     const pendingWithdrawals = withdrawals.filter(t => t.status === 'pending' || t.status === 'processing');
     const cancelledWithdrawals = withdrawals.filter(t => t.status === 'cancelled');
 
-    // Fetch game stats
-    const [minesRes, thimbleRes, ludoRes] = await Promise.all([
+    // Fetch game stats and login sessions in parallel
+    const [minesRes, thimbleRes, ludoRes, sessionsRes] = await Promise.all([
       supabase.from('mines_games').select('id', { count: 'exact', head: true }).eq('user_id', userId),
       supabase.from('thimble_games').select('id', { count: 'exact', head: true }).eq('user_id', userId),
       supabase.from('ludo_match_players').select('id', { count: 'exact', head: true }).eq('user_id', userId),
+      supabase.from('user_login_sessions').select('*').eq('user_id', userId).order('created_at', { ascending: false }).limit(10),
     ]);
+
+    setLoginSessions(sessionsRes.data || []);
+    
+    // Fetch geolocation for IPs
+    const ips = (sessionsRes.data || []).map(s => s.ip_address).filter(Boolean) as string[];
+    if (ips.length > 0) {
+      fetchGeoLocations(ips);
+    }
 
     setStats({
       totalDeposits,
@@ -259,8 +313,11 @@ const UserDetailDialog = ({ isOpen, onClose, userId }: UserDetailDialogProps) =>
               </div>
 
               {/* Transactions Tabs */}
-              <Tabs defaultValue="deposits" className="w-full">
-                <TabsList className="w-full grid grid-cols-2">
+              <Tabs defaultValue="sessions" className="w-full">
+                <TabsList className="w-full grid grid-cols-3">
+                  <TabsTrigger value="sessions">
+                    Sessions ({loginSessions.length})
+                  </TabsTrigger>
                   <TabsTrigger value="deposits">
                     Deposits ({depositTransactions.length})
                   </TabsTrigger>
@@ -268,6 +325,52 @@ const UserDetailDialog = ({ isOpen, onClose, userId }: UserDetailDialogProps) =>
                     Withdrawals ({withdrawalTransactions.length})
                   </TabsTrigger>
                 </TabsList>
+
+                <TabsContent value="sessions" className="mt-4">
+                  <Card className="glass-card">
+                    <CardContent className="p-0">
+                      {loginSessions.length === 0 ? (
+                        <div className="text-center py-8 text-muted-foreground">No login sessions found</div>
+                      ) : (
+                        <div className="divide-y divide-border">
+                          {loginSessions.map((session) => {
+                            const geo = session.ip_address ? geoLocations[session.ip_address] : null;
+                            return (
+                              <div key={session.id} className="p-4">
+                                <div className="flex items-center justify-between mb-2">
+                                  <div className="flex items-center gap-2">
+                                    <Globe className="w-4 h-4 text-muted-foreground" />
+                                    <span className="font-mono text-sm">{session.ip_address || 'Unknown IP'}</span>
+                                    {geo && (
+                                      <Badge variant="outline" className="text-xs">
+                                        <MapPin className="w-3 h-3 mr-1" />
+                                        {geo.city}, {geo.country}
+                                      </Badge>
+                                    )}
+                                  </div>
+                                  <span className="text-xs text-muted-foreground">
+                                    {formatDistanceToNow(new Date(session.created_at), { addSuffix: true })}
+                                  </span>
+                                </div>
+                                <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+                                  {session.device_name && (
+                                    <span className="flex items-center gap-1">
+                                      <Smartphone className="w-3 h-3" />
+                                      {session.device_name}
+                                    </span>
+                                  )}
+                                  {geo?.isp && (
+                                    <span>ISP: {geo.isp}</span>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </TabsContent>
 
                 <TabsContent value="deposits" className="mt-4">
                   <Card className="glass-card">
