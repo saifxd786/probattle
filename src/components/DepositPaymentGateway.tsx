@@ -112,7 +112,7 @@ const DepositPaymentGateway = ({ isOpen, onClose, onSubmit, isSubmitting }: Depo
     setTimeout(() => {
       setShowProcessing(false);
       handleClose();
-    }, 3000);
+    }, 5000);
   };
 
   const formatTime = (seconds: number) => {
