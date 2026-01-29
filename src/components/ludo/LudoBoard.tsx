@@ -789,26 +789,37 @@ const LudoBoard = ({ players, onTokenClick, selectedToken, captureEvent, onCaptu
           </svg>
 
           {/* Circular Tokens - properly centered in cells */}
-          {players.map((player) => (
-            player.tokens.map((token) => {
+          {/* Render non-current player tokens first (lower z-index), then current player tokens on top */}
+          {players
+            .sort((a, b) => {
+              // Current player's tokens should be rendered last (on top)
+              if (a.isCurrentTurn) return 1;
+              if (b.isCurrentTurn) return -1;
+              return 0;
+            })
+            .map((player, playerIndex) => (
+            player.tokens.map((token, tokenIndex) => {
               const pos = getTokenPosition(token, player.color);
               const isSelected = selectedToken?.color === player.color && selectedToken?.tokenId === token.id;
               const colorKey = player.color as keyof typeof COLORS;
               const canMove = player.isCurrentTurn && canTokenMove(token.position, diceValue);
               const tokenSize = cellSize * 0.75; // Token fits nicely within cell
+              
+              // Z-index: current player tokens always on top, selected highest
+              const baseZ = player.isCurrentTurn ? 20 : 5;
+              const zIndex = isSelected ? 30 : canMove ? 25 : baseZ + tokenIndex;
 
               return (
                 <motion.button
                   key={`${player.color}-${token.id}`}
                   className={cn(
                     'absolute flex items-center justify-center',
-                    player.isCurrentTurn && onTokenClick && 'cursor-pointer z-10',
-                    isSelected && 'z-20',
-                    canMove && !isSelected && 'z-15'
+                    player.isCurrentTurn && onTokenClick && 'cursor-pointer'
                   )}
                   style={{ 
                     width: tokenSize, 
-                    height: tokenSize 
+                    height: tokenSize,
+                    zIndex,
                   }}
                   initial={false}
                   animate={{
