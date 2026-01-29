@@ -18,7 +18,9 @@ import {
   ChevronUp,
   Clock,
   Zap,
-  MapPin
+  MapPin,
+  Ban,
+  UserX
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -39,6 +41,16 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { format, formatDistanceToNow } from 'date-fns';
@@ -107,6 +119,9 @@ const AdminMultiAccountDetection = () => {
   } | null>(null);
   const [geoLocations, setGeoLocations] = useState<Record<string, GeoLocation | null>>({});
   const [isLoadingGeo, setIsLoadingGeo] = useState(false);
+  const [isBanningAll, setIsBanningAll] = useState(false);
+  const [showBanConfirm, setShowBanConfirm] = useState(false);
+  const [banReason, setBanReason] = useState('Multi-account violation detected');
 
   useEffect(() => {
     fetchData();
@@ -248,6 +263,70 @@ const AdminMultiAccountDetection = () => {
       setResolveNotes('');
       fetchAlerts();
     }
+  };
+
+  const banAllLinkedAccounts = async () => {
+    if (!selectedAlert) return;
+    
+    setIsBanningAll(true);
+    const userIds = alertUsers.filter(u => !u.is_banned).map(u => u.id);
+    
+    if (userIds.length === 0) {
+      toast({ title: 'All accounts already banned', variant: 'default' });
+      setIsBanningAll(false);
+      setShowBanConfirm(false);
+      return;
+    }
+
+    // Ban all users
+    const { error: banError } = await supabase
+      .from('profiles')
+      .update({
+        is_banned: true,
+        ban_reason: banReason,
+        banned_at: new Date().toISOString()
+      })
+      .in('id', userIds);
+
+    if (banError) {
+      toast({ title: 'Failed to ban accounts', description: banError.message, variant: 'destructive' });
+      setIsBanningAll(false);
+      setShowBanConfirm(false);
+      return;
+    }
+
+    // Also ban devices if we have device fingerprints
+    if (selectedAlert.alert_type === 'device_match') {
+      await supabase
+        .from('device_bans')
+        .insert({
+          device_fingerprint: selectedAlert.identifier_value,
+          reason: banReason,
+          banned_at: new Date().toISOString()
+        });
+    }
+
+    // Auto-resolve the alert
+    await supabase
+      .from('multi_account_alerts')
+      .update({
+        is_resolved: true,
+        resolved_at: new Date().toISOString(),
+        notes: `Bulk banned ${userIds.length} accounts. Reason: ${banReason}`
+      })
+      .eq('id', selectedAlert.id);
+
+    toast({ 
+      title: 'Accounts banned', 
+      description: `Successfully banned ${userIds.length} accounts` 
+    });
+
+    // Refresh data
+    setIsBanningAll(false);
+    setShowBanConfirm(false);
+    setSelectedAlert(null);
+    setBanReason('Multi-account violation detected');
+    fetchAlerts();
   };
 
   const getSeverityColor = (severity: string) => {
@@ -675,15 +754,32 @@ const AdminMultiAccountDetection = () => {
 
               {!selectedAlert.is_resolved && (
                 <div className="space-y-3 pt-4 border-t">
+                  <div className="space-y-2">
+                    <label className="text-sm text-muted-foreground">Ban Reason</label>
+                    <Input
+                      placeholder="Reason for banning..."
+                      value={banReason}
+                      onChange={(e) => setBanReason(e.target.value)}
+                    />
+                  </div>
                   <Textarea
                     placeholder="Add notes before resolving..."
                     value={resolveNotes}
                     onChange={(e) => setResolveNotes(e.target.value)}
                   />
                   <div className="flex gap-2">
-                    <Button onClick={() => resolveAlert(selectedAlert.id)} className="flex-1">
+                    <Button 
+                      variant="destructive" 
+                      onClick={() => setShowBanConfirm(true)}
+                      disabled={alertUsers.every(u => u.is_banned)}
+                      className="flex-1"
+                    >
+                      <Ban className="w-4 h-4 mr-2" />
+                      Ban All ({alertUsers.filter(u => !u.is_banned).length} accounts)
+                    </Button>
+                    <Button onClick={() => resolveAlert(selectedAlert.id)} variant="outline" className="flex-1">
                       <CheckCircle className="w-4 h-4 mr-2" />
-                      Mark as Resolved
+                      Resolve Only
                     </Button>
                   </div>
                 </div>
@@ -699,6 +795,52 @@ const AdminMultiAccountDetection = () => {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Ban Confirmation Dialog */}
+      <AlertDialog open={showBanConfirm} onOpenChange={setShowBanConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+              <UserX className="w-5 h-5" />
+              Ban All Linked Accounts?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2">
+              <p>This will permanently ban <strong>{alertUsers.filter(u => !u.is_banned).length}</strong> accounts:</p>
+              <ul className="list-disc list-inside text-sm space-y-1 mt-2">
+                {alertUsers.filter(u => !u.is_banned).map(u => (
+                  <li key={u.id}>{u.username || u.email || u.phone || 'Unknown'}</li>
+                ))}
+              </ul>
+              <p className="mt-3 font-medium">Reason: {banReason}</p>
+              {selectedAlert?.alert_type === 'device_match' && (
+                <p className="text-yellow-600 text-sm mt-2">
+                  ⚠️ Device fingerprint will also be banned
+                </p>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isBanningAll}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={banAllLinkedAccounts}
+              disabled={isBanningAll}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isBanningAll ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Banning...
+                </>
+              ) : (
+                <>
+                  <Ban className="w-4 h-4 mr-2" />
+                  Confirm Ban All
+                </>
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
