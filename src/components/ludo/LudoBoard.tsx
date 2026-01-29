@@ -782,15 +782,6 @@ const LudoBoard = ({ players, onTokenClick, selectedToken, captureEvent, onCaptu
           />
         </div>
       </motion.div>
-      
-      {/* Bottom Info Bar with Timer */}
-      <div className="mt-3 px-1">
-        <BottomInfoBar 
-          players={players} 
-          turnTimeLeft={turnTimeLeft}
-          offlineTimeLeft={offlineTimeLeft}
-        />
-      </div>
     </div>
   );
 };
