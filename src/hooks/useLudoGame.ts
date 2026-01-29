@@ -299,6 +299,9 @@ export const useLudoGame = () => {
     fetchSettings();
   }, []);
 
+  // Auto-resume flag to prevent multiple resume attempts
+  const [shouldAutoResume, setShouldAutoResume] = useState(false);
+
   // Check for active in-progress games on mount
   useEffect(() => {
     if (!user) {
@@ -317,10 +320,12 @@ export const useLudoGame = () => {
             reward_amount,
             player_count,
             game_state,
+            updated_at,
             ludo_match_players!inner (
               user_id,
               is_bot,
               bot_name,
+              bot_avatar_url,
               player_color,
               token_positions,
               tokens_home
@@ -340,6 +345,19 @@ export const useLudoGame = () => {
 
         if (activeMatch) {
           console.log('[LudoGame] Found active game:', activeMatch.id);
+          
+          // Check if game was left within 60 seconds (auto-resume window)
+          const lastActiveTime = localStorage.getItem(`ludo_game_active_${activeMatch.id}`);
+          const now = Date.now();
+          const AUTO_RESUME_WINDOW = 60 * 1000; // 60 seconds
+          
+          let canAutoResume = false;
+          if (lastActiveTime) {
+            const timeSinceLeave = now - parseInt(lastActiveTime, 10);
+            canAutoResume = timeSinceLeave <= AUTO_RESUME_WINDOW;
+            console.log('[LudoGame] Time since leave:', timeSinceLeave, 'ms, auto-resume:', canAutoResume);
+          }
+          
           setHasActiveGame(true);
           setActiveGameData({
             matchId: activeMatch.id,
@@ -349,9 +367,14 @@ export const useLudoGame = () => {
             gameState: activeMatch.game_state
           });
           
-          // Play alert sound
-          soundManager.playDisconnectAlert();
-          hapticManager.warning();
+          if (canAutoResume) {
+            // Set flag for auto-resume (will be picked up after activeGameData is set)
+            setShouldAutoResume(true);
+          } else {
+            // Play alert sound for manual resume
+            soundManager.playDisconnectAlert();
+            hapticManager.warning();
+          }
         }
       } catch (err) {
         console.error('[LudoGame] Error checking active game:', err);
@@ -362,6 +385,38 @@ export const useLudoGame = () => {
 
     checkActiveGame();
   }, [user]);
+
+  // Auto-resume effect is defined after resumeGame callback below
+
+  // Track when user leaves the game page (for auto-resume detection)
+  useEffect(() => {
+    if (gameState.phase === 'playing' && gameState.matchId) {
+      // Update active timestamp periodically
+      const updateActiveTime = () => {
+        localStorage.setItem(`ludo_game_active_${gameState.matchId}`, Date.now().toString());
+      };
+      
+      // Update immediately and then every 5 seconds
+      updateActiveTime();
+      const interval = setInterval(updateActiveTime, 5000);
+      
+      // Also update on visibility change (when user switches tabs)
+      const handleVisibilityChange = () => {
+        if (document.visibilityState === 'hidden') {
+          updateActiveTime();
+        }
+      };
+      document.addEventListener('visibilitychange', handleVisibilityChange);
+      
+      // Cleanup on unmount or phase change
+      return () => {
+        clearInterval(interval);
+        document.removeEventListener('visibilitychange', handleVisibilityChange);
+        // Final update when leaving
+        updateActiveTime();
+      };
+    }
+  }, [gameState.phase, gameState.matchId]);
 
   const getRandomBotName = useCallback((usedNames: string[]) => {
     const available = BOT_NAMES.filter(name => !usedNames.includes(name));
@@ -455,6 +510,15 @@ export const useLudoGame = () => {
       toast({ title: 'Failed to resume game', variant: 'destructive' });
     }
   }, [user, activeGameData, userUID, userAvatar, userName, toast]);
+
+  // Auto-resume effect - triggered when shouldAutoResume becomes true and activeGameData is available
+  useEffect(() => {
+    if (shouldAutoResume && activeGameData && user) {
+      console.log('[LudoGame] Auto-resuming game...');
+      setShouldAutoResume(false);
+      resumeGame();
+    }
+  }, [shouldAutoResume, activeGameData, user, resumeGame]);
 
   // Dismiss active game (forfeit)
   const dismissActiveGame = useCallback(async () => {
