@@ -10,6 +10,7 @@ interface ThimbleCupsProps {
   difficulty: ThimbleDifficulty;
   shuffleDuration: number;
   onSelectCup: (index: number) => void;
+  onCupOrderChange?: (order: number[]) => void;
 }
 
 const ThimbleCups = ({
@@ -19,29 +20,33 @@ const ThimbleCups = ({
   isWin,
   difficulty,
   shuffleDuration,
-  onSelectCup
+  onSelectCup,
+  onCupOrderChange
 }: ThimbleCupsProps) => {
   const [cupOrder, setCupOrder] = useState([0, 1, 2]);
   const [liftedCup, setLiftedCup] = useState<number | null>(null);
   const shuffleRef = useRef<NodeJS.Timeout[]>([]);
 
-  const difficultyConfig = {
-    easy: { shuffles: 5, speed: 600, pauseBetween: 150 },
-    hard: { shuffles: 8, speed: 350, pauseBetween: 100 },
-    impossible: { shuffles: 14, speed: 180, pauseBetween: 50 }
-  };
-
-  const config = difficultyConfig[difficulty];
+  // IMPORTANT: Difficulty is NOT based on shuffle speed.
+  // We use shuffleDuration to keep the same (fast) shuffle animation across all modes.
+  // Difficulty is determined by selection time.
+  void difficulty;
+  const shuffles = 10;
+  const pauseBetween = 20;
+  const speed = Math.max(60, Math.floor(shuffleDuration / shuffles) - pauseBetween);
+  const config = { shuffles, speed, pauseBetween };
 
   // Handle showing phase - lift cup to show ball
   useEffect(() => {
     if (phase === 'showing') {
       setLiftedCup(ballPosition);
-      setCupOrder([0, 1, 2]);
+      const order = [0, 1, 2];
+      setCupOrder(order);
+      onCupOrderChange?.(order);
     } else if (phase === 'shuffling') {
       setLiftedCup(null);
     }
-  }, [phase, ballPosition]);
+  }, [phase, ballPosition, onCupOrderChange]);
 
   // Smooth shuffle animation
   useEffect(() => {
@@ -64,6 +69,7 @@ const ThimbleCups = ({
       currentOrder = newOrder;
 
       setCupOrder([...currentOrder]);
+      onCupOrderChange?.([...currentOrder]);
       shuffleCount++;
 
       const timeout = setTimeout(doShuffle, config.speed + config.pauseBetween);
@@ -77,7 +83,7 @@ const ThimbleCups = ({
       shuffleRef.current.forEach(clearTimeout);
       shuffleRef.current = [];
     };
-  }, [phase, config.shuffles, config.speed, config.pauseBetween]);
+  }, [phase, config.shuffles, config.speed, config.pauseBetween, onCupOrderChange]);
 
   // Handle revealing phase - lift ALL cups to show ball position
   useEffect(() => {

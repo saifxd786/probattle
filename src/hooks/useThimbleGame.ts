@@ -101,19 +101,26 @@ export const useThimbleGame = () => {
         .single();
       
       if (data) {
+        const unifiedShuffleDuration = Math.min(
+          Number(data.shuffle_duration_easy ?? 1200),
+          Number(data.shuffle_duration_hard ?? 1200),
+          Number(data.shuffle_duration_impossible ?? 1200)
+        );
+
         setSettings({
           isEnabled: data.is_enabled,
           minEntryAmount: Number(data.min_entry_amount),
           platformCommission: Number(data.platform_commission),
-          shuffleDurationEasy: data.shuffle_duration_easy,
-          shuffleDurationHard: data.shuffle_duration_hard,
-          shuffleDurationImpossible: data.shuffle_duration_impossible,
+          // Difficulty is NOT based on shuffle speed; keep the same (fastest) shuffle across modes.
+          shuffleDurationEasy: unifiedShuffleDuration,
+          shuffleDurationHard: unifiedShuffleDuration,
+          shuffleDurationImpossible: unifiedShuffleDuration,
           selectionTimeEasy: data.selection_time_easy,
           selectionTimeHard: data.selection_time_hard,
           selectionTimeImpossible: data.selection_time_impossible,
           rewardMultiplierEasy: data.reward_multiplier_easy ?? 1.5,
           rewardMultiplierHard: data.reward_multiplier_hard ?? 2,
-          rewardMultiplierImpossible: data.reward_multiplier_impossible ?? 3,
+          rewardMultiplierImpossible: data.reward_multiplier_impossible ?? 2,
         });
         
         setGameState(prev => ({ 
@@ -348,6 +355,10 @@ export const useThimbleGame = () => {
     setGameState(prev => ({ ...prev, entryAmount: amount }));
   }, []);
 
+  const setCupPositions = useCallback((positions: number[]) => {
+    setGameState(prev => ({ ...prev, cupPositions: positions }));
+  }, []);
+
   const rewardAmount = gameState.entryAmount * getDifficultySettings(selectedDifficulty).rewardMultiplier;
 
   return {
@@ -361,6 +372,7 @@ export const useThimbleGame = () => {
     handleSelection,
     resetGame,
     setEntryAmount,
+    setCupPositions,
     rewardAmount,
     getDifficultySettings
   };
