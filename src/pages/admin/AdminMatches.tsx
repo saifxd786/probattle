@@ -391,14 +391,33 @@ const AdminMatches = () => {
                     </div>
                   </>
                 )}
-                <div>
-                  <Label>Map Name</Label>
-                  <Input
-                    value={formData.map_name}
-                    onChange={(e) => setFormData({ ...formData, map_name: e.target.value })}
-                    placeholder="e.g., Erangel, Sanhok"
-                  />
-                </div>
+                {/* Map Selection for Classic matches */}
+                {formData.match_type === 'classic' && (
+                  <div>
+                    <Label>Map</Label>
+                    <Select value={formData.map_name} onValueChange={(v) => setFormData({ ...formData, map_name: v })}>
+                      <SelectTrigger><SelectValue placeholder="Select map" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="erangel">Erangel</SelectItem>
+                        <SelectItem value="miramar">Miramar</SelectItem>
+                        <SelectItem value="sanhok">Sanhok</SelectItem>
+                        <SelectItem value="vikendi">Vikendi</SelectItem>
+                        <SelectItem value="livik">Livik</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+                {/* Map Name for TDM matches */}
+                {formData.match_type.startsWith('tdm') && (
+                  <div>
+                    <Label>Map Name</Label>
+                    <Input
+                      value={formData.map_name}
+                      onChange={(e) => setFormData({ ...formData, map_name: e.target.value })}
+                      placeholder="e.g., Warehouse, Hangar"
+                    />
+                  </div>
+                )}
                 <div>
                   <Label>Max Slots</Label>
                   <Input
