@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Check, X, Search, Clock, CheckCircle, XCircle, Loader2, Image as ImageIcon } from 'lucide-react';
+import { Check, X, Search, Clock, CheckCircle, XCircle, Loader2, Image as ImageIcon, Bot } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { toast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
+import { Badge } from '@/components/ui/badge';
 
 type Transaction = {
   id: string;
@@ -16,6 +17,7 @@ type Transaction = {
   status: string;
   upi_id: string | null;
   description: string | null;
+  admin_note: string | null;
   created_at: string;
   screenshot_url: string | null;
   profiles: {
@@ -23,6 +25,12 @@ type Transaction = {
     user_code: string | null;
     wallet_balance: number;
   } | null;
+};
+
+// Helper to check if a transaction was auto-rejected
+const isAutoRejected = (tx: Transaction): boolean => {
+  return tx.status === 'cancelled' && 
+         tx.admin_note?.includes('Auto-rejected') === true;
 };
 
 const AdminTransactions = () => {
@@ -386,9 +394,17 @@ const AdminTransactions = () => {
                         {format(new Date(tx.created_at), 'MMM dd, hh:mm a')}
                       </td>
                       <td className="p-4">
-                        <span className={`text-xs px-2 py-1 rounded-full ${getStatusColor(tx.status)}`}>
-                          {tx.status}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className={`text-xs px-2 py-1 rounded-full ${getStatusColor(tx.status)}`}>
+                            {tx.status}
+                          </span>
+                          {isAutoRejected(tx) && (
+                            <Badge variant="outline" className="gap-1 border-orange-500/50 text-orange-500 bg-orange-500/10">
+                              <Bot className="w-3 h-3" />
+                              Auto
+                            </Badge>
+                          )}
+                        </div>
                       </td>
                       <td className="p-4">
                         {tx.status === 'pending' && (
