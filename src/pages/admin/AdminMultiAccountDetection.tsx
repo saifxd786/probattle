@@ -17,7 +17,8 @@ import {
   ChevronDown,
   ChevronUp,
   Clock,
-  Zap
+  Zap,
+  MapPin
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -75,6 +76,16 @@ interface UserSession {
   profiles?: UserProfile;
 }
 
+interface GeoLocation {
+  ip: string;
+  country: string;
+  countryCode: string;
+  region: string;
+  regionName: string;
+  city: string;
+  isp: string;
+}
+
 const AdminMultiAccountDetection = () => {
   const { toast } = useToast();
   const [alerts, setAlerts] = useState<Alert[]>([]);
@@ -94,6 +105,8 @@ const AdminMultiAccountDetection = () => {
     critical: number;
     high: number;
   } | null>(null);
+  const [geoLocations, setGeoLocations] = useState<Record<string, GeoLocation | null>>({});
+  const [isLoadingGeo, setIsLoadingGeo] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -103,6 +116,25 @@ const AdminMultiAccountDetection = () => {
     setIsLoading(true);
     await Promise.all([fetchAlerts(), fetchSessions()]);
     setIsLoading(false);
+  };
+
+  const fetchGeoLocations = async (ipAddresses: string[]) => {
+    const uniqueIps = [...new Set(ipAddresses.filter(ip => ip && !geoLocations[ip]))];
+    if (uniqueIps.length === 0) return;
+    
+    setIsLoadingGeo(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('ip-geolocation', {
+        body: { ip_addresses: uniqueIps }
+      });
+      
+      if (!error && data?.locations) {
+        setGeoLocations(prev => ({ ...prev, ...data.locations }));
+      }
+    } catch (err) {
+      console.error('Failed to fetch geolocation:', err);
+    }
+    setIsLoadingGeo(false);
   };
 
   const fetchAlerts = async () => {
@@ -142,6 +174,10 @@ const AdminMultiAccountDetection = () => {
     }));
 
     setSessions(sessionsWithProfiles);
+    
+    // Fetch geolocation for IPs
+    const ips = sessionData.map(s => s.ip_address).filter(Boolean) as string[];
+    fetchGeoLocations(ips);
   };
 
   const runDetection = async (useEdgeFunction = false) => {
@@ -461,37 +497,49 @@ const AdminMultiAccountDetection = () => {
             </CardHeader>
             <CardContent>
               <div className="space-y-2 max-h-[500px] overflow-y-auto">
-                {sessions.slice(0, 100).map((session) => (
-                  <div key={session.id} className="p-3 bg-secondary/30 rounded-lg text-sm">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 rounded-full bg-primary/20">
-                          <Users className="w-4 h-4 text-primary" />
-                        </div>
-                        <div>
-                          <p className="font-medium">{session.profiles?.username || session.profiles?.email || 'Unknown'}</p>
-                          <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
-                            {session.ip_address && (
-                              <span className="flex items-center gap-1">
-                                <Globe className="w-3 h-3" />
-                                {session.ip_address}
-                              </span>
-                            )}
-                            {session.device_name && (
-                              <span className="flex items-center gap-1">
-                                <Smartphone className="w-3 h-3" />
-                                {session.device_name}
-                              </span>
+                {sessions.slice(0, 100).map((session) => {
+                  const geo = session.ip_address ? geoLocations[session.ip_address] : null;
+                  return (
+                    <div key={session.id} className="p-3 bg-secondary/30 rounded-lg text-sm">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="p-2 rounded-full bg-primary/20">
+                            <Users className="w-4 h-4 text-primary" />
+                          </div>
+                          <div>
+                            <p className="font-medium">{session.profiles?.username || session.profiles?.email || 'Unknown'}</p>
+                            <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+                              {session.ip_address && (
+                                <span className="flex items-center gap-1">
+                                  <Globe className="w-3 h-3" />
+                                  {session.ip_address}
+                                </span>
+                              )}
+                              {geo && (
+                                <span className="flex items-center gap-1 text-primary">
+                                  <MapPin className="w-3 h-3" />
+                                  {geo.city}, {geo.regionName}, {geo.country}
+                                </span>
+                              )}
+                              {session.device_name && (
+                                <span className="flex items-center gap-1">
+                                  <Smartphone className="w-3 h-3" />
+                                  {session.device_name}
+                                </span>
+                              )}
+                            </div>
+                            {geo?.isp && (
+                              <p className="text-xs text-muted-foreground/70 mt-0.5">ISP: {geo.isp}</p>
                             )}
                           </div>
                         </div>
+                        <p className="text-xs text-muted-foreground">
+                          {format(new Date(session.created_at), 'MMM dd, HH:mm')}
+                        </p>
                       </div>
-                      <p className="text-xs text-muted-foreground">
-                        {format(new Date(session.created_at), 'MMM dd, HH:mm')}
-                      </p>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </CardContent>
           </Card>
@@ -511,6 +559,7 @@ const AdminMultiAccountDetection = () => {
               suspiciousIPs.map(([ip, ipSessions]) => {
                 const uniqueUsers = [...new Set(ipSessions.map(s => s.user_id))];
                 const isExpanded = expandedSessions.has(ip);
+                const geo = geoLocations[ip];
                 
                 return (
                   <Card key={ip} className="glass-card border-l-4 border-l-orange-500">
@@ -529,9 +578,18 @@ const AdminMultiAccountDetection = () => {
                             <Globe className="w-5 h-5 text-orange-500" />
                           </div>
                           <div>
-                            <p className="font-medium font-mono">{ip}</p>
+                            <div className="flex items-center gap-2">
+                              <p className="font-medium font-mono">{ip}</p>
+                              {geo && (
+                                <Badge variant="outline" className="text-xs">
+                                  <MapPin className="w-3 h-3 mr-1" />
+                                  {geo.city}, {geo.country}
+                                </Badge>
+                              )}
+                            </div>
                             <p className="text-sm text-muted-foreground">
                               {uniqueUsers.length} different users • {ipSessions.length} sessions
+                              {geo?.isp && ` • ${geo.isp}`}
                             </p>
                           </div>
                         </div>
