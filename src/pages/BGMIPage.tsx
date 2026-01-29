@@ -15,7 +15,7 @@ import { Database } from '@/integrations/supabase/types';
 import bgmiCard from '@/assets/bgmi-card.jpg';
 import bgmiHeroBanner from '@/assets/bgmi-hero-banner.jpg';
 import tdmBanner from '@/assets/bgmi-tdm-banner.jpg';
-import classicBanner from '@/assets/bgmi-classic-banner.jpg';
+import classicBanner from '@/assets/classic-erangel-banner.jpg';
 
 type Match = Database['public']['Tables']['matches']['Row'];
 type MatchType = Database['public']['Enums']['match_type'];
