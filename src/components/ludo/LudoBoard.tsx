@@ -791,75 +791,133 @@ const LudoBoard = ({ players, onTokenClick, selectedToken, captureEvent, onCaptu
             <text x="14.5" y="7.7" textAnchor="middle" fontSize="0.5" fill={COLORS.yellow.dark} fontWeight="bold">←</text>
           </svg>
 
-          {/* Circular Tokens - properly centered in cells */}
-          {/* Render non-current player tokens first (lower z-index), then current player tokens on top */}
-          {players
-            .sort((a, b) => {
-              // Current player's tokens should be rendered last (on top)
-              if (a.isCurrentTurn) return 1;
-              if (b.isCurrentTurn) return -1;
-              return 0;
-            })
-            .map((player, playerIndex) => (
-            player.tokens.map((token, tokenIndex) => {
-              const pos = getTokenPosition(token, player.color);
-              const isSelected = selectedToken?.color === player.color && selectedToken?.tokenId === token.id;
-              const colorKey = player.color as keyof typeof COLORS;
-              const canMove = player.isCurrentTurn && canTokenMove(token.position, diceValue);
-              const tokenSize = cellSize * 0.75; // Token fits nicely within cell
-              
-              // Z-index: current player tokens always on top, selected highest
-              const baseZ = player.isCurrentTurn ? 20 : 5;
-              const zIndex = isSelected ? 30 : canMove ? 25 : baseZ + tokenIndex;
+          {/* TOKENS - Render with mini stacking for same cell like Ludo King */}
+          {(() => {
+            // Group all tokens by their cell position
+            type TokenData = { player: typeof players[0]; token: Token; pos: { x: number; y: number }; posKey: string };
+            const allTokens: TokenData[] = [];
+            
+            players.forEach(player => {
+              player.tokens.forEach(token => {
+                const pos = getTokenPosition(token, player.color);
+                // Round to nearest cell to group tokens on same visual cell
+                const posKey = `${Math.round(pos.x / cellSize * 10)}-${Math.round(pos.y / cellSize * 10)}`;
+                allTokens.push({ player, token, pos, posKey });
+              });
+            });
 
-              return (
-                <motion.button
-                  key={`${player.color}-${token.id}`}
-                  className={cn(
-                    'absolute flex items-center justify-center',
-                    player.isCurrentTurn && onTokenClick && 'cursor-pointer'
-                  )}
-                  style={{ 
-                    width: tokenSize, 
-                    height: tokenSize,
-                    zIndex,
-                  }}
-                  initial={false}
-                  animate={{
-                    // Center the token on the cell position
-                    left: pos.x - (tokenSize / 2),
-                    top: pos.y - (tokenSize / 2),
-                    scale: isSelected ? 1.2 : canMove ? 1.05 : 1,
-                  }}
-                  transition={{ type: 'spring', stiffness: 350, damping: 22 }}
-                  whileHover={onTokenClick && player.isCurrentTurn ? { scale: 1.15 } : {}}
-                  whileTap={onTokenClick && player.isCurrentTurn ? { scale: 0.92 } : {}}
-                  onClick={() => onTokenClick?.(player.color, token.id)}
-                  disabled={!player.isCurrentTurn || !onTokenClick}
-                >
-                  <LudoKingToken 
-                    color={colorKey} 
-                    isActive={player.isCurrentTurn} 
-                    isSelected={isSelected} 
-                    size={tokenSize} 
-                  />
-                  
-                  {/* Movable indicator - pulsing ring */}
-                  {canMove && !isSelected && (
-                    <motion.div
-                      className="absolute inset-0 rounded-full pointer-events-none"
-                      style={{
-                        border: `2px solid ${COLORS[colorKey].main}`,
-                        boxShadow: `0 0 8px ${COLORS[colorKey].main}`,
-                      }}
-                      animate={{ scale: [1, 1.2, 1], opacity: [0.8, 0.3, 0.8] }}
-                      transition={{ duration: 1, repeat: Infinity }}
+            // Group tokens by position
+            const tokensByPosition: { [key: string]: TokenData[] } = {};
+            allTokens.forEach(t => {
+              if (!tokensByPosition[t.posKey]) {
+                tokensByPosition[t.posKey] = [];
+              }
+              tokensByPosition[t.posKey].push(t);
+            });
+
+            // Render tokens
+            return Object.entries(tokensByPosition).flatMap(([posKey, tokensAtPos]) => {
+              const isSingleToken = tokensAtPos.length === 1;
+              const baseTokenSize = cellSize * 0.75;
+              
+              // If multiple tokens at same position, make them mini and stack
+              const miniTokenSize = baseTokenSize * 0.55;
+              
+              // Stacking offsets for mini tokens (like Ludo King)
+              const getStackOffset = (index: number, total: number) => {
+                if (total === 2) {
+                  return [
+                    { x: -miniTokenSize * 0.35, y: -miniTokenSize * 0.2 },
+                    { x: miniTokenSize * 0.35, y: miniTokenSize * 0.2 }
+                  ][index];
+                }
+                if (total === 3) {
+                  return [
+                    { x: 0, y: -miniTokenSize * 0.4 },
+                    { x: -miniTokenSize * 0.4, y: miniTokenSize * 0.25 },
+                    { x: miniTokenSize * 0.4, y: miniTokenSize * 0.25 }
+                  ][index];
+                }
+                if (total >= 4) {
+                  return [
+                    { x: -miniTokenSize * 0.35, y: -miniTokenSize * 0.35 },
+                    { x: miniTokenSize * 0.35, y: -miniTokenSize * 0.35 },
+                    { x: -miniTokenSize * 0.35, y: miniTokenSize * 0.35 },
+                    { x: miniTokenSize * 0.35, y: miniTokenSize * 0.35 }
+                  ][index % 4];
+                }
+                return { x: 0, y: 0 };
+              };
+
+              // Sort: current player's tokens last (on top)
+              const sortedTokens = [...tokensAtPos].sort((a, b) => {
+                if (a.player.isCurrentTurn && !b.player.isCurrentTurn) return 1;
+                if (!a.player.isCurrentTurn && b.player.isCurrentTurn) return -1;
+                return 0;
+              });
+
+              return sortedTokens.map((tokenData, stackIndex) => {
+                const { player, token, pos } = tokenData;
+                const isSelected = selectedToken?.color === player.color && selectedToken?.tokenId === token.id;
+                const colorKey = player.color as keyof typeof COLORS;
+                const canMove = player.isCurrentTurn && canTokenMove(token.position, diceValue);
+                
+                const tokenSize = isSingleToken ? baseTokenSize : miniTokenSize;
+                const stackOffset = isSingleToken ? { x: 0, y: 0 } : getStackOffset(stackIndex, tokensAtPos.length);
+                
+                // Z-index: stacked tokens get higher z based on stack position
+                const baseZ = player.isCurrentTurn ? 20 : 5;
+                const stackZ = isSingleToken ? 0 : stackIndex * 2;
+                const zIndex = isSelected ? 50 : canMove ? 40 : baseZ + stackZ;
+
+                return (
+                  <motion.button
+                    key={`${player.color}-${token.id}`}
+                    className={cn(
+                      'absolute flex items-center justify-center',
+                      player.isCurrentTurn && onTokenClick && 'cursor-pointer'
+                    )}
+                    style={{ 
+                      width: tokenSize, 
+                      height: tokenSize,
+                      zIndex,
+                    }}
+                    initial={false}
+                    animate={{
+                      left: pos.x - (tokenSize / 2) + stackOffset.x,
+                      top: pos.y - (tokenSize / 2) + stackOffset.y,
+                      scale: isSelected ? 1.3 : canMove ? 1.1 : 1,
+                    }}
+                    transition={{ type: 'spring', stiffness: 350, damping: 22 }}
+                    whileHover={onTokenClick && player.isCurrentTurn ? { scale: isSingleToken ? 1.15 : 1.3 } : {}}
+                    whileTap={onTokenClick && player.isCurrentTurn ? { scale: 0.92 } : {}}
+                    onClick={() => onTokenClick?.(player.color, token.id)}
+                    disabled={!player.isCurrentTurn || !onTokenClick}
+                  >
+                    <LudoKingToken 
+                      color={colorKey} 
+                      isActive={player.isCurrentTurn} 
+                      isSelected={isSelected} 
+                      size={tokenSize} 
                     />
-                  )}
-                </motion.button>
-              );
-            })
-          ))}
+                    
+                    {/* Movable indicator - pulsing ring */}
+                    {canMove && !isSelected && (
+                      <motion.div
+                        className="absolute inset-0 rounded-full pointer-events-none"
+                        style={{
+                          border: `2px solid ${COLORS[colorKey].main}`,
+                          boxShadow: `0 0 8px ${COLORS[colorKey].main}`,
+                        }}
+                        animate={{ scale: [1, 1.2, 1], opacity: [0.8, 0.3, 0.8] }}
+                        transition={{ duration: 1, repeat: Infinity }}
+                      />
+                    )}
+                  </motion.button>
+                );
+              });
+            });
+          })()}
 
           {/* Capture Animation */}
           <CaptureAnimation
