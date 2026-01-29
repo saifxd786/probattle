@@ -495,6 +495,17 @@ export const useLudoGame = () => {
       return;
     }
 
+    // Fetch fresh profile data for accurate name and avatar
+    const { data: freshProfile } = await supabase
+      .from('profiles')
+      .select('username, avatar_url, user_code')
+      .eq('id', user.id)
+      .single();
+
+    const currentUserName = freshProfile?.username || userName || 'You';
+    const currentUserAvatar = freshProfile?.avatar_url || userAvatar || undefined;
+    const currentUserUID = freshProfile?.user_code || userUID || generateUID();
+
     // Deduct entry from wallet
     const { error: deductError } = await supabase
       .from('profiles')
@@ -547,12 +558,12 @@ export const useLudoGame = () => {
       type: 'entry'
     });
 
-    // Initialize user player
+    // Initialize user player with fresh profile data
     const userPlayer: Player = {
       id: user.id,
-      name: userName || 'You',
-      uid: userUID || generateUID(),
-      avatar: userAvatar || undefined,
+      name: currentUserName,
+      uid: currentUserUID,
+      avatar: currentUserAvatar,
       isBot: false,
       status: 'ready',
       color: userColor,
