@@ -23,7 +23,7 @@ interface LudoLobbyProps {
   onPlayWithFriend: () => void;
 }
 
-const ENTRY_AMOUNTS = [100, 200, 500, 1000];
+const ENTRY_AMOUNTS = [10, 20, 50, 100, 200, 500, 1000, 5000];
 
 const LudoLobby = ({
   user,
@@ -225,29 +225,6 @@ const LudoLobby = ({
           </motion.div>
         )}
 
-        {/* Insufficient Balance - Compact */}
-        {user && walletBalance < entryAmount && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="mb-3 p-3 rounded-xl bg-red-500/5 border border-red-500/20"
-          >
-            <div className="flex items-center gap-2">
-              <Wallet className="w-4 h-4 text-red-400" />
-              <p className="text-red-400 text-xs font-medium flex-1">
-                Need ₹{(entryAmount - walletBalance).toFixed(0)} more
-              </p>
-              <Link to="/wallet">
-                <Button 
-                  size="sm" 
-                  className="h-7 px-3 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 rounded-lg text-xs"
-                >
-                  Add
-                </Button>
-              </Link>
-            </div>
-          </motion.div>
-        )}
 
         {/* Features - Compact Row */}
         <motion.div

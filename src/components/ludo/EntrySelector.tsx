@@ -3,7 +3,7 @@ import { cn } from '@/lib/utils';
 import { Coins, Users, Swords, Trophy, Check } from 'lucide-react';
 
 // Entry amounts starting from ₹10
-const ENTRY_AMOUNTS = [10, 20, 50, 100, 200, 500];
+const ENTRY_AMOUNTS = [10, 20, 50, 100, 200, 500, 1000, 5000];
 
 interface EntrySelectorProps {
   amounts?: number[];
