@@ -158,7 +158,7 @@ const FriendMultiplayer = ({
       <div className="min-h-screen bg-[#0A0A0F] p-4 pb-24">
         {/* Subtle gradient background */}
         <div 
-          className="fixed inset-0 -z-10"
+          className="fixed inset-0 -z-10 pointer-events-none"
           style={{
             background: `
               radial-gradient(circle at 30% 20%, rgba(99, 102, 241, 0.08) 0%, transparent 40%),
@@ -170,7 +170,7 @@ const FriendMultiplayer = ({
 
         {/* Dot pattern */}
         <div 
-          className="fixed inset-0 -z-5 opacity-[0.03]"
+          className="fixed inset-0 -z-[5] opacity-[0.03] pointer-events-none"
           style={{
             backgroundImage: `radial-gradient(circle, #fff 1px, transparent 1px)`,
             backgroundSize: '24px 24px',
@@ -402,7 +402,7 @@ const FriendMultiplayer = ({
       <div className="min-h-screen bg-[#0A0A0F] p-4 pb-24">
         {/* Background */}
         <div 
-          className="fixed inset-0 -z-10"
+          className="fixed inset-0 -z-10 pointer-events-none"
           style={{
             background: `
               radial-gradient(circle at 50% 30%, rgba(99, 102, 241, 0.1) 0%, transparent 50%),
@@ -600,7 +600,7 @@ const FriendMultiplayer = ({
     <div className="min-h-screen bg-[#0A0A0F] p-4 pb-24">
       {/* Background */}
       <div 
-        className="fixed inset-0 -z-10"
+        className="fixed inset-0 -z-10 pointer-events-none"
         style={{
           background: `
             radial-gradient(circle at 50% 50%, rgba(59, 130, 246, 0.08) 0%, transparent 50%),
