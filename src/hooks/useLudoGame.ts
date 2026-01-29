@@ -214,6 +214,7 @@ export const useLudoGame = () => {
   const [playerMode, setPlayerMode] = useState<2 | 4>(2);
   const [walletBalance, setWalletBalance] = useState(0);
   const [userUID, setUserUID] = useState<string>('');
+  const [userName, setUserName] = useState<string>('You');
   const [captureEvent, setCaptureEvent] = useState<{
     capturedColor: string;
     position: number;
@@ -247,7 +248,7 @@ export const useLudoGame = () => {
     const fetchProfile = async () => {
       const { data } = await supabase
         .from('profiles')
-        .select('wallet_balance, user_code, avatar_url')
+        .select('wallet_balance, user_code, avatar_url, username')
         .eq('id', user.id)
         .single();
       
@@ -255,11 +256,25 @@ export const useLudoGame = () => {
         setWalletBalance(Number(data.wallet_balance));
         setUserUID(data.user_code || generateUID());
         setUserAvatar(data.avatar_url || null);
+        setUserName(data.username || 'You');
       }
     };
     
     fetchProfile();
   }, [user]);
+
+  // If username arrives later, update it in any already-running game state
+  useEffect(() => {
+    if (!user) return;
+    setGameState(prev => {
+      const hasMe = prev.players.some(p => p.id === user.id);
+      if (!hasMe) return prev;
+      return {
+        ...prev,
+        players: prev.players.map(p => (p.id === user.id ? { ...p, name: userName || 'You' } : p))
+      };
+    });
+  }, [user, userName]);
 
   // Fetch settings
   useEffect(() => {
@@ -394,7 +409,7 @@ export const useLudoGame = () => {
         const tokenPositions = Array.isArray(p.token_positions) ? p.token_positions : [0, 0, 0, 0];
         return {
           id: p.is_bot ? `bot-${index}` : p.user_id,
-          name: p.is_bot ? (p.bot_name || `Bot ${index}`) : (user.email?.split('@')[0] || 'You'),
+          name: p.is_bot ? (p.bot_name || `Bot ${index}`) : (userName || 'You'),
           uid: p.is_bot ? generateUID() : (userUID || generateUID()),
           avatar: p.is_bot ? undefined : (userAvatar || undefined),
           isBot: p.is_bot,
@@ -439,7 +454,7 @@ export const useLudoGame = () => {
       console.error('[LudoGame] Error resuming game:', err);
       toast({ title: 'Failed to resume game', variant: 'destructive' });
     }
-  }, [user, activeGameData, userUID, userAvatar, toast]);
+  }, [user, activeGameData, userUID, userAvatar, userName, toast]);
 
   // Dismiss active game (forfeit)
   const dismissActiveGame = useCallback(async () => {
@@ -535,7 +550,7 @@ export const useLudoGame = () => {
     // Initialize user player
     const userPlayer: Player = {
       id: user.id,
-      name: user.email?.split('@')[0] || 'You',
+      name: userName || 'You',
       uid: userUID || generateUID(),
       avatar: userAvatar || undefined,
       isBot: false,
@@ -610,7 +625,7 @@ export const useLudoGame = () => {
         started_at: new Date().toISOString()
       }).eq('id', match.id);
     }, 1500 * playerMode + 500);
-  }, [user, walletBalance, entryAmount, playerMode, settings, toast, getRandomBotName, createInitialTokens, userUID]);
+  }, [user, walletBalance, entryAmount, playerMode, settings, toast, getRandomBotName, createInitialTokens, userUID, userAvatar, userName]);
 
   // Generate dice value
   const generateDiceValue = useCallback((isBot: boolean): number => {
