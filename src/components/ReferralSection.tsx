@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Gift, Copy, Check, Users, Wallet, Sparkles, Loader2, TrendingUp, Share2, ChevronDown, ChevronUp, IndianRupee, Clock, CheckCircle2 } from 'lucide-react';
+import { Gift, Copy, Check, Users, Wallet, Loader2, Share2, ChevronDown, ChevronUp, Clock, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
@@ -14,6 +14,7 @@ type Referral = {
   reward_amount: number;
   pending_reward: number;
   is_rewarded: boolean;
+  status: string;
   created_at: string;
   profiles: {
     username: string | null;
@@ -25,9 +26,7 @@ const ReferralSection = () => {
   const [referralCode, setReferralCode] = useState<string | null>(null);
   const [referrals, setReferrals] = useState<Referral[]>([]);
   const [totalEarnings, setTotalEarnings] = useState(0);
-  const [pendingRewards, setPendingRewards] = useState(0);
   const [copied, setCopied] = useState(false);
-  const [isClaiming, setIsClaiming] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [showAllReferrals, setShowAllReferrals] = useState(false);
 
@@ -70,7 +69,6 @@ const ReferralSection = () => {
         );
         setReferrals(referralsWithProfiles);
         setTotalEarnings(refData.reduce((sum, r) => sum + (r.reward_amount || 0), 0));
-        setPendingRewards(refData.reduce((sum, r) => sum + ((r as any).pending_reward || 0), 0));
       }
     } catch (error) {
       console.error('Error fetching referral data:', error);
@@ -116,44 +114,6 @@ const ReferralSection = () => {
     }
   };
 
-  const handleClaimReferralRewards = async () => {
-    if (!user || isClaiming || pendingRewards <= 0) return;
-
-    setIsClaiming(true);
-    try {
-      const { data, error } = await supabase.rpc('claim_referral_rewards');
-
-      if (error) throw error;
-
-      const result = data as {
-        success: boolean;
-        message: string;
-        amount?: number;
-      };
-
-      if (result.success) {
-        toast({
-          title: '🎉 Rewards Claimed!',
-          description: `₹${result.amount?.toFixed(2)} added to your wallet!`,
-        });
-        await fetchReferralData();
-      } else {
-        toast({
-          title: 'Info',
-          description: result.message,
-        });
-      }
-    } catch (error: any) {
-      toast({
-        title: 'Error',
-        description: error.message,
-        variant: 'destructive',
-      });
-    } finally {
-      setIsClaiming(false);
-    }
-  };
-
   if (!user) return null;
 
   const displayedReferrals = showAllReferrals ? referrals : referrals.slice(0, 5);
@@ -181,34 +141,36 @@ const ReferralSection = () => {
               <div className="relative z-10">
                 <div className="text-center mb-3">
                   <h3 className="font-display text-xl font-bold mb-1">
-                    Earn <span className="text-gradient">2.5%</span> Commission
+                    Earn <span className="text-gradient">₹10</span> Per Referral
                   </h3>
                   <p className="text-sm text-muted-foreground">
-                    On every deposit your friends make - forever!
+                    When your friend completes verification
                   </p>
                 </div>
 
-                {/* How it works */}
-                <div className="grid grid-cols-3 gap-2 mb-4">
+                {/* How it works - Updated flow */}
+                <div className="grid grid-cols-4 gap-1 mb-4">
                   <div className="text-center p-2 bg-background/50 rounded-lg">
-                    <div className="w-8 h-8 mx-auto mb-1 rounded-full bg-primary/20 flex items-center justify-center">
-                      <Share2 className="w-4 h-4 text-primary" />
-                    </div>
-                    <p className="text-[10px] text-muted-foreground">Share Code</p>
+                    <div className="w-7 h-7 mx-auto mb-1 rounded-full bg-primary/20 flex items-center justify-center text-xs font-bold text-primary">1</div>
+                    <p className="text-[9px] text-muted-foreground">Share Code</p>
                   </div>
                   <div className="text-center p-2 bg-background/50 rounded-lg">
-                    <div className="w-8 h-8 mx-auto mb-1 rounded-full bg-green-500/20 flex items-center justify-center">
-                      <Users className="w-4 h-4 text-green-500" />
-                    </div>
-                    <p className="text-[10px] text-muted-foreground">Friend Joins</p>
+                    <div className="w-7 h-7 mx-auto mb-1 rounded-full bg-blue-500/20 flex items-center justify-center text-xs font-bold text-blue-500">2</div>
+                    <p className="text-[9px] text-muted-foreground">Friend Joins</p>
                   </div>
                   <div className="text-center p-2 bg-background/50 rounded-lg">
-                    <div className="w-8 h-8 mx-auto mb-1 rounded-full bg-yellow-500/20 flex items-center justify-center">
-                      <IndianRupee className="w-4 h-4 text-yellow-500" />
-                    </div>
-                    <p className="text-[10px] text-muted-foreground">Earn 2.5%</p>
+                    <div className="w-7 h-7 mx-auto mb-1 rounded-full bg-orange-500/20 flex items-center justify-center text-xs font-bold text-orange-500">3</div>
+                    <p className="text-[9px] text-muted-foreground">Bank + Deposit</p>
+                  </div>
+                  <div className="text-center p-2 bg-background/50 rounded-lg">
+                    <div className="w-7 h-7 mx-auto mb-1 rounded-full bg-green-500/20 flex items-center justify-center text-xs font-bold text-green-500">4</div>
+                    <p className="text-[9px] text-muted-foreground">Get ₹10</p>
                   </div>
                 </div>
+                
+                <p className="text-[10px] text-center text-muted-foreground bg-yellow-500/10 p-2 rounded-lg border border-yellow-500/20">
+                  ⚠️ Friend must link bank card & make 1st deposit for you to earn
+                </p>
               </div>
             </div>
 
@@ -250,65 +212,34 @@ const ReferralSection = () => {
               </div>
             )}
 
-            {/* Pending Rewards - Claimable */}
-            <AnimatePresence>
-              {pendingRewards > 0 && (
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.95 }}
-                  className="p-4 bg-gradient-to-r from-green-500/20 to-emerald-500/20 border border-green-500/30 rounded-xl"
-                >
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-full bg-green-500/20 flex items-center justify-center">
-                        <TrendingUp className="w-4 h-4 text-green-500" />
-                      </div>
-                      <div>
-                        <p className="font-medium text-green-500">Pending Rewards</p>
-                        <p className="text-xs text-muted-foreground">Ready to claim</p>
-                      </div>
-                    </div>
-                    <span className="font-display text-2xl font-bold text-green-500">
-                      ₹{pendingRewards.toFixed(2)}
-                    </span>
-                  </div>
-                  <Button
-                    onClick={handleClaimReferralRewards}
-                    disabled={isClaiming}
-                    className="w-full bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white border-none"
-                  >
-                    {isClaiming ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <>
-                        <Sparkles className="w-4 h-4 mr-2" />
-                        Claim ₹{pendingRewards.toFixed(2)}
-                      </>
-                    )}
-                  </Button>
-                </motion.div>
-              )}
-            </AnimatePresence>
-
-            {/* Stats Cards */}
-            <div className="grid grid-cols-3 gap-2">
+            {/* Stats Cards - Updated for new system */}
+            <div className="grid grid-cols-2 gap-2">
               <div className="p-3 bg-secondary/30 rounded-lg text-center">
                 <Users className="w-5 h-5 mx-auto text-primary mb-1" />
                 <p className="font-display text-xl font-bold">{referrals.length}</p>
-                <p className="text-[10px] text-muted-foreground">Friends</p>
+                <p className="text-[10px] text-muted-foreground">Friends Referred</p>
               </div>
               <div className="p-3 bg-secondary/30 rounded-lg text-center">
                 <Wallet className="w-5 h-5 mx-auto text-green-500 mb-1" />
                 <p className="font-display text-xl font-bold text-green-500">₹{totalEarnings.toFixed(0)}</p>
-                <p className="text-[10px] text-muted-foreground">Earned</p>
-              </div>
-              <div className="p-3 bg-secondary/30 rounded-lg text-center">
-                <Clock className="w-5 h-5 mx-auto text-yellow-500 mb-1" />
-                <p className="font-display text-xl font-bold text-yellow-500">₹{pendingRewards.toFixed(0)}</p>
-                <p className="text-[10px] text-muted-foreground">Pending</p>
+                <p className="text-[10px] text-muted-foreground">Total Earned</p>
               </div>
             </div>
+            
+            {/* Pending referrals info */}
+            {referrals.filter(r => r.status === 'pending').length > 0 && (
+              <div className="p-3 bg-orange-500/10 border border-orange-500/20 rounded-lg">
+                <div className="flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-orange-500" />
+                  <p className="text-sm text-orange-500">
+                    {referrals.filter(r => r.status === 'pending').length} friend(s) pending verification
+                  </p>
+                </div>
+                <p className="text-[10px] text-muted-foreground mt-1">
+                  They need to link bank card + make first deposit
+                </p>
+              </div>
+            )}
 
             {/* Referrals List */}
             {referrals.length > 0 && (
@@ -342,19 +273,18 @@ const ReferralSection = () => {
                       </div>
                       <div className="text-right">
                         <div className="flex items-center gap-2">
-                          {(ref as any).pending_reward > 0 && (
-                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-yellow-500/20 text-yellow-500">
-                              +₹{((ref as any).pending_reward || 0).toFixed(2)}
-                            </span>
-                          )}
-                          {ref.reward_amount > 0 ? (
+                          {ref.status === 'rewarded' && ref.reward_amount > 0 ? (
                             <span className="flex items-center gap-1 text-xs text-green-500">
                               <CheckCircle2 className="w-3 h-3" />
                               ₹{ref.reward_amount.toFixed(0)}
                             </span>
+                          ) : ref.status === 'pending' ? (
+                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-500">
+                              Awaiting verification
+                            </span>
                           ) : (
                             <span className="text-[10px] text-muted-foreground">
-                              Waiting for deposit
+                              Processing
                             </span>
                           )}
                         </div>
