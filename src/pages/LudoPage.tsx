@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Dices, Wallet, Info, Trophy, Users, Zap, Ban, UserPlus, WifiOff, Wifi, RefreshCw, RotateCcw, Signal } from 'lucide-react';
+import { Dices, Wallet, Info, Trophy, Users, Zap, Ban, UserPlus, WifiOff, Wifi, RefreshCw, RotateCcw, Signal, LogOut } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import Header from '@/components/Header';
 import BottomNav from '@/components/BottomNav';
@@ -382,9 +382,33 @@ const LudoPage = () => {
           background: 'linear-gradient(180deg, #1a1a2e 0%, #0f0f23 100%)',
         }}
       >
-        {/* Compact Game Header - Prize, Chat & Controls */}
+        {/* Compact Game Header - Exit, Prize, Chat & Controls */}
         <div className="shrink-0 px-3 py-2 border-b border-white/10 flex items-center justify-between">
-          <SoundToggle compact />
+          <div className="flex items-center gap-2">
+            {/* Exit Button */}
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-8 w-8 text-red-400 hover:bg-red-500/20 hover:text-red-300">
+                  <LogOut className="w-4 h-4" />
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent className="max-w-xs">
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Exit Game?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    If you exit now, you will lose the match and forfeit your entry fee of ₹{entryAmount}.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Continue Playing</AlertDialogCancel>
+                  <AlertDialogAction onClick={() => { resetGame(); setGameMode('select'); }} className="bg-red-600 hover:bg-red-700">
+                    Exit & Forfeit
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+            <SoundToggle compact />
+          </div>
           <motion.div 
             className="px-3 py-1.5 rounded-lg bg-gradient-to-br from-yellow-500/20 to-orange-500/10 border border-yellow-500/30"
             animate={{ scale: [1, 1.02, 1] }}
@@ -546,9 +570,31 @@ const LudoPage = () => {
           background: 'linear-gradient(180deg, #1a1a2e 0%, #0f0f23 100%)',
         }}
       >
-        {/* Compact Game Header - Controls Only */}
+        {/* Compact Game Header - Exit, Controls Only */}
         <div className="shrink-0 px-3 py-2 border-b border-white/10 flex items-center justify-between">
           <div className="flex items-center gap-2">
+            {/* Exit Button */}
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-8 w-8 text-red-400 hover:bg-red-500/20 hover:text-red-300">
+                  <LogOut className="w-4 h-4" />
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent className="max-w-xs">
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Exit Game?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    If you exit now, you will lose the match and forfeit your entry fee of ₹{friendGameState.entryAmount}.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Continue Playing</AlertDialogCancel>
+                  <AlertDialogAction onClick={() => { friendResetGame(); setGameMode('select'); }} className="bg-red-600 hover:bg-red-700">
+                    Exit & Forfeit
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
             {/* Connection Status */}
             {connectionStatus !== 'connected' && (
               <motion.div 
