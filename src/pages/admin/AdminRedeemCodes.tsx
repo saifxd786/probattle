@@ -32,7 +32,7 @@ const AdminRedeemCodes = () => {
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
   // Form state
-  const [codePrefix, setCodePrefix] = useState('PROMO');
+  const [customCode, setCustomCode] = useState('');
   const [amount, setAmount] = useState('100');
   const [maxUses, setMaxUses] = useState('1');
   const [expiresInDays, setExpiresInDays] = useState('30');
@@ -73,13 +73,30 @@ const AdminRedeemCodes = () => {
   };
 
   const handleCreateCode = async () => {
+    if (!customCode.trim()) {
+      toast({ title: 'Error', description: 'Please enter a code', variant: 'destructive' });
+      return;
+    }
+
     if (!amount || Number(amount) <= 0) {
       toast({ title: 'Error', description: 'Please enter a valid amount', variant: 'destructive' });
       return;
     }
 
+    // Check if code already exists
+    const { data: existingCode } = await supabase
+      .from('redeem_codes')
+      .select('id')
+      .eq('code', customCode.toUpperCase().trim())
+      .single();
+
+    if (existingCode) {
+      toast({ title: 'Error', description: 'This code already exists!', variant: 'destructive' });
+      return;
+    }
+
     setIsCreating(true);
-    const code = generateCode(codePrefix);
+    const code = customCode.toUpperCase().trim();
     const expiresAt = expiresInDays ? new Date(Date.now() + Number(expiresInDays) * 24 * 60 * 60 * 1000).toISOString() : null;
 
     const { error } = await supabase.from('redeem_codes').insert({
@@ -94,6 +111,7 @@ const AdminRedeemCodes = () => {
     } else {
       toast({ title: 'Success', description: `Code ${code} created!` });
       setIsDialogOpen(false);
+      setCustomCode('');
       fetchCodes();
     }
     setIsCreating(false);
@@ -280,12 +298,13 @@ const AdminRedeemCodes = () => {
               </DialogHeader>
               <div className="space-y-4 mt-4">
                 <div>
-                  <Label>Code Prefix</Label>
+                  <Label>Code <span className="text-red-500">*</span></Label>
                   <Input
-                    value={codePrefix}
-                    onChange={(e) => setCodePrefix(e.target.value.toUpperCase())}
-                    placeholder="PROMO"
+                    value={customCode}
+                    onChange={(e) => setCustomCode(e.target.value.toUpperCase())}
+                    placeholder="Enter your custom code (e.g., WELCOME100)"
                   />
+                  <p className="text-xs text-muted-foreground mt-1">Enter the exact code you want users to redeem</p>
                 </div>
                 <div>
                   <Label>Amount (₹)</Label>
@@ -314,9 +333,9 @@ const AdminRedeemCodes = () => {
                     placeholder="30"
                   />
                 </div>
-                <Button onClick={handleCreateCode} disabled={isCreating} className="w-full">
+                <Button onClick={handleCreateCode} disabled={isCreating || !customCode.trim()} className="w-full">
                   {isCreating ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-                  Generate Code
+                  Create Code
                 </Button>
               </div>
             </DialogContent>
