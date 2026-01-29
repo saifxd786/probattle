@@ -107,22 +107,11 @@ const SquareTurnTimerAvatar = ({
   const strokeDashoffset = perimeter - (progress / 100) * perimeter;
 
   return (
-    <div className="relative" style={{ width: size, height: size }}>
-      <svg className="absolute inset-0 z-20 pointer-events-none" width={size} height={size}>
-        <rect
-          x={strokeWidth / 2}
-          y={strokeWidth / 2}
-          width={innerSize}
-          height={innerSize}
-          rx={10}
-          ry={10}
-          fill="none"
-          stroke="rgba(255,255,255,0.15)"
-          strokeWidth={strokeWidth}
-        />
-
-        {isActive && (
-          <motion.rect
+    <div className="relative" style={{ width: size, height: size + 20 }}>
+      {/* Avatar with timer border */}
+      <div className="relative" style={{ width: size, height: size }}>
+        <svg className="absolute inset-0 z-20 pointer-events-none" width={size} height={size}>
+          <rect
             x={strokeWidth / 2}
             y={strokeWidth / 2}
             width={innerSize}
@@ -130,60 +119,88 @@ const SquareTurnTimerAvatar = ({
             rx={10}
             ry={10}
             fill="none"
-            stroke={isLowTime ? '#E53935' : borderColor}
+            stroke="rgba(255,255,255,0.15)"
             strokeWidth={strokeWidth}
-            strokeLinecap="round"
-            strokeDasharray={`${perimeter} ${perimeter}`}
-            initial={false}
-            animate={{
-              strokeDashoffset,
-              opacity: isLowTime ? [1, 0.55, 1] : 1,
-            }}
-            transition={{
-              strokeDashoffset: { duration: 1, ease: 'linear', type: 'tween' },
-              opacity: isLowTime
-                ? { duration: 0.45, repeat: Infinity, ease: 'easeInOut', type: 'tween' }
-                : { duration: 0.2, ease: 'linear', type: 'tween' },
-            }}
-            style={{
-              filter: isLowTime
-                ? 'drop-shadow(0 0 10px rgba(229,57,53,0.75))'
-                : `drop-shadow(0 0 10px ${borderColor}80)`,
-              transformOrigin: 'center',
-            }}
           />
-        )}
-      </svg>
 
-      <div
-        className="absolute z-10 rounded-xl overflow-hidden"
-        style={{
-          top: strokeWidth,
-          left: strokeWidth,
-          width: size - strokeWidth * 2,
-          height: size - strokeWidth * 2,
-          background: `linear-gradient(135deg, ${borderColor}dd, ${borderColor}88)`,
-        }}
-      >
-        {avatarUrl ? (
-          <img src={avatarUrl} alt={fallbackText} className="w-full h-full object-cover" />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center text-white font-bold text-lg">
-            {fallbackText}
-          </div>
-        )}
+          {isActive && (
+            <motion.rect
+              x={strokeWidth / 2}
+              y={strokeWidth / 2}
+              width={innerSize}
+              height={innerSize}
+              rx={10}
+              ry={10}
+              fill="none"
+              stroke={isLowTime ? '#E53935' : borderColor}
+              strokeWidth={strokeWidth}
+              strokeLinecap="round"
+              strokeDasharray={`${perimeter} ${perimeter}`}
+              initial={false}
+              animate={{
+                strokeDashoffset,
+                opacity: isLowTime ? [1, 0.55, 1] : 1,
+              }}
+              transition={{
+                strokeDashoffset: { duration: 1, ease: 'linear', type: 'tween' },
+                opacity: isLowTime
+                  ? { duration: 0.45, repeat: Infinity, ease: 'easeInOut', type: 'tween' }
+                  : { duration: 0.2, ease: 'linear', type: 'tween' },
+              }}
+              style={{
+                filter: isLowTime
+                  ? 'drop-shadow(0 0 10px rgba(229,57,53,0.75))'
+                  : `drop-shadow(0 0 10px ${borderColor}80)`,
+                transformOrigin: 'center',
+              }}
+            />
+          )}
+        </svg>
+
+        <div
+          className="absolute z-10 rounded-xl overflow-hidden"
+          style={{
+            top: strokeWidth,
+            left: strokeWidth,
+            width: size - strokeWidth * 2,
+            height: size - strokeWidth * 2,
+            background: `linear-gradient(135deg, ${borderColor}dd, ${borderColor}88)`,
+          }}
+        >
+          {avatarUrl ? (
+            <img src={avatarUrl} alt={fallbackText} className="w-full h-full object-cover" />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center text-white font-bold text-lg">
+              {fallbackText}
+            </div>
+          )}
+        </div>
       </div>
 
+      {/* Badges below avatar - TURN + Timer */}
       {isActive && (
         <div
-          className={
-            badgeSide === 'left'
-              ? 'absolute z-10 bottom-0 left-1 translate-y-full px-1.5 py-0.5 rounded text-[10px] font-bold text-white'
-              : 'absolute z-10 bottom-0 right-1 translate-y-full px-1.5 py-0.5 rounded text-[10px] font-bold text-white'
-          }
-          style={{ background: isLowTime ? '#E53935' : '#43A047' }}
+          className={`absolute z-30 flex items-center gap-1 ${
+            badgeSide === 'left' ? 'left-0' : 'right-0'
+          }`}
+          style={{ top: size + 2 }}
         >
-          {safeTimeLeft}s
+          {/* TURN badge */}
+          <div
+            className="px-1.5 py-0.5 rounded text-[9px] font-bold text-white uppercase tracking-wide"
+            style={{ background: '#43A047' }}
+          >
+            Turn
+          </div>
+          {/* Timer badge */}
+          <motion.div
+            className="px-1.5 py-0.5 rounded text-[10px] font-bold text-white tabular-nums"
+            style={{ background: isLowTime ? '#E53935' : 'rgba(0,0,0,0.6)' }}
+            animate={isLowTime ? { scale: [1, 1.1, 1] } : {}}
+            transition={{ duration: 0.5, repeat: Infinity, type: 'tween' }}
+          >
+            {safeTimeLeft}s
+          </motion.div>
         </div>
       )}
     </div>
