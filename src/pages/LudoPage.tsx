@@ -219,6 +219,7 @@ const LudoPage = () => {
           id: p.id,
           name: p.name,
           uid: p.uid,
+          avatar: p.avatar,
           isBot: p.isBot,
           status: p.status,
           color: p.color
