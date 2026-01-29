@@ -165,20 +165,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     await supabase.auth.signOut();
   };
 
-  // Log user session for tracking
+  // Log user session via edge function (captures real IP)
   const logUserSession = async () => {
     try {
       const fingerprint = await generateDeviceFingerprint();
       const deviceName = getDeviceName();
       
-      // Get IP address (we'll use a simple approach - the server will have the actual IP)
-      // For now, we pass what we can from client side
-      await supabase.rpc('log_user_session', {
-        p_ip_address: null, // Will be captured server-side ideally
-        p_device_fingerprint: fingerprint,
-        p_user_agent: navigator.userAgent,
-        p_device_name: deviceName
+      // Use edge function to capture real IP address
+      const { error } = await supabase.functions.invoke('log-session', {
+        body: {
+          device_fingerprint: fingerprint,
+          user_agent: navigator.userAgent,
+          device_name: deviceName
+        }
       });
+      
+      if (error) {
+        console.error('[Auth] Edge function error:', error);
+      }
     } catch (error) {
       console.error('[Auth] Failed to log session:', error);
     }
