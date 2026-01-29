@@ -284,6 +284,48 @@ const WalletPage = () => {
     setIsSubmitting(false);
   };
 
+  // Save bank card details only (without withdrawal)
+  const handleSaveBankCard = async () => {
+    if (!user) return;
+
+    if (!accountHolderName.trim() || !cardNumber.trim() || !ifscCode.trim() || !bankName.trim()) {
+      toast({ title: 'Error', description: 'Please fill all bank card details', variant: 'destructive' });
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const { data: newCard, error: cardError } = await supabase
+        .from('user_bank_cards')
+        .insert({
+          user_id: user.id,
+          account_holder_name: accountHolderName.trim(),
+          card_number: cardNumber.trim(),
+          ifsc_code: ifscCode.trim().toUpperCase(),
+          bank_name: bankName.trim(),
+        })
+        .select()
+        .single();
+
+      if (cardError) {
+        toast({ title: 'Error', description: 'Failed to save bank details', variant: 'destructive' });
+        setIsSubmitting(false);
+        return;
+      }
+
+      setSavedBankCard(newCard as BankCard);
+      toast({ 
+        title: '✅ Bank Details Saved', 
+        description: 'You can now request withdrawals' 
+      });
+    } catch (error: any) {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    }
+
+    setIsSubmitting(false);
+  };
+
   const handleRedeem = async () => {
     if (!user || !redeemCode.trim()) return;
 
@@ -729,17 +771,46 @@ const WalletPage = () => {
           </div>
 
           <div className="flex-shrink-0 pt-4">
-            <Button 
-              className="w-full bg-red-600 hover:bg-red-700 text-white" 
-              onClick={handleWithdraw} 
-              disabled={
-                isSubmitting || 
-                (profile?.wager_requirement || 0) > 0 || 
-                (!savedBankCard && (!accountHolderName.trim() || !cardNumber.trim() || !bankName.trim() || !ifscCode.trim()))
-              }
-            >
-              {isSubmitting ? 'Submitting...' : (profile?.wager_requirement || 0) > 0 ? 'Complete Wager First' : 'Request Withdrawal'}
-            </Button>
+            {!savedBankCard ? (
+              // Show Save Bank Details button if not bound
+              <Button 
+                className="w-full bg-primary hover:bg-primary/90 text-white" 
+                onClick={handleSaveBankCard} 
+                disabled={
+                  isSubmitting || 
+                  !accountHolderName.trim() || 
+                  !cardNumber.trim() || 
+                  !bankName.trim() || 
+                  !ifscCode.trim()
+                }
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Lock className="w-4 h-4 mr-2" />
+                    Save Bank Details
+                  </>
+                )}
+              </Button>
+            ) : (
+              // Show Request Withdrawal button after bank is bound
+              <Button 
+                className="w-full bg-red-600 hover:bg-red-700 text-white" 
+                onClick={handleWithdraw} 
+                disabled={
+                  isSubmitting || 
+                  (profile?.wager_requirement || 0) > 0 ||
+                  !withdrawAmount ||
+                  Number(withdrawAmount) < MIN_WITHDRAWAL
+                }
+              >
+                {isSubmitting ? 'Submitting...' : (profile?.wager_requirement || 0) > 0 ? 'Complete Wager First' : 'Request Withdrawal'}
+              </Button>
+            )}
           </div>
         </DialogContent>
       </Dialog>
