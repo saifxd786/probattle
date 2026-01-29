@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Clock, Copy, Check, Upload, Shield, Zap, 
-  AlertTriangle, Loader2, X, CheckCircle2, Timer
+  AlertTriangle, Loader2, X, CheckCircle2, Timer, QrCode
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,6 +15,7 @@ import gpayLogo from '@/assets/gpay-logo.png';
 import paytmLogo from '@/assets/paytm-logo.png';
 import paymentProcessingGif from '@/assets/payment-processing.gif';
 import { toast } from '@/hooks/use-toast';
+import { usePaymentQR } from '@/hooks/usePaymentQR';
 
 const DEPOSIT_AMOUNTS = [100, 200, 500, 1000, 2000, 5000];
 const UPI_ID = 'mohdqureshi807@naviaxis';
@@ -28,6 +29,8 @@ interface DepositPaymentGatewayProps {
 }
 
 const DepositPaymentGateway = ({ isOpen, onClose, onSubmit, isSubmitting }: DepositPaymentGatewayProps) => {
+  const { qrUrl, qrEnabled } = usePaymentQR();
+  
   const [step, setStep] = useState<'amount' | 'payment' | 'verify'>('amount');
   const [selectedAmount, setSelectedAmount] = useState(100);
   const [customAmount, setCustomAmount] = useState('');
@@ -39,6 +42,7 @@ const DepositPaymentGateway = ({ isOpen, onClose, onSubmit, isSubmitting }: Depo
   const [timerActive, setTimerActive] = useState(false);
   const [showProcessing, setShowProcessing] = useState(false);
   const [gifLoaded, setGifLoaded] = useState(false);
+  const [showQRLightbox, setShowQRLightbox] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const finalAmount = customAmount ? Number(customAmount) : selectedAmount;
@@ -154,6 +158,29 @@ const DepositPaymentGateway = ({ isOpen, onClose, onSubmit, isSubmitting }: Depo
 
   return (
     <>
+      {/* QR Lightbox */}
+      <AnimatePresence>
+        {showQRLightbox && qrUrl && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/90 p-4"
+            onClick={() => setShowQRLightbox(false)}
+          >
+            <motion.img
+              initial={{ scale: 0.8 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0.8 }}
+              src={qrUrl}
+              alt="Payment QR Code"
+              className="max-w-[90vw] max-h-[80vh] rounded-2xl bg-white p-4 object-contain"
+            />
+            <p className="absolute bottom-8 text-white text-sm">Tap anywhere to close</p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Full Screen Processing Overlay */}
       <AnimatePresence>
         {showProcessing && (
@@ -305,8 +332,14 @@ const DepositPaymentGateway = ({ isOpen, onClose, onSubmit, isSubmitting }: Depo
                   <p className="font-display text-4xl font-bold text-primary">₹{finalAmount}</p>
                 </div>
 
-                <Tabs defaultValue="upi" className="w-full">
-                  <TabsList className="w-full grid grid-cols-2 bg-secondary/50">
+                <Tabs defaultValue={qrEnabled && qrUrl ? "qr" : "upi"} className="w-full">
+                  <TabsList className={`w-full grid bg-secondary/50 ${qrEnabled && qrUrl ? 'grid-cols-3' : 'grid-cols-2'}`}>
+                    {qrEnabled && qrUrl && (
+                      <TabsTrigger value="qr" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                        <QrCode className="w-4 h-4 mr-1" />
+                        QR Code
+                      </TabsTrigger>
+                    )}
                     <TabsTrigger value="upi" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
                       UPI Apps
                     </TabsTrigger>
@@ -314,6 +347,28 @@ const DepositPaymentGateway = ({ isOpen, onClose, onSubmit, isSubmitting }: Depo
                       Manual UPI
                     </TabsTrigger>
                   </TabsList>
+
+                  {qrEnabled && qrUrl && (
+                    <TabsContent value="qr" className="mt-3 space-y-3">
+                      <p className="text-xs text-center text-muted-foreground">Scan this QR code with any UPI app</p>
+                      <div 
+                        className="relative cursor-pointer group"
+                        onClick={() => setShowQRLightbox(true)}
+                      >
+                        <img 
+                          src={qrUrl} 
+                          alt="Payment QR Code" 
+                          className="w-48 h-48 mx-auto rounded-xl border-2 border-primary/30 bg-white p-2 object-contain transition-transform group-hover:scale-105"
+                        />
+                        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                          <span className="bg-black/70 text-white text-xs px-2 py-1 rounded">Tap to enlarge</span>
+                        </div>
+                      </div>
+                      <p className="text-[10px] text-center text-muted-foreground">
+                        Amount: <span className="font-bold text-primary">₹{finalAmount}</span>
+                      </p>
+                    </TabsContent>
+                  )}
 
                   <TabsContent value="upi" className="mt-3 space-y-3">
                     <p className="text-xs text-center text-muted-foreground">Tap to pay directly with your UPI app</p>
