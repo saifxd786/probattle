@@ -405,7 +405,7 @@ const LudoDice = ({ value, isRolling, onRoll, disabled, canRoll, compact = false
   };
 
   return (
-    <div className="flex items-center justify-center">
+    <div className="flex flex-col items-center justify-center gap-2">
       {/* Ultra Premium Wooden Dice Platform - Tappable */}
       <motion.div
         className={cn(
@@ -578,6 +578,24 @@ const LudoDice = ({ value, isRolling, onRoll, disabled, canRoll, compact = false
           )}
         </AnimatePresence>
       </motion.div>
+      
+      {/* TAP hint text */}
+      <AnimatePresence>
+        {canRoll && !disabled && !isRolling && (
+          <motion.div
+            initial={{ opacity: 0, y: -5 }}
+            animate={{ opacity: [0.6, 1, 0.6] }}
+            exit={{ opacity: 0, y: -5 }}
+            transition={{ duration: 1.5, repeat: Infinity, ease: 'easeInOut' }}
+            className="text-xs font-bold tracking-widest text-amber-400 uppercase"
+            style={{
+              textShadow: '0 0 8px rgba(255,193,7,0.5)'
+            }}
+          >
+            TAP TO ROLL
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
