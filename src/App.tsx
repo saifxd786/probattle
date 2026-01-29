@@ -1,60 +1,96 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense, lazy } from 'react';
 import SplashScreen from './components/SplashScreen';
 import UpdatePrompt from './components/UpdatePrompt';
 import OfflineIndicator from './components/OfflineIndicator';
 import NotificationPermissionGate from './components/NotificationPermissionGate';
+import ErrorBoundary from './components/ErrorBoundary';
+import PageLoader from './components/PageLoader';
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
-import Index from "./pages/Index";
-import BGMIPage from "./pages/BGMIPage";
-import MatchesPage from "./pages/MatchesPage";
-import MyGamesPage from "./pages/MyGamesPage";
-import WalletPage from "./pages/WalletPage";
-import SupportPage from "./pages/SupportPage";
-import AuthPage from "./pages/AuthPage";
-import ProfilePage from "./pages/ProfilePage";
-import ActivityPage from "./pages/ActivityPage";
-import InstallPage from "./pages/InstallPage";
-import RulesPage from "./pages/RulesPage";
-import FairPlayPage from "./pages/FairPlayPage";
-import TermsPage from "./pages/TermsPage";
-import FAQsPage from "./pages/FAQsPage";
-import LudoPage from "./pages/LudoPage";
-import LudoRulesPage from "./pages/LudoRulesPage";
-import ThimblePage from "./pages/ThimblePage";
-import MinesPage from "./pages/MinesPage";
-import GameHistoryPage from "./pages/GameHistoryPage";
-import FriendsPage from "./pages/FriendsPage";
-import NotFound from "./pages/NotFound";
-import AdminLayout from "./components/admin/AdminLayout";
-import AdminDashboard from "./pages/admin/AdminDashboard";
-import AdminMatches from "./pages/admin/AdminMatches";
-import AdminUsers from "./pages/admin/AdminUsers";
-import AdminPayments from "./pages/admin/AdminPayments";
-import AdminSettings from "./pages/admin/AdminSettings";
-import AdminTransactions from "./pages/admin/AdminTransactions";
-import AdminLoginPage from "./pages/admin/AdminLoginPage";
-import AdminNotificationsPage from "./pages/admin/AdminNotificationsPage";
-import AdminLudoSettings from "./pages/admin/AdminLudoSettings";
-import AdminThimbleSettings from "./pages/admin/AdminThimbleSettings";
-import AdminMinesSettings from "./pages/admin/AdminMinesSettings";
-import AdminRedeemCodes from "./pages/admin/AdminRedeemCodes";
-import AdminSupport from "./pages/admin/AdminSupport";
-import AdminSpinWheelSettings from "./pages/admin/AdminSpinWheelSettings";
-import AdminDailyLoginSettings from "./pages/admin/AdminDailyLoginSettings";
-import AdminDeviceBans from "./pages/admin/AdminDeviceBans";
-import AdminMultiAccountDetection from "./pages/admin/AdminMultiAccountDetection";
-import AgentLoginPage from "./pages/agent/AgentLoginPage";
-import AgentLayout from "./components/agent/AgentLayout";
-import AgentUsers from "./pages/agent/AgentUsers";
-import AgentMatches from "./pages/agent/AgentMatches";
-import AgentTransactions from "./pages/agent/AgentTransactions";
+import { useMemoryCleanup } from '@/hooks/useMemoryCleanup';
 
-const queryClient = new QueryClient();
+// Lazy load all pages for better initial load performance
+const Index = lazy(() => import("./pages/Index"));
+const BGMIPage = lazy(() => import("./pages/BGMIPage"));
+const MatchesPage = lazy(() => import("./pages/MatchesPage"));
+const MyGamesPage = lazy(() => import("./pages/MyGamesPage"));
+const WalletPage = lazy(() => import("./pages/WalletPage"));
+const SupportPage = lazy(() => import("./pages/SupportPage"));
+const AuthPage = lazy(() => import("./pages/AuthPage"));
+const ProfilePage = lazy(() => import("./pages/ProfilePage"));
+const ActivityPage = lazy(() => import("./pages/ActivityPage"));
+const InstallPage = lazy(() => import("./pages/InstallPage"));
+const RulesPage = lazy(() => import("./pages/RulesPage"));
+const FairPlayPage = lazy(() => import("./pages/FairPlayPage"));
+const TermsPage = lazy(() => import("./pages/TermsPage"));
+const FAQsPage = lazy(() => import("./pages/FAQsPage"));
+const LudoPage = lazy(() => import("./pages/LudoPage"));
+const LudoRulesPage = lazy(() => import("./pages/LudoRulesPage"));
+const ThimblePage = lazy(() => import("./pages/ThimblePage"));
+const MinesPage = lazy(() => import("./pages/MinesPage"));
+const GameHistoryPage = lazy(() => import("./pages/GameHistoryPage"));
+const FriendsPage = lazy(() => import("./pages/FriendsPage"));
+const NotFound = lazy(() => import("./pages/NotFound"));
+
+// Admin pages
+const AdminLayout = lazy(() => import("./components/admin/AdminLayout"));
+const AdminDashboard = lazy(() => import("./pages/admin/AdminDashboard"));
+const AdminMatches = lazy(() => import("./pages/admin/AdminMatches"));
+const AdminUsers = lazy(() => import("./pages/admin/AdminUsers"));
+const AdminPayments = lazy(() => import("./pages/admin/AdminPayments"));
+const AdminSettings = lazy(() => import("./pages/admin/AdminSettings"));
+const AdminTransactions = lazy(() => import("./pages/admin/AdminTransactions"));
+const AdminLoginPage = lazy(() => import("./pages/admin/AdminLoginPage"));
+const AdminNotificationsPage = lazy(() => import("./pages/admin/AdminNotificationsPage"));
+const AdminLudoSettings = lazy(() => import("./pages/admin/AdminLudoSettings"));
+const AdminThimbleSettings = lazy(() => import("./pages/admin/AdminThimbleSettings"));
+const AdminMinesSettings = lazy(() => import("./pages/admin/AdminMinesSettings"));
+const AdminRedeemCodes = lazy(() => import("./pages/admin/AdminRedeemCodes"));
+const AdminSupport = lazy(() => import("./pages/admin/AdminSupport"));
+const AdminSpinWheelSettings = lazy(() => import("./pages/admin/AdminSpinWheelSettings"));
+const AdminDailyLoginSettings = lazy(() => import("./pages/admin/AdminDailyLoginSettings"));
+const AdminDeviceBans = lazy(() => import("./pages/admin/AdminDeviceBans"));
+const AdminMultiAccountDetection = lazy(() => import("./pages/admin/AdminMultiAccountDetection"));
+
+// Agent pages
+const AgentLoginPage = lazy(() => import("./pages/agent/AgentLoginPage"));
+const AgentLayout = lazy(() => import("./components/agent/AgentLayout"));
+const AgentUsers = lazy(() => import("./pages/agent/AgentUsers"));
+const AgentMatches = lazy(() => import("./pages/agent/AgentMatches"));
+const AgentTransactions = lazy(() => import("./pages/agent/AgentTransactions"));
+
+// Optimized QueryClient with better caching and performance settings
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      // Data stays fresh for 2 minutes
+      staleTime: 2 * 60 * 1000,
+      // Cache data for 10 minutes
+      gcTime: 10 * 60 * 1000,
+      // Retry failed requests 2 times with exponential backoff
+      retry: 2,
+      retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+      // Don't refetch on window focus for better performance
+      refetchOnWindowFocus: false,
+      // Refetch on reconnect for fresh data
+      refetchOnReconnect: true,
+    },
+    mutations: {
+      // Retry mutations once
+      retry: 1,
+    },
+  },
+});
+
+// Memory cleanup wrapper component
+const MemoryCleanupWrapper = ({ children }: { children: React.ReactNode }) => {
+  useMemoryCleanup();
+  return <>{children}</>;
+};
 
 const App = () => {
   const [showSplash, setShowSplash] = useState(true);
@@ -76,73 +112,79 @@ const App = () => {
   };
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <TooltipProvider>
-          {showSplash && !hasShownSplash && (
-            <SplashScreen onComplete={handleSplashComplete} />
-          )}
-          <Toaster />
-          <Sonner />
-          <UpdatePrompt />
-          <OfflineIndicator />
-          <BrowserRouter>
-            <NotificationPermissionGate>
-              <Routes>
-                <Route path="/" element={<Index />} />
-                <Route path="/bgmi" element={<BGMIPage />} />
-                <Route path="/matches" element={<MatchesPage />} />
-                <Route path="/my-games" element={<MyGamesPage />} />
-                <Route path="/wallet" element={<WalletPage />} />
-                <Route path="/support" element={<SupportPage />} />
-                <Route path="/auth" element={<AuthPage />} />
-                <Route path="/profile" element={<ProfilePage />} />
-                <Route path="/activity" element={<ActivityPage />} />
-                <Route path="/install" element={<InstallPage />} />
-                <Route path="/rules" element={<RulesPage />} />
-                <Route path="/fair-play" element={<FairPlayPage />} />
-                <Route path="/terms" element={<TermsPage />} />
-                <Route path="/faqs" element={<FAQsPage />} />
-                <Route path="/ludo" element={<LudoPage />} />
-                <Route path="/ludo/rules" element={<LudoRulesPage />} />
-                <Route path="/thimble" element={<ThimblePage />} />
-                <Route path="/mines" element={<MinesPage />} />
-                <Route path="/game-history" element={<GameHistoryPage />} />
-                <Route path="/friends" element={<FriendsPage />} />
-                {/* Admin Routes */}
-                <Route path="/admin/login" element={<AdminLoginPage />} />
-                <Route path="/admin" element={<AdminLayout />}>
-                  <Route index element={<AdminDashboard />} />
-                  <Route path="matches" element={<AdminMatches />} />
-                  <Route path="users" element={<AdminUsers />} />
-                  <Route path="payments" element={<AdminPayments />} />
-                  <Route path="transactions" element={<AdminTransactions />} />
-                  <Route path="notifications" element={<AdminNotificationsPage />} />
-                  <Route path="settings" element={<AdminSettings />} />
-                  <Route path="ludo" element={<AdminLudoSettings />} />
-                  <Route path="thimble" element={<AdminThimbleSettings />} />
-                  <Route path="mines" element={<AdminMinesSettings />} />
-                  <Route path="spin-wheel" element={<AdminSpinWheelSettings />} />
-                  <Route path="daily-login" element={<AdminDailyLoginSettings />} />
-                  <Route path="redeem-codes" element={<AdminRedeemCodes />} />
-                  <Route path="support" element={<AdminSupport />} />
-                  <Route path="device-bans" element={<AdminDeviceBans />} />
-                  <Route path="multi-account" element={<AdminMultiAccountDetection />} />
-                </Route>
-                {/* Agent Routes */}
-                <Route path="/agent/login" element={<AgentLoginPage />} />
-                <Route path="/agent" element={<AgentLayout />}>
-                  <Route index element={<AgentUsers />} />
-                  <Route path="matches" element={<AgentMatches />} />
-                  <Route path="transactions" element={<AgentTransactions />} />
-                </Route>
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </NotificationPermissionGate>
-          </BrowserRouter>
-        </TooltipProvider>
-      </AuthProvider>
-    </QueryClientProvider>
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+          <TooltipProvider>
+            <MemoryCleanupWrapper>
+              {showSplash && !hasShownSplash && (
+                <SplashScreen onComplete={handleSplashComplete} />
+              )}
+              <Toaster />
+              <Sonner />
+              <UpdatePrompt />
+              <OfflineIndicator />
+              <BrowserRouter>
+                <NotificationPermissionGate>
+                  <Suspense fallback={<PageLoader />}>
+                    <Routes>
+                      <Route path="/" element={<Index />} />
+                      <Route path="/bgmi" element={<BGMIPage />} />
+                      <Route path="/matches" element={<MatchesPage />} />
+                      <Route path="/my-games" element={<MyGamesPage />} />
+                      <Route path="/wallet" element={<WalletPage />} />
+                      <Route path="/support" element={<SupportPage />} />
+                      <Route path="/auth" element={<AuthPage />} />
+                      <Route path="/profile" element={<ProfilePage />} />
+                      <Route path="/activity" element={<ActivityPage />} />
+                      <Route path="/install" element={<InstallPage />} />
+                      <Route path="/rules" element={<RulesPage />} />
+                      <Route path="/fair-play" element={<FairPlayPage />} />
+                      <Route path="/terms" element={<TermsPage />} />
+                      <Route path="/faqs" element={<FAQsPage />} />
+                      <Route path="/ludo" element={<LudoPage />} />
+                      <Route path="/ludo/rules" element={<LudoRulesPage />} />
+                      <Route path="/thimble" element={<ThimblePage />} />
+                      <Route path="/mines" element={<MinesPage />} />
+                      <Route path="/game-history" element={<GameHistoryPage />} />
+                      <Route path="/friends" element={<FriendsPage />} />
+                      {/* Admin Routes */}
+                      <Route path="/admin/login" element={<AdminLoginPage />} />
+                      <Route path="/admin" element={<AdminLayout />}>
+                        <Route index element={<AdminDashboard />} />
+                        <Route path="matches" element={<AdminMatches />} />
+                        <Route path="users" element={<AdminUsers />} />
+                        <Route path="payments" element={<AdminPayments />} />
+                        <Route path="transactions" element={<AdminTransactions />} />
+                        <Route path="notifications" element={<AdminNotificationsPage />} />
+                        <Route path="settings" element={<AdminSettings />} />
+                        <Route path="ludo" element={<AdminLudoSettings />} />
+                        <Route path="thimble" element={<AdminThimbleSettings />} />
+                        <Route path="mines" element={<AdminMinesSettings />} />
+                        <Route path="spin-wheel" element={<AdminSpinWheelSettings />} />
+                        <Route path="daily-login" element={<AdminDailyLoginSettings />} />
+                        <Route path="redeem-codes" element={<AdminRedeemCodes />} />
+                        <Route path="support" element={<AdminSupport />} />
+                        <Route path="device-bans" element={<AdminDeviceBans />} />
+                        <Route path="multi-account" element={<AdminMultiAccountDetection />} />
+                      </Route>
+                      {/* Agent Routes */}
+                      <Route path="/agent/login" element={<AgentLoginPage />} />
+                      <Route path="/agent" element={<AgentLayout />}>
+                        <Route index element={<AgentUsers />} />
+                        <Route path="matches" element={<AgentMatches />} />
+                        <Route path="transactions" element={<AgentTransactions />} />
+                      </Route>
+                      <Route path="*" element={<NotFound />} />
+                    </Routes>
+                  </Suspense>
+                </NotificationPermissionGate>
+              </BrowserRouter>
+            </MemoryCleanupWrapper>
+          </TooltipProvider>
+        </AuthProvider>
+      </QueryClientProvider>
+    </ErrorBoundary>
   );
 };
 
