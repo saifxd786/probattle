@@ -9,6 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/hooks/use-toast';
 import { useMaintenanceMode } from '@/hooks/useMaintenanceMode';
 import { usePaymentQR } from '@/hooks/usePaymentQR';
+import { usePaymentUPI } from '@/hooks/usePaymentUPI';
 
 const AdminSettings = () => {
   const { 
@@ -28,15 +29,22 @@ const AdminSettings = () => {
     uploadQR,
   } = usePaymentQR();
 
+  const {
+    upiId: savedUpiId,
+    updateUPI,
+    isUpdating: isUPIUpdating,
+    isLoading: isUPILoading,
+  } = usePaymentUPI();
+
   const [maintenanceEnabled, setMaintenanceEnabled] = useState(false);
   const [maintenanceMsg, setMaintenanceMsg] = useState('');
   const [qrEnabledLocal, setQrEnabledLocal] = useState(false);
   const [qrUrlLocal, setQrUrlLocal] = useState<string | null>(null);
   const [isUploadingQR, setIsUploadingQR] = useState(false);
+  const [upiIdLocal, setUpiIdLocal] = useState('');
   const qrInputRef = useRef<HTMLInputElement>(null);
 
   const [settings, setSettings] = useState({
-    upiId: 'mohdqureshi807@naviaxis',
     bgmiEnabled: true,
     freefireEnabled: false,
     clashEnabled: false,
@@ -57,6 +65,11 @@ const AdminSettings = () => {
     setQrEnabledLocal(qrEnabled);
     setQrUrlLocal(qrUrl);
   }, [qrEnabled, qrUrl]);
+
+  // Sync UPI ID from database
+  useEffect(() => {
+    setUpiIdLocal(savedUpiId);
+  }, [savedUpiId]);
 
   // Sync maintenance mode from database
   useEffect(() => {
@@ -112,6 +125,21 @@ const AdminSettings = () => {
     await new Promise((resolve) => setTimeout(resolve, 500));
     toast({ title: 'Success', description: 'Settings saved successfully' });
     setIsSaving(false);
+  };
+
+  const handleUPISave = () => {
+    if (!upiIdLocal.trim() || !upiIdLocal.includes('@')) {
+      toast({ title: 'Error', description: 'Please enter a valid UPI ID', variant: 'destructive' });
+      return;
+    }
+    updateUPI(upiIdLocal, {
+      onSuccess: () => {
+        toast({ title: 'Success', description: 'UPI ID updated successfully' });
+      },
+      onError: () => {
+        toast({ title: 'Error', description: 'Failed to update UPI ID', variant: 'destructive' });
+      }
+    });
   };
 
   const handleQRUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -193,14 +221,32 @@ const AdminSettings = () => {
             <CardDescription>Configure payment options</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div>
+            <div className="space-y-2">
               <Label>UPI ID</Label>
-              <Input
-                value={settings.upiId}
-                onChange={(e) => setSettings({ ...settings, upiId: e.target.value })}
-                placeholder="your@upi"
-              />
-              <p className="text-xs text-muted-foreground mt-1">
+              <div className="flex gap-2">
+                {isUPILoading ? (
+                  <div className="flex-1 h-10 bg-muted rounded animate-pulse" />
+                ) : (
+                  <Input
+                    value={upiIdLocal}
+                    onChange={(e) => setUpiIdLocal(e.target.value)}
+                    placeholder="your@upi"
+                    className="flex-1"
+                  />
+                )}
+                <Button 
+                  variant="outline" 
+                  onClick={handleUPISave}
+                  disabled={isUPIUpdating || isUPILoading}
+                >
+                  {isUPIUpdating ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    'Save'
+                  )}
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
                 This UPI ID will be shown to users for manual payments
               </p>
             </div>
