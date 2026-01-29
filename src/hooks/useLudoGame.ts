@@ -709,23 +709,23 @@ export const useLudoGame = () => {
     // Lower amounts = faster matchmaking, higher amounts = slower (more realistic)
     const getMatchmakingDelay = (amount: number): { botJoinBase: number; botJoinRandom: number; readyDelay: number; gameStartBase: number } => {
       if (amount <= 20) {
-        // ₹10-20: Very fast (1-2 seconds per bot)
-        return { botJoinBase: 800, botJoinRandom: 600, readyDelay: 400, gameStartBase: 1200 };
+        // ₹10-20: ~4-6 seconds total
+        return { botJoinBase: 3000, botJoinRandom: 1500, readyDelay: 500, gameStartBase: 1500 };
       } else if (amount <= 50) {
-        // ₹50: Fast (2-3 seconds per bot)
-        return { botJoinBase: 1500, botJoinRandom: 1000, readyDelay: 500, gameStartBase: 1800 };
+        // ₹50: ~8-9 seconds total
+        return { botJoinBase: 6000, botJoinRandom: 2000, readyDelay: 600, gameStartBase: 1800 };
       } else if (amount <= 100) {
-        // ₹100: Medium (3-5 seconds per bot)
-        return { botJoinBase: 2500, botJoinRandom: 1500, readyDelay: 600, gameStartBase: 2500 };
+        // ₹100: ~10-12 seconds total
+        return { botJoinBase: 8000, botJoinRandom: 2500, readyDelay: 700, gameStartBase: 2000 };
       } else if (amount <= 500) {
-        // ₹200-500: Slower (5-8 seconds per bot)
-        return { botJoinBase: 4000, botJoinRandom: 2500, readyDelay: 800, gameStartBase: 3500 };
+        // ₹200-500: ~15-18 seconds total
+        return { botJoinBase: 12000, botJoinRandom: 4000, readyDelay: 800, gameStartBase: 2500 };
       } else if (amount <= 1000) {
-        // ₹1000: Slow (8-12 seconds per bot)
-        return { botJoinBase: 6000, botJoinRandom: 4000, readyDelay: 1000, gameStartBase: 4500 };
+        // ₹1000: ~18-20 seconds total
+        return { botJoinBase: 15000, botJoinRandom: 3500, readyDelay: 900, gameStartBase: 2500 };
       } else {
-        // ₹5000+: Very slow (12-18 seconds per bot) - high rollers are rare
-        return { botJoinBase: 10000, botJoinRandom: 6000, readyDelay: 1200, gameStartBase: 6000 };
+        // ₹5000+: ~25-30 seconds total - rare high rollers
+        return { botJoinBase: 22000, botJoinRandom: 6000, readyDelay: 1000, gameStartBase: 3000 };
       }
     };
 
