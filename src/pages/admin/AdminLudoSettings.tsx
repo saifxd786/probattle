@@ -248,8 +248,8 @@ const AdminLudoSettings = () => {
               </div>
               <div className="flex items-center justify-between">
                 <div>
-                  <Label className="text-foreground">High Amount Competitive</Label>
-                  <p className="text-xs text-muted-foreground">Tougher matches for high stakes</p>
+                  <Label className="text-foreground">Smart Bot (₹100+ Bets)</Label>
+                  <p className="text-xs text-muted-foreground">Bot plays strategically to win subtly in high-stake games</p>
                 </div>
                 <Switch
                   checked={settings.highAmountCompetitive}
