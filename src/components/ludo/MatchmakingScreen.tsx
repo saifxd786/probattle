@@ -158,6 +158,7 @@ const MatchmakingScreen = ({ players, totalPlayers, entryAmount, rewardAmount }:
   const [searchTime, setSearchTime] = useState(0);
   const [onlinePlayers, setOnlinePlayers] = useState(2500);
   const allReady = players.length === totalPlayers && players.every(p => p.status === 'ready');
+  const is4Player = totalPlayers === 4;
 
   useEffect(() => {
     const timer = setInterval(() => setSearchTime(prev => prev + 1), 1000);
@@ -217,7 +218,7 @@ const MatchmakingScreen = ({ players, totalPlayers, entryAmount, rewardAmount }:
             </div>
             <div>
               <h1 className="font-bold text-sm text-white tracking-wide">
-                ONLINE MATCH
+                {is4Player ? '4 PLAYER MATCH' : 'ONLINE MATCH'}
               </h1>
               <div className="flex items-center gap-1.5 text-[10px]">
                 <motion.div 
@@ -272,7 +273,12 @@ const MatchmakingScreen = ({ players, totalPlayers, entryAmount, rewardAmount }:
             transition={{ duration: 1.5, repeat: Infinity, ease: 'linear' }}
             className="w-4 h-4 rounded-full border-2 border-indigo-500 border-t-transparent"
           />
-          <span className="text-gray-400 text-xs">Finding opponent...</span>
+          <span className="text-gray-400 text-xs">
+            {is4Player 
+              ? `Finding players... (${players.length}/${totalPlayers})`
+              : 'Finding opponent...'
+            }
+          </span>
         </motion.div>
 
         {/* Info Cards */}
@@ -282,7 +288,9 @@ const MatchmakingScreen = ({ players, totalPlayers, entryAmount, rewardAmount }:
               <Crown className="w-4 h-4 text-amber-500" />
               <span className="text-gray-400 text-xs">Mode</span>
             </div>
-            <span className="text-white font-semibold text-xs">Classic 1v1</span>
+            <span className="text-white font-semibold text-xs">
+              {is4Player ? '4 Player Battle' : 'Classic 1v1'}
+            </span>
           </div>
           
           <div className="bg-gray-900/50 border border-gray-800 flex items-center justify-between px-4 py-3 rounded-xl">
@@ -295,33 +303,122 @@ const MatchmakingScreen = ({ players, totalPlayers, entryAmount, rewardAmount }:
         </div>
       </div>
 
-      {/* Bottom Players Section */}
+      {/* Bottom Players Section - Updated for 4 players */}
       <div className="px-4 py-4 border-t border-gray-800/50 bg-gray-900/30">
-        <div className="flex items-center justify-between">
-          {/* Left Player */}
-          <PlayerCard 
-            player={players[0]} 
-            position="left" 
-            isSearching={!players[0]}
-          />
-          
-          {/* Center Timer */}
-          <div className="bg-gray-800/60 border border-gray-700/50 px-3 py-1.5 rounded-full">
-            <div className="flex items-center gap-1.5">
-              <Clock className="w-3 h-3 text-indigo-400" />
-              <span className="text-indigo-400 font-mono font-semibold text-xs">
-                {formatTime(searchTime)}
-              </span>
+        {is4Player ? (
+          // 4 Player Grid Layout
+          <div className="space-y-3">
+            {/* Player slots in 2x2 grid */}
+            <div className="grid grid-cols-2 gap-3">
+              {[0, 1, 2, 3].map((index) => {
+                const player = players[index];
+                const colorMap: Record<string, string> = {
+                  red: '#E53935',
+                  green: '#43A047', 
+                  yellow: '#FFD600',
+                  blue: '#1E88E5'
+                };
+                const colorOrder = ['red', 'green', 'yellow', 'blue'];
+                const slotColor = colorOrder[index];
+                
+                return (
+                  <motion.div
+                    key={index}
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: index * 0.1 }}
+                    className="flex items-center gap-2 p-2 rounded-xl bg-gray-800/40 border"
+                    style={{
+                      borderColor: player ? colorMap[player.color] : 'rgba(255,255,255,0.1)'
+                    }}
+                  >
+                    {player ? (
+                      <>
+                        {player.avatar ? (
+                          <img 
+                            src={player.avatar}
+                            alt={player.name}
+                            className="w-8 h-8 rounded-lg object-cover border-2"
+                            style={{ borderColor: colorMap[player.color] }}
+                          />
+                        ) : (
+                          <div 
+                            className="w-8 h-8 rounded-lg flex items-center justify-center text-white font-bold text-xs border-2"
+                            style={{
+                              background: `linear-gradient(135deg, ${colorMap[player.color]}dd, ${colorMap[player.color]}88)`,
+                              borderColor: colorMap[player.color],
+                            }}
+                          >
+                            {player.name.slice(0, 2).toUpperCase()}
+                          </div>
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <p className="text-white font-medium text-xs truncate">{player.name}</p>
+                          <div className="flex items-center gap-1 text-green-400 text-[10px]">
+                            <Zap className="w-2.5 h-2.5" />
+                            <span>Ready</span>
+                          </div>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <motion.div 
+                          className="w-8 h-8 rounded-lg bg-gray-700/50 flex items-center justify-center"
+                          animate={{ opacity: [0.4, 0.7, 0.4] }}
+                          transition={{ duration: 1.5, repeat: Infinity }}
+                        >
+                          <Search className="w-3.5 h-3.5 text-gray-500" />
+                        </motion.div>
+                        <div className="flex-1">
+                          <p className="text-gray-500 text-xs">Searching...</p>
+                          <p className="text-gray-600 text-[10px]">
+                            <span className="capitalize">{slotColor}</span> slot
+                          </p>
+                        </div>
+                      </>
+                    )}
+                  </motion.div>
+                );
+              })}
+            </div>
+            
+            {/* Timer in center */}
+            <div className="flex justify-center">
+              <div className="bg-gray-800/60 border border-gray-700/50 px-3 py-1.5 rounded-full">
+                <div className="flex items-center gap-1.5">
+                  <Clock className="w-3 h-3 text-indigo-400" />
+                  <span className="text-indigo-400 font-mono font-semibold text-xs">
+                    {formatTime(searchTime)}
+                  </span>
+                </div>
+              </div>
             </div>
           </div>
-          
-          {/* Right Player */}
-          <PlayerCard 
-            player={players[1]} 
-            position="right"
-            isSearching={!players[1]}
-          />
-        </div>
+        ) : (
+          // 2 Player Layout - Original
+          <div className="flex items-center justify-between">
+            <PlayerCard 
+              player={players[0]} 
+              position="left" 
+              isSearching={!players[0]}
+            />
+            
+            <div className="bg-gray-800/60 border border-gray-700/50 px-3 py-1.5 rounded-full">
+              <div className="flex items-center gap-1.5">
+                <Clock className="w-3 h-3 text-indigo-400" />
+                <span className="text-indigo-400 font-mono font-semibold text-xs">
+                  {formatTime(searchTime)}
+                </span>
+              </div>
+            </div>
+            
+            <PlayerCard 
+              player={players[1]} 
+              position="right"
+              isSearching={!players[1]}
+            />
+          </div>
+        )}
         
         {/* Ready Status */}
         <AnimatePresence mode="wait">

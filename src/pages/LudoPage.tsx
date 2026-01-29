@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Dices, Wallet, Info, Trophy, Users, Zap, Ban, UserPlus, WifiOff, Wifi, RefreshCw, RotateCcw, Signal, LogOut } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
@@ -482,83 +482,175 @@ const LudoPage = () => {
           />
         </div>
 
-        {/* Bottom Section - Combined VS Bar with Dice */}
+        {/* Bottom Section - Combined VS Bar with Dice - Supports 2 or 4 players */}
         <div className="shrink-0 px-3 py-3 border-t border-white/10 bg-black/60">
-          <div className="flex items-center justify-between">
-            {/* Left Player */}
-            {gameState.players[0] && (() => {
-              const player = gameState.players[0];
-              const colorMap: Record<string, string> = {
-                red: '#E53935',
-                green: '#43A047', 
-                yellow: '#FFD600',
-                blue: '#1E88E5'
-              };
-              const isActive = gameState.currentTurn === 0;
-              // Use resolved avatar for user, bot's avatar for bots
-              const displayAvatar = player.id === user?.id ? userResolvedAvatar : player.avatar;
-              return (
-                <div className="flex items-center gap-2">
-                  {/* Avatar with Timer */}
-                  <SquareTurnTimerAvatar
-                    avatarUrl={displayAvatar}
-                    fallbackText={player.name.slice(0, 2).toUpperCase()}
-                    borderColor={colorMap[player.color]}
-                    isActive={isActive}
-                    timeLeft={turnTimeLeft}
-                    badgeSide="left"
-                  />
-                  {/* Info */}
-                  <div className="text-left">
-                    <p className="text-white/80 font-medium text-xs">{player.name}</p>
+          {playerMode === 4 ? (
+            // 4 Player Layout - All players in a row with dice in center
+            <div className="flex items-center justify-between gap-1">
+              {gameState.players.map((player, index) => {
+                const colorMap: Record<string, string> = {
+                  red: '#E53935',
+                  green: '#43A047', 
+                  yellow: '#FFD600',
+                  blue: '#1E88E5'
+                };
+                const isActive = gameState.currentTurn === index;
+                const displayAvatar = player.id === user?.id ? userResolvedAvatar : player.avatar;
+                
+                // Place dice in center (after player 1)
+                if (index === 2) {
+                  return (
+                    <React.Fragment key={`dice-${index}`}>
+                      {/* Dice in center */}
+                      <div className="flex flex-col items-center mx-1">
+                        <LudoDice
+                          value={gameState.diceValue}
+                          isRolling={gameState.isRolling}
+                          onRoll={rollDice}
+                          disabled={!isUserTurn}
+                          canRoll={gameState.canRoll && isUserTurn}
+                          compact
+                        />
+                      </div>
+                      {/* Player 3 */}
+                      <div className="flex flex-col items-center" key={player.color}>
+                        <div 
+                          className="w-9 h-9 rounded-lg overflow-hidden"
+                          style={{
+                            border: isActive ? `2px solid ${colorMap[player.color]}` : '2px solid rgba(255,255,255,0.2)',
+                            boxShadow: isActive ? `0 0 8px ${colorMap[player.color]}80` : 'none',
+                          }}
+                        >
+                          {displayAvatar ? (
+                            <img src={displayAvatar} alt={player.name} className="w-full h-full object-cover" />
+                          ) : (
+                            <div 
+                              className="w-full h-full flex items-center justify-center text-white text-xs font-bold"
+                              style={{ background: colorMap[player.color] }}
+                            >
+                              {player.name.slice(0, 2).toUpperCase()}
+                            </div>
+                          )}
+                        </div>
+                        <p className="text-[8px] text-white/70 mt-0.5 truncate max-w-[40px]">{player.name}</p>
+                        {isActive && (
+                          <div 
+                            className="px-1 py-0.5 rounded text-[7px] font-bold text-white mt-0.5"
+                            style={{ background: colorMap[player.color] }}
+                          >
+                            {turnTimeLeft}s
+                          </div>
+                        )}
+                      </div>
+                    </React.Fragment>
+                  );
+                }
+                
+                return (
+                  <div className="flex flex-col items-center" key={player.color}>
+                    <div 
+                      className="w-9 h-9 rounded-lg overflow-hidden"
+                      style={{
+                        border: isActive ? `2px solid ${colorMap[player.color]}` : '2px solid rgba(255,255,255,0.2)',
+                        boxShadow: isActive ? `0 0 8px ${colorMap[player.color]}80` : 'none',
+                      }}
+                    >
+                      {displayAvatar ? (
+                        <img src={displayAvatar} alt={player.name} className="w-full h-full object-cover" />
+                      ) : (
+                        <div 
+                          className="w-full h-full flex items-center justify-center text-white text-xs font-bold"
+                          style={{ background: colorMap[player.color] }}
+                        >
+                          {player.name.slice(0, 2).toUpperCase()}
+                        </div>
+                      )}
+                    </div>
+                    <p className="text-[8px] text-white/70 mt-0.5 truncate max-w-[40px]">{player.name}</p>
+                    {isActive && (
+                      <div 
+                        className="px-1 py-0.5 rounded text-[7px] font-bold text-white mt-0.5"
+                        style={{ background: colorMap[player.color] }}
+                      >
+                        {turnTimeLeft}s
+                      </div>
+                    )}
                   </div>
-                </div>
-              );
-            })()}
-
-            {/* Center - Dice */}
-            <div className="flex flex-col items-center">
-              <LudoDice
-                value={gameState.diceValue}
-                isRolling={gameState.isRolling}
-                onRoll={rollDice}
-                disabled={!isUserTurn}
-                canRoll={gameState.canRoll && isUserTurn}
-                compact
-              />
+                );
+              })}
             </div>
-
-            {/* Right Player */}
-            {gameState.players[1] && (() => {
-              const player = gameState.players[1];
-              const colorMap: Record<string, string> = {
-                red: '#E53935',
-                green: '#43A047', 
-                yellow: '#FFD600',
-                blue: '#1E88E5'
-              };
-              const isActive = gameState.currentTurn === 1;
-              // Use resolved avatar for user, bot's avatar for bots
-              const displayAvatar = player.id === user?.id ? userResolvedAvatar : player.avatar;
-              return (
-                <div className="flex items-center gap-2 flex-row-reverse">
-                  {/* Avatar with Timer */}
-                  <SquareTurnTimerAvatar
-                    avatarUrl={displayAvatar}
-                    fallbackText={player.name.slice(0, 2).toUpperCase()}
-                    borderColor={colorMap[player.color]}
-                    isActive={isActive}
-                    timeLeft={turnTimeLeft}
-                    badgeSide="right"
-                  />
-                  {/* Info */}
-                  <div className="text-right">
-                    <p className="text-white/80 font-medium text-xs">{player.name}</p>
+          ) : (
+            // 2 Player Layout - Original design
+            <div className="flex items-center justify-between">
+              {/* Left Player */}
+              {gameState.players[0] && (() => {
+                const player = gameState.players[0];
+                const colorMap: Record<string, string> = {
+                  red: '#E53935',
+                  green: '#43A047', 
+                  yellow: '#FFD600',
+                  blue: '#1E88E5'
+                };
+                const isActive = gameState.currentTurn === 0;
+                const displayAvatar = player.id === user?.id ? userResolvedAvatar : player.avatar;
+                return (
+                  <div className="flex items-center gap-2">
+                    <SquareTurnTimerAvatar
+                      avatarUrl={displayAvatar}
+                      fallbackText={player.name.slice(0, 2).toUpperCase()}
+                      borderColor={colorMap[player.color]}
+                      isActive={isActive}
+                      timeLeft={turnTimeLeft}
+                      badgeSide="left"
+                    />
+                    <div className="text-left">
+                      <p className="text-white/80 font-medium text-xs">{player.name}</p>
+                    </div>
                   </div>
-                </div>
-              );
-            })()}
-          </div>
+                );
+              })()}
+
+              {/* Center - Dice */}
+              <div className="flex flex-col items-center">
+                <LudoDice
+                  value={gameState.diceValue}
+                  isRolling={gameState.isRolling}
+                  onRoll={rollDice}
+                  disabled={!isUserTurn}
+                  canRoll={gameState.canRoll && isUserTurn}
+                  compact
+                />
+              </div>
+
+              {/* Right Player */}
+              {gameState.players[1] && (() => {
+                const player = gameState.players[1];
+                const colorMap: Record<string, string> = {
+                  red: '#E53935',
+                  green: '#43A047', 
+                  yellow: '#FFD600',
+                  blue: '#1E88E5'
+                };
+                const isActive = gameState.currentTurn === 1;
+                const displayAvatar = player.id === user?.id ? userResolvedAvatar : player.avatar;
+                return (
+                  <div className="flex items-center gap-2 flex-row-reverse">
+                    <SquareTurnTimerAvatar
+                      avatarUrl={displayAvatar}
+                      fallbackText={player.name.slice(0, 2).toUpperCase()}
+                      borderColor={colorMap[player.color]}
+                      isActive={isActive}
+                      timeLeft={turnTimeLeft}
+                      badgeSide="right"
+                    />
+                    <div className="text-right">
+                      <p className="text-white/80 font-medium text-xs">{player.name}</p>
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+          )}
         </div>
       </div>
     );

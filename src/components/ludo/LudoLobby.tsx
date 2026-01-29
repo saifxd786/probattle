@@ -211,7 +211,18 @@ const LudoLobby = ({
             {/* With Friend */}
             <motion.button
               whileTap={{ scale: 0.98 }}
-              onClick={onPlayWithFriend}
+              onClick={() => {
+                if (playerMode === 4) {
+                  // Show toast that 4-player friend mode is coming soon
+                  import('sonner').then(({ toast }) => {
+                    toast.info('4-Player Friend mode coming soon! Switching to 1v1.');
+                  });
+                  setPlayerMode(2);
+                  setTimeout(() => onPlayWithFriend(), 100);
+                } else {
+                  onPlayWithFriend();
+                }
+              }}
               className="relative h-14 rounded-xl overflow-hidden group"
               style={{
                 background: 'linear-gradient(135deg, #EC4899 0%, #DB2777 100%)',
@@ -221,6 +232,11 @@ const LudoLobby = ({
                 <UserPlus className="w-4 h-4 text-white" />
                 <span className="font-semibold text-white text-sm">With Friend</span>
               </div>
+              {playerMode === 4 && (
+                <div className="absolute top-1 right-1 px-1.5 py-0.5 rounded text-[7px] font-bold bg-black/40 text-white">
+                  1v1 only
+                </div>
+              )}
             </motion.button>
           </motion.div>
         )}
