@@ -292,7 +292,7 @@ const PlayerProfileCard = ({
   );
 };
 
-// Bottom info bar - Clean style
+// Bottom info bar - Clean style with avatars
 const BottomInfoBar = ({ 
   players 
 }: { 
@@ -302,6 +302,8 @@ const BottomInfoBar = ({
   const rightPlayer = players[1];
   const leftUID = leftPlayer?.uid || useMemo(() => generateUID(), []);
   const rightUID = rightPlayer?.uid || useMemo(() => generateUID(), []);
+  const leftColors = COLORS[leftPlayer?.color as keyof typeof COLORS];
+  const rightColors = COLORS[rightPlayer?.color as keyof typeof COLORS];
   
   return (
     <div 
@@ -315,12 +317,24 @@ const BottomInfoBar = ({
       {/* Left Player Info */}
       <div className="flex items-center gap-2">
         <div 
-          className="w-8 h-8 rounded-full"
+          className="w-8 h-8 rounded-full overflow-hidden"
           style={{ 
-            background: COLORS[leftPlayer?.color as keyof typeof COLORS]?.main || '#1E88E5',
-            boxShadow: `0 0 8px ${COLORS[leftPlayer?.color as keyof typeof COLORS]?.main || '#1E88E5'}50`
+            background: leftColors?.main || '#1E88E5',
+            boxShadow: `0 0 8px ${leftColors?.main || '#1E88E5'}50`,
+            border: `2px solid ${leftColors?.main || '#1E88E5'}`
           }}
-        />
+        >
+          {leftPlayer?.avatar ? (
+            <img src={leftPlayer.avatar} alt={leftUID} className="w-full h-full object-cover" />
+          ) : (
+            <div 
+              className="w-full h-full flex items-center justify-center text-white text-xs font-bold"
+              style={{ background: `linear-gradient(135deg, ${leftColors?.light || '#64B5F6'} 0%, ${leftColors?.dark || '#0D47A1'} 100%)` }}
+            >
+              {leftUID.slice(0, 2)}
+            </div>
+          )}
+        </div>
         <div className="text-left">
           <div className="text-white font-bold text-sm">{leftUID}</div>
           <div className="flex items-center gap-1">
@@ -352,12 +366,24 @@ const BottomInfoBar = ({
           </div>
         </div>
         <div 
-          className="w-8 h-8 rounded-full"
+          className="w-8 h-8 rounded-full overflow-hidden"
           style={{ 
-            background: COLORS[rightPlayer?.color as keyof typeof COLORS]?.main || '#43A047',
-            boxShadow: `0 0 8px ${COLORS[rightPlayer?.color as keyof typeof COLORS]?.main || '#43A047'}50`
+            background: rightColors?.main || '#43A047',
+            boxShadow: `0 0 8px ${rightColors?.main || '#43A047'}50`,
+            border: `2px solid ${rightColors?.main || '#43A047'}`
           }}
-        />
+        >
+          {rightPlayer?.avatar ? (
+            <img src={rightPlayer.avatar} alt={rightUID} className="w-full h-full object-cover" />
+          ) : (
+            <div 
+              className="w-full h-full flex items-center justify-center text-white text-xs font-bold"
+              style={{ background: `linear-gradient(135deg, ${rightColors?.light || '#69F0AE'} 0%, ${rightColors?.dark || '#1B5E20'} 100%)` }}
+            >
+              {rightUID.slice(0, 2)}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

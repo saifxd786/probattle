@@ -231,6 +231,8 @@ export const useLudoGame = () => {
   } | null>(null);
   const [isCheckingActiveGame, setIsCheckingActiveGame] = useState(true);
 
+  const [userAvatar, setUserAvatar] = useState<string | null>(null);
+
   // Fetch user profile and UID
   useEffect(() => {
     if (!user) return;
@@ -238,13 +240,14 @@ export const useLudoGame = () => {
     const fetchProfile = async () => {
       const { data } = await supabase
         .from('profiles')
-        .select('wallet_balance, user_code')
+        .select('wallet_balance, user_code, avatar_url')
         .eq('id', user.id)
         .single();
       
       if (data) {
         setWalletBalance(Number(data.wallet_balance));
         setUserUID(data.user_code || generateUID());
+        setUserAvatar(data.avatar_url || null);
       }
     };
     
@@ -386,6 +389,7 @@ export const useLudoGame = () => {
           id: p.is_bot ? `bot-${index}` : p.user_id,
           name: p.is_bot ? (p.bot_name || `Bot ${index}`) : (user.email?.split('@')[0] || 'You'),
           uid: p.is_bot ? generateUID() : (userUID || generateUID()),
+          avatar: p.is_bot ? undefined : (userAvatar || undefined),
           isBot: p.is_bot,
           status: 'ready' as const,
           color: p.player_color,
@@ -428,7 +432,7 @@ export const useLudoGame = () => {
       console.error('[LudoGame] Error resuming game:', err);
       toast({ title: 'Failed to resume game', variant: 'destructive' });
     }
-  }, [user, activeGameData, userUID, toast]);
+  }, [user, activeGameData, userUID, userAvatar, toast]);
 
   // Dismiss active game (forfeit)
   const dismissActiveGame = useCallback(async () => {
@@ -526,6 +530,7 @@ export const useLudoGame = () => {
       id: user.id,
       name: user.email?.split('@')[0] || 'You',
       uid: userUID || generateUID(),
+      avatar: userAvatar || undefined,
       isBot: false,
       status: 'ready',
       color: userColor,
