@@ -290,6 +290,7 @@ const SupportChat = () => {
           subCategory: selectedGame || selectedCategory || 'general',
           language: 'auto', // Auto-detect
           hasImage: !!userMessage.image,
+          userId: user?.id, // Pass user ID for ticket creation
         },
       });
 
@@ -303,6 +304,14 @@ const SupportChat = () => {
       };
 
       setAiMessages(prev => [...prev, aiReply]);
+
+      // Show notification if issue was escalated to admin
+      if (data.escalated) {
+        toast({
+          title: '🎫 Ticket Created',
+          description: 'Aapki problem admin team ko report kar di gayi hai. Jaldi response milega!',
+        });
+      }
     } catch (error) {
       console.error('AI chat error:', error);
       toast({

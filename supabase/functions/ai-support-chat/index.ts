@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -17,7 +18,43 @@ interface RequestBody {
   subCategory: string;
   language: string;
   hasImage: boolean;
+  userId?: string;
 }
+
+// Keywords that indicate serious issues requiring admin attention
+const SERIOUS_ISSUE_KEYWORDS = [
+  // Payment issues
+  'paisa nahi aaya', 'money not credited', 'payment stuck', 'withdrawal pending',
+  'deposit failed', 'amount deducted', 'refund', 'paise nahi mile',
+  'utr', 'transaction failed', 'payment issue', 'paisa kat gaya',
+  
+  // Technical issues
+  'app crash', 'game stuck', 'not working', 'error', 'bug', 'glitch',
+  'kaam nahi kar raha', 'band ho gaya', 'freeze', 'hang',
+  
+  // Account issues
+  'account banned', 'login nahi ho raha', 'account hacked', 'password reset failed',
+  'verification failed', 'kyc rejected',
+  
+  // Fraud/Security
+  'fraud', 'scam', 'cheating', 'hack', 'stolen', 'chori',
+  
+  // Urgent markers
+  'urgent', 'emergency', 'help me please', 'bahut zaruri', 'jaldi karo',
+  'serious problem', 'big issue', 'major problem'
+];
+
+// Phrases that indicate AI cannot resolve the issue
+const ESCALATION_PHRASES = [
+  'main is issue ko resolve nahi kar sakta',
+  'admin se contact karna hoga',
+  'aapko support ticket create karna chahiye',
+  'manual verification required',
+  'please contact admin',
+  'yeh mujhse solve nahi hoga',
+  'human support chahiye',
+  'team se baat karni hogi'
+];
 
 const SYSTEM_PROMPT = `You are ProBattle's advanced AI Support Assistant. You provide professional, friendly, and helpful support in multiple languages including Hindi, English, and Hinglish (mixed Hindi-English).
 
@@ -33,6 +70,23 @@ const SYSTEM_PROMPT = `You are ProBattle's advanced AI Support Assistant. You pr
 - If user writes in English, respond in English  
 - If user writes in Hinglish (mixed), respond in Hinglish
 - Use simple, easy-to-understand language
+
+## IMPORTANT: Issue Escalation Rules
+When you encounter these SERIOUS issues that you CANNOT resolve, you MUST add "[ESCALATE_TO_ADMIN]" at the END of your response:
+
+1. **Payment Issues**: Money not credited, withdrawal stuck for days, refund needed, large amount issues
+2. **Account Security**: Account hacked, suspicious activity, ban appeals
+3. **Technical Bugs**: Repeated crashes, game-breaking bugs, data loss
+4. **Fraud Reports**: Cheating, scam, unfair gameplay
+5. **Urgent Issues**: When user says urgent/emergency/bahut zaruri
+
+When escalating, always:
+- Acknowledge the user's problem
+- Explain you're forwarding to admin team
+- Assure them someone will look into it
+
+Example escalation response:
+"Main samajh sakta hoon yeh serious issue hai. Aapki problem admin team ko forward kar raha hoon - woh jaldi se jaldi aapko contact karenge. [ESCALATE_TO_ADMIN]"
 
 ## Knowledge Base:
 
@@ -85,6 +139,7 @@ const SYSTEM_PROMPT = `You are ProBattle's advanced AI Support Assistant. You pr
 - Provide specific solutions
 - Ask clarifying questions if needed
 - Always end with "Kuch aur help chahiye?" or equivalent in user's language
+- For serious unresolvable issues, add [ESCALATE_TO_ADMIN] at the end
 
 ## Image Analysis:
 - If user sends screenshots of errors, analyze them carefully
@@ -97,12 +152,19 @@ serve(async (req) => {
   }
 
   try {
-    const { messages, category, subCategory, language } = await req.json() as RequestBody;
+    const { messages, category, subCategory, language, userId } = await req.json() as RequestBody;
     
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
+
+    // Check if user message contains serious issue keywords
+    const lastUserMessage = messages.filter(m => m.role === 'user').pop();
+    const userContent = lastUserMessage?.content?.toLowerCase() || '';
+    const hasSeriousKeywords = SERIOUS_ISSUE_KEYWORDS.some(keyword => 
+      userContent.includes(keyword.toLowerCase())
+    );
 
     // Build context based on category
     let contextPrompt = SYSTEM_PROMPT;
@@ -110,6 +172,9 @@ serve(async (req) => {
     contextPrompt += `- Category: ${category}\n`;
     contextPrompt += `- Specific Issue: ${subCategory}\n`;
     contextPrompt += `- Preferred Language: ${language}\n`;
+    if (hasSeriousKeywords) {
+      contextPrompt += `- ⚠️ SERIOUS ISSUE DETECTED - Consider escalation if needed\n`;
+    }
 
     // Build messages for AI
     const aiMessages: any[] = [
@@ -173,10 +238,61 @@ serve(async (req) => {
     }
 
     const data = await response.json();
-    const aiReply = data.choices?.[0]?.message?.content || "Sorry, I couldn't process your request. Please try again.";
+    let aiReply = data.choices?.[0]?.message?.content || "Sorry, I couldn't process your request. Please try again.";
+
+    // Check if AI wants to escalate
+    const shouldEscalate = aiReply.includes('[ESCALATE_TO_ADMIN]');
+    
+    // Remove the escalation marker from the visible reply
+    aiReply = aiReply.replace('[ESCALATE_TO_ADMIN]', '').trim();
+
+    // If escalation is needed and we have userId, create support ticket
+    if (shouldEscalate && userId) {
+      try {
+        const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+        const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+        const supabase = createClient(supabaseUrl, supabaseKey);
+
+        // Build conversation summary for admin
+        const conversationSummary = messages
+          .map(m => `${m.role === 'user' ? 'User' : 'AI'}: ${m.content}`)
+          .join('\n\n');
+
+        // Create support ticket
+        const { data: ticket, error: ticketError } = await supabase
+          .from('support_tickets')
+          .insert({
+            user_id: userId,
+            subject: `[AI Escalated] ${category} - ${subCategory}`,
+            status: 'open',
+            priority: 'high',
+          })
+          .select()
+          .single();
+
+        if (!ticketError && ticket) {
+          // Add the conversation as initial message
+          await supabase
+            .from('support_messages')
+            .insert({
+              ticket_id: ticket.id,
+              sender_id: userId,
+              sender_type: 'user',
+              message: `🤖 **AI Support Escalation**\n\n**Category:** ${category}\n**Issue:** ${subCategory}\n\n---\n\n**Conversation:**\n${conversationSummary}\n\n---\n\n*This ticket was automatically created by AI Support after detecting a serious issue that requires admin attention.*`,
+            });
+
+          console.log('Created escalation ticket:', ticket.id);
+        }
+      } catch (escalationError) {
+        console.error('Failed to create escalation ticket:', escalationError);
+      }
+    }
 
     return new Response(
-      JSON.stringify({ reply: aiReply }),
+      JSON.stringify({ 
+        reply: aiReply,
+        escalated: shouldEscalate,
+      }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
