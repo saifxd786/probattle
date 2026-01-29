@@ -4,6 +4,20 @@ import { cn } from '@/lib/utils';
 import { Crown } from 'lucide-react';
 import CaptureAnimation from './CaptureAnimation';
 
+// Color-specific avatars
+import redAvatar from '@/assets/ludo-avatar-red.png';
+import blueAvatar from '@/assets/ludo-avatar-blue.png';
+import greenAvatar from '@/assets/ludo-avatar-green.png';
+import yellowAvatar from '@/assets/ludo-avatar-yellow.png';
+
+// Map of color to default avatar
+const COLOR_AVATARS: { [key: string]: string } = {
+  red: redAvatar,
+  blue: blueAvatar,
+  green: greenAvatar,
+  yellow: yellowAvatar,
+};
+
 interface Token {
   id: number;
   position: number;
@@ -324,16 +338,11 @@ const BottomInfoBar = ({
             border: `2px solid ${leftColors?.main || '#1E88E5'}`
           }}
         >
-          {leftPlayer?.avatar ? (
-            <img src={leftPlayer.avatar} alt={leftUID} className="w-full h-full object-cover" />
-          ) : (
-            <div 
-              className="w-full h-full flex items-center justify-center text-white text-xs font-bold"
-              style={{ background: `linear-gradient(135deg, ${leftColors?.light || '#64B5F6'} 0%, ${leftColors?.dark || '#0D47A1'} 100%)` }}
-            >
-              {leftUID.slice(0, 2)}
-            </div>
-          )}
+<img 
+            src={leftPlayer?.avatar || COLOR_AVATARS[leftPlayer?.color as keyof typeof COLOR_AVATARS] || redAvatar} 
+            alt={leftUID} 
+            className="w-full h-full object-cover" 
+          />
         </div>
         <div className="text-left">
           <div className="text-white font-bold text-sm">{leftUID}</div>
@@ -373,16 +382,11 @@ const BottomInfoBar = ({
             border: `2px solid ${rightColors?.main || '#43A047'}`
           }}
         >
-          {rightPlayer?.avatar ? (
-            <img src={rightPlayer.avatar} alt={rightUID} className="w-full h-full object-cover" />
-          ) : (
-            <div 
-              className="w-full h-full flex items-center justify-center text-white text-xs font-bold"
-              style={{ background: `linear-gradient(135deg, ${rightColors?.light || '#69F0AE'} 0%, ${rightColors?.dark || '#1B5E20'} 100%)` }}
-            >
-              {rightUID.slice(0, 2)}
-            </div>
-          )}
+<img 
+            src={rightPlayer?.avatar || COLOR_AVATARS[rightPlayer?.color as keyof typeof COLOR_AVATARS] || greenAvatar} 
+            alt={rightUID} 
+            className="w-full h-full object-cover" 
+          />
         </div>
       </div>
     </div>
