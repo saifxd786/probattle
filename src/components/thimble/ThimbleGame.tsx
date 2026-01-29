@@ -330,7 +330,7 @@ const ThimbleGame = () => {
                 className="text-center mt-6"
               >
                 <p className={`text-xl font-bold ${gameState.isWin ? 'text-green-400' : 'text-red-400'}`}>
-                  {gameState.isWin ? '🎉 Correct!' : '😔 Wrong Cup!'}
+                  {gameState.isWin ? 'Correct!' : 'Wrong Cup!'}
                 </p>
               </motion.div>
             )}
