@@ -300,8 +300,8 @@ const LudoPage = () => {
           />
         </div>
 
-        {/* Bottom Section - VS Bar Design */}
-        <div className="shrink-0 px-4 py-3 border-t border-white/10 bg-black/60">
+        {/* Bottom Section - Combined VS Bar with Dice */}
+        <div className="shrink-0 px-3 py-3 border-t border-white/10 bg-black/60">
           <div className="flex items-center justify-between">
             {/* Left Player */}
             {gameState.players[0] && (() => {
@@ -318,7 +318,7 @@ const LudoPage = () => {
                   {/* Avatar with Timer */}
                   <div className="relative">
                     <div 
-                      className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold text-base"
+                      className="w-14 h-14 rounded-xl flex items-center justify-center text-white font-bold text-lg"
                       style={{ 
                         background: `linear-gradient(135deg, ${colorMap[player.color]}dd, ${colorMap[player.color]}88)`,
                         border: `2px solid ${colorMap[player.color]}`,
@@ -327,7 +327,7 @@ const LudoPage = () => {
                     >
                       {player.isBot ? '🤖' : player.name.slice(0, 2).toUpperCase()}
                     </div>
-                    {/* Timer Badge - Only show for active player */}
+                    {/* Timer Badge */}
                     {isActive && turnTimeLeft !== null && (
                       <div 
                         className="absolute -bottom-1 -left-1 px-1.5 py-0.5 rounded text-[10px] font-bold text-white"
@@ -349,12 +349,16 @@ const LudoPage = () => {
               );
             })()}
 
-            {/* VS Badge */}
-            <div 
-              className="px-3 py-1 rounded-full text-sm font-black text-black"
-              style={{ background: 'linear-gradient(135deg, #FFD600 0%, #FFA000 100%)' }}
-            >
-              VS
+            {/* Center - Dice */}
+            <div className="flex flex-col items-center">
+              <LudoDice
+                value={gameState.diceValue}
+                isRolling={gameState.isRolling}
+                onRoll={rollDice}
+                disabled={!isUserTurn}
+                canRoll={gameState.canRoll && isUserTurn}
+                compact
+              />
             </div>
 
             {/* Right Player */}
@@ -372,7 +376,7 @@ const LudoPage = () => {
                   {/* Avatar with Timer */}
                   <div className="relative">
                     <div 
-                      className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold text-base"
+                      className="w-14 h-14 rounded-xl flex items-center justify-center text-white font-bold text-lg"
                       style={{ 
                         background: `linear-gradient(135deg, ${colorMap[player.color]}dd, ${colorMap[player.color]}88)`,
                         border: `2px solid ${colorMap[player.color]}`,
@@ -381,7 +385,7 @@ const LudoPage = () => {
                     >
                       {player.isBot ? '🤖' : player.name.slice(0, 2).toUpperCase()}
                     </div>
-                    {/* Timer Badge - Only show for active player */}
+                    {/* Timer Badge */}
                     {isActive && turnTimeLeft !== null && (
                       <div 
                         className="absolute -bottom-1 -right-1 px-1.5 py-0.5 rounded text-[10px] font-bold text-white"
@@ -403,18 +407,6 @@ const LudoPage = () => {
               );
             })()}
           </div>
-        </div>
-
-        {/* Dice Section - Below VS Bar */}
-        <div className="shrink-0 px-4 py-3 bg-black/40 flex items-center justify-center">
-          <LudoDice
-            value={gameState.diceValue}
-            isRolling={gameState.isRolling}
-            onRoll={rollDice}
-            disabled={!isUserTurn}
-            canRoll={gameState.canRoll && isUserTurn}
-            compact
-          />
         </div>
       </div>
     );
