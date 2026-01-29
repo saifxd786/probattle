@@ -22,6 +22,14 @@ Deno.serve(async (req) => {
 
     if (error) {
       console.error("Cleanup error:", error);
+      
+      // Log failed run
+      await supabase.from("deposit_cleanup_logs").insert({
+        rejected_count: 0,
+        success: false,
+        error_message: error.message,
+      });
+
       return new Response(
         JSON.stringify({ success: false, error: error.message }),
         { 
@@ -32,6 +40,13 @@ Deno.serve(async (req) => {
     }
 
     console.log("Cleanup completed:", data);
+
+    // Log successful run
+    const rejectedCount = data?.rejected_count || 0;
+    await supabase.from("deposit_cleanup_logs").insert({
+      rejected_count: rejectedCount,
+      success: true,
+    });
 
     return new Response(
       JSON.stringify({ 

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Users, Gamepad2, DollarSign, Clock, TrendingUp, ArrowUpRight, ArrowDownRight, Trophy, Dices, Gem, Percent, AlertTriangle, Shield } from 'lucide-react';
+import { Users, Gamepad2, DollarSign, Clock, TrendingUp, ArrowUpRight, ArrowDownRight, Trophy, Dices, Gem, Percent, AlertTriangle, Shield, Bot, CheckCircle, XCircle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -72,6 +72,7 @@ const AdminDashboard = () => {
   });
   const [isLoading, setIsLoading] = useState(true);
   const [multiAccountAlerts, setMultiAccountAlerts] = useState({ total: 0, critical: 0 });
+  const [lastCleanup, setLastCleanup] = useState<{ run_at: string; rejected_count: number; success: boolean } | null>(null);
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -127,12 +128,26 @@ const AdminDashboard = () => {
       await fetchMatchStats();
       await fetchGameStats();
       await fetchMultiAccountAlerts();
+      await fetchLastCleanup();
       
       setIsLoading(false);
     };
 
     fetchStats();
   }, []);
+
+  const fetchLastCleanup = async () => {
+    const { data } = await supabase
+      .from('deposit_cleanup_logs')
+      .select('run_at, rejected_count, success')
+      .order('run_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (data) {
+      setLastCleanup(data);
+    }
+  };
 
   const fetchChartData = async () => {
     const days = 7;
@@ -331,6 +346,40 @@ const AdminDashboard = () => {
             </CardContent>
           </Card>
         </Link>
+      )}
+
+      {/* Deposit Cleanup Status Widget */}
+      {lastCleanup && (
+        <Card className={`border-l-4 ${lastCleanup.success ? 'border-l-emerald-500 bg-emerald-500/5' : 'border-l-red-500 bg-red-500/5'}`}>
+          <CardContent className="p-4 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className={`p-2 rounded-full ${lastCleanup.success ? 'bg-emerald-500/20' : 'bg-red-500/20'}`}>
+                <Bot className={`w-5 h-5 ${lastCleanup.success ? 'text-emerald-500' : 'text-red-500'}`} />
+              </div>
+              <div>
+                <p className="font-medium flex items-center gap-2">
+                  Auto-Cleanup Status
+                  {lastCleanup.success ? (
+                    <CheckCircle className="w-4 h-4 text-emerald-500" />
+                  ) : (
+                    <XCircle className="w-4 h-4 text-red-500" />
+                  )}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Last run: {format(new Date(lastCleanup.run_at), 'MMM dd, hh:mm a')} • 
+                  {lastCleanup.rejected_count > 0 ? (
+                    <span className="text-orange-500 ml-1">{lastCleanup.rejected_count} deposits auto-rejected</span>
+                  ) : (
+                    <span className="ml-1">No stale deposits found</span>
+                  )}
+                </p>
+              </div>
+            </div>
+            <Link to="/admin/transactions" className="text-xs text-primary hover:underline">
+              View Transactions →
+            </Link>
+          </CardContent>
+        </Card>
       )}
 
       <div>
