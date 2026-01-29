@@ -17,6 +17,7 @@ import mapErangel from '@/assets/map-erangel.jpg';
 import mapMiramar from '@/assets/map-miramar.jpg';
 import mapSanhok from '@/assets/map-sanhok.jpg';
 import mapLivik from '@/assets/map-livik.jpg';
+import mapVikendi from '@/assets/map-vikendi.jpg';
 import mapTdm from '@/assets/map-tdm.jpg';
 
 // Gun category images
@@ -29,6 +30,7 @@ const mapImages: Record<string, string> = {
   'erangel': mapErangel,
   'miramar': mapMiramar,
   'sanhok': mapSanhok,
+  'vikendi': mapVikendi,
   'livik': mapLivik,
   'tdm': mapTdm,
   'warehouse': mapTdm,
