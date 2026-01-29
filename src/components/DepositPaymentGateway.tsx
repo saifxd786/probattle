@@ -38,9 +38,17 @@ const DepositPaymentGateway = ({ isOpen, onClose, onSubmit, isSubmitting }: Depo
   const [timeLeft, setTimeLeft] = useState(TIMER_DURATION);
   const [timerActive, setTimerActive] = useState(false);
   const [showProcessing, setShowProcessing] = useState(false);
+  const [gifLoaded, setGifLoaded] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const finalAmount = customAmount ? Number(customAmount) : selectedAmount;
+
+  // Preload the processing GIF when component mounts
+  useEffect(() => {
+    const img = new Image();
+    img.onload = () => setGifLoaded(true);
+    img.src = paymentProcessingGif;
+  }, []);
 
   // Timer effect
   useEffect(() => {
