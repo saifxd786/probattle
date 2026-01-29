@@ -366,14 +366,14 @@ const BottomInfoBar = ({
 const LudoBoard = ({ players, onTokenClick, selectedToken, captureEvent, onCaptureAnimationComplete, diceValue = 1 }: LudoBoardProps) => {
   const boardRef = useRef<HTMLDivElement>(null);
   // Calculate size based on available viewport
-  const [size, setSize] = useState(Math.min(window.innerWidth - 16, window.innerHeight - 160, 480));
+  const [size, setSize] = useState(Math.min(window.innerWidth - 8, window.innerHeight - 120, 600));
   const [capturePosition, setCapturePosition] = useState<{ x: number; y: number } | null>(null);
   
   useEffect(() => {
     const handleResize = () => {
-      const maxWidth = window.innerWidth - 16;
-      const maxHeight = window.innerHeight - 160;
-      setSize(Math.min(maxWidth, maxHeight, 480));
+      const maxWidth = window.innerWidth - 8;
+      const maxHeight = window.innerHeight - 120;
+      setSize(Math.min(maxWidth, maxHeight, 600));
     };
     handleResize();
     window.addEventListener('resize', handleResize);
