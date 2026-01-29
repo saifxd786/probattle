@@ -300,6 +300,16 @@ const LudoPage = () => {
     }
   }, [friendGameState.phase, showRematchDialog]);
 
+  // Auto-switch to vs-friend mode when friend game is active (for reconnection)
+  useEffect(() => {
+    if (friendGameState.phase === 'playing' || friendGameState.phase === 'waiting') {
+      if (gameMode !== 'vs-friend') {
+        console.log('[LudoPage] Auto-switching to vs-friend mode for active game');
+        setGameMode('vs-friend');
+      }
+    }
+  }, [friendGameState.phase, gameMode]);
+
   if (isBanned && !isBanLoading) {
     return (
       <PullToRefresh onRefresh={handleRefresh}>
@@ -343,6 +353,9 @@ const LudoPage = () => {
 
   // Resume Game Dialog for Bot games
   const showResumeDialog = hasActiveGame && activeGameData && gameState.phase === 'idle' && gameMode === 'select';
+  
+  // Resume Game Dialog for Friend games
+  const showFriendResumeDialog = hasActiveFriendRoom && activeFriendRoomData && friendGameState.phase === 'idle' && gameMode === 'select';
 
   // Matchmaking Screen
   if (gameState.phase === 'matchmaking') {
@@ -631,13 +644,13 @@ const LudoPage = () => {
                 )}
               </motion.div>
             )}
-            {/* Ping */}
-            {pingLatency !== null && connectionStatus === 'connected' && (
+            {/* Ping - only show when opponent is online and we have valid ping */}
+            {pingLatency !== null && connectionStatus === 'connected' && opponentOnline && (
               <div className={`flex items-center gap-1 px-2 py-1 rounded-lg ${
-                pingLatency < 100 ? 'bg-green-500/20' : pingLatency < 200 ? 'bg-yellow-500/20' : 'bg-red-500/20'
+                pingLatency < 150 ? 'bg-green-500/20' : pingLatency < 300 ? 'bg-yellow-500/20' : 'bg-red-500/20'
               }`}>
-                <Signal className={`w-3 h-3 ${pingLatency < 100 ? 'text-green-400' : pingLatency < 200 ? 'text-yellow-400' : 'text-red-400'}`} />
-                <span className={`text-[10px] font-mono ${pingLatency < 100 ? 'text-green-400' : pingLatency < 200 ? 'text-yellow-400' : 'text-red-400'}`}>
+                <Signal className={`w-3 h-3 ${pingLatency < 150 ? 'text-green-400' : pingLatency < 300 ? 'text-yellow-400' : 'text-red-400'}`} />
+                <span className={`text-[10px] font-mono ${pingLatency < 150 ? 'text-green-400' : pingLatency < 300 ? 'text-yellow-400' : 'text-red-400'}`}>
                   {pingLatency}ms
                 </span>
               </div>
@@ -902,7 +915,7 @@ const LudoPage = () => {
   // Home Screen - Professional Lobby (No Header/Footer, No Scrolling)
   return (
     <>
-      {/* Resume Game Dialog */}
+      {/* Resume Game Dialog for Bot games */}
       <AlertDialog open={showResumeDialog}>
         <AlertDialogContent className="max-w-sm bg-gradient-to-br from-gray-900 to-gray-800 border-yellow-500/50">
           <AlertDialogHeader>
@@ -938,6 +951,56 @@ const LudoPage = () => {
               className="bg-gradient-to-r from-yellow-500 to-orange-500 text-black font-bold hover:from-yellow-600 hover:to-orange-600"
             >
               Resume Game
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Resume Game Dialog for Friend games */}
+      <AlertDialog open={showFriendResumeDialog}>
+        <AlertDialogContent className="max-w-sm bg-gradient-to-br from-gray-900 to-gray-800 border-indigo-500/50">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-white">
+              <Users className="w-5 h-5 text-indigo-500" />
+              Resume Friend Match?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-gray-300">
+              You have an active friend match in progress. Would you like to continue?
+              {activeFriendRoomData && (
+                <div className="mt-3 p-3 rounded-lg bg-white/5 border border-white/10">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-400">Room Code</span>
+                    <span className="text-indigo-400 font-mono font-bold">{activeFriendRoomData.roomCode}</span>
+                  </div>
+                  <div className="flex justify-between text-sm mt-1">
+                    <span className="text-gray-400">Entry Amount</span>
+                    <span className="text-white font-bold">₹{activeFriendRoomData.entryAmount}</span>
+                  </div>
+                  <div className="flex justify-between text-sm mt-1">
+                    <span className="text-gray-400">Prize</span>
+                    <span className="text-yellow-400 font-bold">₹{activeFriendRoomData.rewardAmount}</span>
+                  </div>
+                </div>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex gap-2">
+            <AlertDialogCancel 
+              onClick={() => {
+                dismissActiveFriendRoom();
+              }}
+              className="bg-red-500/20 text-red-400 border-red-500/50 hover:bg-red-500/30"
+            >
+              Forfeit Match
+            </AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={() => {
+                setGameMode('vs-friend');
+                resumeFriendRoom();
+              }}
+              className="bg-gradient-to-r from-indigo-500 to-purple-500 text-white font-bold hover:from-indigo-600 hover:to-purple-600"
+            >
+              Resume Match
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
