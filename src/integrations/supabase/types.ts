@@ -841,6 +841,51 @@ export type Database = {
         }
         Relationships: []
       }
+      multi_account_alerts: {
+        Row: {
+          alert_type: string
+          created_at: string
+          id: string
+          identifier_value: string
+          is_resolved: boolean | null
+          notes: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          severity: string
+          updated_at: string
+          user_count: number
+          user_ids: string[]
+        }
+        Insert: {
+          alert_type: string
+          created_at?: string
+          id?: string
+          identifier_value: string
+          is_resolved?: boolean | null
+          notes?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          severity?: string
+          updated_at?: string
+          user_count?: number
+          user_ids: string[]
+        }
+        Update: {
+          alert_type?: string
+          created_at?: string
+          id?: string
+          identifier_value?: string
+          is_resolved?: boolean | null
+          notes?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          severity?: string
+          updated_at?: string
+          user_count?: number
+          user_ids?: string[]
+        }
+        Relationships: []
+      }
       notifications: {
         Row: {
           created_at: string
@@ -1337,6 +1382,36 @@ export type Database = {
         }
         Relationships: []
       }
+      user_login_sessions: {
+        Row: {
+          created_at: string
+          device_fingerprint: string | null
+          device_name: string | null
+          id: string
+          ip_address: string | null
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          device_fingerprint?: string | null
+          device_name?: string | null
+          id?: string
+          ip_address?: string | null
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          device_fingerprint?: string | null
+          device_name?: string | null
+          id?: string
+          ip_address?: string | null
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           id: string
@@ -1351,6 +1426,33 @@ export type Database = {
         Update: {
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_upi_accounts: {
+        Row: {
+          first_used_at: string
+          id: string
+          last_used_at: string
+          upi_id: string
+          usage_count: number | null
+          user_id: string
+        }
+        Insert: {
+          first_used_at?: string
+          id?: string
+          last_used_at?: string
+          upi_id: string
+          usage_count?: number | null
+          user_id: string
+        }
+        Update: {
+          first_used_at?: string
+          id?: string
+          last_used_at?: string
+          upi_id?: string
+          usage_count?: number | null
           user_id?: string
         }
         Relationships: []
@@ -1405,6 +1507,7 @@ export type Database = {
         Returns: Json
       }
       create_ludo_room: { Args: { p_entry_amount: number }; Returns: Json }
+      detect_multi_accounts: { Args: never; Returns: Json }
       generate_5digit_user_code: { Args: never; Returns: string }
       generate_room_code: { Args: never; Returns: string }
       get_match_room_credentials: {
@@ -1428,6 +1531,15 @@ export type Database = {
         Returns: boolean
       }
       join_ludo_room: { Args: { p_room_code: string }; Returns: Json }
+      log_user_session: {
+        Args: {
+          p_device_fingerprint?: string
+          p_device_name?: string
+          p_ip_address?: string
+          p_user_agent?: string
+        }
+        Returns: Json
+      }
       ludo_is_user_in_match: {
         Args: { _match_id: string; _user_id: string }
         Returns: boolean
