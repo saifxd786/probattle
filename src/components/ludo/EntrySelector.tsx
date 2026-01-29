@@ -2,8 +2,11 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { Coins, Users, Swords, Trophy, Check } from 'lucide-react';
 
+// Entry amounts starting from ₹10
+const ENTRY_AMOUNTS = [10, 20, 50, 100, 200, 500];
+
 interface EntrySelectorProps {
-  amounts: number[];
+  amounts?: number[];
   selectedAmount: number;
   onSelect: (amount: number) => void;
   rewardMultiplier: number;
@@ -12,7 +15,7 @@ interface EntrySelectorProps {
 }
 
 const EntrySelector = ({ 
-  amounts, 
+  amounts = ENTRY_AMOUNTS, 
   selectedAmount, 
   onSelect, 
   rewardMultiplier,
@@ -20,6 +23,7 @@ const EntrySelector = ({
   onPlayerModeChange
 }: EntrySelectorProps) => {
   const rewardAmount = selectedAmount * rewardMultiplier;
+  const isHighStake = selectedAmount > 100;
 
   return (
     <div className="space-y-4">

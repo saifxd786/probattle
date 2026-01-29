@@ -41,6 +41,7 @@ interface LudoSettings {
   minEntryAmount: number;
   rewardMultiplier: number;
   difficulty: 'easy' | 'normal' | 'competitive';
+  highAmountCompetitive: boolean;
 }
 
 const COLORS = ['red', 'green', 'yellow', 'blue'];
@@ -210,9 +211,10 @@ export const useLudoGame = () => {
   
   const [settings, setSettings] = useState<LudoSettings>({
     isEnabled: true,
-    minEntryAmount: 100,
+    minEntryAmount: 10,
     rewardMultiplier: 1.5,
-    difficulty: 'normal'
+    difficulty: 'normal',
+    highAmountCompetitive: true
   });
   
   const [gameState, setGameState] = useState<GameState>({
@@ -269,7 +271,7 @@ export const useLudoGame = () => {
     }
   }, [user?.id, isRefreshing, lastUserId, gameState.phase]);
   
-  const [entryAmount, setEntryAmount] = useState(100);
+  const [entryAmount, setEntryAmount] = useState(10);
   const [playerMode, setPlayerMode] = useState<2 | 4>(2);
   const [walletBalance, setWalletBalance] = useState(0);
   const [userUID, setUserUID] = useState<string>('');
@@ -349,9 +351,10 @@ export const useLudoGame = () => {
           isEnabled: data.is_enabled,
           minEntryAmount: Number(data.min_entry_amount),
           rewardMultiplier: Number(data.reward_multiplier),
-          difficulty: data.difficulty as LudoSettings['difficulty']
+          difficulty: data.difficulty as LudoSettings['difficulty'],
+          highAmountCompetitive: data.high_amount_competitive ?? true
         });
-        setEntryAmount(Number(data.min_entry_amount));
+        setEntryAmount(Math.max(10, Number(data.min_entry_amount)));
       }
     };
     
@@ -761,9 +764,24 @@ export const useLudoGame = () => {
     }, 1500 * playerMode + 500);
   }, [user, walletBalance, entryAmount, playerMode, settings, toast, getRandomBotName, createInitialTokens, userUID, userAvatar, userName]);
 
-  // Generate dice value
+  // Generate dice value - HIGH STAKES (>₹100) makes bots smarter
   const generateDiceValue = useCallback((isBot: boolean): number => {
+    const isHighStake = entryAmount > 100 && settings.highAmountCompetitive;
+    
     if (isBot) {
+      // High stake games: bots get significantly better dice
+      if (isHighStake) {
+        const highStakeWeights = [0.05, 0.08, 0.12, 0.18, 0.25, 0.32]; // Heavy bias toward 5 and 6
+        const rand = Math.random();
+        let cumulative = 0;
+        for (let i = 0; i < highStakeWeights.length; i++) {
+          cumulative += highStakeWeights[i];
+          if (rand < cumulative) return i + 1;
+        }
+        return 6;
+      }
+      
+      // Normal difficulty-based weights
       const weights = {
         easy: [0.2, 0.2, 0.2, 0.2, 0.1, 0.1],
         normal: [0.167, 0.167, 0.167, 0.167, 0.167, 0.167],
@@ -778,8 +796,21 @@ export const useLudoGame = () => {
       }
       return 6;
     }
+    
+    // Player dice - HIGH STAKE: slightly reduce chance of 6
+    if (isHighStake) {
+      const playerWeights = [0.18, 0.18, 0.18, 0.18, 0.16, 0.12]; // Less 6s for player
+      const rand = Math.random();
+      let cumulative = 0;
+      for (let i = 0; i < playerWeights.length; i++) {
+        cumulative += playerWeights[i];
+        if (rand < cumulative) return i + 1;
+      }
+      return 5;
+    }
+    
     return Math.floor(Math.random() * 6) + 1;
-  }, [settings.difficulty]);
+  }, [settings.difficulty, settings.highAmountCompetitive, entryAmount]);
 
   // Move token with CORRECT capture logic using board coordinates
   const moveToken = useCallback((color: string, tokenId: number, diceValue: number, players: Player[]): { 
@@ -897,8 +928,10 @@ export const useLudoGame = () => {
     return { updatedPlayers, winner, gotSix: diceValue === 6, capturedOpponent, captureInfo };
   }, []);
 
-  // Bot AI
-  const selectBotMove = useCallback((player: Player, diceValue: number): number | null => {
+  // Bot AI - SMARTER for high stakes
+  const selectBotMove = useCallback((player: Player, diceValue: number, allPlayers: Player[]): number | null => {
+    const isHighStake = entryAmount > 100 && settings.highAmountCompetitive;
+    
     const movableTokens = player.tokens.filter(token => {
       if (token.position === 0 && diceValue === 6) return true;
       if (token.position > 0 && token.position + diceValue <= 57) return true;
@@ -907,19 +940,53 @@ export const useLudoGame = () => {
 
     if (movableTokens.length === 0) return null;
 
+    // Priority 1: Token that can reach home
     const tokenToHome = movableTokens.find(t => t.position > 0 && t.position + diceValue === 57);
     if (tokenToHome) return tokenToHome.id;
 
+    // Priority 2 (HIGH STAKE): Token that can capture opponent
+    if (isHighStake) {
+      for (const token of movableTokens) {
+        if (token.position === 0) continue;
+        const newPos = token.position + diceValue;
+        if (newPos >= 52) continue;
+        
+        const newCoords = getBoardCoords(newPos, player.color);
+        if (!newCoords || isSafePosition(newCoords)) continue;
+        
+        // Check if any opponent is at this position
+        for (const opponent of allPlayers) {
+          if (opponent.color === player.color) continue;
+          for (const oppToken of opponent.tokens) {
+            if (oppToken.position <= 0 || oppToken.position >= 52) continue;
+            const oppCoords = getBoardCoords(oppToken.position, opponent.color);
+            if (oppCoords && oppCoords.x === newCoords.x && oppCoords.y === newCoords.y) {
+              console.log('[Bot] High stake: Found capture opportunity!');
+              return token.id;
+            }
+          }
+        }
+      }
+    }
+
+    // Priority 3: Get token out of base with 6
     if (diceValue === 6) {
       const tokenInHome = movableTokens.find(t => t.position === 0);
       if (tokenInHome) return tokenInHome.id;
     }
 
+    // Priority 4 (HIGH STAKE): Move token closest to home
+    if (isHighStake) {
+      const sortedByProgress = [...movableTokens].sort((a, b) => b.position - a.position);
+      return sortedByProgress[0].id;
+    }
+
+    // Default: Move furthest token
     const furthestToken = movableTokens.reduce((prev, curr) => 
       curr.position > prev.position ? curr : prev
     );
     return furthestToken.id;
-  }, []);
+  }, [entryAmount, settings.highAmountCompetitive]);
 
   // Bot turn execution
   const executeBotTurn = useCallback(async () => {
@@ -946,7 +1013,7 @@ export const useLudoGame = () => {
               return rollState;
             }
 
-            const tokenId = selectBotMove(botPlayer, diceValue);
+            const tokenId = selectBotMove(botPlayer, diceValue, rollState.players);
             
             if (tokenId !== null) {
               setTimeout(() => {
