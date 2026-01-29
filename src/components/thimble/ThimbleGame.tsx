@@ -285,7 +285,7 @@ const ThimbleGame = () => {
           </motion.div>
         )}
 
-        {(gameState.phase === 'showing' || gameState.phase === 'shuffling' || gameState.phase === 'selecting') && (
+        {(gameState.phase === 'showing' || gameState.phase === 'shuffling' || gameState.phase === 'selecting' || gameState.phase === 'revealing') && (
           <motion.div
             key="game"
             initial={{ opacity: 0 }}
@@ -307,7 +307,7 @@ const ThimbleGame = () => {
             {renderPhaseIndicator()}
             
             <ThimbleCups
-              phase={gameState.phase as 'showing' | 'shuffling' | 'selecting' | 'result'}
+              phase={gameState.phase as 'showing' | 'shuffling' | 'selecting' | 'revealing' | 'result'}
               ballPosition={gameState.ballPosition}
               selectedCup={gameState.selectedCup}
               isWin={gameState.isWin}
@@ -315,6 +315,19 @@ const ThimbleGame = () => {
               shuffleDuration={diffSettings.shuffleDuration}
               onSelectCup={handleSelection}
             />
+
+            {/* Revealing phase text */}
+            {gameState.phase === 'revealing' && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="text-center mt-6"
+              >
+                <p className={`text-xl font-bold ${gameState.isWin ? 'text-green-400' : 'text-red-400'}`}>
+                  {gameState.isWin ? '🎉 Correct!' : '😔 Wrong Cup!'}
+                </p>
+              </motion.div>
+            )}
           </motion.div>
         )}
       </AnimatePresence>
