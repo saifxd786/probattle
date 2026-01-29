@@ -15,7 +15,9 @@ import {
   Filter,
   Loader2,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Clock,
+  Zap
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -38,7 +40,7 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { format } from 'date-fns';
+import { format, formatDistanceToNow } from 'date-fns';
 
 interface Alert {
   id: string;
@@ -86,6 +88,12 @@ const AdminMultiAccountDetection = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedSessions, setExpandedSessions] = useState<Set<string>>(new Set());
   const [resolveNotes, setResolveNotes] = useState('');
+  const [lastScanTime, setLastScanTime] = useState<string | null>(null);
+  const [scanSummary, setScanSummary] = useState<{
+    total: number;
+    critical: number;
+    high: number;
+  } | null>(null);
 
   useEffect(() => {
     fetchData();
@@ -136,16 +144,41 @@ const AdminMultiAccountDetection = () => {
     setSessions(sessionsWithProfiles);
   };
 
-  const runDetection = async () => {
+  const runDetection = async (useEdgeFunction = false) => {
     setIsScanning(true);
-    const { data, error } = await supabase.rpc('detect_multi_accounts');
     
-    if (error) {
-      toast({ title: 'Detection failed', description: error.message, variant: 'destructive' });
-    } else {
-      toast({ title: 'Scan complete', description: `Detection scan finished` });
-      await fetchAlerts();
+    try {
+      if (useEdgeFunction) {
+        // Use edge function for more comprehensive scan
+        const { data, error } = await supabase.functions.invoke('daily-multi-account-scan');
+        
+        if (error) {
+          toast({ title: 'Detection failed', description: error.message, variant: 'destructive' });
+        } else {
+          setLastScanTime(data.scan_time);
+          setScanSummary(data.summary);
+          toast({ 
+            title: 'Scan complete', 
+            description: `Found ${data.summary.total} alerts (${data.summary.critical} critical, ${data.summary.high} high)` 
+          });
+          await fetchAlerts();
+        }
+      } else {
+        // Quick scan using RPC
+        const { data, error } = await supabase.rpc('detect_multi_accounts');
+        
+        if (error) {
+          toast({ title: 'Detection failed', description: error.message, variant: 'destructive' });
+        } else {
+          setLastScanTime(new Date().toISOString());
+          toast({ title: 'Quick scan complete', description: `Detection scan finished` });
+          await fetchAlerts();
+        }
+      }
+    } catch (err) {
+      toast({ title: 'Scan failed', variant: 'destructive' });
     }
+    
     setIsScanning(false);
   };
 
@@ -253,11 +286,23 @@ const AdminMultiAccountDetection = () => {
             Multi-Account Detection
           </h1>
           <p className="text-muted-foreground">Track and detect users with multiple accounts</p>
+          {lastScanTime && (
+            <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
+              <Clock className="w-3 h-3" />
+              Last scan: {formatDistanceToNow(new Date(lastScanTime), { addSuffix: true })}
+            </p>
+          )}
         </div>
-        <Button onClick={runDetection} disabled={isScanning}>
-          <RefreshCw className={`w-4 h-4 mr-2 ${isScanning ? 'animate-spin' : ''}`} />
-          {isScanning ? 'Scanning...' : 'Run Detection Scan'}
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => runDetection(false)} disabled={isScanning}>
+            <RefreshCw className={`w-4 h-4 mr-2 ${isScanning ? 'animate-spin' : ''}`} />
+            Quick Scan
+          </Button>
+          <Button onClick={() => runDetection(true)} disabled={isScanning}>
+            <Zap className={`w-4 h-4 mr-2 ${isScanning ? 'animate-spin' : ''}`} />
+            {isScanning ? 'Scanning...' : 'Full Scan'}
+          </Button>
+        </div>
       </motion.div>
 
       {/* Stats Cards */}
