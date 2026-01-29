@@ -792,71 +792,63 @@ const LudoPage = () => {
     );
   }
 
-  // Home Screen - Professional Lobby
+  // Home Screen - Professional Lobby (No Header/Footer, No Scrolling)
   return (
-    <PullToRefresh onRefresh={handleRefresh}>
-      <div className="min-h-screen bg-background pb-20">
-        <Header />
-
-        {/* Resume Game Dialog */}
-        <AlertDialog open={showResumeDialog}>
-          <AlertDialogContent className="max-w-sm bg-gradient-to-br from-gray-900 to-gray-800 border-yellow-500/50">
-            <AlertDialogHeader>
-              <AlertDialogTitle className="flex items-center gap-2 text-white">
-                <RefreshCw className="w-5 h-5 text-yellow-500" />
-                Resume Your Game?
-              </AlertDialogTitle>
-              <AlertDialogDescription className="text-gray-300">
-                You have an active game in progress. Would you like to continue where you left off?
-                {activeGameData && (
-                  <div className="mt-3 p-3 rounded-lg bg-white/5 border border-white/10">
-                    <div className="flex justify-between text-sm">
-                      <span className="text-gray-400">Entry Amount</span>
-                      <span className="text-white font-bold">₹{activeGameData.entryAmount}</span>
-                    </div>
-                    <div className="flex justify-between text-sm mt-1">
-                      <span className="text-gray-400">Potential Win</span>
-                      <span className="text-yellow-400 font-bold">₹{activeGameData.rewardAmount}</span>
-                    </div>
+    <>
+      {/* Resume Game Dialog */}
+      <AlertDialog open={showResumeDialog}>
+        <AlertDialogContent className="max-w-sm bg-gradient-to-br from-gray-900 to-gray-800 border-yellow-500/50">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-white">
+              <RefreshCw className="w-5 h-5 text-yellow-500" />
+              Resume Your Game?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-gray-300">
+              You have an active game in progress. Would you like to continue where you left off?
+              {activeGameData && (
+                <div className="mt-3 p-3 rounded-lg bg-white/5 border border-white/10">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-400">Entry Amount</span>
+                    <span className="text-white font-bold">₹{activeGameData.entryAmount}</span>
                   </div>
-                )}
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter className="flex gap-2">
-              <AlertDialogCancel 
-                onClick={dismissActiveGame}
-                className="bg-red-500/20 text-red-400 border-red-500/50 hover:bg-red-500/30"
-              >
-                Forfeit Game
-              </AlertDialogCancel>
-              <AlertDialogAction 
-                onClick={resumeGame}
-                className="bg-gradient-to-r from-yellow-500 to-orange-500 text-black font-bold hover:from-yellow-600 hover:to-orange-600"
-              >
-                Resume Game
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-        
-        <main className="pt-16">
-          <LudoLobby
-            user={user}
-            walletBalance={walletBalance}
-            entryAmount={entryAmount}
-            setEntryAmount={setEntryAmount}
-            playerMode={playerMode}
-            setPlayerMode={setPlayerMode}
-            settings={settings}
-            liveUsers={liveUsers}
-            startMatchmaking={startMatchmaking}
-            onPlayWithFriend={() => setGameMode('vs-friend')}
-          />
-        </main>
-
-        <BottomNav />
-      </div>
-    </PullToRefresh>
+                  <div className="flex justify-between text-sm mt-1">
+                    <span className="text-gray-400">Potential Win</span>
+                    <span className="text-yellow-400 font-bold">₹{activeGameData.rewardAmount}</span>
+                  </div>
+                </div>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex gap-2">
+            <AlertDialogCancel 
+              onClick={dismissActiveGame}
+              className="bg-red-500/20 text-red-400 border-red-500/50 hover:bg-red-500/30"
+            >
+              Forfeit Game
+            </AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={resumeGame}
+              className="bg-gradient-to-r from-yellow-500 to-orange-500 text-black font-bold hover:from-yellow-600 hover:to-orange-600"
+            >
+              Resume Game
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      
+      <LudoLobby
+        user={user}
+        walletBalance={walletBalance}
+        entryAmount={entryAmount}
+        setEntryAmount={setEntryAmount}
+        playerMode={playerMode}
+        setPlayerMode={setPlayerMode}
+        settings={settings}
+        liveUsers={liveUsers}
+        startMatchmaking={startMatchmaking}
+        onPlayWithFriend={() => setGameMode('vs-friend')}
+      />
+    </>
   );
 };
 
