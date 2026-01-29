@@ -250,6 +250,7 @@ const LudoPage = () => {
     opponentDisconnectCountdown,
     syncStatus,
     connectionStatus,
+    connectionQuality,
     reconnectAttempts,
     pingLatency,
     startRoom,
@@ -644,15 +645,34 @@ const LudoPage = () => {
                 )}
               </motion.div>
             )}
-            {/* Ping - only show when opponent is online and we have valid ping */}
-            {pingLatency !== null && connectionStatus === 'connected' && opponentOnline && (
+            {/* Connection Quality Indicator - shows when opponent is online */}
+            {connectionStatus === 'connected' && opponentOnline && (
               <div className={`flex items-center gap-1 px-2 py-1 rounded-lg ${
-                pingLatency < 150 ? 'bg-green-500/20' : pingLatency < 300 ? 'bg-yellow-500/20' : 'bg-red-500/20'
+                connectionQuality === 'excellent' ? 'bg-green-500/20' : 
+                connectionQuality === 'good' ? 'bg-emerald-500/20' : 
+                connectionQuality === 'fair' ? 'bg-yellow-500/20' : 'bg-red-500/20'
               }`}>
-                <Signal className={`w-3 h-3 ${pingLatency < 150 ? 'text-green-400' : pingLatency < 300 ? 'text-yellow-400' : 'text-red-400'}`} />
-                <span className={`text-[10px] font-mono ${pingLatency < 150 ? 'text-green-400' : pingLatency < 300 ? 'text-yellow-400' : 'text-red-400'}`}>
-                  {pingLatency}ms
+                {/* Signal bars */}
+                <div className="flex items-end gap-0.5 h-3">
+                  <div className={`w-0.5 h-1 rounded-sm ${connectionQuality !== 'poor' ? 'bg-current' : 'bg-gray-600'}`} />
+                  <div className={`w-0.5 h-1.5 rounded-sm ${connectionQuality === 'excellent' || connectionQuality === 'good' || connectionQuality === 'fair' ? 'bg-current' : 'bg-gray-600'}`} />
+                  <div className={`w-0.5 h-2 rounded-sm ${connectionQuality === 'excellent' || connectionQuality === 'good' ? 'bg-current' : 'bg-gray-600'}`} />
+                  <div className={`w-0.5 h-2.5 rounded-sm ${connectionQuality === 'excellent' ? 'bg-current' : 'bg-gray-600'}`} />
+                </div>
+                <span className={`text-[10px] font-mono ${
+                  connectionQuality === 'excellent' ? 'text-green-400' : 
+                  connectionQuality === 'good' ? 'text-emerald-400' : 
+                  connectionQuality === 'fair' ? 'text-yellow-400' : 'text-red-400'
+                }`}>
+                  {pingLatency !== null ? `${pingLatency}ms` : '...'}
                 </span>
+              </div>
+            )}
+            {/* Connection loading when opponent not yet connected */}
+            {connectionStatus === 'connected' && !opponentOnline && (
+              <div className="flex items-center gap-1 px-2 py-1 rounded-lg bg-gray-500/20">
+                <Wifi className="w-3 h-3 text-gray-400 animate-pulse" />
+                <span className="text-[10px] text-gray-400">Waiting...</span>
               </div>
             )}
             {/* Sync */}
