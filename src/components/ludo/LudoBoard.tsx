@@ -309,7 +309,7 @@ const PlayerProfileCard = ({
   );
 };
 
-// Square Timer Avatar Component
+// Circular Timer Avatar Component with animated ring
 const TimerAvatar = ({
   player,
   uid,
@@ -333,40 +333,69 @@ const TimerAvatar = ({
   const isLowTime = timeLeft <= 5;
   const isOffline = offlineTimeLeft !== undefined && offlineTimeLeft < 60;
   
+  // Circle calculations
+  const size = 52;
+  const strokeWidth = 3;
+  const radius = (size - strokeWidth) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const strokeDashoffset = circumference - (progress / 100) * circumference;
+  
   return (
-    <div className="relative">
-      {/* Square container with timer border */}
+    <div className="relative" style={{ width: size, height: size }}>
+      {/* SVG Timer Ring */}
+      <svg 
+        className="absolute inset-0 -rotate-90"
+        width={size} 
+        height={size}
+        style={{ zIndex: 10 }}
+      >
+        {/* Background ring */}
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={radius}
+          fill="none"
+          stroke="rgba(255,255,255,0.1)"
+          strokeWidth={strokeWidth}
+        />
+        
+        {/* Timer progress ring - only show when it's this player's turn */}
+        {isCurrentTurn && (
+          <motion.circle
+            cx={size / 2}
+            cy={size / 2}
+            r={radius}
+            fill="none"
+            stroke={isOffline ? '#EF4444' : isLowTime ? '#F59E0B' : colors?.main || '#1E88E5'}
+            strokeWidth={strokeWidth}
+            strokeLinecap="round"
+            strokeDasharray={circumference}
+            strokeDashoffset={strokeDashoffset}
+            className="transition-all duration-1000 ease-linear"
+            style={{
+              filter: isLowTime 
+                ? 'drop-shadow(0 0 6px #F59E0B)' 
+                : `drop-shadow(0 0 6px ${colors?.main})`,
+            }}
+            animate={isLowTime ? { 
+              filter: ['drop-shadow(0 0 4px #F59E0B)', 'drop-shadow(0 0 8px #F59E0B)', 'drop-shadow(0 0 4px #F59E0B)']
+            } : {}}
+            transition={{ duration: 0.5, repeat: Infinity }}
+          />
+        )}
+      </svg>
+      
+      {/* Avatar container */}
       <div 
-        className="relative w-11 h-11 rounded-lg overflow-hidden"
+        className="absolute rounded-full overflow-hidden"
         style={{
+          top: strokeWidth + 1,
+          left: strokeWidth + 1,
+          width: size - (strokeWidth * 2) - 2,
+          height: size - (strokeWidth * 2) - 2,
           background: colors?.main || '#1E88E5',
         }}
       >
-        {/* Timer border animation - only show when it's this player's turn */}
-        {isCurrentTurn && (
-          <svg 
-            className="absolute inset-0 w-full h-full -rotate-90"
-            style={{ zIndex: 10 }}
-          >
-            <rect
-              x="1"
-              y="1"
-              width="42"
-              height="42"
-              rx="7"
-              ry="7"
-              fill="none"
-              stroke={isOffline ? '#EF4444' : isLowTime ? '#F59E0B' : colors?.main || '#1E88E5'}
-              strokeWidth="3"
-              strokeDasharray={`${progress * 1.68} 168`}
-              className="transition-all duration-1000 ease-linear"
-              style={{
-                filter: isLowTime ? 'drop-shadow(0 0 4px #F59E0B)' : `drop-shadow(0 0 4px ${colors?.main})`,
-              }}
-            />
-          </svg>
-        )}
-        
         {/* Avatar image */}
         <img 
           src={avatarSrc} 
@@ -379,36 +408,57 @@ const TimerAvatar = ({
         
         {/* Offline indicator */}
         {isOffline && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black/40">
-            <span className="text-[8px] font-bold text-red-400 uppercase">Offline</span>
+          <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-full">
+            <span className="text-[7px] font-bold text-red-400 uppercase">Offline</span>
           </div>
         )}
         
-        {/* Current turn glow */}
+        {/* Current turn glow pulse */}
         {isCurrentTurn && !isOffline && (
           <motion.div
-            className="absolute inset-0 rounded-lg pointer-events-none"
+            className="absolute inset-0 rounded-full pointer-events-none"
             style={{
-              boxShadow: `inset 0 0 10px ${colors?.main}80`,
+              boxShadow: `inset 0 0 12px ${colors?.main}60`,
             }}
-            animate={{ opacity: [0.5, 1, 0.5] }}
-            transition={{ duration: 1.5, repeat: Infinity }}
+            animate={{ opacity: [0.4, 0.8, 0.4] }}
+            transition={{ duration: 1.2, repeat: Infinity }}
           />
         )}
       </div>
       
-      {/* Timer text below avatar */}
+      {/* Timer text badge */}
       {isCurrentTurn && (
         <motion.div 
-          className="absolute -bottom-4 left-1/2 -translate-x-1/2 px-1.5 py-0.5 rounded text-[9px] font-bold"
+          className="absolute -bottom-1 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-full text-[9px] font-bold shadow-lg"
           style={{
             background: isOffline ? '#EF4444' : isLowTime ? '#F59E0B' : colors?.main,
             color: '#fff',
+            border: '1px solid rgba(255,255,255,0.3)',
           }}
-          animate={isLowTime ? { scale: [1, 1.1, 1] } : {}}
-          transition={{ duration: 0.5, repeat: Infinity }}
+          animate={isLowTime ? { scale: [1, 1.15, 1] } : {}}
+          transition={{ duration: 0.4, repeat: Infinity }}
         >
           {timeLeft}s
+        </motion.div>
+      )}
+      
+      {/* "TURN" badge */}
+      {isCurrentTurn && !isOffline && (
+        <motion.div
+          className="absolute -top-1 left-1/2 -translate-x-1/2 px-1.5 py-0.5 rounded text-[7px] font-bold uppercase"
+          style={{
+            background: 'linear-gradient(135deg, #22C55E 0%, #16A34A 100%)',
+            color: '#fff',
+            boxShadow: '0 2px 8px rgba(34, 197, 94, 0.5)',
+          }}
+          initial={{ scale: 0 }}
+          animate={{ scale: 1, y: [0, -2, 0] }}
+          transition={{ 
+            scale: { duration: 0.3 },
+            y: { duration: 1.5, repeat: Infinity }
+          }}
+        >
+          Turn
         </motion.div>
       )}
     </div>
