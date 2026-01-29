@@ -495,8 +495,8 @@ const LudoPage = () => {
                 blue: '#1E88E5'
               };
               const isActive = gameState.currentTurn === 0;
-              // Use resolved avatar for user, undefined for bot
-              const displayAvatar = player.isBot ? undefined : (player.id === user?.id ? userResolvedAvatar : player.avatar);
+              // Use resolved avatar for user, bot's avatar for bots
+              const displayAvatar = player.id === user?.id ? userResolvedAvatar : player.avatar;
               return (
                 <div className="flex items-center gap-2">
                   {/* Avatar with Timer */}
@@ -538,8 +538,8 @@ const LudoPage = () => {
                 blue: '#1E88E5'
               };
               const isActive = gameState.currentTurn === 1;
-              // Use resolved avatar for user, undefined for bot
-              const displayAvatar = player.isBot ? undefined : (player.id === user?.id ? userResolvedAvatar : player.avatar);
+              // Use resolved avatar for user, bot's avatar for bots
+              const displayAvatar = player.id === user?.id ? userResolvedAvatar : player.avatar;
               return (
                 <div className="flex items-center gap-2 flex-row-reverse">
                   {/* Avatar with Timer */}

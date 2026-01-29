@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { BOT_NAMES } from '@/components/ludo/MatchmakingScreen';
+import { CUSTOM_AVATARS } from '@/components/ludo/LudoAvatarPicker';
 import { soundManager } from '@/utils/soundManager';
 import { hapticManager } from '@/utils/hapticManager';
 
@@ -706,16 +707,26 @@ export const useLudoGame = () => {
 
     // Simulate bot joining
     const usedNames: string[] = [];
+    const usedAvatars: number[] = [];
     for (let i = 1; i < playerMode; i++) {
       setTimeout(async () => {
         const botName = getRandomBotName(usedNames);
         usedNames.push(botName);
         const botColor = COLORS[i];
+        
+        // Assign random avatar to bot (avoid duplicates)
+        let avatarIndex = Math.floor(Math.random() * CUSTOM_AVATARS.length);
+        while (usedAvatars.includes(avatarIndex) && usedAvatars.length < CUSTOM_AVATARS.length) {
+          avatarIndex = Math.floor(Math.random() * CUSTOM_AVATARS.length);
+        }
+        usedAvatars.push(avatarIndex);
+        const botAvatar = CUSTOM_AVATARS[avatarIndex].src;
 
         await supabase.from('ludo_match_players').insert({
           match_id: match.id,
           is_bot: true,
           bot_name: botName,
+          bot_avatar_url: botAvatar,
           player_color: botColor,
           token_positions: [0, 0, 0, 0]
         });
@@ -724,6 +735,7 @@ export const useLudoGame = () => {
           id: `bot-${i}`,
           name: botName,
           uid: generateUID(),
+          avatar: botAvatar,
           isBot: true,
           status: 'connecting',
           color: botColor,

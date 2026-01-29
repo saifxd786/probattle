@@ -93,7 +93,7 @@ const PlayerCard = ({
               borderColor: colorMap[player.color],
             }}
           >
-            {/* Show initials for bots, no avatar */}
+            {/* Show initials as fallback */}
             {player.name.slice(0, 2).toUpperCase()}
           </div>
         )}
