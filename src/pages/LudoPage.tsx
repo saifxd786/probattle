@@ -108,7 +108,7 @@ const SquareTurnTimerAvatar = ({
 
   return (
     <div className="relative" style={{ width: size, height: size }}>
-      <svg className="absolute inset-0" width={size} height={size} style={{ zIndex: 10 }}>
+      <svg className="absolute inset-0 z-20 pointer-events-none" width={size} height={size}>
         <rect
           x={strokeWidth / 2}
           y={strokeWidth / 2}
@@ -156,7 +156,7 @@ const SquareTurnTimerAvatar = ({
       </svg>
 
       <div
-        className="absolute rounded-xl overflow-hidden"
+        className="absolute z-10 rounded-xl overflow-hidden"
         style={{
           top: strokeWidth,
           left: strokeWidth,
@@ -178,8 +178,8 @@ const SquareTurnTimerAvatar = ({
         <div
           className={
             badgeSide === 'left'
-              ? 'absolute -bottom-1 -left-1 px-1.5 py-0.5 rounded text-[10px] font-bold text-white'
-              : 'absolute -bottom-1 -right-1 px-1.5 py-0.5 rounded text-[10px] font-bold text-white'
+              ? 'absolute z-10 bottom-0 left-1 translate-y-full px-1.5 py-0.5 rounded text-[10px] font-bold text-white'
+              : 'absolute z-10 bottom-0 right-1 translate-y-full px-1.5 py-0.5 rounded text-[10px] font-bold text-white'
           }
           style={{ background: isLowTime ? '#E53935' : '#43A047' }}
         >
