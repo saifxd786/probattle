@@ -140,9 +140,9 @@ const DepositPaymentGateway = ({ isOpen, onClose, onSubmit, isSubmitting }: Depo
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-md p-0 overflow-hidden bg-gradient-to-b from-card to-background border-primary/20">
+      <DialogContent className="max-w-md max-h-[90vh] p-0 overflow-hidden bg-gradient-to-b from-card to-background border-primary/20 flex flex-col">
         {/* Header */}
-        <div className="relative bg-gradient-to-r from-primary/20 via-primary/10 to-primary/20 p-4 border-b border-primary/20">
+        <div className="relative flex-shrink-0 bg-gradient-to-r from-primary/20 via-primary/10 to-primary/20 p-4 border-b border-primary/20">
           <div className="absolute inset-0 bg-grid-pattern opacity-10" />
           
           <div className="relative flex items-center justify-between">
@@ -184,7 +184,7 @@ const DepositPaymentGateway = ({ isOpen, onClose, onSubmit, isSubmitting }: Depo
         </div>
 
         {/* Content */}
-        <div className="p-4">
+        <div className="flex-1 overflow-y-auto p-4">
           <AnimatePresence mode="wait">
             {step === 'amount' && (
               <motion.div
@@ -450,7 +450,7 @@ const DepositPaymentGateway = ({ isOpen, onClose, onSubmit, isSubmitting }: Depo
         </div>
 
         {/* Footer */}
-        <div className="px-4 py-3 bg-muted/30 border-t border-border/50 flex items-center justify-center gap-2">
+        <div className="flex-shrink-0 px-4 py-3 bg-muted/30 border-t border-border/50 flex items-center justify-center gap-2">
           <Shield className="w-3 h-3 text-muted-foreground" />
           <span className="text-[10px] text-muted-foreground">256-bit SSL Secured Payment</span>
         </div>
