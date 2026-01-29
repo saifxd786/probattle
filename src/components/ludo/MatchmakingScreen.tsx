@@ -25,7 +25,7 @@ const BOT_NAMES = [
   'Priya', 'Neha', 'Kavita', 'Anjali', 'Pooja', 'Ritu', 'Shreya'
 ];
 
-// Player card component - Flat design
+// Player card component - Flat design with Avatar
 const PlayerCard = ({ 
   player, 
   position,
@@ -49,7 +49,7 @@ const PlayerCard = ({
         </div>
         <div className={`${isLeft ? 'text-left' : 'text-right'}`}>
           <p className="text-gray-500 text-xs font-medium">Searching...</p>
-          <p className="text-gray-600 text-[10px] font-mono">#?????</p>
+          <p className="text-gray-600 text-[10px]">ProBattle</p>
         </div>
       </motion.div>
     );
@@ -70,15 +70,26 @@ const PlayerCard = ({
     >
       {/* Avatar */}
       <div className="relative">
-        <div 
-          className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-sm border-2"
-          style={{
-            background: `linear-gradient(135deg, ${colorMap[player.color]}dd, ${colorMap[player.color]}88)`,
-            borderColor: colorMap[player.color],
-          }}
-        >
-          {player.uid.slice(0, 1).toUpperCase()}
-        </div>
+        {player.avatar ? (
+          <img 
+            src={player.avatar}
+            alt={player.name}
+            className="w-10 h-10 rounded-xl object-cover border-2"
+            style={{
+              borderColor: colorMap[player.color],
+            }}
+          />
+        ) : (
+          <div 
+            className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-sm border-2"
+            style={{
+              background: `linear-gradient(135deg, ${colorMap[player.color]}dd, ${colorMap[player.color]}88)`,
+              borderColor: colorMap[player.color],
+            }}
+          >
+            {player.name.slice(0, 2).toUpperCase()}
+          </div>
+        )}
         {/* Online dot */}
         <motion.div 
           className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-green-500 border-2 border-[#0A0A0F]"
@@ -89,7 +100,7 @@ const PlayerCard = ({
       
       {/* Info */}
       <div className={`${isLeft ? 'text-left' : 'text-right'}`}>
-        <p className="text-white font-semibold text-xs font-mono">#{player.uid}</p>
+        <p className="text-white font-semibold text-xs">{player.name}</p>
         <div className="flex items-center gap-1 text-green-400 text-[10px]">
           <Zap className="w-2.5 h-2.5" />
           <span>Ready</span>
@@ -166,7 +177,7 @@ const MatchmakingScreen = ({ players, totalPlayers, entryAmount, rewardAmount }:
     <div className="h-screen flex flex-col bg-[#0A0A0F] relative overflow-hidden">
       {/* Subtle gradient background */}
       <div 
-        className="fixed inset-0 -z-10"
+        className="fixed inset-0 -z-10 pointer-events-none"
         style={{
           background: `
             radial-gradient(circle at 0% 0%, rgba(99, 102, 241, 0.08) 0%, transparent 40%),
@@ -178,7 +189,7 @@ const MatchmakingScreen = ({ players, totalPlayers, entryAmount, rewardAmount }:
 
       {/* Dot pattern overlay */}
       <div 
-        className="fixed inset-0 -z-5 opacity-[0.03]"
+        className="fixed inset-0 -z-[5] opacity-[0.03] pointer-events-none"
         style={{
           backgroundImage: `radial-gradient(circle, #fff 1px, transparent 1px)`,
           backgroundSize: '24px 24px',
