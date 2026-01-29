@@ -23,7 +23,7 @@ interface ThimbleSettings {
 }
 
 interface GameState {
-  phase: 'idle' | 'mode-select' | 'showing' | 'shuffling' | 'selecting' | 'result';
+  phase: 'idle' | 'mode-select' | 'showing' | 'shuffling' | 'selecting' | 'revealing' | 'result';
   gameId: string | null;
   ballPosition: number;
   selectedCup: number | null;
@@ -256,12 +256,28 @@ export const useThimbleGame = () => {
 
     const isWin = cupIndex === gameState.ballPosition;
     
+    // First go to revealing phase to show all cups lifted
     setGameState(prev => ({
       ...prev,
-      phase: 'result',
+      phase: 'revealing',
       selectedCup: cupIndex,
       isWin
     }));
+
+    if (isWin) {
+      soundManager.playTokenHome();
+      hapticManager.tokenHome();
+    } else {
+      hapticManager.tokenMove();
+    }
+
+    // After 2 seconds of reveal, show the result modal
+    setTimeout(() => {
+      setGameState(prev => ({
+        ...prev,
+        phase: 'result'
+      }));
+    }, 2000);
 
     if (isWin) {
       soundManager.playTokenHome();

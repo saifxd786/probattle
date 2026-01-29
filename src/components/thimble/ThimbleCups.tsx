@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { ThimbleDifficulty } from '@/hooks/useThimbleGame';
 
 interface ThimbleCupsProps {
-  phase: 'showing' | 'shuffling' | 'selecting' | 'result';
+  phase: 'showing' | 'shuffling' | 'selecting' | 'revealing' | 'result';
   ballPosition: number;
   selectedCup: number | null;
   isWin: boolean | null;
@@ -79,12 +79,16 @@ const ThimbleCups = ({
     };
   }, [phase, config.shuffles, config.speed, config.pauseBetween]);
 
-  // Show result - lift selected cup
+  // Handle revealing phase - lift ALL cups to show ball position
   useEffect(() => {
-    if (phase === 'result' && selectedCup !== null) {
-      setLiftedCup(selectedCup);
+    if (phase === 'revealing') {
+      // Lift all cups to reveal where the ball is
+      setLiftedCup(-1); // Special value to lift all cups
+    } else if (phase === 'result') {
+      // Keep all cups lifted in result phase
+      setLiftedCup(-1);
     }
-  }, [phase, selectedCup]);
+  }, [phase]);
 
   // Get X position based on cup's position in order array - responsive
   const getXPosition = (cupIndex: number) => {
@@ -95,10 +99,12 @@ const ThimbleCups = ({
   };
 
   const renderCup = (cupIndex: number) => {
-    const isLifted = liftedCup === cupIndex;
+    // Lift all cups during revealing/result, or specific cup during showing
+    const isLifted = liftedCup === -1 || liftedCup === cupIndex;
     const hasBall = ballPosition === cupIndex;
     const isSelected = selectedCup === cupIndex;
     const canSelect = phase === 'selecting';
+    const isRevealingOrResult = phase === 'revealing' || phase === 'result';
 
     return (
       <motion.div
@@ -124,8 +130,8 @@ const ThimbleCups = ({
           className="absolute -bottom-2 sm:-bottom-3 left-1/2 -translate-x-1/2 w-7 h-7 sm:w-9 sm:h-9 md:w-11 md:h-11 rounded-full z-0"
           initial={{ opacity: 0, scale: 0 }}
           animate={{
-            opacity: hasBall && (phase === 'showing' || phase === 'result') ? 1 : 0,
-            scale: hasBall && (phase === 'showing' || phase === 'result') ? 1 : 0
+            opacity: hasBall && (phase === 'showing' || isRevealingOrResult) ? 1 : 0,
+            scale: hasBall && (phase === 'showing' || isRevealingOrResult) ? 1 : 0
           }}
           transition={{ type: 'spring', stiffness: 400, damping: 20 }}
           style={{
@@ -192,7 +198,7 @@ const ThimbleCups = ({
         </motion.svg>
 
         {/* Selection indicator */}
-        {isSelected && phase === 'result' && (
+        {isSelected && isRevealingOrResult && (
           <motion.div
             className={`absolute -bottom-10 left-1/2 -translate-x-1/2 text-3xl font-bold ${
               isWin ? 'text-green-400' : 'text-red-400'
