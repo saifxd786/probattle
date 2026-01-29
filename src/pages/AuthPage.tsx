@@ -588,25 +588,7 @@ const AuthPage = () => {
         return;
       }
 
-      // For signup: enforce strong password rules
-      if (mode === 'signup') {
-        const passwordValidation = validatePassword(formData.password);
-        if (!passwordValidation.isValid) {
-          const correlationId = generateCorrelationId();
-          logError({
-            correlationId,
-            errorType: 'signup_error',
-            errorMessage: 'Weak password rejected',
-            errorDetails: { errors: passwordValidation.errors, strength: passwordValidation.strength },
-          });
-          toast({
-            title: 'Weak Password',
-            description: passwordValidation.errors[0] || 'Please use a stronger password',
-            variant: 'destructive',
-          });
-          return;
-        }
-      }
+      // For signup: just log password strength but don't block (indicator shows user feedback)
 
       const email = phoneToEmail(formData.phone);
 
