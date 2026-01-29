@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Users, Copy, Check, ArrowLeft, Loader2, Signal, Wifi, WifiOff, Gamepad2, Hash, Trophy, Coins, Sparkles, UserPlus, Link2, Gift, Zap } from 'lucide-react';
+import { Users, Copy, Check, ArrowLeft, Loader2, Signal, Wifi, WifiOff, Gamepad2, Hash, Trophy, Coins, UserPlus, Link2, Gift, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
@@ -36,7 +36,6 @@ const FriendMultiplayer = ({
   const rewardAmount = isFreeMatch ? 0 : Math.floor(entryAmount * 1.5);
 
   const handleCreateRoom = async () => {
-    // Only check balance for paid matches
     if (!isFreeMatch && walletBalance < entryAmount) {
       toast.error('Insufficient balance');
       return;
@@ -153,309 +152,241 @@ const FriendMultiplayer = ({
     setTimeout(() => setCopied(false), 2000);
   };
 
-  // Mode Selection
+  // Mode Selection - Flat Design
   if (mode === 'select') {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-background via-background to-primary/5 p-4 pb-24">
+      <div className="min-h-screen bg-[#0A0A0F] p-4 pb-24">
+        {/* Subtle gradient background */}
+        <div 
+          className="fixed inset-0 -z-10"
+          style={{
+            background: `
+              radial-gradient(circle at 30% 20%, rgba(99, 102, 241, 0.08) 0%, transparent 40%),
+              radial-gradient(circle at 70% 80%, rgba(16, 185, 129, 0.06) 0%, transparent 40%),
+              #0A0A0F
+            `,
+          }}
+        />
+
+        {/* Dot pattern */}
+        <div 
+          className="fixed inset-0 -z-5 opacity-[0.03]"
+          style={{
+            backgroundImage: `radial-gradient(circle, #fff 1px, transparent 1px)`,
+            backgroundSize: '24px 24px',
+          }}
+        />
+
         {/* Header */}
         <motion.div 
-          initial={{ opacity: 0, y: -20 }}
+          initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           className="flex items-center gap-3 mb-6"
         >
-          <Button 
-            variant="ghost" 
-            size="icon" 
+          <button 
             onClick={onBack}
-            className="h-10 w-10 rounded-xl bg-card/50 border border-border/50 hover:bg-card"
+            className="w-10 h-10 rounded-xl bg-gray-900/50 border border-gray-800 flex items-center justify-center"
           >
-            <ArrowLeft className="w-5 h-5" />
-          </Button>
+            <ArrowLeft className="w-5 h-5 text-gray-400" />
+          </button>
           <div>
-            <h1 className="font-display text-xl font-bold text-foreground">Friend Match</h1>
-            <p className="text-xs text-muted-foreground">Challenge your friends</p>
+            <h1 className="font-bold text-lg text-white">Friend Match</h1>
+            <p className="text-xs text-gray-500">Challenge your friends</p>
           </div>
         </motion.div>
 
-        {/* Free Match Toggle */}
+        {/* Match Type Toggle */}
         <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="mb-4"
+          className="grid grid-cols-2 gap-3 mb-5"
         >
-          <div className="grid grid-cols-2 gap-3">
-            {/* Paid Match Option */}
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={() => setIsFreeMatch(false)}
-              className={`relative p-4 rounded-xl transition-all duration-300 overflow-hidden ${
-                !isFreeMatch
-                  ? 'bg-gradient-to-br from-yellow-500/20 via-card to-amber-600/10 border-2 border-yellow-500/50'
-                  : 'bg-card/50 border-2 border-border/50'
-              }`}
-            >
-              {!isFreeMatch && (
-                <motion.div
-                  className="absolute inset-0 pointer-events-none"
-                  style={{
-                    background: 'radial-gradient(circle at 50% 30%, rgba(255,193,7,0.2) 0%, transparent 60%)',
-                  }}
-                  animate={{ opacity: [0.4, 0.7, 0.4] }}
-                  transition={{ duration: 2.5, repeat: Infinity }}
-                />
-              )}
-              <div className="relative flex flex-col items-center gap-2">
-                <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
-                  !isFreeMatch 
-                    ? 'bg-gradient-to-br from-yellow-400 to-amber-600' 
-                    : 'bg-muted'
-                }`}>
-                  <Coins className={`w-6 h-6 ${!isFreeMatch ? 'text-amber-900' : 'text-muted-foreground'}`} />
-                </div>
-                <div className="text-center">
-                  <p className={`font-bold text-sm ${!isFreeMatch ? 'text-foreground' : 'text-muted-foreground'}`}>
-                    Paid Match
-                  </p>
-                  <p className={`text-xs ${!isFreeMatch ? 'text-yellow-400' : 'text-muted-foreground'}`}>
-                    Win ₹{Math.floor(entryAmount * 1.5)}
-                  </p>
-                </div>
+          {/* Paid Match */}
+          <button
+            onClick={() => setIsFreeMatch(false)}
+            className={`relative p-4 rounded-xl border transition-all ${
+              !isFreeMatch
+                ? 'bg-amber-500/10 border-amber-500/50'
+                : 'bg-gray-900/50 border-gray-800'
+            }`}
+          >
+            <div className="flex flex-col items-center gap-2">
+              <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                !isFreeMatch ? 'bg-amber-500' : 'bg-gray-800'
+              }`}>
+                <Coins className={`w-5 h-5 ${!isFreeMatch ? 'text-amber-900' : 'text-gray-500'}`} />
               </div>
-              {!isFreeMatch && (
-                <motion.div
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  className="absolute top-2 right-2 w-5 h-5 rounded-full bg-yellow-500 flex items-center justify-center"
-                >
-                  <Check className="w-3 h-3 text-amber-900" />
-                </motion.div>
-              )}
-            </motion.button>
+              <div className="text-center">
+                <p className={`font-semibold text-sm ${!isFreeMatch ? 'text-white' : 'text-gray-500'}`}>
+                  Paid
+                </p>
+                <p className={`text-xs ${!isFreeMatch ? 'text-amber-400' : 'text-gray-600'}`}>
+                  Win ₹{Math.floor(entryAmount * 1.5)}
+                </p>
+              </div>
+            </div>
+            {!isFreeMatch && (
+              <div className="absolute top-2 right-2 w-4 h-4 rounded-full bg-amber-500 flex items-center justify-center">
+                <Check className="w-2.5 h-2.5 text-amber-900" />
+              </div>
+            )}
+          </button>
 
-            {/* Free Match Option */}
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={() => setIsFreeMatch(true)}
-              className={`relative p-4 rounded-xl transition-all duration-300 overflow-hidden ${
-                isFreeMatch
-                  ? 'bg-gradient-to-br from-purple-500/20 via-card to-violet-600/10 border-2 border-purple-500/50'
-                  : 'bg-card/50 border-2 border-border/50'
-              }`}
-            >
-              {isFreeMatch && (
-                <motion.div
-                  className="absolute inset-0 pointer-events-none"
-                  style={{
-                    background: 'radial-gradient(circle at 50% 30%, rgba(168,85,247,0.2) 0%, transparent 60%)',
-                  }}
-                  animate={{ opacity: [0.4, 0.7, 0.4] }}
-                  transition={{ duration: 2.5, repeat: Infinity }}
-                />
-              )}
-              <div className="relative flex flex-col items-center gap-2">
-                <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
-                  isFreeMatch 
-                    ? 'bg-gradient-to-br from-purple-400 to-violet-600' 
-                    : 'bg-muted'
-                }`}>
-                  <Gift className={`w-6 h-6 ${isFreeMatch ? 'text-white' : 'text-muted-foreground'}`} />
-                </div>
-                <div className="text-center">
-                  <p className={`font-bold text-sm ${isFreeMatch ? 'text-foreground' : 'text-muted-foreground'}`}>
-                    Free Match
-                  </p>
-                  <p className={`text-xs ${isFreeMatch ? 'text-purple-400' : 'text-muted-foreground'}`}>
-                    Just for fun!
-                  </p>
-                </div>
+          {/* Free Match */}
+          <button
+            onClick={() => setIsFreeMatch(true)}
+            className={`relative p-4 rounded-xl border transition-all ${
+              isFreeMatch
+                ? 'bg-indigo-500/10 border-indigo-500/50'
+                : 'bg-gray-900/50 border-gray-800'
+            }`}
+          >
+            <div className="flex flex-col items-center gap-2">
+              <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                isFreeMatch ? 'bg-indigo-500' : 'bg-gray-800'
+              }`}>
+                <Gift className={`w-5 h-5 ${isFreeMatch ? 'text-white' : 'text-gray-500'}`} />
               </div>
-              {isFreeMatch && (
-                <motion.div
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  className="absolute top-2 right-2 w-5 h-5 rounded-full bg-purple-500 flex items-center justify-center"
-                >
-                  <Check className="w-3 h-3 text-white" />
-                </motion.div>
-              )}
-            </motion.button>
-          </div>
+              <div className="text-center">
+                <p className={`font-semibold text-sm ${isFreeMatch ? 'text-white' : 'text-gray-500'}`}>
+                  Free
+                </p>
+                <p className={`text-xs ${isFreeMatch ? 'text-indigo-400' : 'text-gray-600'}`}>
+                  Just for fun!
+                </p>
+              </div>
+            </div>
+            {isFreeMatch && (
+              <div className="absolute top-2 right-2 w-4 h-4 rounded-full bg-indigo-500 flex items-center justify-center">
+                <Check className="w-2.5 h-2.5 text-white" />
+              </div>
+            )}
+          </button>
         </motion.div>
 
-        {/* Prize Pool Card - Shows based on match type */}
-        <AnimatePresence mode="wait">
+        {/* Prize Info Card */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.15 }}
+          className="mb-5"
+        >
           {isFreeMatch ? (
-            <motion.div
-              key="free-card"
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              transition={{ duration: 0.2 }}
-              className="relative mb-6 p-5 rounded-2xl bg-gradient-to-br from-purple-500/20 via-card to-violet-500/10 border border-purple-500/30 overflow-hidden"
-            >
-              {/* Decorative elements */}
-              <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/20 rounded-full blur-3xl" />
-              <div className="absolute -bottom-4 -left-4 w-24 h-24 bg-violet-500/20 rounded-full blur-2xl" />
-              
-              <div className="relative text-center">
-                <motion.div
-                  animate={{ rotate: [0, 10, -10, 0], scale: [1, 1.1, 1] }}
-                  transition={{ duration: 2, repeat: Infinity }}
-                  className="w-16 h-16 rounded-2xl bg-gradient-to-br from-purple-400 to-violet-600 flex items-center justify-center mx-auto mb-3 shadow-lg shadow-purple-500/30"
-                >
-                  <Gift className="w-8 h-8 text-white" />
-                </motion.div>
-                <h3 className="font-bold text-lg text-foreground mb-1">Free Match</h3>
-                <p className="text-sm text-purple-400">Play for fun, no money involved!</p>
-                <div className="mt-3 flex items-center justify-center gap-2">
-                  <Zap className="w-4 h-4 text-purple-400" />
-                  <span className="text-xs text-muted-foreground">Winner gets bragging rights 🏆</span>
-                </div>
-              </div>
-            </motion.div>
+            <div className="p-4 rounded-xl bg-indigo-500/10 border border-indigo-500/30 text-center">
+              <Gift className="w-8 h-8 text-indigo-400 mx-auto mb-2" />
+              <p className="text-sm font-medium text-white">Free Match</p>
+              <p className="text-xs text-indigo-400">Play for fun, no money involved!</p>
+            </div>
           ) : (
-            <motion.div
-              key="paid-card"
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              transition={{ duration: 0.2 }}
-              className="relative mb-6 p-5 rounded-2xl bg-gradient-to-br from-primary/20 via-card to-primary/10 border border-primary/30 overflow-hidden"
-            >
-              {/* Decorative elements */}
-              <div className="absolute top-0 right-0 w-32 h-32 bg-primary/20 rounded-full blur-3xl" />
-              <div className="absolute -bottom-4 -left-4 w-24 h-24 bg-yellow-500/20 rounded-full blur-2xl" />
-              
-              <div className="relative flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-xl bg-primary/20 flex items-center justify-center">
-                    <Coins className="w-6 h-6 text-primary" />
+            <div className="p-4 rounded-xl bg-gray-900/50 border border-gray-800">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-10 h-10 rounded-lg bg-gray-800 flex items-center justify-center">
+                    <Coins className="w-5 h-5 text-amber-400" />
                   </div>
                   <div>
-                    <p className="text-xs text-muted-foreground uppercase tracking-wider">Entry Fee</p>
-                    <p className="text-2xl font-bold text-foreground">₹{entryAmount}</p>
+                    <p className="text-[10px] text-gray-500 uppercase">Entry</p>
+                    <p className="text-lg font-bold text-white">₹{entryAmount}</p>
                   </div>
                 </div>
                 
-                <div className="text-center px-4">
-                  <Sparkles className="w-5 h-5 text-yellow-400 mx-auto mb-1" />
-                  <span className="text-xs text-muted-foreground">1.5x</span>
+                <div className="text-center px-3">
+                  <Zap className="w-4 h-4 text-indigo-400 mx-auto" />
+                  <span className="text-[10px] text-gray-500">1.5x</span>
                 </div>
                 
                 <div className="text-right">
-                  <div className="flex items-center gap-2 justify-end">
-                    <Trophy className="w-5 h-5 text-yellow-400" />
-                    <span className="text-xs text-muted-foreground uppercase tracking-wider">Winner Gets</span>
-                  </div>
-                  <p className="text-2xl font-bold text-yellow-400">₹{rewardAmount}</p>
+                  <p className="text-[10px] text-gray-500 uppercase">Prize</p>
+                  <p className="text-lg font-bold text-emerald-400">₹{rewardAmount}</p>
                 </div>
               </div>
-            </motion.div>
+            </div>
           )}
-        </AnimatePresence>
+        </motion.div>
 
-        {/* Mode Selection Cards */}
-        <div className="grid gap-4">
+        {/* Action Buttons */}
+        <div className="space-y-3">
+          {/* Create Room */}
           <motion.button
-            initial={{ opacity: 0, x: -20 }}
+            initial={{ opacity: 0, x: -10 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.2 }}
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
             onClick={() => handleCreateRoom()}
             disabled={(!isFreeMatch && walletBalance < entryAmount) || isLoading}
-            className="relative p-5 rounded-2xl bg-gradient-to-br from-emerald-500/20 via-card to-emerald-600/10 border border-emerald-500/30 text-left disabled:opacity-50 disabled:cursor-not-allowed overflow-hidden group"
+            className="w-full p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-left disabled:opacity-50 flex items-center gap-3"
           >
-            {/* Hover glow */}
-            <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/0 via-emerald-500/10 to-emerald-500/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-            
-            <div className="relative flex items-center gap-4">
-              <div className="w-14 h-14 rounded-xl bg-emerald-500/20 flex items-center justify-center border border-emerald-500/30">
-                <Link2 className="w-7 h-7 text-emerald-400" />
-              </div>
-              <div className="flex-1">
-                <div className="flex items-center gap-2 mb-1">
-                  <h3 className="font-bold text-lg text-foreground">Create Room</h3>
-                  {isFreeMatch && (
-                    <span className="px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-400 text-xs font-semibold">
-                      FREE
-                    </span>
-                  )}
-                  {isLoading && <Loader2 className="w-4 h-4 animate-spin text-emerald-400" />}
-                </div>
-                <p className="text-sm text-muted-foreground">Get a unique code to share with your friend</p>
-              </div>
-              <div className="w-8 h-8 rounded-full bg-emerald-500/20 flex items-center justify-center">
-                <ArrowLeft className="w-4 h-4 text-emerald-400 rotate-180" />
-              </div>
+            <div className="w-12 h-12 rounded-xl bg-emerald-500/20 flex items-center justify-center">
+              <Link2 className="w-6 h-6 text-emerald-400" />
             </div>
+            <div className="flex-1">
+              <div className="flex items-center gap-2">
+                <p className="font-semibold text-white">Create Room</p>
+                {isFreeMatch && (
+                  <span className="px-1.5 py-0.5 rounded bg-indigo-500/30 text-indigo-400 text-[10px] font-medium">
+                    FREE
+                  </span>
+                )}
+                {isLoading && <Loader2 className="w-4 h-4 animate-spin text-emerald-400" />}
+              </div>
+              <p className="text-xs text-gray-500">Get a code to share with friend</p>
+            </div>
+            <ArrowLeft className="w-4 h-4 text-emerald-400 rotate-180" />
           </motion.button>
 
+          {/* Join Room */}
           <motion.button
-            initial={{ opacity: 0, x: 20 }}
+            initial={{ opacity: 0, x: 10 }}
             animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.3 }}
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
+            transition={{ delay: 0.25 }}
             onClick={() => setMode('join')}
-            className="relative p-5 rounded-2xl bg-gradient-to-br from-blue-500/20 via-card to-blue-600/10 border border-blue-500/30 text-left overflow-hidden group"
+            className="w-full p-4 rounded-xl bg-blue-500/10 border border-blue-500/30 text-left flex items-center gap-3"
           >
-            {/* Hover glow */}
-            <div className="absolute inset-0 bg-gradient-to-r from-blue-500/0 via-blue-500/10 to-blue-500/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-            
-            <div className="relative flex items-center gap-4">
-              <div className="w-14 h-14 rounded-xl bg-blue-500/20 flex items-center justify-center border border-blue-500/30">
-                <UserPlus className="w-7 h-7 text-blue-400" />
-              </div>
-              <div className="flex-1">
-                <h3 className="font-bold text-lg text-foreground">Join Room</h3>
-                <p className="text-sm text-muted-foreground">Enter your friend's room code to join</p>
-              </div>
-              <div className="w-8 h-8 rounded-full bg-blue-500/20 flex items-center justify-center">
-                <ArrowLeft className="w-4 h-4 text-blue-400 rotate-180" />
-              </div>
+            <div className="w-12 h-12 rounded-xl bg-blue-500/20 flex items-center justify-center">
+              <UserPlus className="w-6 h-6 text-blue-400" />
             </div>
+            <div className="flex-1">
+              <p className="font-semibold text-white">Join Room</p>
+              <p className="text-xs text-gray-500">Enter friend's room code</p>
+            </div>
+            <ArrowLeft className="w-4 h-4 text-blue-400 rotate-180" />
           </motion.button>
         </div>
 
+        {/* Insufficient Balance Warning */}
         {!isFreeMatch && walletBalance < entryAmount && (
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
-            className="mt-4 p-3 rounded-xl bg-destructive/10 border border-destructive/30 text-center"
+            transition={{ delay: 0.3 }}
+            className="mt-4 p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-center"
           >
-            <p className="text-sm text-destructive">
-              ⚠️ Insufficient balance. Need ₹{entryAmount}
-            </p>
+            <p className="text-sm text-red-400">⚠️ Insufficient balance. Need ₹{entryAmount}</p>
           </motion.div>
         )}
 
         {/* How it works */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.5 }}
-          className="mt-6 p-4 rounded-xl bg-card/50 border border-border/50"
+          transition={{ delay: 0.35 }}
+          className="mt-5 p-4 rounded-xl bg-gray-900/50 border border-gray-800"
         >
-          <h4 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
-            <Gamepad2 className="w-4 h-4 text-primary" />
+          <h4 className="text-sm font-semibold text-white mb-2 flex items-center gap-2">
+            <Gamepad2 className="w-4 h-4 text-indigo-400" />
             How it works
           </h4>
-          <div className="space-y-2 text-xs text-muted-foreground">
-            <p>1. Create a room or join using a friend's code</p>
+          <div className="space-y-1.5 text-xs text-gray-500">
+            <p>1. Create a room or join using friend's code</p>
             {isFreeMatch ? (
               <>
-                <p>2. No entry fee required - completely free!</p>
+                <p>2. No entry fee - completely free!</p>
                 <p>3. Play for fun and bragging rights 🎉</p>
               </>
             ) : (
               <>
-                <p>2. Both players pay ₹{entryAmount} entry fee</p>
-                <p>3. Winner takes ₹{rewardAmount} (1.5x pool)</p>
+                <p>2. Both players pay ₹{entryAmount} entry</p>
+                <p>3. Winner takes ₹{rewardAmount} (1.5x)</p>
               </>
             )}
           </div>
@@ -464,327 +395,311 @@ const FriendMultiplayer = ({
     );
   }
 
-  // Create Room - Waiting for player
+  // Create Room - Waiting Screen
   if (mode === 'create') {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-background via-background to-primary/5 p-4 pb-24">
+      <div className="min-h-screen bg-[#0A0A0F] p-4 pb-24">
+        {/* Background */}
+        <div 
+          className="fixed inset-0 -z-10"
+          style={{
+            background: `
+              radial-gradient(circle at 50% 30%, rgba(99, 102, 241, 0.1) 0%, transparent 50%),
+              #0A0A0F
+            `,
+          }}
+        />
+
         {/* Header */}
         <motion.div 
-          initial={{ opacity: 0, y: -20 }}
+          initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           className="flex items-center gap-3 mb-6"
         >
-          <Button 
-            variant="ghost" 
-            size="icon" 
+          <button 
             onClick={handleCancelRoom}
             disabled={isLoading}
-            className="h-10 w-10 rounded-xl bg-card/50 border border-border/50 hover:bg-card"
+            className="w-10 h-10 rounded-xl bg-gray-900/50 border border-gray-800 flex items-center justify-center"
           >
-            <ArrowLeft className="w-5 h-5" />
-          </Button>
+            <ArrowLeft className="w-5 h-5 text-gray-400" />
+          </button>
           <div>
-            <h1 className="font-display text-xl font-bold text-foreground">Room Created</h1>
-            <p className="text-xs text-muted-foreground">Share code with your friend</p>
+            <h1 className="font-bold text-lg text-white">Room Created</h1>
+            <p className="text-xs text-gray-500">Share code with friend</p>
           </div>
         </motion.div>
 
-        <AnimatePresence>
-          <motion.div
-            initial={{ scale: 0.9, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            className="space-y-6"
-          >
-            {/* Room Code Card */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 }}
-              className="relative p-6 rounded-2xl bg-gradient-to-br from-primary/20 via-card to-purple-500/10 border border-primary/30 overflow-hidden"
-            >
-              {/* Animated background */}
-              <div className="absolute inset-0 opacity-30">
-                <motion.div
-                  className="absolute top-1/2 left-1/2 w-64 h-64 -translate-x-1/2 -translate-y-1/2 bg-primary/30 rounded-full blur-3xl"
-                  animate={{ scale: [1, 1.2, 1], opacity: [0.3, 0.5, 0.3] }}
-                  transition={{ duration: 3, repeat: Infinity }}
-                />
-              </div>
-              
-              <div className="relative text-center">
-                <div className="flex items-center justify-center gap-2 mb-3">
-                  <Hash className="w-5 h-5 text-primary" />
-                  <p className="text-sm text-muted-foreground uppercase tracking-wider">Room Code</p>
-                </div>
-                
-                <div className="flex items-center justify-center gap-3 mb-4">
-                  <div className="flex gap-1.5">
-                    {createdRoomCode.split('').map((char, i) => (
-                      <motion.span
-                        key={i}
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.1 + i * 0.05 }}
-                        className="w-11 h-14 rounded-lg bg-background/80 border border-border flex items-center justify-center font-mono text-2xl font-bold text-foreground"
-                      >
-                        {char}
-                      </motion.span>
-                    ))}
-                  </div>
-                  
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={copyRoomCode}
-                    className="h-12 w-12 rounded-xl bg-primary/20 border border-primary/30 hover:bg-primary/30"
-                  >
-                    {copied ? (
-                      <Check className="w-5 h-5 text-emerald-400" />
-                    ) : (
-                      <Copy className="w-5 h-5 text-primary" />
-                    )}
-                  </Button>
-                </div>
-                
-                <p className="text-xs text-muted-foreground">
-                  Share this code with your friend to join
-                </p>
-              </div>
-            </motion.div>
-
-            {/* Waiting Animation */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-              className="relative py-8 flex flex-col items-center"
-            >
-              {/* Radar animation */}
-              <div className="relative w-32 h-32 mb-4">
-                {[1, 2, 3].map((ring) => (
-                  <motion.div
-                    key={ring}
-                    className="absolute inset-0 rounded-full border-2 border-primary/30"
-                    animate={{
-                      scale: [1, 2],
-                      opacity: [0.6, 0],
-                    }}
-                    transition={{
-                      duration: 2,
-                      repeat: Infinity,
-                      delay: ring * 0.4,
-                      ease: "easeOut",
-                    }}
-                  />
-                ))}
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="w-16 h-16 rounded-full bg-gradient-to-br from-primary/30 to-primary/10 border border-primary/50 flex items-center justify-center">
-                    <Users className="w-8 h-8 text-primary" />
-                  </div>
-                </div>
-              </div>
-              
-              <p className="text-base font-medium text-foreground mb-2">Waiting for friend...</p>
-              <p className="text-xs text-muted-foreground">They need to enter the code above</p>
-              
-              {/* Connection Status */}
-              <div className="flex items-center justify-center gap-3 mt-4">
-                {pingLatency !== null && pingLatency !== undefined && (
-                  <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg ${
-                    pingLatency < 100 ? 'bg-emerald-500/20 border border-emerald-500/30' : 
-                    pingLatency < 200 ? 'bg-yellow-500/20 border border-yellow-500/30' : 'bg-red-500/20 border border-red-500/30'
-                  }`}>
-                    <Signal className={`w-3.5 h-3.5 ${
-                      pingLatency < 100 ? 'text-emerald-400' : 
-                      pingLatency < 200 ? 'text-yellow-400' : 'text-red-400'
-                    }`} />
-                    <span className={`text-xs font-mono ${
-                      pingLatency < 100 ? 'text-emerald-400' : 
-                      pingLatency < 200 ? 'text-yellow-400' : 'text-red-400'
-                    }`}>
-                      {pingLatency}ms
-                    </span>
-                  </div>
-                )}
-                
-                {opponentOnline !== undefined && (
-                  <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg ${
-                    opponentOnline ? 'bg-emerald-500/20 border border-emerald-500/30' : 'bg-muted/50 border border-border'
-                  }`}>
-                    {opponentOnline ? (
-                      <>
-                        <Wifi className="w-3.5 h-3.5 text-emerald-400" />
-                        <span className="text-xs text-emerald-400">Connected</span>
-                      </>
-                    ) : (
-                      <>
-                        <WifiOff className="w-3.5 h-3.5 text-muted-foreground" />
-                        <span className="text-xs text-muted-foreground">Waiting...</span>
-                      </>
-                    )}
-                  </div>
-                )}
-              </div>
-            </motion.div>
-
-            {/* Prize Info - Conditional based on free match */}
-            {isFreeMatch ? (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3 }}
-                className="p-4 rounded-xl bg-purple-500/10 border border-purple-500/30"
-              >
-                <div className="flex items-center justify-center gap-3">
-                  <Gift className="w-5 h-5 text-purple-400" />
-                  <span className="text-sm font-medium text-purple-400">Free Match - Just for Fun!</span>
-                </div>
-              </motion.div>
-            ) : (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3 }}
-                className="p-4 rounded-xl bg-card/50 border border-border/50"
-              >
-                <div className="flex justify-between items-center mb-3">
-                  <span className="text-sm text-muted-foreground">Your Entry</span>
-                  <span className="text-sm font-medium text-foreground">₹{entryAmount}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground flex items-center gap-1.5">
-                    <Trophy className="w-4 h-4 text-yellow-400" />
-                    Winner Prize
-                  </span>
-                  <span className="text-lg font-bold text-yellow-400">₹{rewardAmount}</span>
-                </div>
-              </motion.div>
-            )}
-
-            {/* Cancel Button */}
-            <Button
-              variant="outline"
-              onClick={handleCancelRoom}
-              disabled={isLoading}
-              className="w-full py-6 border-destructive/50 text-destructive hover:bg-destructive/10 rounded-xl"
-            >
-              {isLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-              {isFreeMatch ? 'Cancel Room' : 'Cancel & Get Refund'}
-            </Button>
-          </motion.div>
-        </AnimatePresence>
-      </div>
-    );
-  }
-
-  // Join Room
-  return (
-    <div className="min-h-screen bg-gradient-to-b from-background via-background to-primary/5 p-4 pb-24">
-      {/* Header */}
-      <motion.div 
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="flex items-center gap-3 mb-6"
-      >
-        <Button 
-          variant="ghost" 
-          size="icon" 
-          onClick={() => setMode('select')}
-          className="h-10 w-10 rounded-xl bg-card/50 border border-border/50 hover:bg-card"
-        >
-          <ArrowLeft className="w-5 h-5" />
-        </Button>
-        <div>
-          <h1 className="font-display text-xl font-bold text-foreground">Join Room</h1>
-          <p className="text-xs text-muted-foreground">Enter friend's room code</p>
-        </div>
-      </motion.div>
-
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="space-y-6"
-      >
-        {/* Code Input Card */}
+        {/* Room Code Card */}
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.1 }}
-          className="relative p-6 rounded-2xl bg-gradient-to-br from-blue-500/20 via-card to-blue-600/10 border border-blue-500/30 overflow-hidden"
+          className="p-5 rounded-xl bg-gray-900/50 border border-gray-800 mb-6"
         >
-          <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/20 rounded-full blur-3xl" />
+          <div className="flex items-center justify-center gap-2 mb-3">
+            <Hash className="w-4 h-4 text-indigo-400" />
+            <p className="text-xs text-gray-500 uppercase tracking-wider">Room Code</p>
+          </div>
           
-          <div className="relative">
-            <div className="flex items-center justify-center gap-2 mb-4">
-              <Hash className="w-5 h-5 text-blue-400" />
-              <p className="text-sm text-muted-foreground uppercase tracking-wider">Enter 6-Digit Code</p>
+          <div className="flex items-center justify-center gap-2 mb-3">
+            <div className="flex gap-1">
+              {createdRoomCode.split('').map((char, i) => (
+                <motion.span
+                  key={i}
+                  initial={{ opacity: 0, y: 5 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.1 + i * 0.03 }}
+                  className="w-10 h-12 rounded-lg bg-gray-800 border border-gray-700 flex items-center justify-center font-mono text-xl font-bold text-white"
+                >
+                  {char}
+                </motion.span>
+              ))}
             </div>
             
-            <Input
-              value={roomCode}
-              onChange={(e) => setRoomCode(e.target.value.toUpperCase().slice(0, 6))}
-              placeholder="000000"
-              className="text-center text-3xl font-mono tracking-[0.5em] bg-background/50 border-border/50 text-foreground h-16 rounded-xl"
-              maxLength={6}
-            />
+            <button
+              onClick={copyRoomCode}
+              className="w-12 h-12 rounded-xl bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center"
+            >
+              {copied ? (
+                <Check className="w-5 h-5 text-emerald-400" />
+              ) : (
+                <Copy className="w-5 h-5 text-indigo-400" />
+              )}
+            </button>
           </div>
-        </motion.div>
-
-        {/* Balance Info */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="p-4 rounded-xl bg-card/50 border border-border/50"
-        >
-          <p className="text-xs text-muted-foreground text-center mb-3">
-            Entry fee will be deducted upon joining
+          
+          <p className="text-xs text-gray-500 text-center">
+            Share this code with your friend
           </p>
-          <div className="flex justify-between items-center">
-            <span className="text-sm text-muted-foreground">Your Balance</span>
-            <span className="text-base font-medium text-foreground">₹{walletBalance.toFixed(2)}</span>
+        </motion.div>
+
+        {/* Waiting Animation */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.2 }}
+          className="flex flex-col items-center py-8"
+        >
+          {/* Radar */}
+          <div className="relative w-28 h-28 mb-4">
+            {[0, 1, 2].map((i) => (
+              <motion.div
+                key={i}
+                className="absolute inset-0 rounded-full border border-indigo-500/30"
+                initial={{ scale: 0.5, opacity: 0 }}
+                animate={{ scale: 1.5, opacity: [0, 0.5, 0] }}
+                transition={{
+                  duration: 2,
+                  delay: i * 0.5,
+                  repeat: Infinity,
+                  ease: 'easeOut'
+                }}
+              />
+            ))}
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div 
+                className="w-14 h-14 rounded-full flex items-center justify-center"
+                style={{ background: 'linear-gradient(135deg, #6366F1 0%, #4F46E5 100%)' }}
+              >
+                <Users className="w-7 h-7 text-white" />
+              </div>
+            </div>
+          </div>
+          
+          <p className="text-sm font-medium text-white mb-1">Waiting for friend...</p>
+          <p className="text-xs text-gray-500">They need to enter the code</p>
+          
+          {/* Connection Status */}
+          <div className="flex items-center gap-2 mt-4">
+            {pingLatency !== null && pingLatency !== undefined && (
+              <div className={`flex items-center gap-1 px-2 py-1 rounded-lg ${
+                pingLatency < 100 ? 'bg-emerald-500/20 border border-emerald-500/30' : 
+                pingLatency < 200 ? 'bg-amber-500/20 border border-amber-500/30' : 
+                'bg-red-500/20 border border-red-500/30'
+              }`}>
+                <Signal className={`w-3 h-3 ${
+                  pingLatency < 100 ? 'text-emerald-400' : 
+                  pingLatency < 200 ? 'text-amber-400' : 'text-red-400'
+                }`} />
+                <span className={`text-[10px] font-mono ${
+                  pingLatency < 100 ? 'text-emerald-400' : 
+                  pingLatency < 200 ? 'text-amber-400' : 'text-red-400'
+                }`}>{pingLatency}ms</span>
+              </div>
+            )}
+            
+            {opponentOnline !== undefined && (
+              <div className={`flex items-center gap-1 px-2 py-1 rounded-lg ${
+                opponentOnline ? 'bg-emerald-500/20 border border-emerald-500/30' : 
+                'bg-gray-800 border border-gray-700'
+              }`}>
+                {opponentOnline ? (
+                  <>
+                    <Wifi className="w-3 h-3 text-emerald-400" />
+                    <span className="text-[10px] text-emerald-400">Connected</span>
+                  </>
+                ) : (
+                  <>
+                    <WifiOff className="w-3 h-3 text-gray-500" />
+                    <span className="text-[10px] text-gray-500">Waiting</span>
+                  </>
+                )}
+              </div>
+            )}
           </div>
         </motion.div>
 
-        {/* Join Button */}
+        {/* Prize Info */}
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
+          className="mb-5"
         >
-          <Button
-            onClick={handleJoinRoom}
-            disabled={roomCode.length !== 6 || isLoading}
-            className="w-full py-6 text-lg font-bold bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 rounded-xl shadow-lg shadow-blue-500/25"
-          >
-            {isLoading ? (
-              <>
-                <Loader2 className="w-5 h-5 animate-spin mr-2" />
-                Joining...
-              </>
-            ) : (
-              <>
-                <UserPlus className="w-5 h-5 mr-2" />
-                Join Room
-              </>
-            )}
-          </Button>
+          {isFreeMatch ? (
+            <div className="p-3 rounded-xl bg-indigo-500/10 border border-indigo-500/30 text-center">
+              <div className="flex items-center justify-center gap-2">
+                <Gift className="w-4 h-4 text-indigo-400" />
+                <span className="text-sm text-indigo-400">Free Match - Just for Fun!</span>
+              </div>
+            </div>
+          ) : (
+            <div className="p-3 rounded-xl bg-gray-900/50 border border-gray-800">
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-xs text-gray-500">Your Entry</span>
+                <span className="text-sm font-medium text-white">₹{entryAmount}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-xs text-gray-500 flex items-center gap-1">
+                  <Trophy className="w-3 h-3 text-amber-400" />
+                  Winner Prize
+                </span>
+                <span className="text-base font-bold text-emerald-400">₹{rewardAmount}</span>
+              </div>
+            </div>
+          )}
         </motion.div>
 
-        {/* Prize Preview */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
-          className="p-4 rounded-xl bg-gradient-to-br from-yellow-500/10 to-orange-500/5 border border-yellow-500/20"
+        {/* Cancel Button */}
+        <button
+          onClick={handleCancelRoom}
+          disabled={isLoading}
+          className="w-full py-3 rounded-xl bg-gray-900/50 border border-red-500/30 text-red-400 font-medium text-sm flex items-center justify-center gap-2"
         >
-          <div className="flex items-center justify-center gap-3">
-            <Trophy className="w-5 h-5 text-yellow-400" />
-            <span className="text-sm text-muted-foreground">Winner takes</span>
-            <span className="text-lg font-bold text-yellow-400">1.5x</span>
-            <span className="text-sm text-muted-foreground">of combined entry</span>
-          </div>
-        </motion.div>
+          {isLoading && <Loader2 className="w-4 h-4 animate-spin" />}
+          {isFreeMatch ? 'Cancel Room' : 'Cancel & Get Refund'}
+        </button>
+      </div>
+    );
+  }
+
+  // Join Room Screen
+  return (
+    <div className="min-h-screen bg-[#0A0A0F] p-4 pb-24">
+      {/* Background */}
+      <div 
+        className="fixed inset-0 -z-10"
+        style={{
+          background: `
+            radial-gradient(circle at 50% 50%, rgba(59, 130, 246, 0.08) 0%, transparent 50%),
+            #0A0A0F
+          `,
+        }}
+      />
+
+      {/* Header */}
+      <motion.div 
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="flex items-center gap-3 mb-6"
+      >
+        <button 
+          onClick={() => setMode('select')}
+          className="w-10 h-10 rounded-xl bg-gray-900/50 border border-gray-800 flex items-center justify-center"
+        >
+          <ArrowLeft className="w-5 h-5 text-gray-400" />
+        </button>
+        <div>
+          <h1 className="font-bold text-lg text-white">Join Room</h1>
+          <p className="text-xs text-gray-500">Enter friend's room code</p>
+        </div>
+      </motion.div>
+
+      {/* Code Input */}
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ delay: 0.1 }}
+        className="p-5 rounded-xl bg-gray-900/50 border border-gray-800 mb-5"
+      >
+        <div className="flex items-center justify-center gap-2 mb-3">
+          <Hash className="w-4 h-4 text-blue-400" />
+          <p className="text-xs text-gray-500 uppercase tracking-wider">Enter 6-Digit Code</p>
+        </div>
+        
+        <Input
+          value={roomCode}
+          onChange={(e) => setRoomCode(e.target.value.toUpperCase().slice(0, 6))}
+          placeholder="000000"
+          className="text-center text-2xl font-mono tracking-[0.4em] bg-gray-800/50 border-gray-700 text-white h-14 rounded-xl"
+          maxLength={6}
+        />
+      </motion.div>
+
+      {/* Balance Info */}
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.15 }}
+        className="p-3 rounded-xl bg-gray-900/50 border border-gray-800 mb-5"
+      >
+        <p className="text-[10px] text-gray-500 text-center mb-2">
+          Entry fee will be deducted upon joining
+        </p>
+        <div className="flex justify-between items-center">
+          <span className="text-xs text-gray-500">Your Balance</span>
+          <span className="text-sm font-medium text-white">₹{walletBalance.toFixed(2)}</span>
+        </div>
+      </motion.div>
+
+      {/* Join Button */}
+      <motion.button
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.2 }}
+        onClick={handleJoinRoom}
+        disabled={roomCode.length !== 6 || isLoading}
+        className="w-full py-3.5 rounded-xl font-bold text-sm text-white flex items-center justify-center gap-2 disabled:opacity-50"
+        style={{
+          background: 'linear-gradient(135deg, #3B82F6 0%, #2563EB 100%)',
+        }}
+      >
+        {isLoading ? (
+          <>
+            <Loader2 className="w-4 h-4 animate-spin" />
+            Joining...
+          </>
+        ) : (
+          <>
+            <UserPlus className="w-4 h-4" />
+            Join Room
+          </>
+        )}
+      </motion.button>
+
+      {/* Prize Preview */}
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.25 }}
+        className="mt-5 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-center"
+      >
+        <div className="flex items-center justify-center gap-2">
+          <Trophy className="w-4 h-4 text-amber-400" />
+          <span className="text-xs text-gray-400">Winner takes</span>
+          <span className="text-sm font-bold text-amber-400">1.5x</span>
+          <span className="text-xs text-gray-400">of combined entry</span>
+        </div>
       </motion.div>
     </div>
   );
