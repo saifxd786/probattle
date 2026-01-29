@@ -125,10 +125,10 @@ const LudoChat = ({ messages, onSendMessage, currentUserId, playerColor }: LudoC
 
   return (
     <>
-      {/* Premium Chat Toggle Button */}
+      {/* Premium Chat Toggle Button - Positioned above bottom bar */}
       <motion.button
         onClick={() => setIsOpen(!isOpen)}
-        className="fixed bottom-20 right-4 z-50 p-3.5 rounded-2xl"
+        className="fixed bottom-24 right-3 z-50 p-3 rounded-2xl"
         style={{
           background: colorConfig.gradient,
           boxShadow: `0 6px 25px ${colorConfig.glow}, 0 3px 10px rgba(0,0,0,0.3), inset 0 1px 3px rgba(255,255,255,0.3)`,
@@ -181,8 +181,8 @@ const LudoChat = ({ messages, onSendMessage, currentUserId, playerColor }: LudoC
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 100, scale: 0.9 }}
             transition={{ type: 'spring', stiffness: 300, damping: 25 }}
-            className="fixed bottom-20 right-4 left-4 z-50 max-w-sm ml-auto overflow-hidden"
-            style={{ 
+            className="fixed bottom-24 right-3 left-3 z-50 max-w-sm ml-auto overflow-hidden"
+            style={{
               maxHeight: '70vh',
               borderRadius: 20,
               background: 'linear-gradient(180deg, rgba(30,28,25,0.98) 0%, rgba(20,18,15,0.99) 100%)',

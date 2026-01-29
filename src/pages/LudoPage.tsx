@@ -336,7 +336,7 @@ const LudoPage = () => {
                   </div>
                   {/* Info */}
                   <div className="text-left">
-                    <p className="text-white font-bold text-sm">{player.uid || player.name.slice(0, 5)}</p>
+                    <p className="text-white font-bold text-sm">{player.name}</p>
                     <div className="flex items-center gap-1">
                       <span className="text-amber-400 text-xs">💰</span>
                       <span className="text-amber-400 text-xs font-semibold">₹{rewardAmount}</span>
@@ -406,7 +406,7 @@ const LudoPage = () => {
                   </div>
                   {/* Info */}
                   <div className="text-right">
-                    <p className="text-white font-bold text-sm">{player.uid || player.name.slice(0, 5)}</p>
+                    <p className="text-white font-bold text-sm">{player.name}</p>
                     <div className="flex items-center gap-1 justify-end">
                       <span className="text-amber-400 text-xs">💰</span>
                       <span className="text-amber-400 text-xs font-semibold">₹{rewardAmount}</span>
@@ -613,7 +613,7 @@ const LudoPage = () => {
                   </div>
                   {/* Info */}
                   <div className="text-left">
-                    <p className="text-white font-bold text-sm">{isCurrentUser ? 'You' : player.uid || player.name.slice(0, 5)}</p>
+                    <p className="text-white font-bold text-sm">{isCurrentUser ? 'You' : player.name}</p>
                     <div className="flex items-center gap-1">
                       <span className="text-amber-400 text-xs">💰</span>
                       <span className="text-amber-400 text-xs font-semibold">₹{friendGameState.rewardAmount}</span>
@@ -723,7 +723,7 @@ const LudoPage = () => {
                   </div>
                   {/* Info */}
                   <div className="text-right">
-                    <p className="text-white font-bold text-sm">{isCurrentUser ? 'You' : player.uid || player.name.slice(0, 5)}</p>
+                    <p className="text-white font-bold text-sm">{isCurrentUser ? 'You' : player.name}</p>
                     <div className="flex items-center gap-1 justify-end">
                       <span className="text-amber-400 text-xs">💰</span>
                       <span className="text-amber-400 text-xs font-semibold">₹{friendGameState.rewardAmount}</span>
