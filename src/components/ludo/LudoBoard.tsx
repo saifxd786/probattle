@@ -76,69 +76,118 @@ const HOME_POSITIONS: { [color: string]: { x: number; y: number }[] } = {
 
 // Track paths
 // Track coordinates - MUST match useLudoGame.ts exactly!
-// Each track has 51 positions (1-51 main track), tokens enter at position 1
+// Each track has 52 positions (1-52 main track), tokens enter at position 1
+// CRITICAL: Include corner cells properly - each segment must connect visually
 
 // LEFT_TRACK: Starts from LEFT side (1.5, 6.5) going right - RED uses this
 const LEFT_TRACK: { x: number; y: number }[] = [
+  // Row 6 going right (5 cells: 1-5)
   { x: 1.5, y: 6.5 }, { x: 2.5, y: 6.5 }, { x: 3.5, y: 6.5 }, { x: 4.5, y: 6.5 }, { x: 5.5, y: 6.5 },
+  // Turn corner at (6.5, 6.5), then go UP (6 cells: 6-11)
   { x: 6.5, y: 5.5 }, { x: 6.5, y: 4.5 }, { x: 6.5, y: 3.5 }, { x: 6.5, y: 2.5 }, { x: 6.5, y: 1.5 }, { x: 6.5, y: 0.5 },
+  // Corner at top (1 cell: 12)
   { x: 7.5, y: 0.5 },
+  // Go DOWN on right side of top (6 cells: 13-18)
   { x: 8.5, y: 0.5 }, { x: 8.5, y: 1.5 }, { x: 8.5, y: 2.5 }, { x: 8.5, y: 3.5 }, { x: 8.5, y: 4.5 }, { x: 8.5, y: 5.5 },
+  // Row 6 going right (6 cells: 19-24)
   { x: 9.5, y: 6.5 }, { x: 10.5, y: 6.5 }, { x: 11.5, y: 6.5 }, { x: 12.5, y: 6.5 }, { x: 13.5, y: 6.5 }, { x: 14.5, y: 6.5 },
+  // Corner at right (1 cell: 25)
   { x: 14.5, y: 7.5 },
+  // Row 8 going left (6 cells: 26-31)
   { x: 14.5, y: 8.5 }, { x: 13.5, y: 8.5 }, { x: 12.5, y: 8.5 }, { x: 11.5, y: 8.5 }, { x: 10.5, y: 8.5 }, { x: 9.5, y: 8.5 },
+  // Go DOWN (6 cells: 32-37)
   { x: 8.5, y: 9.5 }, { x: 8.5, y: 10.5 }, { x: 8.5, y: 11.5 }, { x: 8.5, y: 12.5 }, { x: 8.5, y: 13.5 }, { x: 8.5, y: 14.5 },
+  // Corner at bottom (1 cell: 38)
   { x: 7.5, y: 14.5 },
+  // Go UP on left side (6 cells: 39-44)
   { x: 6.5, y: 14.5 }, { x: 6.5, y: 13.5 }, { x: 6.5, y: 12.5 }, { x: 6.5, y: 11.5 }, { x: 6.5, y: 10.5 }, { x: 6.5, y: 9.5 },
+  // Row 8 going left (6 cells: 45-50)
   { x: 5.5, y: 8.5 }, { x: 4.5, y: 8.5 }, { x: 3.5, y: 8.5 }, { x: 2.5, y: 8.5 }, { x: 1.5, y: 8.5 }, { x: 0.5, y: 8.5 },
+  // Final corner before home path (1 cell: 51)
   { x: 0.5, y: 7.5 },
 ];
 
 // TOP_TRACK: Starts from TOP (8.5, 1.5) going down - GREEN uses this
 const TOP_TRACK: { x: number; y: number }[] = [
+  // Column 8 going down (5 cells: 1-5)
   { x: 8.5, y: 1.5 }, { x: 8.5, y: 2.5 }, { x: 8.5, y: 3.5 }, { x: 8.5, y: 4.5 }, { x: 8.5, y: 5.5 },
+  // Row 6 going right (6 cells: 6-11)
   { x: 9.5, y: 6.5 }, { x: 10.5, y: 6.5 }, { x: 11.5, y: 6.5 }, { x: 12.5, y: 6.5 }, { x: 13.5, y: 6.5 }, { x: 14.5, y: 6.5 },
+  // Corner at right (1 cell: 12)
   { x: 14.5, y: 7.5 },
+  // Row 8 going left (6 cells: 13-18)
   { x: 14.5, y: 8.5 }, { x: 13.5, y: 8.5 }, { x: 12.5, y: 8.5 }, { x: 11.5, y: 8.5 }, { x: 10.5, y: 8.5 }, { x: 9.5, y: 8.5 },
+  // Go DOWN (6 cells: 19-24)
   { x: 8.5, y: 9.5 }, { x: 8.5, y: 10.5 }, { x: 8.5, y: 11.5 }, { x: 8.5, y: 12.5 }, { x: 8.5, y: 13.5 }, { x: 8.5, y: 14.5 },
+  // Corner at bottom (1 cell: 25)
   { x: 7.5, y: 14.5 },
+  // Go UP on left side (6 cells: 26-31)
   { x: 6.5, y: 14.5 }, { x: 6.5, y: 13.5 }, { x: 6.5, y: 12.5 }, { x: 6.5, y: 11.5 }, { x: 6.5, y: 10.5 }, { x: 6.5, y: 9.5 },
+  // Row 8 going left (6 cells: 32-37)
   { x: 5.5, y: 8.5 }, { x: 4.5, y: 8.5 }, { x: 3.5, y: 8.5 }, { x: 2.5, y: 8.5 }, { x: 1.5, y: 8.5 }, { x: 0.5, y: 8.5 },
+  // Corner at left (1 cell: 38)
   { x: 0.5, y: 7.5 },
+  // Row 6 going right (6 cells: 39-44)
   { x: 0.5, y: 6.5 }, { x: 1.5, y: 6.5 }, { x: 2.5, y: 6.5 }, { x: 3.5, y: 6.5 }, { x: 4.5, y: 6.5 }, { x: 5.5, y: 6.5 },
+  // Go UP (6 cells: 45-50)
   { x: 6.5, y: 5.5 }, { x: 6.5, y: 4.5 }, { x: 6.5, y: 3.5 }, { x: 6.5, y: 2.5 }, { x: 6.5, y: 1.5 }, { x: 6.5, y: 0.5 },
+  // Final corner before home path (1 cell: 51)
   { x: 7.5, y: 0.5 },
 ];
 
 // RIGHT_TRACK: Starts from RIGHT side (13.5, 8.5) going left - YELLOW uses this
 const RIGHT_TRACK: { x: number; y: number }[] = [
+  // Row 8 going left (5 cells: 1-5)
   { x: 13.5, y: 8.5 }, { x: 12.5, y: 8.5 }, { x: 11.5, y: 8.5 }, { x: 10.5, y: 8.5 }, { x: 9.5, y: 8.5 },
+  // Go DOWN (6 cells: 6-11)
   { x: 8.5, y: 9.5 }, { x: 8.5, y: 10.5 }, { x: 8.5, y: 11.5 }, { x: 8.5, y: 12.5 }, { x: 8.5, y: 13.5 }, { x: 8.5, y: 14.5 },
+  // Corner at bottom (1 cell: 12)
   { x: 7.5, y: 14.5 },
+  // Go UP on left side (6 cells: 13-18)
   { x: 6.5, y: 14.5 }, { x: 6.5, y: 13.5 }, { x: 6.5, y: 12.5 }, { x: 6.5, y: 11.5 }, { x: 6.5, y: 10.5 }, { x: 6.5, y: 9.5 },
+  // Row 8 going left (6 cells: 19-24)
   { x: 5.5, y: 8.5 }, { x: 4.5, y: 8.5 }, { x: 3.5, y: 8.5 }, { x: 2.5, y: 8.5 }, { x: 1.5, y: 8.5 }, { x: 0.5, y: 8.5 },
+  // Corner at left (1 cell: 25)
   { x: 0.5, y: 7.5 },
+  // Row 6 going right (6 cells: 26-31)
   { x: 0.5, y: 6.5 }, { x: 1.5, y: 6.5 }, { x: 2.5, y: 6.5 }, { x: 3.5, y: 6.5 }, { x: 4.5, y: 6.5 }, { x: 5.5, y: 6.5 },
+  // Go UP (6 cells: 32-37)
   { x: 6.5, y: 5.5 }, { x: 6.5, y: 4.5 }, { x: 6.5, y: 3.5 }, { x: 6.5, y: 2.5 }, { x: 6.5, y: 1.5 }, { x: 6.5, y: 0.5 },
+  // Corner at top (1 cell: 38)
   { x: 7.5, y: 0.5 },
+  // Go DOWN on right side (6 cells: 39-44)
   { x: 8.5, y: 0.5 }, { x: 8.5, y: 1.5 }, { x: 8.5, y: 2.5 }, { x: 8.5, y: 3.5 }, { x: 8.5, y: 4.5 }, { x: 8.5, y: 5.5 },
+  // Row 6 going right (6 cells: 45-50)
   { x: 9.5, y: 6.5 }, { x: 10.5, y: 6.5 }, { x: 11.5, y: 6.5 }, { x: 12.5, y: 6.5 }, { x: 13.5, y: 6.5 }, { x: 14.5, y: 6.5 },
+  // Final corner before home path (1 cell: 51)
   { x: 14.5, y: 7.5 },
 ];
 
 // BOTTOM_TRACK: Starts from BOTTOM (6.5, 13.5) going up - BLUE uses this
 const BOTTOM_TRACK: { x: number; y: number }[] = [
+  // Column 6 going up (5 cells: 1-5)
   { x: 6.5, y: 13.5 }, { x: 6.5, y: 12.5 }, { x: 6.5, y: 11.5 }, { x: 6.5, y: 10.5 }, { x: 6.5, y: 9.5 },
+  // Row 8 going left (6 cells: 6-11)
   { x: 5.5, y: 8.5 }, { x: 4.5, y: 8.5 }, { x: 3.5, y: 8.5 }, { x: 2.5, y: 8.5 }, { x: 1.5, y: 8.5 }, { x: 0.5, y: 8.5 },
+  // Corner at left (1 cell: 12)
   { x: 0.5, y: 7.5 },
+  // Row 6 going right (6 cells: 13-18)
   { x: 0.5, y: 6.5 }, { x: 1.5, y: 6.5 }, { x: 2.5, y: 6.5 }, { x: 3.5, y: 6.5 }, { x: 4.5, y: 6.5 }, { x: 5.5, y: 6.5 },
+  // Go UP (6 cells: 19-24)
   { x: 6.5, y: 5.5 }, { x: 6.5, y: 4.5 }, { x: 6.5, y: 3.5 }, { x: 6.5, y: 2.5 }, { x: 6.5, y: 1.5 }, { x: 6.5, y: 0.5 },
+  // Corner at top (1 cell: 25)
   { x: 7.5, y: 0.5 },
+  // Go DOWN on right side (6 cells: 26-31)
   { x: 8.5, y: 0.5 }, { x: 8.5, y: 1.5 }, { x: 8.5, y: 2.5 }, { x: 8.5, y: 3.5 }, { x: 8.5, y: 4.5 }, { x: 8.5, y: 5.5 },
+  // Row 6 going right (6 cells: 32-37)
   { x: 9.5, y: 6.5 }, { x: 10.5, y: 6.5 }, { x: 11.5, y: 6.5 }, { x: 12.5, y: 6.5 }, { x: 13.5, y: 6.5 }, { x: 14.5, y: 6.5 },
+  // Corner at right (1 cell: 38)
   { x: 14.5, y: 7.5 },
+  // Row 8 going left (6 cells: 39-44)
   { x: 14.5, y: 8.5 }, { x: 13.5, y: 8.5 }, { x: 12.5, y: 8.5 }, { x: 11.5, y: 8.5 }, { x: 10.5, y: 8.5 }, { x: 9.5, y: 8.5 },
+  // Go DOWN (6 cells: 45-50)
   { x: 8.5, y: 9.5 }, { x: 8.5, y: 10.5 }, { x: 8.5, y: 11.5 }, { x: 8.5, y: 12.5 }, { x: 8.5, y: 13.5 }, { x: 8.5, y: 14.5 },
+  // Final corner before home path (1 cell: 51)
   { x: 7.5, y: 14.5 },
 ];
 
