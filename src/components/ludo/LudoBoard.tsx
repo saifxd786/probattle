@@ -135,12 +135,16 @@ const BLUE_TRACK: { x: number; y: number }[] = [
   { x: 14.5, y: 7.5 },
 ];
 
-// Each color uses its own track path - CORRECT mapping
+// CORRECT mapping based on actual starting positions:
+// - RED tokens start from LEFT side (1.5, 6.5) → GREEN_TRACK starts there
+// - GREEN tokens start from TOP (8.5, 1.5) → YELLOW_TRACK starts there  
+// - YELLOW tokens start from RIGHT side (13.5, 8.5) → BLUE_TRACK starts there
+// - BLUE tokens start from BOTTOM (6.5, 13.5) → RED_TRACK starts there
 const COLOR_TRACKS: { [color: string]: { x: number; y: number }[] } = {
-  red: RED_TRACK,
-  green: GREEN_TRACK,
-  yellow: YELLOW_TRACK,
-  blue: BLUE_TRACK,
+  red: GREEN_TRACK,
+  green: YELLOW_TRACK,
+  yellow: BLUE_TRACK,
+  blue: RED_TRACK,
 };
 
 const HOME_PATHS: { [color: string]: { x: number; y: number }[] } = {
