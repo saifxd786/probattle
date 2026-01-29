@@ -75,22 +75,11 @@ const HOME_POSITIONS: { [color: string]: { x: number; y: number }[] } = {
 };
 
 // Track paths
-const RED_TRACK: { x: number; y: number }[] = [
-  { x: 6.5, y: 13.5 }, { x: 6.5, y: 12.5 }, { x: 6.5, y: 11.5 }, { x: 6.5, y: 10.5 }, { x: 6.5, y: 9.5 },
-  { x: 5.5, y: 8.5 }, { x: 4.5, y: 8.5 }, { x: 3.5, y: 8.5 }, { x: 2.5, y: 8.5 }, { x: 1.5, y: 8.5 }, { x: 0.5, y: 8.5 },
-  { x: 0.5, y: 7.5 },
-  { x: 0.5, y: 6.5 }, { x: 1.5, y: 6.5 }, { x: 2.5, y: 6.5 }, { x: 3.5, y: 6.5 }, { x: 4.5, y: 6.5 }, { x: 5.5, y: 6.5 },
-  { x: 6.5, y: 5.5 }, { x: 6.5, y: 4.5 }, { x: 6.5, y: 3.5 }, { x: 6.5, y: 2.5 }, { x: 6.5, y: 1.5 }, { x: 6.5, y: 0.5 },
-  { x: 7.5, y: 0.5 },
-  { x: 8.5, y: 0.5 }, { x: 8.5, y: 1.5 }, { x: 8.5, y: 2.5 }, { x: 8.5, y: 3.5 }, { x: 8.5, y: 4.5 }, { x: 8.5, y: 5.5 },
-  { x: 9.5, y: 6.5 }, { x: 10.5, y: 6.5 }, { x: 11.5, y: 6.5 }, { x: 12.5, y: 6.5 }, { x: 13.5, y: 6.5 }, { x: 14.5, y: 6.5 },
-  { x: 14.5, y: 7.5 },
-  { x: 14.5, y: 8.5 }, { x: 13.5, y: 8.5 }, { x: 12.5, y: 8.5 }, { x: 11.5, y: 8.5 }, { x: 10.5, y: 8.5 }, { x: 9.5, y: 8.5 },
-  { x: 8.5, y: 9.5 }, { x: 8.5, y: 10.5 }, { x: 8.5, y: 11.5 }, { x: 8.5, y: 12.5 }, { x: 8.5, y: 13.5 }, { x: 8.5, y: 14.5 },
-  { x: 7.5, y: 14.5 },
-];
+// Track coordinates - MUST match useLudoGame.ts exactly!
+// Each track has 51 positions (1-51 main track), tokens enter at position 1
 
-const GREEN_TRACK: { x: number; y: number }[] = [
+// LEFT_TRACK: Starts from LEFT side (1.5, 6.5) going right - RED uses this
+const LEFT_TRACK: { x: number; y: number }[] = [
   { x: 1.5, y: 6.5 }, { x: 2.5, y: 6.5 }, { x: 3.5, y: 6.5 }, { x: 4.5, y: 6.5 }, { x: 5.5, y: 6.5 },
   { x: 6.5, y: 5.5 }, { x: 6.5, y: 4.5 }, { x: 6.5, y: 3.5 }, { x: 6.5, y: 2.5 }, { x: 6.5, y: 1.5 }, { x: 6.5, y: 0.5 },
   { x: 7.5, y: 0.5 },
@@ -105,7 +94,8 @@ const GREEN_TRACK: { x: number; y: number }[] = [
   { x: 0.5, y: 7.5 },
 ];
 
-const YELLOW_TRACK: { x: number; y: number }[] = [
+// TOP_TRACK: Starts from TOP (8.5, 1.5) going down - GREEN uses this
+const TOP_TRACK: { x: number; y: number }[] = [
   { x: 8.5, y: 1.5 }, { x: 8.5, y: 2.5 }, { x: 8.5, y: 3.5 }, { x: 8.5, y: 4.5 }, { x: 8.5, y: 5.5 },
   { x: 9.5, y: 6.5 }, { x: 10.5, y: 6.5 }, { x: 11.5, y: 6.5 }, { x: 12.5, y: 6.5 }, { x: 13.5, y: 6.5 }, { x: 14.5, y: 6.5 },
   { x: 14.5, y: 7.5 },
@@ -120,7 +110,8 @@ const YELLOW_TRACK: { x: number; y: number }[] = [
   { x: 7.5, y: 0.5 },
 ];
 
-const BLUE_TRACK: { x: number; y: number }[] = [
+// RIGHT_TRACK: Starts from RIGHT side (13.5, 8.5) going left - YELLOW uses this
+const RIGHT_TRACK: { x: number; y: number }[] = [
   { x: 13.5, y: 8.5 }, { x: 12.5, y: 8.5 }, { x: 11.5, y: 8.5 }, { x: 10.5, y: 8.5 }, { x: 9.5, y: 8.5 },
   { x: 8.5, y: 9.5 }, { x: 8.5, y: 10.5 }, { x: 8.5, y: 11.5 }, { x: 8.5, y: 12.5 }, { x: 8.5, y: 13.5 }, { x: 8.5, y: 14.5 },
   { x: 7.5, y: 14.5 },
@@ -135,16 +126,28 @@ const BLUE_TRACK: { x: number; y: number }[] = [
   { x: 14.5, y: 7.5 },
 ];
 
-// CORRECT mapping based on actual starting positions:
-// - RED tokens start from LEFT side (1.5, 6.5) → GREEN_TRACK starts there
-// - GREEN tokens start from TOP (8.5, 1.5) → YELLOW_TRACK starts there  
-// - YELLOW tokens start from RIGHT side (13.5, 8.5) → BLUE_TRACK starts there
-// - BLUE tokens start from BOTTOM (6.5, 13.5) → RED_TRACK starts there
+// BOTTOM_TRACK: Starts from BOTTOM (6.5, 13.5) going up - BLUE uses this
+const BOTTOM_TRACK: { x: number; y: number }[] = [
+  { x: 6.5, y: 13.5 }, { x: 6.5, y: 12.5 }, { x: 6.5, y: 11.5 }, { x: 6.5, y: 10.5 }, { x: 6.5, y: 9.5 },
+  { x: 5.5, y: 8.5 }, { x: 4.5, y: 8.5 }, { x: 3.5, y: 8.5 }, { x: 2.5, y: 8.5 }, { x: 1.5, y: 8.5 }, { x: 0.5, y: 8.5 },
+  { x: 0.5, y: 7.5 },
+  { x: 0.5, y: 6.5 }, { x: 1.5, y: 6.5 }, { x: 2.5, y: 6.5 }, { x: 3.5, y: 6.5 }, { x: 4.5, y: 6.5 }, { x: 5.5, y: 6.5 },
+  { x: 6.5, y: 5.5 }, { x: 6.5, y: 4.5 }, { x: 6.5, y: 3.5 }, { x: 6.5, y: 2.5 }, { x: 6.5, y: 1.5 }, { x: 6.5, y: 0.5 },
+  { x: 7.5, y: 0.5 },
+  { x: 8.5, y: 0.5 }, { x: 8.5, y: 1.5 }, { x: 8.5, y: 2.5 }, { x: 8.5, y: 3.5 }, { x: 8.5, y: 4.5 }, { x: 8.5, y: 5.5 },
+  { x: 9.5, y: 6.5 }, { x: 10.5, y: 6.5 }, { x: 11.5, y: 6.5 }, { x: 12.5, y: 6.5 }, { x: 13.5, y: 6.5 }, { x: 14.5, y: 6.5 },
+  { x: 14.5, y: 7.5 },
+  { x: 14.5, y: 8.5 }, { x: 13.5, y: 8.5 }, { x: 12.5, y: 8.5 }, { x: 11.5, y: 8.5 }, { x: 10.5, y: 8.5 }, { x: 9.5, y: 8.5 },
+  { x: 8.5, y: 9.5 }, { x: 8.5, y: 10.5 }, { x: 8.5, y: 11.5 }, { x: 8.5, y: 12.5 }, { x: 8.5, y: 13.5 }, { x: 8.5, y: 14.5 },
+  { x: 7.5, y: 14.5 },
+];
+
+// Map colors to their tracks - SYNCHRONIZED with useLudoGame.ts
 const COLOR_TRACKS: { [color: string]: { x: number; y: number }[] } = {
-  red: GREEN_TRACK,
-  green: YELLOW_TRACK,
-  yellow: BLUE_TRACK,
-  blue: RED_TRACK,
+  red: LEFT_TRACK,     // RED starts from LEFT (1.5, 6.5)
+  green: TOP_TRACK,    // GREEN starts from TOP (8.5, 1.5)
+  yellow: RIGHT_TRACK, // YELLOW starts from RIGHT (13.5, 8.5)
+  blue: BOTTOM_TRACK,  // BLUE starts from BOTTOM (6.5, 13.5)
 };
 
 const HOME_PATHS: { [color: string]: { x: number; y: number }[] } = {

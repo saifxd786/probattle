@@ -753,12 +753,24 @@ export const useLudoGame = () => {
     const movingToken = movingPlayer?.tokens.find(t => t.id === tokenId);
     
     if (movingToken) {
+      const oldPosition = movingToken.position;
       if (movingToken.position === 0 && diceValue === 6) {
         newPosition = 1;
       } else if (movingToken.position > 0) {
         newPosition = Math.min(movingToken.position + diceValue, 57);
       }
       newBoardCoords = getBoardCoords(newPosition, color);
+      
+      // Debug logging
+      console.log('[LudoGame] Token Move:', {
+        color,
+        tokenId,
+        diceValue,
+        oldPosition,
+        newPosition,
+        expectedMove: diceValue,
+        actualMove: newPosition - oldPosition
+      });
     }
     
     const updatedPlayers = players.map(player => {
