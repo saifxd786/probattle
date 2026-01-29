@@ -263,7 +263,13 @@ const LudoPage = () => {
     respondToRematch,
     manualReconnect,
     extendDisconnectCountdown,
-    skipCountdownAndClaimWin
+    skipCountdownAndClaimWin,
+    // Active room resume functionality
+    hasActiveFriendRoom,
+    activeFriendRoomData,
+    isCheckingActiveRoom,
+    resumeFriendRoom,
+    dismissActiveFriendRoom
   } = useFriendLudoGame();
 
   const ENTRY_AMOUNTS = [100, 200, 500, 1000];

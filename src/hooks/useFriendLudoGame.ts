@@ -217,6 +217,18 @@ export const useFriendLudoGame = () => {
   const disconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Active room detection for auto-resume
+  const [hasActiveFriendRoom, setHasActiveFriendRoom] = useState(false);
+  const [activeFriendRoomData, setActiveFriendRoomData] = useState<{
+    roomId: string;
+    roomCode: string;
+    entryAmount: number;
+    rewardAmount: number;
+    isHost: boolean;
+  } | null>(null);
+  const [isCheckingActiveRoom, setIsCheckingActiveRoom] = useState(true);
+  const [shouldAutoResumeFriend, setShouldAutoResumeFriend] = useState(false);
+
   // Fetch wallet balance
   useEffect(() => {
     if (!user) return;
@@ -234,6 +246,75 @@ export const useFriendLudoGame = () => {
     };
 
     fetchBalance();
+  }, [user]);
+
+  // Check for active friend rooms on mount
+  useEffect(() => {
+    if (!user) {
+      setIsCheckingActiveRoom(false);
+      return;
+    }
+
+    const checkActiveRoom = async () => {
+      try {
+        // Find any in-progress or waiting rooms where user is host or guest
+        const { data: activeRoom, error } = await supabase
+          .from('ludo_rooms')
+          .select('*')
+          .or(`host_id.eq.${user.id},guest_id.eq.${user.id}`)
+          .in('status', ['playing', 'ready', 'waiting'])
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (error) {
+          console.error('[FriendLudo] Error checking active room:', error);
+          setIsCheckingActiveRoom(false);
+          return;
+        }
+
+        if (activeRoom) {
+          console.log('[FriendLudo] Found active room:', activeRoom.id);
+          
+          // Check if room was left within 60 seconds (auto-resume window)
+          const lastActiveTime = localStorage.getItem(`ludo_friend_active_${activeRoom.id}`);
+          const now = Date.now();
+          const AUTO_RESUME_WINDOW = 60 * 1000; // 60 seconds
+          
+          let canAutoResume = false;
+          if (lastActiveTime) {
+            const timeSinceLeave = now - parseInt(lastActiveTime, 10);
+            canAutoResume = timeSinceLeave <= AUTO_RESUME_WINDOW;
+            console.log('[FriendLudo] Time since leave:', timeSinceLeave, 'ms, auto-resume:', canAutoResume);
+          }
+          
+          const isHost = activeRoom.host_id === user.id;
+          
+          setHasActiveFriendRoom(true);
+          setActiveFriendRoomData({
+            roomId: activeRoom.id,
+            roomCode: activeRoom.room_code,
+            entryAmount: Number(activeRoom.entry_amount),
+            rewardAmount: Number(activeRoom.reward_amount),
+            isHost
+          });
+          
+          if (canAutoResume) {
+            setShouldAutoResumeFriend(true);
+          } else {
+            // Play alert sound for manual resume
+            soundManager.playDisconnectAlert();
+            hapticManager.warning();
+          }
+        }
+      } catch (err) {
+        console.error('[FriendLudo] Error checking active room:', err);
+      } finally {
+        setIsCheckingActiveRoom(false);
+      }
+    };
+
+    checkActiveRoom();
   }, [user]);
 
   // Ensure we never show phone/email as player name inside an ongoing match, and always show avatars
@@ -997,6 +1078,103 @@ export const useFriendLudoGame = () => {
     // Fetch initial room state
     fetchRoomState(roomId);
   }, [subscribeToRoom, subscribeToPresence, subscribeToChatChannel, subscribeToGameActions]);
+
+  // Resume an active friend room
+  const resumeFriendRoom = useCallback(async () => {
+    if (!user || !activeFriendRoomData) {
+      toast({ title: 'No active room to resume', variant: 'destructive' });
+      return;
+    }
+
+    try {
+      console.log('[FriendLudo] Resuming room:', activeFriendRoomData.roomId);
+      
+      // Start the room connection
+      startRoom(
+        activeFriendRoomData.roomId,
+        activeFriendRoomData.roomCode,
+        activeFriendRoomData.isHost,
+        activeFriendRoomData.entryAmount,
+        activeFriendRoomData.rewardAmount
+      );
+      
+      setHasActiveFriendRoom(false);
+      setActiveFriendRoomData(null);
+      
+      toast({ title: '🎮 Room Resumed!', description: 'Reconnected to your match' });
+      soundManager.playWin();
+    } catch (err) {
+      console.error('[FriendLudo] Error resuming room:', err);
+      toast({ title: 'Failed to resume room', variant: 'destructive' });
+    }
+  }, [user, activeFriendRoomData, startRoom, toast]);
+
+  // Auto-resume effect for friend rooms
+  useEffect(() => {
+    if (shouldAutoResumeFriend && activeFriendRoomData && user) {
+      console.log('[FriendLudo] Auto-resuming room...');
+      setShouldAutoResumeFriend(false);
+      resumeFriendRoom();
+    }
+  }, [shouldAutoResumeFriend, activeFriendRoomData, user, resumeFriendRoom]);
+
+  // Track when user leaves the friend game (for auto-resume detection)
+  useEffect(() => {
+    const isActivePhase = gameState.phase === 'playing' || gameState.phase === 'waiting';
+    if (isActivePhase && gameState.roomId) {
+      // Update active timestamp periodically
+      const updateActiveTime = () => {
+        localStorage.setItem(`ludo_friend_active_${gameState.roomId}`, Date.now().toString());
+      };
+      
+      // Update immediately and then every 5 seconds
+      updateActiveTime();
+      const interval = setInterval(updateActiveTime, 5000);
+      
+      // Also update on visibility change (when user switches tabs)
+      const handleVisibilityChange = () => {
+        if (document.visibilityState === 'hidden') {
+          updateActiveTime();
+        }
+      };
+      document.addEventListener('visibilitychange', handleVisibilityChange);
+      
+      // Cleanup on unmount or phase change
+      return () => {
+        clearInterval(interval);
+        document.removeEventListener('visibilitychange', handleVisibilityChange);
+        // Final update when leaving
+        updateActiveTime();
+      };
+    }
+  }, [gameState.phase, gameState.roomId]);
+
+  // Dismiss active friend room (forfeit)
+  const dismissActiveFriendRoom = useCallback(async () => {
+    if (!user || !activeFriendRoomData) return;
+
+    try {
+      // Mark room as cancelled
+      await supabase
+        .from('ludo_rooms')
+        .update({ 
+          status: 'cancelled',
+          ended_at: new Date().toISOString()
+        })
+        .eq('id', activeFriendRoomData.roomId);
+
+      toast({ 
+        title: 'Room Forfeited', 
+        description: 'Match has been cancelled',
+        variant: 'destructive'
+      });
+
+      setHasActiveFriendRoom(false);
+      setActiveFriendRoomData(null);
+    } catch (err) {
+      console.error('[FriendLudo] Error dismissing room:', err);
+    }
+  }, [user, activeFriendRoomData, toast]);
 
   // Fetch room state
   const fetchRoomState = async (roomId: string) => {
@@ -1841,6 +2019,12 @@ export const useFriendLudoGame = () => {
     respondToRematch,
     manualReconnect,
     extendDisconnectCountdown,
-    skipCountdownAndClaimWin
+    skipCountdownAndClaimWin,
+    // Active room resume functionality
+    hasActiveFriendRoom,
+    activeFriendRoomData,
+    isCheckingActiveRoom,
+    resumeFriendRoom,
+    dismissActiveFriendRoom
   };
 };
