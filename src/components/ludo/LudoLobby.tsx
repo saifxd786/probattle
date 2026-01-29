@@ -63,7 +63,7 @@ const LudoLobby = ({
         }}
       />
 
-      <div className="relative z-10 px-4 pt-4 pb-24 flex-1 flex flex-col">
+      <div className="relative z-10 px-4 pt-4 pb-4 flex-1 flex flex-col overflow-hidden">
         {/* Header - Compact with Back Button */}
         <motion.div
           initial={{ opacity: 0, y: -10 }}
@@ -301,12 +301,12 @@ const LudoLobby = ({
         </motion.div>
 
         {/* Rules Link */}
-        <div className="text-center mt-auto">
+        <div className="text-center mt-auto pt-2 pb-2">
           <Link 
             to="/ludo/rules" 
-            className="inline-flex items-center gap-1 text-[10px] text-gray-500 hover:text-gray-400"
+            className="inline-flex items-center gap-1.5 text-xs text-gray-400 hover:text-gray-300 bg-gray-800/50 px-3 py-1.5 rounded-full border border-gray-700/50"
           >
-            <Info className="w-3 h-3" />
+            <Info className="w-3.5 h-3.5" />
             Rules & Fair Play
           </Link>
         </div>
