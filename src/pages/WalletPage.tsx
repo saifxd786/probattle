@@ -568,13 +568,13 @@ const WalletPage = () => {
 
       {/* Withdraw Dialog */}
       <Dialog open={isWithdrawOpen} onOpenChange={setIsWithdrawOpen}>
-        <DialogContent>
-          <DialogHeader>
+        <DialogContent className="max-h-[90vh] flex flex-col">
+          <DialogHeader className="flex-shrink-0">
             <DialogTitle>Withdraw Money</DialogTitle>
             <DialogDescription>Minimum withdrawal: ₹{MIN_WITHDRAWAL}</DialogDescription>
           </DialogHeader>
           
-          <div className="space-y-4 mt-4">
+          <div className="flex-1 overflow-y-auto space-y-4 mt-4 pr-1">
             {profile && profile.wager_requirement > 0 && (
               <div className="p-4 bg-orange-500/10 border border-orange-500/30 rounded-lg">
                 <div className="flex items-center gap-2 mb-2">
@@ -713,7 +713,9 @@ const WalletPage = () => {
                 </div>
               )}
             </div>
+          </div>
 
+          <div className="flex-shrink-0 pt-4">
             <Button 
               className="w-full bg-red-600 hover:bg-red-700 text-white" 
               onClick={handleWithdraw} 
