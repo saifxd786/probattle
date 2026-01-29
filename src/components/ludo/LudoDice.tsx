@@ -197,11 +197,14 @@ const Dice3DCube = ({
   const getRotationForValue = (val: number) => {
     const rotations: Record<number, { x: number; y: number; z: number }> = {
       1: { x: 0, y: 0, z: 0 },
-      2: { x: 0, y: 90, z: 0 },
+      // Right face (2) -> rotate cube so RIGHT comes to front
+      2: { x: 0, y: -90, z: 0 },
       3: { x: -90, y: 0, z: 0 },
       4: { x: 90, y: 0, z: 0 },
-      5: { x: 0, y: -90, z: 0 },
-      6: { x: 180, y: 0, z: 0 },
+      // Left face (5) -> rotate cube so LEFT comes to front
+      5: { x: 0, y: 90, z: 0 },
+      // Back face (6) -> rotate cube so BACK comes to front
+      6: { x: 0, y: 180, z: 0 },
     };
     return rotations[val] || { x: 0, y: 0, z: 0 };
   };
