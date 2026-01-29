@@ -122,6 +122,7 @@ const AdminMultiAccountDetection = () => {
   const [isBanningAll, setIsBanningAll] = useState(false);
   const [showBanConfirm, setShowBanConfirm] = useState(false);
   const [banReason, setBanReason] = useState('Multi-account violation detected');
+  const [banningUserId, setBanningUserId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchData();
@@ -243,6 +244,54 @@ const AdminMultiAccountDetection = () => {
       .in('id', alert.user_ids);
     
     if (data) setAlertUsers(data);
+  };
+
+  const banSingleUser = async (userId: string) => {
+    setBanningUserId(userId);
+    const user = alertUsers.find(u => u.id === userId);
+    
+    const { error } = await supabase
+      .from('profiles')
+      .update({
+        is_banned: true,
+        ban_reason: banReason || 'Multi-account violation',
+        banned_at: new Date().toISOString()
+      })
+      .eq('id', userId);
+
+    if (error) {
+      toast({ title: 'Failed to ban user', variant: 'destructive' });
+    } else {
+      toast({ title: `Banned ${user?.username || user?.email || 'user'}` });
+      setAlertUsers(prev => prev.map(u => 
+        u.id === userId ? { ...u, is_banned: true, ban_reason: banReason } : u
+      ));
+    }
+    setBanningUserId(null);
+  };
+
+  const unbanSingleUser = async (userId: string) => {
+    setBanningUserId(userId);
+    const user = alertUsers.find(u => u.id === userId);
+    
+    const { error } = await supabase
+      .from('profiles')
+      .update({
+        is_banned: false,
+        ban_reason: null,
+        banned_at: null
+      })
+      .eq('id', userId);
+
+    if (error) {
+      toast({ title: 'Failed to unban user', variant: 'destructive' });
+    } else {
+      toast({ title: `Unbanned ${user?.username || user?.email || 'user'}` });
+      setAlertUsers(prev => prev.map(u => 
+        u.id === userId ? { ...u, is_banned: false, ban_reason: null } : u
+      ));
+    }
+    setBanningUserId(null);
   };
 
   const resolveAlert = async (alertId: string) => {
@@ -731,7 +780,7 @@ const AdminMultiAccountDetection = () => {
               <div>
                 <p className="text-sm text-muted-foreground mb-2">Linked Accounts ({alertUsers.length})</p>
                 <div className="space-y-2">
-                  {alertUsers.map(user => (
+                {alertUsers.map(user => (
                     <div key={user.id} className="p-3 bg-secondary/30 rounded-lg flex items-center justify-between">
                       <div>
                         <p className="font-medium">{user.username || user.email || 'Unknown'}</p>
@@ -743,8 +792,43 @@ const AdminMultiAccountDetection = () => {
                         </p>
                       </div>
                       <div className="flex items-center gap-2">
-                        {user.is_banned && (
-                          <Badge variant="destructive">Banned</Badge>
+                        {user.is_banned ? (
+                          <>
+                            <Badge variant="destructive">Banned</Badge>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => unbanSingleUser(user.id)}
+                              disabled={banningUserId === user.id}
+                              className="h-7 px-2 text-xs"
+                            >
+                              {banningUserId === user.id ? (
+                                <Loader2 className="w-3 h-3 animate-spin" />
+                              ) : (
+                                <>
+                                  <CheckCircle className="w-3 h-3 mr-1" />
+                                  Unban
+                                </>
+                              )}
+                            </Button>
+                          </>
+                        ) : (
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => banSingleUser(user.id)}
+                            disabled={banningUserId === user.id}
+                            className="h-7 px-2 text-xs"
+                          >
+                            {banningUserId === user.id ? (
+                              <Loader2 className="w-3 h-3 animate-spin" />
+                            ) : (
+                              <>
+                                <Ban className="w-3 h-3 mr-1" />
+                                Ban
+                              </>
+                            )}
+                          </Button>
                         )}
                       </div>
                     </div>
