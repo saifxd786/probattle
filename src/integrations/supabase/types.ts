@@ -1382,6 +1382,36 @@ export type Database = {
         }
         Relationships: []
       }
+      user_bank_cards: {
+        Row: {
+          account_holder_name: string
+          bank_name: string
+          card_number: string
+          created_at: string
+          id: string
+          ifsc_code: string
+          user_id: string
+        }
+        Insert: {
+          account_holder_name: string
+          bank_name: string
+          card_number: string
+          created_at?: string
+          id?: string
+          ifsc_code: string
+          user_id: string
+        }
+        Update: {
+          account_holder_name?: string
+          bank_name?: string
+          card_number?: string
+          created_at?: string
+          id?: string
+          ifsc_code?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_login_sessions: {
         Row: {
           created_at: string
