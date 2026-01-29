@@ -20,6 +20,7 @@ const ThimbleGame = () => {
     handleSelection,
     resetGame,
     setEntryAmount,
+    setCupPositions,
     rewardAmount,
     getDifficultySettings
   } = useThimbleGame();
@@ -99,6 +100,10 @@ const ThimbleGame = () => {
     if (gameState.phase !== 'result') return null;
 
     const isWin = gameState.isWin;
+    const ballCupNumber = (() => {
+      const idx = gameState.cupPositions?.indexOf(gameState.ballPosition) ?? -1;
+      return idx >= 0 ? idx + 1 : gameState.ballPosition + 1;
+    })();
 
     return createPortal(
       <AnimatePresence>
@@ -152,7 +157,7 @@ const ThimbleGame = () => {
               </motion.p>
             ) : (
               <p className="text-muted-foreground mb-6">
-                The ball was under cup {gameState.ballPosition + 1}
+                The ball was under cup {ballCupNumber}
               </p>
             )}
 
@@ -314,6 +319,7 @@ const ThimbleGame = () => {
               difficulty={selectedDifficulty}
               shuffleDuration={diffSettings.shuffleDuration}
               onSelectCup={handleSelection}
+              onCupOrderChange={setCupPositions}
             />
 
             {/* Revealing phase text */}
