@@ -24,6 +24,7 @@ interface LudoLobbyProps {
   onPlayWithFriend: () => void;
   selectedAvatar: string | null;
   onSelectAvatar: (avatar: string | null) => void;
+  userAvatar?: string | null;
 }
 
 const ENTRY_AMOUNTS = [10, 20, 50, 100, 200, 500, 1000, 5000];
@@ -41,6 +42,7 @@ const LudoLobby = ({
   onPlayWithFriend,
   selectedAvatar,
   onSelectAvatar,
+  userAvatar,
 }: LudoLobbyProps) => {
   const navigate = useNavigate();
   const rewardAmount = entryAmount * settings.rewardMultiplier;
@@ -105,7 +107,7 @@ const LudoLobby = ({
             {/* Avatar Picker - Top Right */}
             {user && (
               <LudoAvatarPicker
-                userAvatar={user.avatar_url}
+                userAvatar={userAvatar}
                 selectedAvatar={selectedAvatar}
                 onSelectAvatar={onSelectAvatar}
               />
