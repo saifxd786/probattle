@@ -405,8 +405,8 @@ const LudoDice = ({ value, isRolling, onRoll, disabled, canRoll, compact = false
   };
 
   return (
-    <div className={cn("flex items-center justify-center gap-4", compact && "gap-3")}>
-      {/* Ultra Premium Wooden Dice Platform */}
+    <div className="flex items-center justify-center">
+      {/* Ultra Premium Wooden Dice Platform - Tappable */}
       <motion.div
         className={cn(
           'relative rounded-2xl',
@@ -578,138 +578,6 @@ const LudoDice = ({ value, isRolling, onRoll, disabled, canRoll, compact = false
           )}
         </AnimatePresence>
       </motion.div>
-
-      {/* Ultra Premium Roll Button - Enhanced */}
-      <motion.button
-        onClick={handleRoll}
-        disabled={disabled || !canRoll || isRolling}
-        className={cn(
-          'relative rounded-2xl font-bold overflow-hidden transition-all',
-          compact ? 'px-5 py-3.5 text-xs' : 'px-9 py-5 text-sm',
-          canRoll && !disabled && !isRolling
-            ? 'text-amber-950'
-            : 'bg-gradient-to-b from-gray-600 to-gray-800 text-gray-400 cursor-not-allowed'
-        )}
-        style={canRoll && !disabled && !isRolling ? {
-          background: `
-            linear-gradient(180deg, 
-              #FFFDE7 0%, 
-              #FFF8E1 8%,
-              #FFECB3 20%,
-              #FFD54F 40%, 
-              #FFC107 60%,
-              #FFB300 78%,
-              #FF8F00 92%,
-              #E65100 100%
-            )
-          `,
-          boxShadow: `
-            0 8px 30px rgba(255,152,0,0.55),
-            0 4px 12px rgba(0,0,0,0.3),
-            inset 0 3px 8px rgba(255,255,255,0.8),
-            inset 0 -4px 8px rgba(0,0,0,0.2)
-          `,
-          border: '3px solid #F57C00',
-          borderTopColor: '#FFCC80',
-          borderBottomColor: '#BF360C',
-        } : {
-          border: '3px solid #444',
-          boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.3)'
-        }}
-        whileHover={canRoll && !disabled && !isRolling ? { 
-          scale: 1.06, 
-          y: -4,
-          boxShadow: '0 12px 40px rgba(255,152,0,0.65), 0 6px 20px rgba(0,0,0,0.35)'
-        } : {}}
-        whileTap={canRoll && !disabled && !isRolling ? { scale: 0.94, y: 0 } : {}}
-      >
-        {/* Animated gradient shine effect */}
-        {canRoll && !disabled && !isRolling && (
-          <>
-            <motion.div
-              className="absolute inset-0 pointer-events-none"
-              style={{
-                background: 'linear-gradient(105deg, transparent 30%, rgba(255,255,255,0.7) 48%, rgba(255,255,255,0.4) 52%, transparent 70%)',
-              }}
-              animate={{ x: ['-200%', '200%'] }}
-              transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut', repeatDelay: 0.5 }}
-            />
-            {/* Outer glow pulse */}
-            <motion.div
-              className="absolute inset-[-3px] rounded-2xl pointer-events-none"
-              style={{ border: '2px solid rgba(255,215,0,0.5)' }}
-              animate={{ 
-                opacity: [0.3, 0.7, 0.3],
-                boxShadow: ['0 0 10px rgba(255,215,0,0.3)', '0 0 25px rgba(255,215,0,0.6)', '0 0 10px rgba(255,215,0,0.3)']
-              }}
-              transition={{ duration: 1.5, repeat: Infinity }}
-            />
-          </>
-        )}
-        
-        {/* Button content */}
-        <span className="relative z-10 flex items-center gap-3 font-black tracking-wider uppercase">
-          {isRolling ? (
-            <>
-              <motion.span
-                animate={{ rotate: 360, scale: [1, 1.4, 1] }}
-                transition={{ duration: 0.3, repeat: Infinity, ease: 'linear' }}
-                className="text-2xl"
-              >
-                🎲
-              </motion.span>
-              <span className="text-amber-900 font-extrabold">Rolling...</span>
-            </>
-          ) : canRoll ? (
-            <>
-              <motion.div className="relative">
-                <motion.span 
-                  className="text-2xl"
-                  animate={{ 
-                    scale: [1, 1.2, 1],
-                    rotate: [0, 10, -10, 0],
-                  }}
-                  transition={{ duration: 1.2, repeat: Infinity }}
-                >
-                  🎲
-                </motion.span>
-                {/* Sparkle effect */}
-                <motion.span
-                  className="absolute -top-1 -right-1 text-[10px]"
-                  animate={{ 
-                    opacity: [0, 1, 0],
-                    scale: [0.5, 1, 0.5],
-                  }}
-                  transition={{ duration: 0.8, repeat: Infinity, delay: 0.3 }}
-                >
-                  ✨
-                </motion.span>
-              </motion.div>
-              <span className="font-extrabold">Tap to Roll</span>
-            </>
-          ) : null}
-        </span>
-
-        {/* Bottom edge highlight */}
-        {canRoll && !disabled && !isRolling && (
-          <div 
-            className="absolute bottom-1 left-3 right-3 h-1 rounded-full opacity-60"
-            style={{
-              background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.6), transparent)'
-            }}
-          />
-        )}
-        
-        {/* Corner accents */}
-        {canRoll && !disabled && !isRolling && (
-          <>
-            <div className="absolute top-1 left-1 w-2 h-2 border-t-2 border-l-2 border-amber-200/60 rounded-tl" />
-            <div className="absolute top-1 right-1 w-2 h-2 border-t-2 border-r-2 border-amber-200/60 rounded-tr" />
-            <div className="absolute bottom-1 left-1 w-2 h-2 border-b-2 border-l-2 border-amber-800/30 rounded-bl" />
-            <div className="absolute bottom-1 right-1 w-2 h-2 border-b-2 border-r-2 border-amber-800/30 rounded-br" />
-          </>
-        )}
-      </motion.button>
     </div>
   );
 };
