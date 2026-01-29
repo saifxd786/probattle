@@ -99,8 +99,16 @@ const ThimbleCups = ({
   // Get X position based on cup's position in order array - responsive
   const getXPosition = (cupIndex: number) => {
     const orderIndex = cupOrder.indexOf(cupIndex);
-    // Smaller spacing for mobile
-    const spacing = typeof window !== 'undefined' && window.innerWidth < 400 ? 75 : 100;
+    // Smaller spacing for mobile to prevent cups going off-screen
+    const screenWidth = typeof window !== 'undefined' ? window.innerWidth : 400;
+    let spacing = 100;
+    if (screenWidth < 360) {
+      spacing = 55;
+    } else if (screenWidth < 400) {
+      spacing = 65;
+    } else if (screenWidth < 500) {
+      spacing = 75;
+    }
     return (orderIndex - 1) * spacing;
   };
 
@@ -236,7 +244,7 @@ const ThimbleCups = ({
   };
 
   return (
-    <div className="relative flex items-center justify-center h-48 w-full overflow-hidden">
+    <div className="relative flex items-center justify-center h-48 w-full px-4">
       {/* Table surface */}
       <div 
         className="absolute bottom-0 left-0 right-0 h-12 rounded-t-3xl"
