@@ -375,19 +375,24 @@ const TimerAvatar = ({
             stroke={isOffline ? '#EF4444' : isLowTime ? '#F59E0B' : colors?.main || '#1E88E5'}
             strokeWidth={strokeWidth}
             strokeLinecap="round"
-            strokeDasharray={perimeter}
-            strokeDashoffset={strokeDashoffset}
-            className="transition-all duration-1000 ease-linear"
+            strokeDasharray={`${perimeter} ${perimeter}`}
+            initial={false}
+            animate={{
+              strokeDashoffset,
+              opacity: isLowTime ? [1, 0.55, 1] : 1,
+            }}
+            transition={{
+              strokeDashoffset: { duration: 1, ease: 'linear', type: 'tween' },
+              opacity: isLowTime
+                ? { duration: 0.45, repeat: Infinity, ease: 'easeInOut', type: 'tween' }
+                : { duration: 0.2, ease: 'linear', type: 'tween' },
+            }}
             style={{
               filter: isLowTime 
                 ? 'drop-shadow(0 0 6px #F59E0B)' 
                 : `drop-shadow(0 0 6px ${colors?.main})`,
               transformOrigin: 'center',
             }}
-            animate={isLowTime ? { 
-              filter: ['drop-shadow(0 0 4px #F59E0B)', 'drop-shadow(0 0 10px #F59E0B)', 'drop-shadow(0 0 4px #F59E0B)']
-            } : {}}
-            transition={{ duration: 0.5, repeat: Infinity }}
           />
         )}
       </svg>
