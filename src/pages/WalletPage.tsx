@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Wallet, Plus, ArrowUpRight, ArrowDownLeft, History, Loader2, MessageCircle, AlertCircle, Gift, CreditCard, Lock, Building2 } from 'lucide-react';
+import { Wallet, Plus, ArrowUpRight, ArrowDownLeft, History, Loader2, MessageCircle, AlertCircle, Gift, CreditCard, Lock, Building2, Clock, CheckCircle } from 'lucide-react';
 import phonepeLogo from '@/assets/phonepe-logo.png';
 import gpayLogo from '@/assets/gpay-logo.png';
 import paytmLogo from '@/assets/paytm-logo.png';
@@ -593,8 +593,20 @@ const WalletPage = () => {
                       }`}>
                         {['deposit', 'prize', 'refund', 'admin_credit'].includes(tx.type) ? '+' : '-'}₹{tx.amount}
                       </div>
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${getStatusColor(tx.status)}`}>
-                        {tx.status}
+                      <span className={`inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full ${getStatusColor(tx.status)}`}>
+                        {tx.status === 'pending' || tx.status === 'processing' ? (
+                          <>
+                            <Clock className="w-3 h-3" />
+                            {tx.status}
+                          </>
+                        ) : tx.status === 'completed' ? (
+                          <>
+                            <CheckCircle className="w-3 h-3" />
+                            {tx.status}
+                          </>
+                        ) : (
+                          tx.status
+                        )}
                       </span>
                     </div>
                   </div>
