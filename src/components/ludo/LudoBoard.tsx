@@ -536,7 +536,85 @@ const TimerAvatar = ({
   );
 };
 
-// Bottom info bar with square timer avatars
+// Compact Player Avatar for 4-player mode
+const CompactPlayerAvatar = ({
+  player,
+  isCurrentTurn,
+  turnTimeLeft,
+  offlineTimeLeft,
+  size = 40,
+}: {
+  player: Player | undefined;
+  isCurrentTurn: boolean;
+  turnTimeLeft?: number;
+  offlineTimeLeft?: number;
+  size?: number;
+}) => {
+  const colors = COLORS[player?.color as keyof typeof COLORS];
+  const avatarSrc = player?.avatar || COLOR_AVATARS[player?.color as keyof typeof COLOR_AVATARS] || redAvatar;
+  
+  const maxTime = offlineTimeLeft !== undefined ? 60 : 15;
+  const timeLeft = offlineTimeLeft ?? turnTimeLeft ?? maxTime;
+  const isLowTime = timeLeft <= 5;
+  const isOffline = offlineTimeLeft !== undefined && offlineTimeLeft < 60;
+  const displayName = player?.name || player?.uid || 'Player';
+  
+  return (
+    <div className="flex flex-col items-center gap-1" style={{ width: size + 10 }}>
+      {/* Avatar with border */}
+      <div 
+        className="relative rounded-lg overflow-hidden"
+        style={{
+          width: size,
+          height: size,
+          border: isCurrentTurn 
+            ? `2px solid ${isLowTime ? '#EF4444' : colors?.main || '#1E88E5'}` 
+            : '2px solid rgba(255,255,255,0.2)',
+          boxShadow: isCurrentTurn ? `0 0 10px ${colors?.main}80` : 'none',
+        }}
+      >
+        <img 
+          src={avatarSrc} 
+          alt={displayName} 
+          className="w-full h-full object-cover"
+          style={{ opacity: isOffline ? 0.5 : 1 }}
+        />
+        
+        {/* Offline indicator */}
+        {isOffline && (
+          <div className="absolute inset-0 flex items-center justify-center bg-black/50">
+            <span className="text-[6px] font-bold text-red-400 uppercase">OFF</span>
+          </div>
+        )}
+      </div>
+      
+      {/* Name - truncated */}
+      <div 
+        className="text-[9px] font-medium text-center truncate w-full"
+        style={{ color: isCurrentTurn ? colors?.main : 'rgba(255,255,255,0.7)' }}
+      >
+        {displayName.length > 6 ? displayName.slice(0, 6) + '...' : displayName}
+      </div>
+      
+      {/* Turn indicator with timer */}
+      {isCurrentTurn && (
+        <motion.div 
+          className="px-1.5 py-0.5 rounded text-[8px] font-bold"
+          style={{
+            background: isLowTime ? '#EF4444' : colors?.main,
+            color: '#fff',
+          }}
+          animate={isLowTime ? { scale: [1, 1.1, 1] } : {}}
+          transition={{ duration: 0.5, repeat: Infinity }}
+        >
+          {timeLeft}s
+        </motion.div>
+      )}
+    </div>
+  );
+};
+
+// Bottom info bar - supports 2 or 4 players
 const BottomInfoBar = ({ 
   players,
   turnTimeLeft,
@@ -546,10 +624,38 @@ const BottomInfoBar = ({
   turnTimeLeft?: number;
   offlineTimeLeft?: number;
 }) => {
+  const is4Player = players.length === 4;
+  
+  if (is4Player) {
+    // 4 Player Layout - All 4 players in a row with compact avatars
+    return (
+      <div 
+        className="flex items-center justify-between px-2 py-2 rounded-xl"
+        style={{
+          background: 'linear-gradient(180deg, rgba(20,20,30,0.95) 0%, rgba(10,10,20,0.98) 100%)',
+          border: '1px solid rgba(255,255,255,0.08)',
+          boxShadow: '0 4px 20px rgba(0,0,0,0.4)'
+        }}
+      >
+        {players.map((player, index) => (
+          <CompactPlayerAvatar
+            key={player?.color || index}
+            player={player}
+            isCurrentTurn={player?.isCurrentTurn || false}
+            turnTimeLeft={player?.isCurrentTurn ? turnTimeLeft : undefined}
+            offlineTimeLeft={player?.isCurrentTurn ? offlineTimeLeft : undefined}
+            size={36}
+          />
+        ))}
+      </div>
+    );
+  }
+  
+  // 2 Player Layout - Original design
   const leftPlayer = players[0];
   const rightPlayer = players[1];
-  const leftUID = leftPlayer?.uid || useMemo(() => generateUID(), []);
-  const rightUID = rightPlayer?.uid || useMemo(() => generateUID(), []);
+  const leftUID = leftPlayer?.uid || generateUID();
+  const rightUID = rightPlayer?.uid || generateUID();
   
   return (
     <div 
@@ -570,7 +676,7 @@ const BottomInfoBar = ({
           offlineTimeLeft={leftPlayer?.isCurrentTurn ? offlineTimeLeft : undefined}
         />
         <div className="text-left pt-1">
-          <div className="text-white font-bold text-sm">{leftUID}</div>
+          <div className="text-white font-bold text-sm">{leftPlayer?.name || leftUID}</div>
           <div className="flex items-center gap-1">
             <span className="text-yellow-400 text-[10px]">💰</span>
             <span className="text-yellow-300 text-[10px] font-medium">{leftPlayer?.coins || 1250}</span>
@@ -592,7 +698,7 @@ const BottomInfoBar = ({
       {/* Right Player Info */}
       <div className="flex items-center gap-2.5">
         <div className="text-right pt-1">
-          <div className="text-white font-bold text-sm">{rightUID}</div>
+          <div className="text-white font-bold text-sm">{rightPlayer?.name || rightUID}</div>
           <div className="flex items-center justify-end gap-1">
             <span className="text-yellow-400 text-[10px]">💰</span>
             <span className="text-yellow-300 text-[10px] font-medium">{rightPlayer?.coins || 1250}</span>

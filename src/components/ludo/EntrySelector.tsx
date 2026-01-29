@@ -77,7 +77,7 @@ const EntrySelector = ({
             )}
           </motion.button>
 
-          {/* 2v2 Mode */}
+          {/* 4 Player Mode */}
           <motion.button
             whileTap={{ scale: 0.98 }}
             onClick={() => onPlayerModeChange(4)}
@@ -103,13 +103,13 @@ const EntrySelector = ({
                 "font-bold text-sm",
                 playerMode === 4 ? "text-white" : "text-gray-400"
               )}>
-                2 vs 2
+                4 Player
               </p>
               <p className={cn(
                 "text-[10px]",
                 playerMode === 4 ? "text-amber-400" : "text-gray-500"
               )}>
-                4 Players
+                Battle Royale
               </p>
             </div>
 
@@ -118,6 +118,11 @@ const EntrySelector = ({
                 <Check className="w-3 h-3 text-white" />
               </div>
             )}
+            
+            {/* NEW badge */}
+            <div className="absolute -top-1.5 -right-1 px-1.5 py-0.5 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 text-[7px] font-bold text-white">
+              NEW
+            </div>
           </motion.button>
         </div>
       </div>
