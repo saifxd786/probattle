@@ -106,7 +106,7 @@ const BGMIPage = () => {
   };
 
   const currentBanner = activeTab === 'TDM Matches' ? tdmBanner : classicBanner;
-  const currentBannerTitle = activeTab === 'TDM Matches' ? 'TDM Matches' : 'Classic Erangel';
+  const currentBannerTitle = activeTab === 'TDM Matches' ? 'TDM Matches' : 'Classic Matches';
 
   const getMatchMode = (match: Match) => {
     switch (match.match_type) {
@@ -179,7 +179,7 @@ const BGMIPage = () => {
               />
               <div>
                 <h1 className="font-display text-2xl font-bold drop-shadow-lg">
-                  {activeTab === 'TDM Matches' ? 'TDM Matches' : 'Classic Erangel'}
+                  {activeTab === 'TDM Matches' ? 'TDM Matches' : 'Classic Matches'}
                 </h1>
                 <p className="text-xs text-foreground/80">
                   {activeTab === 'TDM Matches' 
