@@ -5,6 +5,7 @@ import ThimbleCups from './ThimbleCups';
 import ThimbleEntrySelector from './ThimbleEntrySelector';
 import { useThimbleGame, ThimbleDifficulty } from '@/hooks/useThimbleGame';
 import { cn } from '@/lib/utils';
+import ConfettiCelebration from '@/components/ConfettiCelebration';
 
 const ThimbleGame = () => {
   const {
@@ -56,6 +57,8 @@ const ThimbleGame = () => {
       borderColor: 'border-red-500/30',
     },
   ];
+
+  const showConfetti = gameState.phase === 'result' && gameState.isWin === true;
 
   const renderPhaseIndicator = () => {
     const phases = [
@@ -174,7 +177,7 @@ const ThimbleGame = () => {
 
   return (
     <div className="relative min-h-[500px]">
-      
+      <ConfettiCelebration isActive={showConfetti} />
       <AnimatePresence mode="wait">
         {gameState.phase === 'idle' && (
           <motion.div

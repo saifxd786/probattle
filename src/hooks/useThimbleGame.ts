@@ -49,7 +49,7 @@ export const useThimbleGame = () => {
     selectionTimeImpossible: 2,
     rewardMultiplierEasy: 1.5,
     rewardMultiplierHard: 2,
-    rewardMultiplierImpossible: 3,
+    rewardMultiplierImpossible: 2,
   });
   
   const [selectedDifficulty, setSelectedDifficulty] = useState<ThimbleDifficulty>('easy');
