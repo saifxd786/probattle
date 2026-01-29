@@ -13,6 +13,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { useMemoryCleanup } from '@/hooks/useMemoryCleanup';
 import { useUpdateAvailable } from '@/hooks/useUpdateAvailable';
+import { useMaintenanceMode } from '@/hooks/useMaintenanceMode';
 
 // Lazy load all pages for better initial load performance
 const Index = lazy(() => import("./pages/Index"));
@@ -36,6 +37,7 @@ const MinesPage = lazy(() => import("./pages/MinesPage"));
 const GameHistoryPage = lazy(() => import("./pages/GameHistoryPage"));
 const FriendsPage = lazy(() => import("./pages/FriendsPage"));
 const NotFound = lazy(() => import("./pages/NotFound"));
+const MaintenancePage = lazy(() => import("./pages/MaintenancePage"));
 
 // Admin pages
 const AdminLayout = lazy(() => import("./components/admin/AdminLayout"));
@@ -109,6 +111,29 @@ const ForceUpdateWrapper = ({ children }: { children: React.ReactNode }) => {
   );
 };
 
+// Maintenance mode wrapper
+const MaintenanceWrapper = ({ children }: { children: React.ReactNode }) => {
+  const { isMaintenanceMode, isLoading } = useMaintenanceMode();
+  const pathname = window.location.pathname;
+  
+  // Allow admin and agent routes even during maintenance
+  const isAdminOrAgentRoute = pathname.startsWith('/admin') || pathname.startsWith('/agent');
+  
+  if (isLoading) {
+    return <PageLoader />;
+  }
+  
+  if (isMaintenanceMode && !isAdminOrAgentRoute) {
+    return (
+      <Suspense fallback={<PageLoader />}>
+        <MaintenancePage />
+      </Suspense>
+    );
+  }
+  
+  return <>{children}</>;
+};
+
 const App = () => {
   const [showSplash, setShowSplash] = useState(true);
   const [hasShownSplash, setHasShownSplash] = useState(false);
@@ -142,13 +167,14 @@ const App = () => {
                 <Sonner />
                 <OfflineIndicator />
               <BrowserRouter>
-                <NotificationPermissionGate>
-                  <Suspense fallback={<PageLoader />}>
-                    <Routes>
-                      <Route path="/" element={<Index />} />
-                      <Route path="/bgmi" element={<BGMIPage />} />
-                      <Route path="/matches" element={<MatchesPage />} />
-                      <Route path="/my-games" element={<MyGamesPage />} />
+                <MaintenanceWrapper>
+                  <NotificationPermissionGate>
+                    <Suspense fallback={<PageLoader />}>
+                      <Routes>
+                        <Route path="/" element={<Index />} />
+                        <Route path="/bgmi" element={<BGMIPage />} />
+                        <Route path="/matches" element={<MatchesPage />} />
+                        <Route path="/my-games" element={<MyGamesPage />} />
                       <Route path="/wallet" element={<WalletPage />} />
                       <Route path="/support" element={<SupportPage />} />
                       <Route path="/auth" element={<AuthPage />} />
@@ -192,10 +218,11 @@ const App = () => {
                         <Route path="matches" element={<AgentMatches />} />
                         <Route path="transactions" element={<AgentTransactions />} />
                       </Route>
-                      <Route path="*" element={<NotFound />} />
-                    </Routes>
-                  </Suspense>
-                </NotificationPermissionGate>
+                        <Route path="*" element={<NotFound />} />
+                      </Routes>
+                    </Suspense>
+                  </NotificationPermissionGate>
+                </MaintenanceWrapper>
               </BrowserRouter>
               </ForceUpdateWrapper>
             </MemoryCleanupWrapper>
