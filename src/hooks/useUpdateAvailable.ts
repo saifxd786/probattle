@@ -1,14 +1,14 @@
 import { useEffect, useState, useCallback } from 'react';
-import { toast } from 'sonner';
 
 export const useUpdateAvailable = () => {
   const [updateAvailable, setUpdateAvailable] = useState(false);
   const [registration, setRegistration] = useState<ServiceWorkerRegistration | null>(null);
   const [isChecking, setIsChecking] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
 
+  // Check for updates immediately on mount
   const checkForUpdate = useCallback(async () => {
     if (!('serviceWorker' in navigator)) {
-      toast.info('Service worker not supported');
       return;
     }
 
@@ -23,34 +23,21 @@ export const useUpdateAvailable = () => {
       if (reg.waiting) {
         setRegistration(reg);
         setUpdateAvailable(true);
-        toast.success('New update available!', {
-          description: 'Click "Apply Update Now" to update.',
-        });
         return;
       }
 
       // Check installing worker
       if (reg.installing) {
-        toast.info('Update downloading...', {
-          description: 'Please wait while the update downloads.',
-        });
-        
         reg.installing.addEventListener('statechange', function() {
           if (this.state === 'installed' && navigator.serviceWorker.controller) {
             setRegistration(reg);
             setUpdateAvailable(true);
-            toast.success('Update ready!', {
-              description: 'Click "Apply Update Now" to update.',
-            });
           }
         });
         return;
       }
-
-      toast.info('App is up to date!');
     } catch (err) {
       console.log('Update check failed:', err);
-      toast.error('Failed to check for updates');
     } finally {
       setIsChecking(false);
     }
@@ -63,7 +50,7 @@ export const useUpdateAvailable = () => {
       try {
         const reg = await navigator.serviceWorker.ready;
         
-        // Check for waiting worker (update available)
+        // Check for waiting worker immediately (update available)
         if (reg.waiting) {
           setRegistration(reg);
           setUpdateAvailable(true);
@@ -87,20 +74,26 @@ export const useUpdateAvailable = () => {
       }
     };
 
+    // Check immediately on mount
     setupUpdateListener();
+    checkForUpdate();
 
     // Listen for controller change (after update)
     navigator.serviceWorker.addEventListener('controllerchange', () => {
       window.location.reload();
     });
-  }, []);
+  }, [checkForUpdate]);
 
-  const applyUpdate = () => {
+  const applyUpdate = useCallback(() => {
     if (registration?.waiting) {
-      registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+      setIsUpdating(true);
+      
+      // Give a slight delay to show the progress animation
+      setTimeout(() => {
+        registration.waiting?.postMessage({ type: 'SKIP_WAITING' });
+      }, 1500);
     }
-    setUpdateAvailable(false);
-  };
+  }, [registration]);
 
-  return { updateAvailable, applyUpdate, checkForUpdate, isChecking };
+  return { updateAvailable, applyUpdate, checkForUpdate, isChecking, isUpdating };
 };
