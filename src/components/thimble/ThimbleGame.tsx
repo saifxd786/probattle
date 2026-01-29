@@ -6,6 +6,7 @@ import ThimbleEntrySelector from './ThimbleEntrySelector';
 import { useThimbleGame, ThimbleDifficulty } from '@/hooks/useThimbleGame';
 import { cn } from '@/lib/utils';
 import ConfettiCelebration from '@/components/ConfettiCelebration';
+import { createPortal } from 'react-dom';
 
 const ThimbleGame = () => {
   const {
@@ -58,8 +59,6 @@ const ThimbleGame = () => {
     },
   ];
 
-  const showConfetti = gameState.phase === 'result' && gameState.isWin === true;
-
   const renderPhaseIndicator = () => {
     const phases = [
       { phase: 'showing', icon: Eye, label: 'Watch the Ball' },
@@ -101,69 +100,76 @@ const ThimbleGame = () => {
 
     const isWin = gameState.isWin;
 
-    return (
-      <motion.div
-        initial={{ opacity: 0, scale: 0.8 }}
-        animate={{ opacity: 1, scale: 1 }}
-        className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
-      >
+    return createPortal(
+      <AnimatePresence>
         <motion.div
-          initial={{ y: 50 }}
-          animate={{ y: 0 }}
-          className={`glass-card p-8 max-w-sm w-full text-center border-2 ${
-            isWin ? 'border-green-500/50' : 'border-red-500/50'
-          }`}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
+          style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}
         >
+          {isWin && <ConfettiCelebration isActive={true} />}
           <motion.div
-            initial={{ scale: 0 }}
-            animate={{ scale: 1, rotate: isWin ? [0, 10, -10, 0] : 0 }}
-            transition={{ delay: 0.2, type: 'spring' }}
-            className={`w-20 h-20 mx-auto mb-6 rounded-full flex items-center justify-center ${
-              isWin 
-                ? 'bg-gradient-to-br from-green-400 to-emerald-500' 
-                : 'bg-gradient-to-br from-red-400 to-red-600'
+            initial={{ scale: 0.8, y: 50 }}
+            animate={{ scale: 1, y: 0 }}
+            transition={{ type: 'spring', damping: 20 }}
+            className={`glass-card p-8 max-w-sm w-full text-center border-2 relative z-10 ${
+              isWin ? 'border-green-500/50' : 'border-red-500/50'
             }`}
           >
+            <motion.div
+              initial={{ scale: 0 }}
+              animate={{ scale: 1, rotate: isWin ? [0, 10, -10, 0] : 0 }}
+              transition={{ delay: 0.2, type: 'spring' }}
+              className={`w-20 h-20 mx-auto mb-6 rounded-full flex items-center justify-center ${
+                isWin 
+                  ? 'bg-gradient-to-br from-green-400 to-emerald-500' 
+                  : 'bg-gradient-to-br from-red-400 to-red-600'
+              }`}
+            >
+              {isWin ? (
+                <Trophy className="w-10 h-10 text-white" />
+              ) : (
+                <X className="w-10 h-10 text-white" />
+              )}
+            </motion.div>
+
+            <h2 className={`font-display text-3xl font-bold mb-2 ${
+              isWin ? 'text-green-400' : 'text-red-400'
+            }`}>
+              {isWin ? 'YOU WON!' : 'WRONG CUP!'}
+            </h2>
+
             {isWin ? (
-              <Trophy className="w-10 h-10 text-white" />
+              <motion.p
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.4 }}
+                className="text-2xl font-display font-bold text-gradient mb-6"
+              >
+                +₹{Math.floor(rewardAmount)}
+              </motion.p>
             ) : (
-              <X className="w-10 h-10 text-white" />
+              <p className="text-muted-foreground mb-6">
+                The ball was under cup {gameState.ballPosition + 1}
+              </p>
             )}
+
+            <div className="flex gap-3">
+              <Button
+                onClick={resetGame}
+                size="lg"
+                className="flex-1"
+              >
+                <RotateCcw className="w-4 h-4 mr-2" />
+                Play Again
+              </Button>
+            </div>
           </motion.div>
-
-          <h2 className={`font-display text-3xl font-bold mb-2 ${
-            isWin ? 'text-green-400' : 'text-red-400'
-          }`}>
-            {isWin ? 'YOU WON!' : 'WRONG CUP!'}
-          </h2>
-
-          {isWin ? (
-            <motion.p
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.4 }}
-              className="text-2xl font-display font-bold text-gradient mb-6"
-            >
-              +₹{Math.floor(rewardAmount)}
-            </motion.p>
-          ) : (
-            <p className="text-muted-foreground mb-6">
-              The ball was under cup {gameState.ballPosition + 1}
-            </p>
-          )}
-
-          <div className="flex gap-3">
-            <Button
-              variant="outline"
-              onClick={resetGame}
-              className="flex-1"
-            >
-              <RotateCcw className="w-4 h-4 mr-2" />
-              Play Again
-            </Button>
-          </div>
         </motion.div>
-      </motion.div>
+      </AnimatePresence>,
+      document.body
     );
   };
 
@@ -177,7 +183,6 @@ const ThimbleGame = () => {
 
   return (
     <div className="relative min-h-[500px]">
-      <ConfettiCelebration isActive={showConfetti} />
       <AnimatePresence mode="wait">
         {gameState.phase === 'idle' && (
           <motion.div
