@@ -2,7 +2,6 @@ import { motion } from 'framer-motion';
 import { Gamepad2 } from 'lucide-react';
 import Header from '@/components/Header';
 import BottomNav from '@/components/BottomNav';
-import TelegramFloat from '@/components/TelegramFloat';
 import GameCard from '@/components/GameCard';
 
 import bgmiCard from '@/assets/bgmi-card.jpg';
@@ -49,7 +48,6 @@ const MatchesPage = () => {
       </main>
 
       <BottomNav />
-      <TelegramFloat />
     </div>
   );
 };
