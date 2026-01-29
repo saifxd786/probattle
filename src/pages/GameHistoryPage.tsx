@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { History, Trophy, XCircle, Gamepad2, Loader2, Calendar, TrendingUp, TrendingDown, Gem, Bomb } from 'lucide-react';
+import { History, Trophy, XCircle, Gamepad2, Loader2, Calendar, TrendingUp, TrendingDown, Gem, Bomb, Percent, Wallet } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import Header from '@/components/Header';
 import BottomNav from '@/components/BottomNav';
@@ -146,6 +146,14 @@ const GameHistoryPage = () => {
     totalLost: minesGames.filter(g => g.status === 'lost').reduce((sum, g) => sum + Number(g.entry_amount), 0),
   };
 
+  // Overall combined stats
+  const overallTotalGames = ludoStats.total + thimbleStats.total + minesStats.total;
+  const overallTotalWins = ludoStats.wins + thimbleStats.wins + minesStats.wins;
+  const overallTotalWon = ludoStats.totalWon + thimbleStats.totalWon + minesStats.totalWon;
+  const overallTotalLost = ludoStats.totalLost + thimbleStats.totalLost + minesStats.totalLost;
+  const overallNetProfit = overallTotalWon - overallTotalLost;
+  const overallWinRate = overallTotalGames > 0 ? (overallTotalWins / overallTotalGames) * 100 : 0;
+
   const getDifficultyColor = (difficulty: string) => {
     switch (difficulty) {
       case 'easy': return 'bg-green-500/20 text-green-500';
@@ -182,6 +190,98 @@ const GameHistoryPage = () => {
             <Loader2 className="w-8 h-8 animate-spin text-primary" />
           </div>
         ) : (
+          <>
+            {/* Overall Performance Summary */}
+            {overallTotalGames > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 }}
+              >
+                <Card className="glass-card border-primary/20 bg-gradient-to-br from-primary/5 to-transparent">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <TrendingUp className="w-5 h-5 text-primary" />
+                      Overall Performance
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {/* Main Stats Row */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                      <div className="text-center p-3 bg-secondary/30 rounded-lg">
+                        <Gamepad2 className="w-5 h-5 mx-auto mb-1 text-primary" />
+                        <p className="font-display text-2xl font-bold">{overallTotalGames}</p>
+                        <p className="text-xs text-muted-foreground">Total Games</p>
+                      </div>
+                      <div className="text-center p-3 bg-secondary/30 rounded-lg">
+                        <Trophy className="w-5 h-5 mx-auto mb-1 text-yellow-500" />
+                        <p className="font-display text-2xl font-bold">{overallTotalWins}</p>
+                        <p className="text-xs text-muted-foreground">Victories</p>
+                      </div>
+                      <div className="text-center p-3 bg-secondary/30 rounded-lg">
+                        <Percent className="w-5 h-5 mx-auto mb-1 text-blue-500" />
+                        <p className="font-display text-2xl font-bold">{overallWinRate.toFixed(1)}%</p>
+                        <p className="text-xs text-muted-foreground">Win Rate</p>
+                      </div>
+                      <div className="text-center p-3 bg-secondary/30 rounded-lg">
+                        <Wallet className="w-5 h-5 mx-auto mb-1" style={{ color: overallNetProfit >= 0 ? '#22c55e' : '#ef4444' }} />
+                        <p className={`font-display text-2xl font-bold ${overallNetProfit >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                          {overallNetProfit >= 0 ? '+' : ''}₹{overallNetProfit}
+                        </p>
+                        <p className="text-xs text-muted-foreground">Net Profit</p>
+                      </div>
+                    </div>
+
+                    {/* Win Rate Progress */}
+                    <div>
+                      <div className="flex items-center justify-between mb-2 text-sm">
+                        <span className="text-muted-foreground">Win Rate</span>
+                        <span className="font-medium">{overallTotalWins}W / {overallTotalGames - overallTotalWins}L</span>
+                      </div>
+                      <div className="h-3 bg-secondary rounded-full overflow-hidden flex">
+                        <div 
+                          className="h-full bg-gradient-to-r from-green-500 to-emerald-400 transition-all duration-500"
+                          style={{ width: `${overallWinRate}%` }}
+                        />
+                        <div 
+                          className="h-full bg-gradient-to-r from-red-400 to-red-500"
+                          style={{ width: `${100 - overallWinRate}%` }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Game-wise Breakdown */}
+                    <div className="grid grid-cols-3 gap-2 pt-2">
+                      <div className="text-center p-2 bg-blue-500/10 rounded-lg border border-blue-500/20">
+                        <Gamepad2 className="w-4 h-4 mx-auto mb-1 text-blue-500" />
+                        <p className="text-xs font-medium">Ludo</p>
+                        <p className="text-sm font-bold">{ludoStats.wins}/{ludoStats.total}</p>
+                        <p className="text-[10px] text-muted-foreground">
+                          {ludoStats.total > 0 ? ((ludoStats.wins / ludoStats.total) * 100).toFixed(0) : 0}% win
+                        </p>
+                      </div>
+                      <div className="text-center p-2 bg-purple-500/10 rounded-lg border border-purple-500/20">
+                        <span className="text-sm">🎩</span>
+                        <p className="text-xs font-medium">Thimble</p>
+                        <p className="text-sm font-bold">{thimbleStats.wins}/{thimbleStats.total}</p>
+                        <p className="text-[10px] text-muted-foreground">
+                          {thimbleStats.total > 0 ? ((thimbleStats.wins / thimbleStats.total) * 100).toFixed(0) : 0}% win
+                        </p>
+                      </div>
+                      <div className="text-center p-2 bg-emerald-500/10 rounded-lg border border-emerald-500/20">
+                        <Gem className="w-4 h-4 mx-auto mb-1 text-emerald-500" />
+                        <p className="text-xs font-medium">Mines</p>
+                        <p className="text-sm font-bold">{minesStats.wins}/{minesStats.total}</p>
+                        <p className="text-[10px] text-muted-foreground">
+                          {minesStats.total > 0 ? ((minesStats.wins / minesStats.total) * 100).toFixed(0) : 0}% win
+                        </p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            )}
+
           <Tabs defaultValue="ludo" className="space-y-4">
             <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="ludo" className="gap-2">
@@ -235,6 +335,26 @@ const GameHistoryPage = () => {
                   </CardContent>
                 </Card>
               </motion.div>
+
+              {/* Win Rate */}
+              {ludoStats.total > 0 && (
+                <Card className="glass-card">
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm text-muted-foreground">Win Rate</span>
+                      <span className="font-display font-bold text-primary">
+                        {((ludoStats.wins / ludoStats.total) * 100).toFixed(1)}%
+                      </span>
+                    </div>
+                    <div className="h-2 bg-secondary rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-gradient-to-r from-primary to-blue-500"
+                        style={{ width: `${(ludoStats.wins / ludoStats.total) * 100}%` }}
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
 
               {/* Ludo Games List */}
               <Card className="glass-card">
@@ -526,7 +646,9 @@ const GameHistoryPage = () => {
               </Card>
             </TabsContent>
           </Tabs>
-        )}
+          </>
+        )
+        }
       </main>
 
       <BottomNav />
