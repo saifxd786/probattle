@@ -17,3 +17,10 @@ verify_jwt = false
 
 [functions.ip-geolocation]
 verify_jwt = false
+
+[functions.scheduled-deposit-cleanup]
+verify_jwt = false
+
+# Run deposit cleanup every hour
+[functions.scheduled-deposit-cleanup.schedule]
+cron = "0 * * * *"
