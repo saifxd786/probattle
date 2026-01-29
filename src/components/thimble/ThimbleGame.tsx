@@ -120,7 +120,7 @@ const ThimbleGame = () => {
           >
             <motion.div
               initial={{ scale: 0 }}
-              animate={{ scale: 1, rotate: isWin ? [0, 10, -10, 0] : 0 }}
+              animate={{ scale: 1 }}
               transition={{ delay: 0.2, type: 'spring' }}
               className={`w-20 h-20 mx-auto mb-6 rounded-full flex items-center justify-center ${
                 isWin 
