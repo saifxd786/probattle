@@ -199,15 +199,20 @@ export const useFriendLudoGame = () => {
   const [syncStatus, setSyncStatus] = useState<'synced' | 'checking' | 'mismatch' | 'resyncing'>('synced');
   const [lastMismatchTime, setLastMismatchTime] = useState<number | null>(null);
   
-  // Connection status state
+  // Connection status state - enhanced for better monitoring
   const [connectionStatus, setConnectionStatus] = useState<'connected' | 'disconnected' | 'reconnecting'>('connected');
+  const [connectionQuality, setConnectionQuality] = useState<'excellent' | 'good' | 'fair' | 'poor'>('excellent');
   const [reconnectAttempts, setReconnectAttempts] = useState(0);
   
-  // Ping/latency tracking
+  // Ping/latency tracking - enhanced for stability
   const [pingLatency, setPingLatency] = useState<number | null>(null);
   const pingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const pendingPingsRef = useRef<Map<string, number>>(new Map());
   const lastHighPingWarningRef = useRef<number>(0);
+  const pingHistoryRef = useRef<number[]>([]); // Track last 10 pings for stability
+  const heartbeatIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const lastHeartbeatRef = useRef<number>(Date.now());
+  const heartbeatMissedRef = useRef<number>(0);
 
   const [walletBalance, setWalletBalance] = useState(0);
   const [opponentOnline, setOpponentOnline] = useState(false);
@@ -391,32 +396,77 @@ export const useFriendLudoGame = () => {
     channelRef.current = channel;
   }, []);
 
-  // Subscribe to presence for opponent online status
+  // Subscribe to presence for opponent online status with enhanced heartbeat
   const subscribeToPresence = useCallback((roomId: string) => {
     if (presenceChannelRef.current) {
       supabase.removeChannel(presenceChannelRef.current);
     }
 
     const channel = supabase
-      .channel(`ludo-presence-${roomId}`)
+      .channel(`ludo-presence-${roomId}`, {
+        config: {
+          presence: {
+            key: user?.id || 'anonymous',
+          },
+        },
+      })
       .on('presence', { event: 'sync' }, () => {
         const state = channel.presenceState();
-        const onlineUsers = Object.keys(state).length;
-        setOpponentOnline(onlineUsers >= 2);
+        const onlineCount = Object.keys(state).length;
+        setOpponentOnline(onlineCount >= 2);
+        
+        // Update last heartbeat time when we get presence sync
+        lastHeartbeatRef.current = Date.now();
+        heartbeatMissedRef.current = 0;
       })
-      .on('presence', { event: 'join' }, () => {
+      .on('presence', { event: 'join' }, ({ key }) => {
+        console.log('[LudoPresence] Player joined:', key);
         setOpponentOnline(true);
+        lastHeartbeatRef.current = Date.now();
+        heartbeatMissedRef.current = 0;
+        
+        // Play sound when opponent joins
+        soundManager.playTurnChange();
+        hapticManager.selection();
       })
-      .on('presence', { event: 'leave' }, () => {
+      .on('presence', { event: 'leave' }, ({ key }) => {
+        console.log('[LudoPresence] Player left:', key);
         const state = channel.presenceState();
         setOpponentOnline(Object.keys(state).length >= 2);
       })
       .subscribe(async (status) => {
+        console.log('[LudoPresence] Channel status:', status);
         if (status === 'SUBSCRIBED' && user) {
           await channel.track({
             user_id: user.id,
-            online_at: new Date().toISOString()
+            online_at: new Date().toISOString(),
+            last_heartbeat: Date.now()
           });
+          
+          // Start heartbeat interval - track presence every 5 seconds
+          if (heartbeatIntervalRef.current) {
+            clearInterval(heartbeatIntervalRef.current);
+          }
+          heartbeatIntervalRef.current = setInterval(async () => {
+            try {
+              await channel.track({
+                user_id: user.id,
+                online_at: new Date().toISOString(),
+                last_heartbeat: Date.now()
+              });
+              lastHeartbeatRef.current = Date.now();
+            } catch (err) {
+              console.warn('[LudoPresence] Heartbeat failed:', err);
+              heartbeatMissedRef.current++;
+              
+              // If we miss 3 heartbeats, mark as disconnected
+              if (heartbeatMissedRef.current >= 3) {
+                setConnectionStatus('disconnected');
+              }
+            }
+          }, 5000);
+        } else if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
+          setConnectionStatus('disconnected');
         }
       });
 
@@ -569,18 +619,49 @@ export const useFriendLudoGame = () => {
           const latency = Date.now() - originalTimestamp;
           pendingPingsRef.current.delete(pingId);
           
-          // Use exponential moving average to smooth ping values
+          // Track ping history for stability (last 10 pings)
+          pingHistoryRef.current.push(latency);
+          if (pingHistoryRef.current.length > 10) {
+            pingHistoryRef.current.shift();
+          }
+          
+          // Calculate average ping from history for stability
+          const avgPing = pingHistoryRef.current.length > 0 
+            ? Math.round(pingHistoryRef.current.reduce((a, b) => a + b, 0) / pingHistoryRef.current.length)
+            : latency;
+          
+          // Use exponential moving average for smooth display
           setPingLatency(prev => {
-            if (prev === null) return latency;
-            return Math.round(prev * 0.7 + latency * 0.3);
+            if (prev === null) return avgPing;
+            return Math.round(prev * 0.6 + avgPing * 0.4);
           });
           
-          // Only show warning if opponent is online and ping is consistently high
+          // Calculate connection quality based on ping stability
+          const pingVariance = pingHistoryRef.current.length > 1
+            ? Math.sqrt(pingHistoryRef.current.reduce((sum, p) => sum + Math.pow(p - avgPing, 2), 0) / pingHistoryRef.current.length)
+            : 0;
+          
+          if (avgPing < 100 && pingVariance < 30) {
+            setConnectionQuality('excellent');
+          } else if (avgPing < 200 && pingVariance < 50) {
+            setConnectionQuality('good');
+          } else if (avgPing < 400) {
+            setConnectionQuality('fair');
+          } else {
+            setConnectionQuality('poor');
+          }
+          
+          // Update heartbeat on successful pong
+          lastHeartbeatRef.current = Date.now();
+          heartbeatMissedRef.current = 0;
+          setConnectionStatus('connected');
+          
+          // Only show warning for very poor connection
           const now = Date.now();
-          if (latency > 500 && now - lastHighPingWarningRef.current > 60000) {
+          if (latency > 800 && now - lastHighPingWarningRef.current > 120000) {
             lastHighPingWarningRef.current = now;
-            sonnerToast.warning(`Network latency: ${latency}ms`, {
-              description: 'Connection may be slow',
+            sonnerToast.warning(`High latency detected: ${latency}ms`, {
+              description: 'Try moving closer to your router',
               duration: 3000,
             });
           }
@@ -2013,6 +2094,9 @@ export const useFriendLudoGame = () => {
       if (countdownIntervalRef.current) {
         clearInterval(countdownIntervalRef.current);
       }
+      if (heartbeatIntervalRef.current) {
+        clearInterval(heartbeatIntervalRef.current);
+      }
     };
   }, []);
 
@@ -2023,6 +2107,7 @@ export const useFriendLudoGame = () => {
     opponentDisconnectCountdown,
     syncStatus,
     connectionStatus,
+    connectionQuality,
     reconnectAttempts,
     pingLatency,
     startRoom,
