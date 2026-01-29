@@ -568,15 +568,20 @@ export const useFriendLudoGame = () => {
         if (senderId !== user?.id && pendingPingsRef.current.has(pingId)) {
           const latency = Date.now() - originalTimestamp;
           pendingPingsRef.current.delete(pingId);
-          setPingLatency(latency);
           
-          // Show warning if ping exceeds 300ms (but not more than once per 30 seconds)
+          // Use exponential moving average to smooth ping values
+          setPingLatency(prev => {
+            if (prev === null) return latency;
+            return Math.round(prev * 0.7 + latency * 0.3);
+          });
+          
+          // Only show warning if opponent is online and ping is consistently high
           const now = Date.now();
-          if (latency > 300 && now - lastHighPingWarningRef.current > 30000) {
+          if (latency > 500 && now - lastHighPingWarningRef.current > 60000) {
             lastHighPingWarningRef.current = now;
-            sonnerToast.error(`Poor connection: ${latency}ms latency`, {
-              description: 'Game may lag. Check your network.',
-              duration: 5000,
+            sonnerToast.warning(`Network latency: ${latency}ms`, {
+              description: 'Connection may be slow',
+              duration: 3000,
             });
           }
         }
@@ -603,6 +608,8 @@ export const useFriendLudoGame = () => {
         clearInterval(pingIntervalRef.current);
         pingIntervalRef.current = null;
       }
+      // Reset ping when not in active phase
+      setPingLatency(null);
       return;
     }
 
@@ -620,28 +627,40 @@ export const useFriendLudoGame = () => {
         payload: { senderId: user.id, pingId, timestamp }
       });
       
-      // Clean up old pending pings (> 5 seconds)
+      // Clean up old pending pings (> 3 seconds = likely no response coming)
       const now = Date.now();
+      let missedPings = 0;
       pendingPingsRef.current.forEach((time, id) => {
-        if (now - time > 5000) {
+        if (now - time > 3000) {
           pendingPingsRef.current.delete(id);
+          missedPings++;
         }
       });
+      
+      // If we're missing too many pings and opponent is supposed to be online, connection might be bad
+      // But don't show high ping if opponent is offline - that's expected
+      if (missedPings > 0 && !opponentOnline) {
+        // Opponent offline - reset ping to null (don't show high values)
+        setPingLatency(null);
+      }
     };
 
-    // Send initial ping
-    sendPing();
+    // Send initial ping after short delay to let channel establish
+    const initialDelay = setTimeout(() => {
+      sendPing();
+    }, 500);
     
-    // Send ping every 3 seconds
-    pingIntervalRef.current = setInterval(sendPing, 3000);
+    // Send ping every 2 seconds for more responsive updates
+    pingIntervalRef.current = setInterval(sendPing, 2000);
 
     return () => {
+      clearTimeout(initialDelay);
       if (pingIntervalRef.current) {
         clearInterval(pingIntervalRef.current);
         pingIntervalRef.current = null;
       }
     };
-  }, [gameState.phase, user]);
+  }, [gameState.phase, user, opponentOnline]);
 
   // Broadcast game action instantly
   const broadcastAction = useCallback(async (event: string, payload: any) => {
