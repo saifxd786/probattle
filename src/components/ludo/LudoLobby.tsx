@@ -1,8 +1,8 @@
 import { motion } from 'framer-motion';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { 
   Dices, Wallet, Trophy, Users, Zap, UserPlus, Info, 
-  Gamepad2, Star, Play, ChevronRight, Shield, Timer, Gift, Flame
+  Gamepad2, Star, Play, ChevronRight, Shield, Timer, Gift, Flame, ArrowLeft
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import EntrySelector from './EntrySelector';
@@ -37,6 +37,7 @@ const LudoLobby = ({
   startMatchmaking,
   onPlayWithFriend,
 }: LudoLobbyProps) => {
+  const navigate = useNavigate();
   const rewardAmount = entryAmount * settings.rewardMultiplier;
 
   return (
@@ -63,13 +64,21 @@ const LudoLobby = ({
       />
 
       <div className="relative z-10 px-4 pt-4 pb-24 flex-1 flex flex-col">
-        {/* Header - Compact */}
+        {/* Header - Compact with Back Button */}
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="text-center mb-3"
+          className="mb-3"
         >
-          <div className="flex items-center justify-center gap-3">
+          <div className="flex items-center gap-3">
+            {/* Back Button */}
+            <button
+              onClick={() => navigate('/')}
+              className="w-9 h-9 rounded-xl bg-gray-800/60 border border-gray-700/50 flex items-center justify-center text-gray-400 hover:text-white hover:bg-gray-700/60 transition-colors"
+            >
+              <ArrowLeft className="w-5 h-5" />
+            </button>
+            
             <motion.div
               className="inline-flex items-center justify-center w-10 h-10 rounded-xl"
               style={{
