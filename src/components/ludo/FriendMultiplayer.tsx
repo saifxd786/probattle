@@ -184,8 +184,9 @@ const FriendMultiplayer = ({
           className="flex items-center gap-3 mb-6"
         >
           <button 
-            onClick={onBack}
-            className="w-10 h-10 rounded-xl bg-gray-900/50 border border-gray-800 flex items-center justify-center"
+            type="button"
+            onClick={() => onBack()}
+            className="w-10 h-10 rounded-xl bg-gray-900/50 border border-gray-800 flex items-center justify-center hover:bg-gray-800/50 active:scale-95 transition-all"
           >
             <ArrowLeft className="w-5 h-5 text-gray-400" />
           </button>
@@ -417,9 +418,10 @@ const FriendMultiplayer = ({
           className="flex items-center gap-3 mb-6"
         >
           <button 
-            onClick={handleCancelRoom}
+            type="button"
+            onClick={() => handleCancelRoom()}
             disabled={isLoading}
-            className="w-10 h-10 rounded-xl bg-gray-900/50 border border-gray-800 flex items-center justify-center"
+            className="w-10 h-10 rounded-xl bg-gray-900/50 border border-gray-800 flex items-center justify-center hover:bg-gray-800/50 active:scale-95 transition-all disabled:opacity-50"
           >
             <ArrowLeft className="w-5 h-5 text-gray-400" />
           </button>
@@ -614,8 +616,9 @@ const FriendMultiplayer = ({
         className="flex items-center gap-3 mb-6"
       >
         <button 
+          type="button"
           onClick={() => setMode('select')}
-          className="w-10 h-10 rounded-xl bg-gray-900/50 border border-gray-800 flex items-center justify-center"
+          className="w-10 h-10 rounded-xl bg-gray-900/50 border border-gray-800 flex items-center justify-center hover:bg-gray-800/50 active:scale-95 transition-all"
         >
           <ArrowLeft className="w-5 h-5 text-gray-400" />
         </button>
