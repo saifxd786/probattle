@@ -80,6 +80,116 @@ const getLiveUsersCount = (): string => {
   return `${baseUsers}`;
 };
 
+const SquareTurnTimerAvatar = ({
+  avatarUrl,
+  fallbackText,
+  borderColor,
+  isActive,
+  timeLeft,
+  badgeSide,
+}: {
+  avatarUrl?: string | null;
+  fallbackText: string;
+  borderColor: string;
+  isActive: boolean;
+  timeLeft: number;
+  badgeSide: 'left' | 'right';
+}) => {
+  const maxTime = 15;
+  const safeTimeLeft = Math.max(0, Math.min(maxTime, timeLeft));
+  const progress = (safeTimeLeft / maxTime) * 100;
+  const isLowTime = safeTimeLeft <= 5;
+
+  const size = 56; // matches w-14/h-14
+  const strokeWidth = 3;
+  const innerSize = size - strokeWidth;
+  const perimeter = innerSize * 4;
+  const strokeDashoffset = perimeter - (progress / 100) * perimeter;
+
+  return (
+    <div className="relative" style={{ width: size, height: size }}>
+      <svg className="absolute inset-0" width={size} height={size} style={{ zIndex: 10 }}>
+        <rect
+          x={strokeWidth / 2}
+          y={strokeWidth / 2}
+          width={innerSize}
+          height={innerSize}
+          rx={10}
+          ry={10}
+          fill="none"
+          stroke="rgba(255,255,255,0.15)"
+          strokeWidth={strokeWidth}
+        />
+
+        {isActive && (
+          <motion.rect
+            x={strokeWidth / 2}
+            y={strokeWidth / 2}
+            width={innerSize}
+            height={innerSize}
+            rx={10}
+            ry={10}
+            fill="none"
+            stroke={isLowTime ? '#E53935' : borderColor}
+            strokeWidth={strokeWidth}
+            strokeLinecap="round"
+            strokeDasharray={`${perimeter} ${perimeter}`}
+            initial={false}
+            animate={{
+              strokeDashoffset,
+              opacity: isLowTime ? [1, 0.55, 1] : 1,
+            }}
+            transition={{
+              strokeDashoffset: { duration: 1, ease: 'linear', type: 'tween' },
+              opacity: isLowTime
+                ? { duration: 0.45, repeat: Infinity, ease: 'easeInOut', type: 'tween' }
+                : { duration: 0.2, ease: 'linear', type: 'tween' },
+            }}
+            style={{
+              filter: isLowTime
+                ? 'drop-shadow(0 0 10px rgba(229,57,53,0.75))'
+                : `drop-shadow(0 0 10px ${borderColor}80)`,
+              transformOrigin: 'center',
+            }}
+          />
+        )}
+      </svg>
+
+      <div
+        className="absolute rounded-xl overflow-hidden"
+        style={{
+          top: strokeWidth,
+          left: strokeWidth,
+          width: size - strokeWidth * 2,
+          height: size - strokeWidth * 2,
+          background: `linear-gradient(135deg, ${borderColor}dd, ${borderColor}88)`,
+        }}
+      >
+        {avatarUrl ? (
+          <img src={avatarUrl} alt={fallbackText} className="w-full h-full object-cover" />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center text-white font-bold text-lg">
+            {fallbackText}
+          </div>
+        )}
+      </div>
+
+      {isActive && (
+        <div
+          className={
+            badgeSide === 'left'
+              ? 'absolute -bottom-1 -left-1 px-1.5 py-0.5 rounded text-[10px] font-bold text-white'
+              : 'absolute -bottom-1 -right-1 px-1.5 py-0.5 rounded text-[10px] font-bold text-white'
+          }
+          style={{ background: isLowTime ? '#E53935' : '#43A047' }}
+        >
+          {safeTimeLeft}s
+        </div>
+      )}
+    </div>
+  );
+};
+
 const LudoPage = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -312,39 +422,14 @@ const LudoPage = () => {
               return (
                 <div className="flex items-center gap-2">
                   {/* Avatar with Timer */}
-                  <div className="relative">
-                    {player.avatar ? (
-                      <img 
-                        src={player.avatar}
-                        alt={player.name}
-                        className="w-14 h-14 rounded-xl object-cover"
-                        style={{ 
-                          border: `2px solid ${colorMap[player.color]}`,
-                          boxShadow: isActive ? `0 0 12px ${colorMap[player.color]}80` : 'none'
-                        }}
-                      />
-                    ) : (
-                      <div 
-                        className="w-14 h-14 rounded-xl flex items-center justify-center text-white font-bold text-lg"
-                        style={{ 
-                          background: `linear-gradient(135deg, ${colorMap[player.color]}dd, ${colorMap[player.color]}88)`,
-                          border: `2px solid ${colorMap[player.color]}`,
-                          boxShadow: isActive ? `0 0 12px ${colorMap[player.color]}80` : 'none'
-                        }}
-                      >
-                        {player.isBot ? '🤖' : player.name.slice(0, 2).toUpperCase()}
-                      </div>
-                    )}
-                    {/* Timer Badge */}
-                    {isActive && turnTimeLeft !== null && (
-                      <div 
-                        className="absolute -bottom-1 -left-1 px-1.5 py-0.5 rounded text-[10px] font-bold text-white"
-                        style={{ background: turnTimeLeft <= 5 ? '#E53935' : '#43A047' }}
-                      >
-                        {turnTimeLeft}s
-                      </div>
-                    )}
-                  </div>
+                  <SquareTurnTimerAvatar
+                    avatarUrl={player.avatar}
+                    fallbackText={player.isBot ? '🤖' : player.name.slice(0, 2).toUpperCase()}
+                    borderColor={colorMap[player.color]}
+                    isActive={isActive}
+                    timeLeft={turnTimeLeft}
+                    badgeSide="left"
+                  />
                   {/* Info */}
                   <div className="text-left">
                     <p className="text-white/80 font-medium text-xs">{player.name}</p>
@@ -378,39 +463,14 @@ const LudoPage = () => {
               return (
                 <div className="flex items-center gap-2 flex-row-reverse">
                   {/* Avatar with Timer */}
-                  <div className="relative">
-                    {player.avatar ? (
-                      <img 
-                        src={player.avatar}
-                        alt={player.name}
-                        className="w-14 h-14 rounded-xl object-cover"
-                        style={{ 
-                          border: `2px solid ${colorMap[player.color]}`,
-                          boxShadow: isActive ? `0 0 12px ${colorMap[player.color]}80` : 'none'
-                        }}
-                      />
-                    ) : (
-                      <div 
-                        className="w-14 h-14 rounded-xl flex items-center justify-center text-white font-bold text-lg"
-                        style={{ 
-                          background: `linear-gradient(135deg, ${colorMap[player.color]}dd, ${colorMap[player.color]}88)`,
-                          border: `2px solid ${colorMap[player.color]}`,
-                          boxShadow: isActive ? `0 0 12px ${colorMap[player.color]}80` : 'none'
-                        }}
-                      >
-                        {player.isBot ? '🤖' : player.name.slice(0, 2).toUpperCase()}
-                      </div>
-                    )}
-                    {/* Timer Badge */}
-                    {isActive && turnTimeLeft !== null && (
-                      <div 
-                        className="absolute -bottom-1 -right-1 px-1.5 py-0.5 rounded text-[10px] font-bold text-white"
-                        style={{ background: turnTimeLeft <= 5 ? '#E53935' : '#43A047' }}
-                      >
-                        {turnTimeLeft}s
-                      </div>
-                    )}
-                  </div>
+                  <SquareTurnTimerAvatar
+                    avatarUrl={player.avatar}
+                    fallbackText={player.isBot ? '🤖' : player.name.slice(0, 2).toUpperCase()}
+                    borderColor={colorMap[player.color]}
+                    isActive={isActive}
+                    timeLeft={turnTimeLeft}
+                    badgeSide="right"
+                  />
                   {/* Info */}
                   <div className="text-right">
                     <p className="text-white/80 font-medium text-xs">{player.name}</p>

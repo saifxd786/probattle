@@ -559,7 +559,7 @@ const LudoDice = ({ value, isRolling, onRoll, disabled, canRoll, compact = false
               initial={{ opacity: 0, scale: 0, y: 10, rotate: -20 }}
               animate={{ opacity: 1, scale: 1, y: 0, rotate: [0, -5, 5, 0] }}
               exit={{ opacity: 0, scale: 0, y: -10 }}
-              transition={{ type: 'spring', stiffness: 400, damping: 15 }}
+              transition={{ duration: 0.45, ease: 'easeInOut', type: 'tween' }}
               className="absolute -top-4 -right-4 px-3 py-2 rounded-full text-sm font-black text-white shadow-xl"
               style={{
                 background: 'linear-gradient(135deg, #FFF59D 0%, #FFE082 15%, #FFD54F 35%, #FFCA28 55%, #FF9800 80%, #F57C00 100%)',

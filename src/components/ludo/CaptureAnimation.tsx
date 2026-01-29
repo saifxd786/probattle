@@ -140,7 +140,7 @@ const CaptureAnimation = ({ isActive, position, capturedColor, onComplete }: Cap
               x: [0, -5, 5, -3, 3, 0],
               y: [0, 3, -3, 2, -2, 0]
             }}
-            transition={{ duration: 0.3 }}
+             transition={{ duration: 0.3, ease: 'linear', type: 'tween' }}
           />
         </>
       )}
