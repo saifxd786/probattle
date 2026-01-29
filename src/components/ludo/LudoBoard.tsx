@@ -567,12 +567,12 @@ const LudoBoard = ({ players, onTokenClick, selectedToken, captureEvent, onCaptu
             <polygon points="9,6 7.5,7.5 9,9" fill={COLORS.yellow.main} />
             <polygon points="6,9 7.5,7.5 9,9" fill={COLORS.blue.main} />
 
-            {/* Safe spot stars - Only 4 starting position stars */}
+            {/* Safe spot stars - 4 safe positions */}
             {[
-              { x: 2.5, y: 6.5 },   // Red start area
-              { x: 8.5, y: 2.5 },   // Green start area
-              { x: 12.5, y: 8.5 },  // Yellow start area
-              { x: 6.5, y: 12.5 },  // Blue start area
+              { x: 6.5, y: 2.5 },
+              { x: 2.5, y: 8.5 },
+              { x: 8.5, y: 12.5 },
+              { x: 12.5, y: 6.5 },
             ].map(({ x, y }, i) => (
               <g key={`star-${i}`} transform={`translate(${x}, ${y})`}>
                 {/* 5-pointed star - white fill with dark gray stroke */}
