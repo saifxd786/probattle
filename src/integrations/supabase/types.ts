@@ -1072,6 +1072,7 @@ export type Database = {
           referred_id: string
           referrer_id: string
           reward_amount: number
+          status: string
         }
         Insert: {
           created_at?: string
@@ -1082,6 +1083,7 @@ export type Database = {
           referred_id: string
           referrer_id: string
           reward_amount?: number
+          status?: string
         }
         Update: {
           created_at?: string
@@ -1092,6 +1094,7 @@ export type Database = {
           referred_id?: string
           referrer_id?: string
           reward_amount?: number
+          status?: string
         }
         Relationships: []
       }
@@ -1528,6 +1531,7 @@ export type Database = {
         Returns: boolean
       }
       cancel_ludo_room: { Args: { p_room_id: string }; Returns: Json }
+      check_referral_eligibility: { Args: { p_user_id: string }; Returns: Json }
       check_spin_availability: { Args: never; Returns: Json }
       claim_daily_bonus: { Args: never; Returns: Json }
       claim_referral_rewards: { Args: never; Returns: Json }
