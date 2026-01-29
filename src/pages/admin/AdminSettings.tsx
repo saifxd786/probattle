@@ -9,7 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/hooks/use-toast';
 import { useMaintenanceMode } from '@/hooks/useMaintenanceMode';
 import { usePaymentQR } from '@/hooks/usePaymentQR';
-import { usePaymentUPI } from '@/hooks/usePaymentUPI';
+import { usePaymentUPI, validateUPIId } from '@/hooks/usePaymentUPI';
 
 const AdminSettings = () => {
   const { 
@@ -128,16 +128,17 @@ const AdminSettings = () => {
   };
 
   const handleUPISave = () => {
-    if (!upiIdLocal.trim() || !upiIdLocal.includes('@')) {
-      toast({ title: 'Error', description: 'Please enter a valid UPI ID', variant: 'destructive' });
+    const validation = validateUPIId(upiIdLocal);
+    if (!validation.valid) {
+      toast({ title: 'Invalid UPI ID', description: validation.error, variant: 'destructive' });
       return;
     }
     updateUPI(upiIdLocal, {
       onSuccess: () => {
         toast({ title: 'Success', description: 'UPI ID updated successfully' });
       },
-      onError: () => {
-        toast({ title: 'Error', description: 'Failed to update UPI ID', variant: 'destructive' });
+      onError: (error: Error) => {
+        toast({ title: 'Error', description: error.message || 'Failed to update UPI ID', variant: 'destructive' });
       }
     });
   };
