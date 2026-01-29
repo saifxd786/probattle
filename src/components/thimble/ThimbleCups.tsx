@@ -99,15 +99,15 @@ const ThimbleCups = ({
   // Get X position based on cup's position in order array - responsive
   const getXPosition = (cupIndex: number) => {
     const orderIndex = cupOrder.indexOf(cupIndex);
-    // Smaller spacing for mobile to prevent cups going off-screen
+    // Increased spacing to prevent cup overlap during shuffling
     const screenWidth = typeof window !== 'undefined' ? window.innerWidth : 400;
-    let spacing = 100;
+    let spacing = 110;
     if (screenWidth < 360) {
-      spacing = 55;
+      spacing = 70;
     } else if (screenWidth < 400) {
-      spacing = 65;
+      spacing = 80;
     } else if (screenWidth < 500) {
-      spacing = 75;
+      spacing = 90;
     }
     return (orderIndex - 1) * spacing;
   };
