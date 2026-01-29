@@ -429,7 +429,7 @@ const LudoPage = () => {
                 <AlertDialogFooter>
                   <AlertDialogCancel>Continue Playing</AlertDialogCancel>
                   <AlertDialogAction onClick={() => { resetGame(); setGameMode('select'); }} className="bg-red-600 hover:bg-red-700">
-                    Exit & Forfeit
+                    Exit
                   </AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
@@ -713,7 +713,7 @@ const LudoPage = () => {
                 <AlertDialogFooter>
                   <AlertDialogCancel>Continue Playing</AlertDialogCancel>
                   <AlertDialogAction onClick={() => { friendResetGame(); setGameMode('select'); }} className="bg-red-600 hover:bg-red-700">
-                    Exit & Forfeit
+                    Exit
                   </AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>
@@ -1048,7 +1048,7 @@ const LudoPage = () => {
               onClick={dismissActiveGame}
               className="bg-red-500/20 text-red-400 border-red-500/50 hover:bg-red-500/30"
             >
-              Forfeit Game
+              Exit Game
             </AlertDialogCancel>
             <AlertDialogAction 
               onClick={resumeGame}
@@ -1095,7 +1095,7 @@ const LudoPage = () => {
               }}
               className="bg-red-500/20 text-red-400 border-red-500/50 hover:bg-red-500/30"
             >
-              Forfeit Match
+              Exit Match
             </AlertDialogCancel>
             <AlertDialogAction 
               onClick={() => {
