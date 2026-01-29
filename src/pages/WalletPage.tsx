@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Wallet, Plus, ArrowUpRight, ArrowDownLeft, History, Loader2, MessageCircle, AlertCircle, Gift, Copy, Check } from 'lucide-react';
+import { Wallet, Plus, ArrowUpRight, ArrowDownLeft, History, Loader2, MessageCircle, AlertCircle, Gift, CreditCard, Lock, Building2 } from 'lucide-react';
 import phonepeLogo from '@/assets/phonepe-logo.png';
 import gpayLogo from '@/assets/gpay-logo.png';
 import paytmLogo from '@/assets/paytm-logo.png';
@@ -37,6 +37,15 @@ type Profile = {
   wager_requirement: number;
 };
 
+type BankCard = {
+  id: string;
+  account_holder_name: string;
+  card_number: string;
+  ifsc_code: string;
+  bank_name: string;
+  created_at: string;
+};
+
 const TELEGRAM_SUPPORT = 'https://t.me/ProBattleSupport';
 
 const WalletPage = () => {
@@ -48,8 +57,14 @@ const WalletPage = () => {
   const [isDepositOpen, setIsDepositOpen] = useState(false);
   const [isWithdrawOpen, setIsWithdrawOpen] = useState(false);
   const [withdrawAmount, setWithdrawAmount] = useState('');
-  const [upiId, setUpiId] = useState('');
-  const [accountName, setAccountName] = useState('');
+  
+  // Bank card details
+  const [savedBankCard, setSavedBankCard] = useState<BankCard | null>(null);
+  const [accountHolderName, setAccountHolderName] = useState('');
+  const [cardNumber, setCardNumber] = useState('');
+  const [ifscCode, setIfscCode] = useState('');
+  const [bankName, setBankName] = useState('');
+  const [isFetchingCard, setIsFetchingCard] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
   // Redeem code state
@@ -61,7 +76,9 @@ const WalletPage = () => {
     if (!user) return;
 
     setIsLoading(true);
+    setIsFetchingCard(true);
 
+    // Fetch profile
     const { data: profileData } = await supabase
       .from('profiles')
       .select('wallet_balance, user_code, wager_requirement')
@@ -76,6 +93,18 @@ const WalletPage = () => {
       });
     }
 
+    // Fetch saved bank card
+    const { data: bankCardData } = await supabase
+      .from('user_bank_cards')
+      .select('*')
+      .eq('user_id', user.id)
+      .single();
+
+    if (bankCardData) {
+      setSavedBankCard(bankCardData as BankCard);
+    }
+
+    // Fetch transactions
     const { data: txData } = await supabase
       .from('transactions')
       .select('id, type, amount, status, description, created_at, screenshot_url, utr_id')
@@ -88,6 +117,7 @@ const WalletPage = () => {
     }
 
     setIsLoading(false);
+    setIsFetchingCard(false);
   };
 
   useEffect(() => {
@@ -166,19 +196,49 @@ const WalletPage = () => {
       return;
     }
 
-    if (!accountName.trim()) {
-      toast({ title: 'Error', description: 'Please enter your account name', variant: 'destructive' });
-      return;
-    }
-
-    if (!upiId.trim()) {
-      toast({ title: 'Error', description: 'Please enter your UPI ID', variant: 'destructive' });
-      return;
+    // Check if bank card exists or new details are provided
+    if (!savedBankCard) {
+      if (!accountHolderName.trim() || !cardNumber.trim() || !ifscCode.trim() || !bankName.trim()) {
+        toast({ title: 'Error', description: 'Please fill all bank card details', variant: 'destructive' });
+        return;
+      }
     }
 
     setIsSubmitting(true);
 
     try {
+      // If no saved bank card, save the new one first
+      if (!savedBankCard) {
+        const { data: newCard, error: cardError } = await supabase
+          .from('user_bank_cards')
+          .insert({
+            user_id: user.id,
+            account_holder_name: accountHolderName.trim(),
+            card_number: cardNumber.trim(),
+            ifsc_code: ifscCode.trim().toUpperCase(),
+            bank_name: bankName.trim(),
+          })
+          .select()
+          .single();
+
+        if (cardError) {
+          toast({ title: 'Error', description: 'Failed to save bank details', variant: 'destructive' });
+          setIsSubmitting(false);
+          return;
+        }
+
+        setSavedBankCard(newCard as BankCard);
+      }
+
+      // Get the card details to use
+      const cardToUse = savedBankCard || {
+        account_holder_name: accountHolderName.trim(),
+        card_number: cardNumber.trim(),
+        ifsc_code: ifscCode.trim().toUpperCase(),
+        bank_name: bankName.trim(),
+      };
+
+      // Deduct from wallet
       const newBalance = profile.wallet_balance - amount;
       const { error: deductError } = await supabase
         .from('profiles')
@@ -193,16 +253,17 @@ const WalletPage = () => {
 
       setProfile({ ...profile, wallet_balance: newBalance });
 
+      // Create withdrawal transaction with bank details in description
       const { error } = await supabase.from('transactions').insert({
         user_id: user.id,
         type: 'withdrawal',
         amount,
         status: 'pending',
-        upi_id: upiId.trim(),
-        description: `Withdrawal of ₹${amount} | Name: ${accountName.trim()}`,
+        description: `Withdrawal of ₹${amount} | ${cardToUse.account_holder_name} | A/C: ****${cardToUse.card_number.slice(-4)} | ${cardToUse.bank_name} | IFSC: ${cardToUse.ifsc_code}`,
       });
 
       if (error) {
+        // Rollback wallet balance
         await supabase
           .from('profiles')
           .update({ wallet_balance: profile.wallet_balance })
@@ -213,8 +274,6 @@ const WalletPage = () => {
         toast({ title: 'Withdrawal Request Submitted', description: 'Amount deducted. Your request is being processed.' });
         setIsWithdrawOpen(false);
         setWithdrawAmount('');
-        setUpiId('');
-        setAccountName('');
         fetchData();
       }
     } catch (error: any) {
@@ -557,59 +616,112 @@ const WalletPage = () => {
             </div>
 
             <div className="p-4 bg-primary/10 border border-primary/20 rounded-lg space-y-3">
-              <p className="text-sm font-medium text-center mb-2">Withdrawal via UPI</p>
-              <div className="flex items-center justify-center gap-4 pb-3 border-b border-border/30">
-                <div className="flex flex-col items-center gap-1">
-                  <div className="w-12 h-12 rounded-lg bg-white flex items-center justify-center shadow-sm overflow-hidden p-1">
-                    <img src={phonepeLogo} alt="PhonePe" className="w-full h-full object-contain" />
-                  </div>
-                  <span className="text-[10px] text-muted-foreground">PhonePe</span>
-                </div>
-                <div className="flex flex-col items-center gap-1">
-                  <div className="w-12 h-12 rounded-lg bg-white flex items-center justify-center shadow-sm overflow-hidden p-1">
-                    <img src={gpayLogo} alt="GPay" className="w-full h-full object-contain" />
-                  </div>
-                  <span className="text-[10px] text-muted-foreground">GPay</span>
-                </div>
-                <div className="flex flex-col items-center gap-1">
-                  <div className="w-12 h-12 rounded-lg bg-white flex items-center justify-center shadow-sm overflow-hidden p-1">
-                    <img src={paytmLogo} alt="Paytm" className="w-full h-full object-contain" />
-                  </div>
-                  <span className="text-[10px] text-muted-foreground">Paytm</span>
-                </div>
-                <div className="flex flex-col items-center gap-1">
-                  <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-orange-500 to-green-600 flex items-center justify-center shadow-sm">
-                    <span className="text-white font-bold text-sm">UPI</span>
-                  </div>
-                  <span className="text-[10px] text-muted-foreground">Any UPI</span>
-                </div>
+              <div className="flex items-center justify-center gap-2 mb-2">
+                <CreditCard className="w-5 h-5 text-primary" />
+                <p className="text-sm font-medium">Bank Account Details</p>
               </div>
               
-              <div>
-                <Label>Account Holder Name *</Label>
-                <Input
-                  type="text"
-                  placeholder="Enter your name"
-                  value={accountName}
-                  onChange={(e) => setAccountName(e.target.value)}
-                />
-              </div>
-              
-              <div>
-                <Label>Your UPI ID *</Label>
-                <Input
-                  type="text"
-                  placeholder="yourname@upi"
-                  value={upiId}
-                  onChange={(e) => setUpiId(e.target.value)}
-                />
-              </div>
+              {isFetchingCard ? (
+                <div className="flex justify-center py-4">
+                  <Loader2 className="w-5 h-5 animate-spin text-primary" />
+                </div>
+              ) : savedBankCard ? (
+                // Show saved bank card (permanent, cannot edit)
+                <div className="space-y-3">
+                  <div className="p-3 bg-green-500/10 border border-green-500/30 rounded-lg">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Lock className="w-4 h-4 text-green-500" />
+                      <span className="text-xs font-medium text-green-500">Bank Account Linked (Permanent)</span>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground">
+                      Your bank details cannot be changed once saved for security reasons.
+                    </p>
+                  </div>
+                  
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Name:</span>
+                      <span className="font-medium">{savedBankCard.account_holder_name}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Account:</span>
+                      <span className="font-mono">****{savedBankCard.card_number.slice(-4)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Bank:</span>
+                      <span className="font-medium">{savedBankCard.bank_name}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">IFSC:</span>
+                      <span className="font-mono">{savedBankCard.ifsc_code}</span>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                // First time - show input fields
+                <div className="space-y-3">
+                  <div className="p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
+                    <div className="flex items-center gap-2 mb-1">
+                      <AlertCircle className="w-4 h-4 text-yellow-500" />
+                      <span className="text-xs font-medium text-yellow-500">Important Notice</span>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground">
+                      Bank details cannot be changed after first withdrawal. Please enter carefully.
+                    </p>
+                  </div>
+                  
+                  <div>
+                    <Label>Account Holder Name *</Label>
+                    <Input
+                      type="text"
+                      placeholder="Enter name as per bank account"
+                      value={accountHolderName}
+                      onChange={(e) => setAccountHolderName(e.target.value)}
+                    />
+                  </div>
+                  
+                  <div>
+                    <Label>Account Number *</Label>
+                    <Input
+                      type="text"
+                      placeholder="Enter bank account number"
+                      value={cardNumber}
+                      onChange={(e) => setCardNumber(e.target.value.replace(/\D/g, ''))}
+                    />
+                  </div>
+                  
+                  <div>
+                    <Label>Bank Name *</Label>
+                    <Input
+                      type="text"
+                      placeholder="e.g., State Bank of India"
+                      value={bankName}
+                      onChange={(e) => setBankName(e.target.value)}
+                    />
+                  </div>
+                  
+                  <div>
+                    <Label>IFSC Code *</Label>
+                    <Input
+                      type="text"
+                      placeholder="e.g., SBIN0001234"
+                      value={ifscCode}
+                      onChange={(e) => setIfscCode(e.target.value.toUpperCase())}
+                      maxLength={11}
+                    />
+                  </div>
+                </div>
+              )}
             </div>
 
             <Button 
               className="w-full bg-red-600 hover:bg-red-700 text-white" 
               onClick={handleWithdraw} 
-              disabled={isSubmitting || (profile?.wager_requirement || 0) > 0 || !accountName.trim() || !upiId.trim()}
+              disabled={
+                isSubmitting || 
+                (profile?.wager_requirement || 0) > 0 || 
+                (!savedBankCard && (!accountHolderName.trim() || !cardNumber.trim() || !bankName.trim() || !ifscCode.trim()))
+              }
             >
               {isSubmitting ? 'Submitting...' : (profile?.wager_requirement || 0) > 0 ? 'Complete Wager First' : 'Request Withdrawal'}
             </Button>
