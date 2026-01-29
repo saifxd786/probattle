@@ -36,7 +36,7 @@ const isAutoRejected = (tx: Transaction): boolean => {
 const AdminTransactions = () => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [filter, setFilter] = useState<'all' | 'pending' | 'processing' | 'completed' | 'cancelled'>('pending');
+  const [filter, setFilter] = useState<'all' | 'pending' | 'processing' | 'completed' | 'cancelled' | 'auto-rejected'>('pending');
   const [searchTerm, setSearchTerm] = useState('');
   const [screenshotUrl, setScreenshotUrl] = useState<string | null>(null);
   const [isScreenshotOpen, setIsScreenshotOpen] = useState(false);
@@ -49,7 +49,9 @@ const AdminTransactions = () => {
       .select('*')
       .order('created_at', { ascending: false });
 
-    if (filter !== 'all') {
+    if (filter === 'auto-rejected') {
+      query = query.eq('status', 'cancelled').ilike('admin_note', '%Auto-rejected%');
+    } else if (filter !== 'all') {
       query = query.eq('status', filter);
     }
 
@@ -289,6 +291,7 @@ const AdminTransactions = () => {
     { key: 'processing', label: 'Processing', icon: Loader2 },
     { key: 'completed', label: 'Completed', icon: CheckCircle },
     { key: 'cancelled', label: 'Cancelled', icon: XCircle },
+    { key: 'auto-rejected', label: 'Auto-Rejected', icon: Bot },
     { key: 'all', label: 'All', icon: null },
   ] as const;
 
