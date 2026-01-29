@@ -138,6 +138,7 @@ export const useFriendLudoGame = () => {
   const lastIsHostRef = useRef<boolean>(false);
   const lastEntryAmountRef = useRef<number>(0);
   const lastRewardAmountRef = useRef<number>(0);
+  const namesResolvedForRoomRef = useRef<string | null>(null);
 
   // Track user ID changes to prevent token mixups - but ignore during token refresh
   useEffect(() => {
@@ -234,6 +235,44 @@ export const useFriendLudoGame = () => {
 
     fetchBalance();
   }, [user]);
+
+  // Ensure we never show phone/email as player name inside an ongoing match
+  useEffect(() => {
+    if (!gameState.roomId || gameState.phase !== 'playing') return;
+    if (namesResolvedForRoomRef.current === gameState.roomId) return;
+    if (gameState.players.length === 0) return;
+
+    namesResolvedForRoomRef.current = gameState.roomId;
+
+    const resolveNames = async () => {
+      try {
+        const ids = gameState.players.map(p => p.id).filter(Boolean);
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('id, username, user_code')
+          .in('id', ids);
+
+        const byId = new Map((profiles || []).map(p => [p.id, p]));
+
+        setGameState(prev => {
+          const updatedPlayers = prev.players.map(p => {
+            const prof = byId.get(p.id);
+            if (!prof) return p;
+            const uid = (prof.user_code || p.uid || '').toString();
+            const safeName = prof.username || (uid ? `Player ${uid}` : 'Player');
+            return { ...p, uid: uid || p.uid, name: safeName };
+          });
+          return { ...prev, players: updatedPlayers };
+        });
+      } catch (e) {
+        console.warn('[FriendLudo] Failed to resolve player display names', e);
+      }
+    };
+
+    resolveNames();
+    // Intentionally only run once per roomId (guarded by namesResolvedForRoomRef)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gameState.roomId, gameState.phase]);
 
   const createInitialTokens = useCallback((color: string): Token[] => {
     return [0, 1, 2, 3].map(id => ({ id, position: 0, color }));
@@ -876,10 +915,11 @@ export const useFriendLudoGame = () => {
       .eq('id', roomData.guest_id!)
       .single();
 
-    const hostName = hostProfile?.username || hostProfile?.email?.split('@')[0] || 'Host';
-    const guestName = guestProfile?.username || guestProfile?.email?.split('@')[0] || 'Guest';
     const hostUid = hostProfile?.user_code || Math.floor(10000 + Math.random() * 90000).toString();
     const guestUid = guestProfile?.user_code || Math.floor(10000 + Math.random() * 90000).toString();
+    // Never fall back to email/phone as display name
+    const hostName = hostProfile?.username || `Player ${hostUid}`;
+    const guestName = guestProfile?.username || `Player ${guestUid}`;
 
     const players: Player[] = [
       {
@@ -1633,10 +1673,11 @@ export const useFriendLudoGame = () => {
       .eq('id', roomData.guest_id)
       .single();
 
-    const hostName = hostProfile?.username || hostProfile?.email?.split('@')[0] || 'Host';
-    const guestName = guestProfile?.username || guestProfile?.email?.split('@')[0] || 'Guest';
     const hostUid = hostProfile?.user_code || Math.floor(10000 + Math.random() * 90000).toString();
     const guestUid = guestProfile?.user_code || Math.floor(10000 + Math.random() * 90000).toString();
+    // Never fall back to email/phone as display name
+    const hostName = hostProfile?.username || `Player ${hostUid}`;
+    const guestName = guestProfile?.username || `Player ${guestUid}`;
 
     const players: Player[] = [
       {
