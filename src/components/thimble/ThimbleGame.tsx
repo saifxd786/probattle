@@ -325,13 +325,19 @@ const ThimbleGame = () => {
             {/* Revealing phase text */}
             {gameState.phase === 'revealing' && (
               <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ type: 'spring', damping: 15 }}
                 className="text-center mt-6"
               >
-                <p className={`text-xl font-bold ${gameState.isWin ? 'text-green-400' : 'text-red-400'}`}>
-                  {gameState.isWin ? 'Correct!' : 'Wrong Cup!'}
-                </p>
+                <div className={`inline-flex items-center gap-2 px-6 py-3 rounded-xl font-display text-lg font-bold tracking-wide ${
+                  gameState.isWin 
+                    ? 'bg-green-500/20 text-green-400 border border-green-500/30' 
+                    : 'bg-red-500/20 text-red-400 border border-red-500/30'
+                }`}>
+                  <div className={`w-2 h-2 rounded-full ${gameState.isWin ? 'bg-green-400' : 'bg-red-400'} animate-pulse`} />
+                  {gameState.isWin ? 'Correct' : 'Wrong Cup'}
+                </div>
               </motion.div>
             )}
           </motion.div>
