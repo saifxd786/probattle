@@ -19,10 +19,16 @@ interface MatchmakingScreenProps {
   rewardAmount: number;
 }
 
+// Indian Male Names (Hindu + Muslim mix) - Only boys names
 const BOT_NAMES = [
-  'Aman', 'Rohit', 'Kunal', 'Neeraj', 'Sandeep', 'Rakesh', 'Ajay',
-  'Vikram', 'Suresh', 'Deepak', 'Rahul', 'Pradeep', 'Mohit', 'Ankur',
-  'Priya', 'Neha', 'Kavita', 'Anjali', 'Pooja', 'Ritu', 'Shreya'
+  // Hindu Names
+  'Aman', 'Rohit', 'Kunal', 'Arjun', 'Vikram', 'Rahul', 'Deepak', 'Mohit',
+  'Ankur', 'Rajesh', 'Suresh', 'Karan', 'Varun', 'Nikhil', 'Aditya', 'Manish',
+  'Sachin', 'Vikas', 'Gaurav', 'Harsh', 'Ravi', 'Amit', 'Sanjay', 'Akash',
+  // Muslim Names
+  'Imran', 'Aamir', 'Farhan', 'Zaid', 'Arman', 'Salman', 'Asif', 'Faisal',
+  'Rizwan', 'Irfan', 'Danish', 'Nadeem', 'Tariq', 'Wasim', 'Shahid', 'Junaid',
+  'Ayaan', 'Rehan', 'Saif', 'Kabir', 'Ayan', 'Bilal', 'Hamza', 'Yusuf'
 ];
 
 // Player card component - Flat design with Avatar
@@ -87,6 +93,7 @@ const PlayerCard = ({
               borderColor: colorMap[player.color],
             }}
           >
+            {/* Show initials for bots, no avatar */}
             {player.name.slice(0, 2).toUpperCase()}
           </div>
         )}

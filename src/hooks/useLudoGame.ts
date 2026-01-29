@@ -1144,7 +1144,7 @@ export const useLudoGame = () => {
     return furthestToken.id;
   }, [entryAmount, settings.highAmountCompetitive]);
 
-  // Bot turn execution
+  // Bot turn execution - with realistic human-like delays
   const executeBotTurn = useCallback(async () => {
     if (!gameInProgressRef.current || botTurnRef.current) return;
     
@@ -1156,8 +1156,14 @@ export const useLudoGame = () => {
       
       botTurnRef.current = true;
 
+      // Realistic "thinking" delay before rolling (800ms - 2000ms)
+      const thinkingDelay = 800 + Math.floor(Math.random() * 1200);
+      
       setTimeout(() => {
         setGameState(inner => ({ ...inner, isRolling: true, canRoll: false }));
+        
+        // Dice roll animation time (600ms - 1000ms)
+        const rollDuration = 600 + Math.floor(Math.random() * 400);
         
         setTimeout(() => {
           setGameState(rollState => {
@@ -1171,6 +1177,8 @@ export const useLudoGame = () => {
             const tokenId = selectBotMove(botPlayer, diceValue, rollState.players);
             
             if (tokenId !== null) {
+              // Realistic delay before moving token (500ms - 1200ms) - like thinking which token to move
+              const moveThinkingDelay = 500 + Math.floor(Math.random() * 700);
               setTimeout(() => {
                 setGameState(moveState => {
                   const { updatedPlayers, winner, gotSix, captureInfo } = moveToken(
@@ -1201,7 +1209,8 @@ export const useLudoGame = () => {
 
                   if (gotSix) {
                     botTurnRef.current = false;
-                    setTimeout(() => executeBotTurn(), 500);
+                    // Delay before next turn on 6 (600ms - 1200ms)
+                    setTimeout(() => executeBotTurn(), 600 + Math.floor(Math.random() * 600));
                     return {
                       ...moveState,
                       players: updatedPlayers,
@@ -1218,7 +1227,8 @@ export const useLudoGame = () => {
                   soundManager.playTurnChange();
                   
                   if (!isNextUser) {
-                    setTimeout(() => executeBotTurn(), 800);
+                    // Delay before next bot's turn (1000ms - 1800ms)
+                    setTimeout(() => executeBotTurn(), 1000 + Math.floor(Math.random() * 800));
                   }
                   
                   return {
@@ -1235,6 +1245,8 @@ export const useLudoGame = () => {
 
               return { ...rollState, diceValue, isRolling: false };
             } else {
+              // No movable token - realistic wait before skipping (400ms - 800ms)
+              const skipDelay = 400 + Math.floor(Math.random() * 400);
               setTimeout(() => {
                 const nextTurn = (rollState.currentTurn + 1) % rollState.players.length;
                 const isNextUser = !rollState.players[nextTurn]?.isBot;
@@ -1243,7 +1255,8 @@ export const useLudoGame = () => {
                 soundManager.playTurnChange();
                 
                 if (!isNextUser) {
-                  setTimeout(() => executeBotTurn(), 800);
+                  // Delay before next bot's turn (1000ms - 1800ms)
+                  setTimeout(() => executeBotTurn(), 1000 + Math.floor(Math.random() * 800));
                 }
                 
                 setGameState(skipState => ({
@@ -1252,13 +1265,13 @@ export const useLudoGame = () => {
                   canRoll: isNextUser,
                   selectedToken: null
                 }));
-              }, 400);
+              }, skipDelay);
 
               return { ...rollState, diceValue, isRolling: false };
             }
           });
-        }, 500);
-      }, 300);
+        }, rollDuration);
+      }, thinkingDelay);
 
       return prev;
     });

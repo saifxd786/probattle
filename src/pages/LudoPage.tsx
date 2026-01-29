@@ -484,8 +484,8 @@ const LudoPage = () => {
                 <div className="flex items-center gap-2">
                   {/* Avatar with Timer */}
                   <SquareTurnTimerAvatar
-                    avatarUrl={player.avatar}
-                    fallbackText={player.isBot ? '🤖' : player.name.slice(0, 2).toUpperCase()}
+                    avatarUrl={player.isBot ? undefined : player.avatar}
+                    fallbackText={player.name.slice(0, 2).toUpperCase()}
                     borderColor={colorMap[player.color]}
                     isActive={isActive}
                     timeLeft={turnTimeLeft}
@@ -525,8 +525,8 @@ const LudoPage = () => {
                 <div className="flex items-center gap-2 flex-row-reverse">
                   {/* Avatar with Timer */}
                   <SquareTurnTimerAvatar
-                    avatarUrl={player.avatar}
-                    fallbackText={player.isBot ? '🤖' : player.name.slice(0, 2).toUpperCase()}
+                    avatarUrl={player.isBot ? undefined : player.avatar}
+                    fallbackText={player.name.slice(0, 2).toUpperCase()}
                     borderColor={colorMap[player.color]}
                     isActive={isActive}
                     timeLeft={turnTimeLeft}
