@@ -642,38 +642,14 @@ const LudoPage = () => {
               return (
                 <div className="flex items-center gap-2">
                   {/* Avatar with Timer */}
-                  <div className="relative">
-                    {player.avatar ? (
-                      <img 
-                        src={player.avatar}
-                        alt={player.name}
-                        className="w-12 h-12 rounded-xl object-cover"
-                        style={{ 
-                          border: `2px solid ${colorMap[player.color]}`,
-                          boxShadow: isActive ? `0 0 12px ${colorMap[player.color]}80` : 'none'
-                        }}
-                      />
-                    ) : (
-                      <div 
-                        className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold text-base"
-                        style={{ 
-                          background: `linear-gradient(135deg, ${colorMap[player.color]}dd, ${colorMap[player.color]}88)`,
-                          border: `2px solid ${colorMap[player.color]}`,
-                          boxShadow: isActive ? `0 0 12px ${colorMap[player.color]}80` : 'none'
-                        }}
-                      >
-                        {isCurrentUser ? '👤' : player.name.slice(0, 2).toUpperCase()}
-                      </div>
-                    )}
-                    {/* Turn/Timer Badge */}
-                    {isActive && (
-                      <div 
-                        className="absolute -bottom-1 -left-1 px-1.5 py-0.5 rounded text-[10px] font-bold text-white bg-green-500"
-                      >
-                        TURN
-                      </div>
-                    )}
-                  </div>
+                  <SquareTurnTimerAvatar
+                    avatarUrl={player.avatar}
+                    fallbackText={isCurrentUser ? '👤' : player.name.slice(0, 2).toUpperCase()}
+                    borderColor={colorMap[player.color]}
+                    isActive={isActive}
+                    timeLeft={15}
+                    badgeSide="left"
+                  />
                   {/* Info */}
                   <div className="text-left">
                     <p className="text-white/80 font-medium text-xs">{player.name}</p>
@@ -748,38 +724,14 @@ const LudoPage = () => {
               return (
                 <div className="flex items-center gap-2 flex-row-reverse">
                   {/* Avatar with Timer */}
-                  <div className="relative">
-                    {player.avatar ? (
-                      <img 
-                        src={player.avatar}
-                        alt={player.name}
-                        className="w-12 h-12 rounded-xl object-cover"
-                        style={{ 
-                          border: `2px solid ${colorMap[player.color]}`,
-                          boxShadow: isActive ? `0 0 12px ${colorMap[player.color]}80` : 'none'
-                        }}
-                      />
-                    ) : (
-                      <div 
-                        className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold text-base"
-                        style={{ 
-                          background: `linear-gradient(135deg, ${colorMap[player.color]}dd, ${colorMap[player.color]}88)`,
-                          border: `2px solid ${colorMap[player.color]}`,
-                          boxShadow: isActive ? `0 0 12px ${colorMap[player.color]}80` : 'none'
-                        }}
-                      >
-                        {isCurrentUser ? '👤' : player.name.slice(0, 2).toUpperCase()}
-                      </div>
-                    )}
-                    {/* Turn/Timer Badge */}
-                    {isActive && (
-                      <div 
-                        className="absolute -bottom-1 -right-1 px-1.5 py-0.5 rounded text-[10px] font-bold text-white bg-green-500"
-                      >
-                        TURN
-                      </div>
-                    )}
-                  </div>
+                  <SquareTurnTimerAvatar
+                    avatarUrl={player.avatar}
+                    fallbackText={isCurrentUser ? '👤' : player.name.slice(0, 2).toUpperCase()}
+                    borderColor={colorMap[player.color]}
+                    isActive={isActive}
+                    timeLeft={15}
+                    badgeSide="right"
+                  />
                   {/* Info */}
                   <div className="text-right">
                     <p className="text-white/80 font-medium text-xs">{player.name}</p>
