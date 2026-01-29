@@ -28,6 +28,7 @@ import SoundToggle from '@/components/ludo/SoundToggle';
 import LudoChat from '@/components/ludo/LudoChat';
 import CaptureAnimation from '@/components/ludo/CaptureAnimation';
 import RematchDialog from '@/components/ludo/RematchDialog';
+import LudoLobby from '@/components/ludo/LudoLobby';
 import { useLudoGame } from '@/hooks/useLudoGame';
 import { useFriendLudoGame } from '@/hooks/useFriendLudoGame';
 import { useAuth } from '@/contexts/AuthContext';
@@ -784,15 +785,10 @@ const LudoPage = () => {
     );
   }
 
-  // Home Screen - Ludo King Style (Compact)
+  // Home Screen - Professional Lobby
   return (
     <PullToRefresh onRefresh={handleRefresh}>
-      <div 
-        className="min-h-screen pb-20"
-        style={{
-          background: 'linear-gradient(180deg, #1a1a2e 0%, #16213e 50%, #0f0f23 100%)',
-        }}
-      >
+      <div className="min-h-screen bg-background pb-20">
         <Header />
 
         {/* Resume Game Dialog */}
@@ -836,276 +832,19 @@ const LudoPage = () => {
           </AlertDialogContent>
         </AlertDialog>
         
-        <main className="container mx-auto px-4 pt-20 pb-8">
-          {/* Premium Hero Section */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="relative mb-6"
-          >
-            {/* Background glow */}
-            <div className="absolute inset-0 -top-10 bg-gradient-to-b from-primary/10 via-transparent to-transparent rounded-3xl blur-2xl" />
-            
-            <div className="relative text-center">
-              <motion.div
-                className="inline-flex relative mb-4"
-                animate={{ y: [0, -8, 0] }}
-                transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
-              >
-                <div className="relative">
-                  <div 
-                    className="p-4 rounded-2xl shadow-2xl"
-                    style={{
-                      background: 'linear-gradient(145deg, hsl(var(--primary)) 0%, hsl(var(--primary)/0.8) 100%)',
-                      boxShadow: '0 10px 40px rgba(var(--primary-rgb), 0.4)',
-                    }}
-                  >
-                    <Dices className="w-10 h-10 text-primary-foreground" />
-                  </div>
-                  {/* Sparkle effects */}
-                  <motion.div
-                    className="absolute -top-1 -right-1 w-3 h-3 bg-yellow-400 rounded-full"
-                    animate={{ scale: [1, 1.5, 1], opacity: [1, 0.5, 1] }}
-                    transition={{ duration: 2, repeat: Infinity }}
-                  />
-                </div>
-              </motion.div>
-              
-              <h1 className="font-display text-3xl font-bold mb-1">
-                <span className="text-gradient">Ludo King</span>
-              </h1>
-              <p className="text-muted-foreground text-sm flex items-center justify-center gap-1.5">
-                <Zap className="w-4 h-4 text-yellow-500" />
-                Play & Win Real Cash
-              </p>
-            </div>
-          </motion.div>
-
-          {/* Stats Bar - Premium Design */}
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="grid grid-cols-3 gap-3 mb-6"
-          >
-            <div className="relative p-3 rounded-2xl bg-gradient-to-br from-yellow-500/10 to-orange-500/5 border border-yellow-500/20 text-center overflow-hidden group">
-              <motion.div
-                className="absolute inset-0 bg-gradient-to-br from-yellow-500/5 to-transparent"
-                animate={{ opacity: [0.5, 1, 0.5] }}
-                transition={{ duration: 3, repeat: Infinity }}
-              />
-              <div className="relative z-10">
-                <Trophy className="w-5 h-5 text-yellow-500 mx-auto mb-1" />
-                <p className="text-lg font-display font-bold text-foreground">10K+</p>
-                <p className="text-[10px] text-muted-foreground">Winners</p>
-              </div>
-            </div>
-            
-            <div className="relative p-3 rounded-2xl bg-gradient-to-br from-green-500/10 to-emerald-500/5 border border-green-500/20 text-center overflow-hidden">
-              <motion.div
-                className="absolute inset-0 bg-gradient-to-br from-green-500/5 to-transparent"
-                animate={{ opacity: [0.5, 1, 0.5] }}
-                transition={{ duration: 3, repeat: Infinity, delay: 0.5 }}
-              />
-              <div className="relative z-10">
-                <motion.div animate={{ scale: [1, 1.1, 1] }} transition={{ duration: 2, repeat: Infinity }}>
-                  <Users className="w-5 h-5 text-green-500 mx-auto mb-1" />
-                </motion.div>
-                <p className="text-lg font-display font-bold text-foreground">{liveUsers}+</p>
-                <p className="text-[10px] text-muted-foreground">Online</p>
-              </div>
-            </div>
-            
-            <div className="relative p-3 rounded-2xl bg-gradient-to-br from-blue-500/10 to-cyan-500/5 border border-blue-500/20 text-center overflow-hidden">
-              <motion.div
-                className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-transparent"
-                animate={{ opacity: [0.5, 1, 0.5] }}
-                transition={{ duration: 3, repeat: Infinity, delay: 1 }}
-              />
-              <div className="relative z-10">
-                <Dices className="w-5 h-5 text-blue-500 mx-auto mb-1" />
-                <p className="text-lg font-display font-bold text-foreground">₹50L+</p>
-                <p className="text-[10px] text-muted-foreground">Paid</p>
-              </div>
-            </div>
-          </motion.div>
-
-          {/* Wallet Card - Premium */}
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.15 }}
-            className="mb-6 p-4 rounded-2xl bg-gradient-to-br from-card to-card/50 border border-border/50 backdrop-blur-sm"
-          >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-green-500/20 to-emerald-500/10 border border-green-500/30 flex items-center justify-center">
-                  <Wallet className="w-6 h-6 text-green-400" />
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Balance</p>
-                  <p className="font-display font-bold text-2xl text-foreground">₹{walletBalance.toFixed(0)}</p>
-                </div>
-              </div>
-              <Link to="/wallet">
-                <Button 
-                  size="sm" 
-                  className="h-10 px-5 font-semibold bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 shadow-lg shadow-green-500/20"
-                >
-                  ADD
-                </Button>
-              </Link>
-            </div>
-          </motion.div>
-
-          {/* Play Buttons - Premium */}
-          {user && (
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-              className="grid grid-cols-2 gap-3 mb-6"
-            >
-              <Button
-                onClick={startMatchmaking}
-                disabled={walletBalance < entryAmount}
-                className="relative h-14 text-sm font-bold rounded-2xl overflow-hidden group"
-                style={{
-                  background: walletBalance >= entryAmount 
-                    ? 'linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--primary)/0.85) 100%)'
-                    : undefined,
-                }}
-              >
-                <motion.div
-                  className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0"
-                  animate={{ x: ['-100%', '100%'] }}
-                  transition={{ duration: 2, repeat: Infinity, repeatDelay: 1 }}
-                />
-                <span className="relative z-10 flex items-center gap-2">
-                  <Dices className="w-5 h-5" />
-                  PLAY VS BOT
-                </span>
-              </Button>
-              
-              <Button
-                onClick={() => setGameMode('vs-friend')}
-                className="relative h-14 text-sm font-bold rounded-2xl overflow-hidden bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
-              >
-                <motion.div
-                  className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0"
-                  animate={{ x: ['-100%', '100%'] }}
-                  transition={{ duration: 2, repeat: Infinity, repeatDelay: 1.5 }}
-                />
-                <span className="relative z-10 flex items-center gap-2">
-                  <UserPlus className="w-5 h-5" />
-                  WITH FRIEND
-                </span>
-              </Button>
-            </motion.div>
-          )}
-
-          {!user && (
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-              className="mb-6"
-            >
-              <Link to="/auth">
-                <Button className="w-full h-14 text-sm font-bold rounded-2xl bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 shadow-lg shadow-primary/20">
-                  Login to Play
-                </Button>
-              </Link>
-            </motion.div>
-          )}
-
-          {/* Entry Selector */}
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.25 }}
-            className="mb-6"
-          >
-            <EntrySelector
-              amounts={ENTRY_AMOUNTS.filter(a => a >= settings.minEntryAmount)}
-              selectedAmount={entryAmount}
-              onSelect={setEntryAmount}
-              rewardMultiplier={settings.rewardMultiplier}
-              playerMode={playerMode}
-              onPlayerModeChange={setPlayerMode}
-            />
-          </motion.div>
-
-          {/* Insufficient Balance Warning */}
-          {user && walletBalance < entryAmount && (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="mb-6 p-4 rounded-2xl bg-gradient-to-br from-red-500/10 to-red-600/5 border border-red-500/30"
-            >
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-red-500/20 flex items-center justify-center">
-                  <Wallet className="w-5 h-5 text-red-400" />
-                </div>
-                <div className="flex-1">
-                  <p className="text-red-400 text-sm font-medium">Insufficient Balance</p>
-                  <p className="text-xs text-muted-foreground">Add ₹{entryAmount - walletBalance} more to play</p>
-                </div>
-                <Link to="/wallet">
-                  <Button size="sm" variant="outline" className="border-red-500/30 text-red-400 hover:bg-red-500/10">
-                    Add Money
-                  </Button>
-                </Link>
-              </div>
-            </motion.div>
-          )}
-
-          {/* Friends Button - Premium */}
-          {user && (
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3 }}
-              className="mb-6"
-            >
-              <Link to="/friends">
-                <div className="p-4 rounded-2xl bg-gradient-to-br from-cyan-500/10 to-blue-500/5 border border-cyan-500/20 hover:border-cyan-500/40 transition-all group cursor-pointer">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-500/20 to-blue-500/10 border border-cyan-500/30 flex items-center justify-center group-hover:scale-110 transition-transform">
-                        <Users className="w-5 h-5 text-cyan-400" />
-                      </div>
-                      <div>
-                        <p className="font-medium text-foreground text-sm">Friends</p>
-                        <p className="text-xs text-muted-foreground">View & invite friends to play</p>
-                      </div>
-                    </div>
-                    <div className="text-cyan-400">
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                      </svg>
-                    </div>
-                  </div>
-                </div>
-              </Link>
-            </motion.div>
-          )}
-
-          {/* Rules Link */}
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.35 }}
-            className="text-center"
-          >
-            <Link 
-              to="/ludo/rules" 
-              className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
-            >
-              <Info className="w-4 h-4" />
-              Rules & Fair Play
-            </Link>
-          </motion.div>
+        <main className="pt-16">
+          <LudoLobby
+            user={user}
+            walletBalance={walletBalance}
+            entryAmount={entryAmount}
+            setEntryAmount={setEntryAmount}
+            playerMode={playerMode}
+            setPlayerMode={setPlayerMode}
+            settings={settings}
+            liveUsers={liveUsers}
+            startMatchmaking={startMatchmaking}
+            onPlayWithFriend={() => setGameMode('vs-friend')}
+          />
         </main>
 
         <BottomNav />
