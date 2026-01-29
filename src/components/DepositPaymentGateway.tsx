@@ -16,9 +16,9 @@ import paytmLogo from '@/assets/paytm-logo.png';
 import paymentProcessingGif from '@/assets/payment-processing.gif';
 import { toast } from '@/hooks/use-toast';
 import { usePaymentQR } from '@/hooks/usePaymentQR';
+import { usePaymentUPI } from '@/hooks/usePaymentUPI';
 
 const DEPOSIT_AMOUNTS = [100, 200, 500, 1000, 2000, 5000];
-const UPI_ID = 'mohdqureshi807@naviaxis';
 const TIMER_DURATION = 300; // 5 minutes in seconds
 
 interface DepositPaymentGatewayProps {
@@ -30,6 +30,7 @@ interface DepositPaymentGatewayProps {
 
 const DepositPaymentGateway = ({ isOpen, onClose, onSubmit, isSubmitting }: DepositPaymentGatewayProps) => {
   const { qrUrl, qrEnabled } = usePaymentQR();
+  const { upiId: UPI_ID } = usePaymentUPI();
   
   const [step, setStep] = useState<'amount' | 'payment' | 'verify'>('amount');
   const [selectedAmount, setSelectedAmount] = useState(100);
