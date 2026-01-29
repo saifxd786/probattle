@@ -325,18 +325,27 @@ export const useFriendLudoGame = () => {
   // Ensure we never show phone/email as player name inside an ongoing match, and always show avatars
   useEffect(() => {
     if (!gameState.roomId || gameState.phase !== 'playing') return;
-    if (namesResolvedForRoomRef.current === gameState.roomId) return;
     if (gameState.players.length === 0) return;
-
-    namesResolvedForRoomRef.current = gameState.roomId;
+    
+    // Check if any player is missing avatar or has generic "Player XXXXX" name
+    const needsResolve = gameState.players.some(p => 
+      !p.avatar || p.name.startsWith('Player ')
+    );
+    
+    // Skip if already resolved for this room and all data is present
+    if (namesResolvedForRoomRef.current === gameState.roomId && !needsResolve) return;
 
     const resolveNames = async () => {
       try {
         const ids = gameState.players.map(p => p.id).filter(Boolean);
+        if (ids.length === 0) return;
+        
         const { data: profiles } = await supabase
           .from('profiles')
           .select('id, username, user_code, avatar_url')
           .in('id', ids);
+
+        if (!profiles || profiles.length === 0) return;
 
         const byId = new Map((profiles || []).map(p => [p.id, p]));
 
@@ -355,15 +364,16 @@ export const useFriendLudoGame = () => {
           });
           return { ...prev, players: updatedPlayers };
         });
+        
+        // Mark as resolved after successful fetch
+        namesResolvedForRoomRef.current = gameState.roomId;
       } catch (e) {
         console.warn('[FriendLudo] Failed to resolve player display names', e);
       }
     };
 
     resolveNames();
-    // Intentionally only run once per roomId (guarded by namesResolvedForRoomRef)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gameState.roomId, gameState.phase]);
+  }, [gameState.roomId, gameState.phase, gameState.players]);
 
   const createInitialTokens = useCallback((color: string): Token[] => {
     return [0, 1, 2, 3].map(id => ({ id, position: 0, color }));
