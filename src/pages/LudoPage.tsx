@@ -580,16 +580,28 @@ const LudoPage = () => {
                 <div className="flex items-center gap-2">
                   {/* Avatar with Timer */}
                   <div className="relative">
-                    <div 
-                      className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold text-base"
-                      style={{ 
-                        background: `linear-gradient(135deg, ${colorMap[player.color]}dd, ${colorMap[player.color]}88)`,
-                        border: `2px solid ${colorMap[player.color]}`,
-                        boxShadow: isActive ? `0 0 12px ${colorMap[player.color]}80` : 'none'
-                      }}
-                    >
-                      {isCurrentUser ? '👤' : player.name.slice(0, 2).toUpperCase()}
-                    </div>
+                    {player.avatar ? (
+                      <img 
+                        src={player.avatar}
+                        alt={player.name}
+                        className="w-12 h-12 rounded-xl object-cover"
+                        style={{ 
+                          border: `2px solid ${colorMap[player.color]}`,
+                          boxShadow: isActive ? `0 0 12px ${colorMap[player.color]}80` : 'none'
+                        }}
+                      />
+                    ) : (
+                      <div 
+                        className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold text-base"
+                        style={{ 
+                          background: `linear-gradient(135deg, ${colorMap[player.color]}dd, ${colorMap[player.color]}88)`,
+                          border: `2px solid ${colorMap[player.color]}`,
+                          boxShadow: isActive ? `0 0 12px ${colorMap[player.color]}80` : 'none'
+                        }}
+                      >
+                        {isCurrentUser ? '👤' : player.name.slice(0, 2).toUpperCase()}
+                      </div>
+                    )}
                     {/* Turn/Timer Badge */}
                     {isActive && (
                       <div 
@@ -678,16 +690,28 @@ const LudoPage = () => {
                 <div className="flex items-center gap-2 flex-row-reverse">
                   {/* Avatar with Timer */}
                   <div className="relative">
-                    <div 
-                      className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold text-base"
-                      style={{ 
-                        background: `linear-gradient(135deg, ${colorMap[player.color]}dd, ${colorMap[player.color]}88)`,
-                        border: `2px solid ${colorMap[player.color]}`,
-                        boxShadow: isActive ? `0 0 12px ${colorMap[player.color]}80` : 'none'
-                      }}
-                    >
-                      {isCurrentUser ? '👤' : player.name.slice(0, 2).toUpperCase()}
-                    </div>
+                    {player.avatar ? (
+                      <img 
+                        src={player.avatar}
+                        alt={player.name}
+                        className="w-12 h-12 rounded-xl object-cover"
+                        style={{ 
+                          border: `2px solid ${colorMap[player.color]}`,
+                          boxShadow: isActive ? `0 0 12px ${colorMap[player.color]}80` : 'none'
+                        }}
+                      />
+                    ) : (
+                      <div 
+                        className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold text-base"
+                        style={{ 
+                          background: `linear-gradient(135deg, ${colorMap[player.color]}dd, ${colorMap[player.color]}88)`,
+                          border: `2px solid ${colorMap[player.color]}`,
+                          boxShadow: isActive ? `0 0 12px ${colorMap[player.color]}80` : 'none'
+                        }}
+                      >
+                        {isCurrentUser ? '👤' : player.name.slice(0, 2).toUpperCase()}
+                      </div>
+                    )}
                     {/* Turn/Timer Badge */}
                     {isActive && (
                       <div 

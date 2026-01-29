@@ -21,6 +21,7 @@ interface Player {
   color: string;
   tokens: Token[];
   tokensHome: number;
+  avatar?: string;
 }
 
 interface RoomData {
@@ -862,16 +863,16 @@ export const useFriendLudoGame = () => {
     const hostColor = 'red';
     const guestColor = 'green';
 
-    // Fetch player names
+    // Fetch player names and avatars
     const { data: hostProfile } = await supabase
       .from('profiles')
-      .select('username, email, user_code')
+      .select('username, email, user_code, avatar_url')
       .eq('id', roomData.host_id)
       .single();
 
     const { data: guestProfile } = await supabase
       .from('profiles')
-      .select('username, email, user_code')
+      .select('username, email, user_code, avatar_url')
       .eq('id', roomData.guest_id!)
       .single();
 
@@ -888,7 +889,8 @@ export const useFriendLudoGame = () => {
         isBot: false,
         color: hostColor,
         tokens: createInitialTokens(hostColor),
-        tokensHome: 0
+        tokensHome: 0,
+        avatar: hostProfile?.avatar_url || undefined
       },
       {
         id: roomData.guest_id!,
@@ -897,7 +899,8 @@ export const useFriendLudoGame = () => {
         isBot: false,
         color: guestColor,
         tokens: createInitialTokens(guestColor),
-        tokensHome: 0
+        tokensHome: 0,
+        avatar: guestProfile?.avatar_url || undefined
       }
     ];
 
@@ -1617,16 +1620,16 @@ export const useFriendLudoGame = () => {
     const hostColor = 'red';
     const guestColor = 'green';
 
-    // Fetch player names
+    // Fetch player names and avatars
     const { data: hostProfile } = await supabase
       .from('profiles')
-      .select('username, email, user_code')
+      .select('username, email, user_code, avatar_url')
       .eq('id', roomData.host_id)
       .single();
 
     const { data: guestProfile } = await supabase
       .from('profiles')
-      .select('username, email, user_code')
+      .select('username, email, user_code, avatar_url')
       .eq('id', roomData.guest_id)
       .single();
 
@@ -1643,7 +1646,8 @@ export const useFriendLudoGame = () => {
         isBot: false,
         color: hostColor,
         tokens: createInitialTokens(hostColor),
-        tokensHome: 0
+        tokensHome: 0,
+        avatar: hostProfile?.avatar_url || undefined
       },
       {
         id: roomData.guest_id,
@@ -1652,7 +1656,8 @@ export const useFriendLudoGame = () => {
         isBot: false,
         color: guestColor,
         tokens: createInitialTokens(guestColor),
-        tokensHome: 0
+        tokensHome: 0,
+        avatar: guestProfile?.avatar_url || undefined
       }
     ];
 
