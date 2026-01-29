@@ -1536,6 +1536,7 @@ export type Database = {
       claim_daily_bonus: { Args: never; Returns: Json }
       claim_referral_rewards: { Args: never; Returns: Json }
       claim_weekly_login_reward: { Args: never; Returns: Json }
+      cleanup_stale_processing_deposits: { Args: never; Returns: Json }
       convert_coins_to_wallet: {
         Args: { coins_to_convert: number }
         Returns: Json
