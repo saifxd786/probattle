@@ -1609,6 +1609,8 @@ export const useLudoGame = () => {
     // Timer states
     turnTimeLeft,
     offlineTimeLeft,
-    skipTurn
+    skipTurn,
+    // User profile data
+    userAvatar
   };
 };

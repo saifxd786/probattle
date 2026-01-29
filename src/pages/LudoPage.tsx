@@ -29,6 +29,7 @@ import LudoChat from '@/components/ludo/LudoChat';
 import CaptureAnimation from '@/components/ludo/CaptureAnimation';
 import RematchDialog from '@/components/ludo/RematchDialog';
 import LudoLobby from '@/components/ludo/LudoLobby';
+import { CUSTOM_AVATARS } from '@/components/ludo/LudoAvatarPicker';
 import { useLudoGame } from '@/hooks/useLudoGame';
 import { useFriendLudoGame } from '@/hooks/useFriendLudoGame';
 import { useAuth } from '@/contexts/AuthContext';
@@ -36,6 +37,15 @@ import { usePullToRefresh } from '@/hooks/usePullToRefresh';
 import { useGameBan } from '@/hooks/useGameBan';
 
 type GameMode = 'select' | 'vs-bot' | 'vs-friend';
+
+// Helper to resolve selected avatar to URL
+const getResolvedAvatarUrl = (selectedAvatar: string | null, profileAvatar?: string | null): string | undefined => {
+  if (selectedAvatar === null || selectedAvatar === 'profile') {
+    return profileAvatar || undefined;
+  }
+  const customAvatar = CUSTOM_AVATARS.find(a => a.id === selectedAvatar);
+  return customAvatar?.src || profileAvatar || undefined;
+};
 
 // Helper function to get realistic live users based on time of day (IST)
 const getLiveUsersCount = (): string => {
@@ -240,7 +250,8 @@ const LudoPage = () => {
     dismissActiveGame,
     turnTimeLeft,
     offlineTimeLeft,
-    skipTurn
+    skipTurn,
+    userAvatar
   } = useLudoGame();
   
   // Friend multiplayer hook
@@ -359,6 +370,9 @@ const LudoPage = () => {
   // Resume Game Dialog for Friend games
   const showFriendResumeDialog = hasActiveFriendRoom && activeFriendRoomData && friendGameState.phase === 'idle' && gameMode === 'select';
 
+  // Resolved avatar for current user
+  const userResolvedAvatar = getResolvedAvatarUrl(selectedAvatar, userAvatar);
+
   // Matchmaking Screen
   if (gameState.phase === 'matchmaking') {
     return (
@@ -367,7 +381,7 @@ const LudoPage = () => {
           id: p.id,
           name: p.name,
           uid: p.uid,
-          avatar: p.avatar,
+          avatar: p.isBot ? undefined : (p.id === user?.id ? userResolvedAvatar : p.avatar),
           isBot: p.isBot,
           status: p.status,
           color: p.color
@@ -481,11 +495,13 @@ const LudoPage = () => {
                 blue: '#1E88E5'
               };
               const isActive = gameState.currentTurn === 0;
+              // Use resolved avatar for user, undefined for bot
+              const displayAvatar = player.isBot ? undefined : (player.id === user?.id ? userResolvedAvatar : player.avatar);
               return (
                 <div className="flex items-center gap-2">
                   {/* Avatar with Timer */}
                   <SquareTurnTimerAvatar
-                    avatarUrl={player.isBot ? undefined : player.avatar}
+                    avatarUrl={displayAvatar}
                     fallbackText={player.name.slice(0, 2).toUpperCase()}
                     borderColor={colorMap[player.color]}
                     isActive={isActive}
@@ -522,11 +538,13 @@ const LudoPage = () => {
                 blue: '#1E88E5'
               };
               const isActive = gameState.currentTurn === 1;
+              // Use resolved avatar for user, undefined for bot
+              const displayAvatar = player.isBot ? undefined : (player.id === user?.id ? userResolvedAvatar : player.avatar);
               return (
                 <div className="flex items-center gap-2 flex-row-reverse">
                   {/* Avatar with Timer */}
                   <SquareTurnTimerAvatar
-                    avatarUrl={player.isBot ? undefined : player.avatar}
+                    avatarUrl={displayAvatar}
                     fallbackText={player.name.slice(0, 2).toUpperCase()}
                     borderColor={colorMap[player.color]}
                     isActive={isActive}
@@ -1040,6 +1058,7 @@ const LudoPage = () => {
         onPlayWithFriend={() => setGameMode('vs-friend')}
         selectedAvatar={selectedAvatar}
         onSelectAvatar={setSelectedAvatar}
+        userAvatar={userAvatar}
       />
     </>
   );
