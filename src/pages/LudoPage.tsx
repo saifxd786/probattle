@@ -248,32 +248,17 @@ const LudoPage = () => {
           background: 'linear-gradient(180deg, #1a1a2e 0%, #0f0f23 100%)',
         }}
       >
-        {/* Compact Game Header with Sound Toggle */}
+        {/* Compact Game Header - Prize & Controls Only */}
         <div className="shrink-0 px-3 py-2 border-b border-white/10 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div 
-              className={`w-7 h-7 rounded-full bg-gradient-to-br ${colorStyles[currentPlayer?.color || 'red']} flex items-center justify-center`}
-            >
-              <span className="text-white text-[10px] font-bold">
-                {currentPlayer?.name.charAt(0).toUpperCase()}
-              </span>
-            </div>
-            <div>
-              <p className="text-[8px] text-gray-400 uppercase tracking-wide">Turn</p>
-              <p className="font-medium text-white text-xs">{currentPlayer?.name}</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <SoundToggle compact />
-            <motion.div 
-              className="px-3 py-1.5 rounded-lg bg-gradient-to-br from-yellow-500/20 to-orange-500/10 border border-yellow-500/30"
-              animate={{ scale: [1, 1.02, 1] }}
-              transition={{ duration: 2, repeat: Infinity }}
-            >
-              <p className="text-[8px] text-yellow-500 uppercase tracking-wide">Prize</p>
-              <p className="font-bold text-sm text-yellow-400">₹{rewardAmount}</p>
-            </motion.div>
-          </div>
+          <SoundToggle compact />
+          <motion.div 
+            className="px-3 py-1.5 rounded-lg bg-gradient-to-br from-yellow-500/20 to-orange-500/10 border border-yellow-500/30"
+            animate={{ scale: [1, 1.02, 1] }}
+            transition={{ duration: 2, repeat: Infinity }}
+          >
+            <p className="text-[8px] text-yellow-500 uppercase tracking-wide">Prize</p>
+            <p className="font-bold text-sm text-yellow-400">₹{rewardAmount}</p>
+          </motion.div>
         </div>
 
 
@@ -432,6 +417,16 @@ const LudoPage = () => {
             })()}
           </div>
         </div>
+        
+        {/* In-Game Chat for Bot Mode */}
+        {user && (
+          <LudoChat
+            messages={[]}
+            onSendMessage={() => {}}
+            currentUserId={user.id}
+            playerColor={gameState.players.find(p => !p.isBot)?.color || 'red'}
+          />
+        )}
       </div>
     );
   }
@@ -475,23 +470,10 @@ const LudoPage = () => {
           background: 'linear-gradient(180deg, #1a1a2e 0%, #0f0f23 100%)',
         }}
       >
-        {/* Game Header */}
+        {/* Compact Game Header - Controls Only */}
         <div className="shrink-0 px-3 py-2 border-b border-white/10 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div 
-              className={`w-7 h-7 rounded-full bg-gradient-to-br ${colorStyles[currentPlayer?.color || 'red']} flex items-center justify-center`}
-            >
-              <span className="text-white text-[10px] font-bold">
-                {currentPlayer?.name.charAt(0).toUpperCase()}
-              </span>
-            </div>
-            <div>
-              <p className="text-[8px] text-gray-400 uppercase tracking-wide">Turn</p>
-              <p className="font-medium text-white text-xs">{currentPlayer?.name}</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            {/* Connection Status Indicator */}
+            {/* Connection Status */}
             {connectionStatus !== 'connected' && (
               <motion.div 
                 className={`flex items-center gap-1 px-2 py-1 rounded-lg ${
@@ -509,18 +491,17 @@ const LudoPage = () => {
                       <RefreshCw className="w-3 h-3 text-yellow-400" />
                     </motion.div>
                     <span className="text-[10px] text-yellow-400">
-                      Reconnecting ({reconnectAttempts}/5)...
+                      Reconnecting...
                     </span>
                   </>
                 ) : (
                   <>
                     <WifiOff className="w-3 h-3 text-red-400" />
-                    <span className="text-[10px] text-red-400">Disconnected</span>
                     <Button
                       variant="ghost"
                       size="sm"
                       onClick={manualReconnect}
-                      className="h-5 px-1 text-[10px] text-red-400 hover:text-red-300"
+                      className="h-5 px-1 text-[10px] text-red-400"
                     >
                       <RotateCcw className="w-3 h-3" />
                     </Button>
@@ -528,100 +509,29 @@ const LudoPage = () => {
                 )}
               </motion.div>
             )}
-            {/* Ping/Latency Indicator */}
+            {/* Ping */}
             {pingLatency !== null && connectionStatus === 'connected' && (
               <div className={`flex items-center gap-1 px-2 py-1 rounded-lg ${
-                pingLatency < 100 ? 'bg-green-500/20' : 
-                pingLatency < 200 ? 'bg-yellow-500/20' : 'bg-red-500/20'
+                pingLatency < 100 ? 'bg-green-500/20' : pingLatency < 200 ? 'bg-yellow-500/20' : 'bg-red-500/20'
               }`}>
-                <Signal className={`w-3 h-3 ${
-                  pingLatency < 100 ? 'text-green-400' : 
-                  pingLatency < 200 ? 'text-yellow-400' : 'text-red-400'
-                }`} />
-                <span className={`text-[10px] font-mono ${
-                  pingLatency < 100 ? 'text-green-400' : 
-                  pingLatency < 200 ? 'text-yellow-400' : 'text-red-400'
-                }`}>
+                <Signal className={`w-3 h-3 ${pingLatency < 100 ? 'text-green-400' : pingLatency < 200 ? 'text-yellow-400' : 'text-red-400'}`} />
+                <span className={`text-[10px] font-mono ${pingLatency < 100 ? 'text-green-400' : pingLatency < 200 ? 'text-yellow-400' : 'text-red-400'}`}>
                   {pingLatency}ms
                 </span>
               </div>
             )}
-            {/* Opponent Online Status with Disconnect Countdown */}
-            {opponentOnline ? (
-              <div className="flex items-center gap-1 px-2 py-1 rounded-lg bg-green-500/20">
-                <Wifi className="w-3 h-3 text-green-400" />
-                <span className="text-[10px] text-green-400">Online</span>
-              </div>
-            ) : opponentDisconnectCountdown !== null ? (
-              <motion.div 
-                className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-red-500/30 border border-red-500/50"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-              >
-                <WifiOff className="w-3 h-3 text-red-400 animate-pulse" />
-                <span className="text-[10px] text-red-400 font-mono">
-                  Offline • {opponentDisconnectCountdown}s
-                </span>
-                <div className="flex gap-1 ml-1">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={extendDisconnectCountdown}
-                    className="h-5 px-1.5 text-[9px] text-yellow-400 hover:text-yellow-300 hover:bg-yellow-500/20"
-                    title="Give opponent more time"
-                  >
-                    +60s
-                  </Button>
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-5 px-1.5 text-[9px] text-green-400 hover:text-green-300 hover:bg-green-500/20"
-                        title="Claim win now"
-                      >
-                        Win
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent className="max-w-xs">
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Claim Victory?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          Your opponent is disconnected. Are you sure you want to claim the win now? They may reconnect soon.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Wait</AlertDialogCancel>
-                        <AlertDialogAction onClick={skipCountdownAndClaimWin}>
-                          Claim Win
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                </div>
-              </motion.div>
-            ) : (
-              <div className="flex items-center gap-1 px-2 py-1 rounded-lg bg-red-500/20">
-                <WifiOff className="w-3 h-3 text-red-400" />
-                <span className="text-[10px] text-red-400">Offline</span>
-              </div>
-            )}
-            {/* Sync Status & Button */}
+            {/* Sync */}
             <Button
               variant="ghost"
               size="sm"
               onClick={() => resyncGameState()}
               disabled={syncStatus === 'resyncing'}
-              className={`h-7 px-2 text-[10px] hover:text-white ${
-                syncStatus === 'mismatch' ? 'text-yellow-400 animate-pulse' : 
-                syncStatus === 'resyncing' ? 'text-blue-400' : 
-                'text-muted-foreground'
-              }`}
+              className={`h-7 px-2 text-[10px] ${syncStatus === 'mismatch' ? 'text-yellow-400' : 'text-muted-foreground'}`}
             >
-              <RefreshCw className={`w-3 h-3 mr-1 ${syncStatus === 'resyncing' ? 'animate-spin' : ''}`} />
-              {syncStatus === 'resyncing' ? 'Syncing...' : 
-               syncStatus === 'mismatch' ? '⚠️ Sync' : 'Sync'}
+              <RefreshCw className={`w-3 h-3 ${syncStatus === 'resyncing' ? 'animate-spin' : ''}`} />
             </Button>
+          </div>
+          <div className="flex items-center gap-2">
             <SoundToggle compact />
             <motion.div 
               className="px-3 py-1.5 rounded-lg bg-gradient-to-br from-yellow-500/20 to-orange-500/10 border border-yellow-500/30"
@@ -651,93 +561,158 @@ const LudoPage = () => {
           />
         </div>
 
-        {/* Bottom Section - Profile | Dice | Profile */}
-        <div className="shrink-0 px-3 py-2 border-t border-white/10 bg-black/40 flex items-center justify-between gap-2">
-          {/* Left Player Profile */}
-          {friendGameState.players[0] && (() => {
-            const player = friendGameState.players[0];
-            const colorMap: Record<string, string> = {
-              red: '#E53935',
-              green: '#43A047', 
-              yellow: '#FFD600',
-              blue: '#1E88E5'
-            };
-            const isActive = friendGameState.currentTurn === 0;
-            const isCurrentUser = player.id === user?.id;
-            return (
-              <div 
-                className={`relative flex flex-col items-center p-1.5 rounded-lg transition-all ${
-                  isActive ? 'ring-2 ring-green-400 bg-white/10' : 'bg-black/30'
-                }`}
-              >
-                <div 
-                  className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm"
-                  style={{ 
-                    background: `linear-gradient(135deg, ${colorMap[player.color]}dd, ${colorMap[player.color]}88)`,
-                    border: `2px solid ${colorMap[player.color]}`,
-                    boxShadow: isActive ? `0 0 10px ${colorMap[player.color]}80` : 'none'
-                  }}
-                >
-                  {isCurrentUser ? '👤' : player.name.slice(0, 2).toUpperCase()}
+        {/* Bottom Section - Combined VS Bar with Dice */}
+        <div className="shrink-0 px-3 py-3 border-t border-white/10 bg-black/60">
+          {/* Opponent Status Row */}
+          {(!opponentOnline || opponentDisconnectCountdown !== null) && (
+            <div className="flex items-center justify-center gap-2 mb-2">
+              {opponentOnline ? (
+                <div className="flex items-center gap-1 px-2 py-1 rounded-lg bg-green-500/20">
+                  <Wifi className="w-3 h-3 text-green-400" />
+                  <span className="text-[10px] text-green-400">Opponent Online</span>
                 </div>
-                <span className="text-[9px] text-gray-400 mt-0.5 truncate max-w-[50px]">
-                  {isCurrentUser ? 'You' : (player.uid || player.name.slice(0, 5))}
-                </span>
-                {isActive && (
-                  <div className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-green-400 animate-pulse" />
-                )}
-              </div>
-            );
-          })()}
+              ) : opponentDisconnectCountdown !== null ? (
+                <motion.div 
+                  className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-red-500/30 border border-red-500/50"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                >
+                  <WifiOff className="w-3 h-3 text-red-400 animate-pulse" />
+                  <span className="text-[10px] text-red-400 font-mono">
+                    Opponent Offline • {opponentDisconnectCountdown}s
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={extendDisconnectCountdown}
+                    className="h-5 px-1.5 text-[9px] text-yellow-400"
+                  >
+                    +60s
+                  </Button>
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="ghost" size="sm" className="h-5 px-1.5 text-[9px] text-green-400">
+                        Claim Win
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent className="max-w-xs">
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Claim Victory?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Your opponent is disconnected. Claim the win now?
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Wait</AlertDialogCancel>
+                        <AlertDialogAction onClick={skipCountdownAndClaimWin}>Claim Win</AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </motion.div>
+              ) : (
+                <div className="flex items-center gap-1 px-2 py-1 rounded-lg bg-red-500/20">
+                  <WifiOff className="w-3 h-3 text-red-400" />
+                  <span className="text-[10px] text-red-400">Opponent Offline</span>
+                </div>
+              )}
+            </div>
+          )}
 
-          {/* Dice in Middle */}
-          <div className="flex-1 flex justify-center">
-            <LudoDice
-              value={friendGameState.diceValue}
-              isRolling={friendGameState.isRolling}
-              onRoll={friendRollDice}
-              disabled={!isUserTurn}
-              canRoll={friendGameState.canRoll && isUserTurn}
-              compact
-            />
+          <div className="flex items-center justify-between">
+            {/* Left Player */}
+            {friendGameState.players[0] && (() => {
+              const player = friendGameState.players[0];
+              const colorMap: Record<string, string> = {
+                red: '#E53935',
+                green: '#43A047', 
+                yellow: '#FFD600',
+                blue: '#1E88E5'
+              };
+              const isActive = friendGameState.currentTurn === 0;
+              const isCurrentUser = player.id === user?.id;
+              return (
+                <div className="flex items-center gap-2">
+                  <div className="relative">
+                    <div 
+                      className="w-14 h-14 rounded-xl flex items-center justify-center text-white font-bold text-lg"
+                      style={{ 
+                        background: `linear-gradient(135deg, ${colorMap[player.color]}dd, ${colorMap[player.color]}88)`,
+                        border: `2px solid ${colorMap[player.color]}`,
+                        boxShadow: isActive ? `0 0 12px ${colorMap[player.color]}80` : 'none'
+                      }}
+                    >
+                      {isCurrentUser ? '👤' : player.name.slice(0, 2).toUpperCase()}
+                    </div>
+                    {isActive && (
+                      <div className="absolute -bottom-1 -left-1 px-1.5 py-0.5 rounded text-[10px] font-bold text-white bg-green-500">
+                        TURN
+                      </div>
+                    )}
+                  </div>
+                  <div className="text-left">
+                    <p className="text-white font-bold text-sm">{isCurrentUser ? 'You' : player.uid || player.name.slice(0, 5)}</p>
+                    <div className="flex items-center gap-1">
+                      <span className="text-amber-400 text-xs">💰</span>
+                      <span className="text-amber-400 text-xs font-semibold">₹{friendGameState.rewardAmount}</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* Center - Dice */}
+            <div className="flex flex-col items-center">
+              <LudoDice
+                value={friendGameState.diceValue}
+                isRolling={friendGameState.isRolling}
+                onRoll={friendRollDice}
+                disabled={!isUserTurn}
+                canRoll={friendGameState.canRoll && isUserTurn}
+                compact
+              />
+            </div>
+
+            {/* Right Player */}
+            {friendGameState.players[1] && (() => {
+              const player = friendGameState.players[1];
+              const colorMap: Record<string, string> = {
+                red: '#E53935',
+                green: '#43A047', 
+                yellow: '#FFD600',
+                blue: '#1E88E5'
+              };
+              const isActive = friendGameState.currentTurn === 1;
+              const isCurrentUser = player.id === user?.id;
+              return (
+                <div className="flex items-center gap-2 flex-row-reverse">
+                  <div className="relative">
+                    <div 
+                      className="w-14 h-14 rounded-xl flex items-center justify-center text-white font-bold text-lg"
+                      style={{ 
+                        background: `linear-gradient(135deg, ${colorMap[player.color]}dd, ${colorMap[player.color]}88)`,
+                        border: `2px solid ${colorMap[player.color]}`,
+                        boxShadow: isActive ? `0 0 12px ${colorMap[player.color]}80` : 'none'
+                      }}
+                    >
+                      {isCurrentUser ? '👤' : player.name.slice(0, 2).toUpperCase()}
+                    </div>
+                    {isActive && (
+                      <div className="absolute -bottom-1 -right-1 px-1.5 py-0.5 rounded text-[10px] font-bold text-white bg-green-500">
+                        TURN
+                      </div>
+                    )}
+                  </div>
+                  <div className="text-right">
+                    <p className="text-white font-bold text-sm">{isCurrentUser ? 'You' : player.uid || player.name.slice(0, 5)}</p>
+                    <div className="flex items-center gap-1 justify-end">
+                      <span className="text-amber-400 text-xs">💰</span>
+                      <span className="text-amber-400 text-xs font-semibold">₹{friendGameState.rewardAmount}</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
-
-          {/* Right Player Profile */}
-          {friendGameState.players[1] && (() => {
-            const player = friendGameState.players[1];
-            const colorMap: Record<string, string> = {
-              red: '#E53935',
-              green: '#43A047', 
-              yellow: '#FFD600',
-              blue: '#1E88E5'
-            };
-            const isActive = friendGameState.currentTurn === 1;
-            const isCurrentUser = player.id === user?.id;
-            return (
-              <div 
-                className={`relative flex flex-col items-center p-1.5 rounded-lg transition-all ${
-                  isActive ? 'ring-2 ring-green-400 bg-white/10' : 'bg-black/30'
-                }`}
-              >
-                <div 
-                  className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm"
-                  style={{ 
-                    background: `linear-gradient(135deg, ${colorMap[player.color]}dd, ${colorMap[player.color]}88)`,
-                    border: `2px solid ${colorMap[player.color]}`,
-                    boxShadow: isActive ? `0 0 10px ${colorMap[player.color]}80` : 'none'
-                  }}
-                >
-                  {isCurrentUser ? '👤' : player.name.slice(0, 2).toUpperCase()}
-                </div>
-                <span className="text-[9px] text-gray-400 mt-0.5 truncate max-w-[50px]">
-                  {isCurrentUser ? 'You' : (player.uid || player.name.slice(0, 5))}
-                </span>
-                {isActive && (
-                  <div className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-green-400 animate-pulse" />
-                )}
-              </div>
-            );
-          })()}
         </div>
 
         {/* In-Game Chat */}
