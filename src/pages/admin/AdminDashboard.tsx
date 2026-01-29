@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Users, Gamepad2, DollarSign, Clock, TrendingUp, ArrowUpRight, ArrowDownRight, Trophy, Dices, Gem, Percent } from 'lucide-react';
+import { Users, Gamepad2, DollarSign, Clock, TrendingUp, ArrowUpRight, ArrowDownRight, Trophy, Dices, Gem, Percent, AlertTriangle, Shield } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { 
@@ -70,6 +71,7 @@ const AdminDashboard = () => {
     total: { totalGames: 0, playerWins: 0, platformWins: 0, totalWagered: 0, totalPaidOut: 0, platformProfit: 0 },
   });
   const [isLoading, setIsLoading] = useState(true);
+  const [multiAccountAlerts, setMultiAccountAlerts] = useState({ total: 0, critical: 0 });
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -124,6 +126,7 @@ const AdminDashboard = () => {
       await fetchChartData();
       await fetchMatchStats();
       await fetchGameStats();
+      await fetchMultiAccountAlerts();
       
       setIsLoading(false);
     };
@@ -284,6 +287,20 @@ const AdminDashboard = () => {
     });
   };
 
+  const fetchMultiAccountAlerts = async () => {
+    const { data } = await supabase
+      .from('multi_account_alerts')
+      .select('severity, is_resolved')
+      .eq('is_resolved', false);
+
+    if (data) {
+      setMultiAccountAlerts({
+        total: data.length,
+        critical: data.filter(a => a.severity === 'critical').length
+      });
+    }
+  };
+
   const statCards = [
     { title: 'Total Users', value: stats.totalUsers, icon: Users, color: 'text-blue-500', trend: '+12%' },
     { title: 'Active Matches', value: stats.activeMatches, icon: Gamepad2, color: 'text-green-500', trend: '+5%' },
@@ -293,6 +310,29 @@ const AdminDashboard = () => {
 
   return (
     <div className="p-6 space-y-6">
+      {/* Multi-Account Alert Banner */}
+      {multiAccountAlerts.total > 0 && (
+        <Link to="/admin/multi-account">
+          <Card className={`border-l-4 ${multiAccountAlerts.critical > 0 ? 'border-l-red-500 bg-red-500/10' : 'border-l-yellow-500 bg-yellow-500/10'} cursor-pointer hover:bg-opacity-20 transition-colors`}>
+            <CardContent className="p-4 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className={`p-2 rounded-full ${multiAccountAlerts.critical > 0 ? 'bg-red-500/20' : 'bg-yellow-500/20'}`}>
+                  <AlertTriangle className={`w-5 h-5 ${multiAccountAlerts.critical > 0 ? 'text-red-500' : 'text-yellow-500'}`} />
+                </div>
+                <div>
+                  <p className="font-medium">Multi-Account Detection Alert</p>
+                  <p className="text-sm text-muted-foreground">
+                    {multiAccountAlerts.total} unresolved alerts
+                    {multiAccountAlerts.critical > 0 && ` (${multiAccountAlerts.critical} critical)`}
+                  </p>
+                </div>
+              </div>
+              <Shield className="w-5 h-5 text-muted-foreground" />
+            </CardContent>
+          </Card>
+        </Link>
+      )}
+
       <div>
         <h1 className="text-2xl font-display font-bold">Dashboard</h1>
         <p className="text-muted-foreground">Welcome to ProBattle Admin Panel</p>

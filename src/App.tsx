@@ -47,6 +47,7 @@ import AdminSupport from "./pages/admin/AdminSupport";
 import AdminSpinWheelSettings from "./pages/admin/AdminSpinWheelSettings";
 import AdminDailyLoginSettings from "./pages/admin/AdminDailyLoginSettings";
 import AdminDeviceBans from "./pages/admin/AdminDeviceBans";
+import AdminMultiAccountDetection from "./pages/admin/AdminMultiAccountDetection";
 import AgentLoginPage from "./pages/agent/AgentLoginPage";
 import AgentLayout from "./components/agent/AgentLayout";
 import AgentUsers from "./pages/agent/AgentUsers";
@@ -126,6 +127,7 @@ const App = () => {
                   <Route path="redeem-codes" element={<AdminRedeemCodes />} />
                   <Route path="support" element={<AdminSupport />} />
                   <Route path="device-bans" element={<AdminDeviceBans />} />
+                  <Route path="multi-account" element={<AdminMultiAccountDetection />} />
                 </Route>
                 {/* Agent Routes */}
                 <Route path="/agent/login" element={<AgentLoginPage />} />
