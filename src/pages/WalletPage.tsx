@@ -206,6 +206,7 @@ const WalletPage = () => {
 
     setIsSubmitting(true);
 
+
     try {
       // If no saved bank card, save the new one first
       if (!savedBankCard) {
@@ -285,6 +286,18 @@ const WalletPage = () => {
 
   const handleRedeem = async () => {
     if (!user || !redeemCode.trim()) return;
+
+    // Check if user has bank card bound
+    if (!savedBankCard) {
+      toast({ 
+        title: 'Bank Details Required', 
+        description: 'कृपया पहले Withdrawal section में अपना Bank Account bind करें।', 
+        variant: 'destructive' 
+      });
+      setIsRedeemOpen(false);
+      setIsWithdrawOpen(true);
+      return;
+    }
 
     setIsRedeeming(true);
 
