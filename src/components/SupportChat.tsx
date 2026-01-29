@@ -59,6 +59,8 @@ const ISSUE_CATEGORIES = [
 const MAX_IMAGES = 5;
 const MAX_VIDEO_SIZE = 3 * 1024 * 1024 * 1024; // 3GB
 
+const INACTIVITY_TIMEOUT = 60 * 60 * 1000; // 1 hour in milliseconds
+
 const SupportChat = () => {
   const { user } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
@@ -70,6 +72,10 @@ const SupportChat = () => {
   const [aiMessages, setAiMessages] = useState<AIMessage[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [isAiTyping, setIsAiTyping] = useState(false);
+  
+  // Inactivity timer
+  const [lastActivityTime, setLastActivityTime] = useState<number>(Date.now());
+  const inactivityTimerRef = useRef<NodeJS.Timeout | null>(null);
   
   // Voice input
   const [isListening, setIsListening] = useState(false);
@@ -86,6 +92,35 @@ const SupportChat = () => {
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxImages, setLightboxImages] = useState<string[]>([]);
   const [lightboxIndex, setLightboxIndex] = useState(0);
+
+  // Inactivity auto-reset effect
+  useEffect(() => {
+    // Clear existing timer
+    if (inactivityTimerRef.current) {
+      clearInterval(inactivityTimerRef.current);
+    }
+
+    // Only run timer if there are messages
+    if (aiMessages.length > 0) {
+      inactivityTimerRef.current = setInterval(() => {
+        const timeSinceLastActivity = Date.now() - lastActivityTime;
+        if (timeSinceLastActivity >= INACTIVITY_TIMEOUT) {
+          // Reset chat after 1 hour of inactivity
+          resetChat();
+          toast({
+            title: 'Chat Reset',
+            description: '1 hour of inactivity. Chat has been reset.',
+          });
+        }
+      }, 60000); // Check every minute
+    }
+
+    return () => {
+      if (inactivityTimerRef.current) {
+        clearInterval(inactivityTimerRef.current);
+      }
+    };
+  }, [aiMessages.length, lastActivityTime]);
 
   // Check speech recognition support
   useEffect(() => {
@@ -214,6 +249,7 @@ const SupportChat = () => {
       content: greeting,
       timestamp: new Date(),
     }]);
+    setLastActivityTime(Date.now()); // Start activity timer
   };
 
   const sendMessage = async (e?: React.FormEvent) => {
@@ -232,6 +268,7 @@ const SupportChat = () => {
     setNewMessage('');
     setPendingImage(null);
     setIsAiTyping(true);
+    setLastActivityTime(Date.now()); // Update activity time
 
     try {
       // Build messages for API
@@ -293,6 +330,7 @@ const SupportChat = () => {
     setAiMessages([]);
     setNewMessage('');
     setPendingImage(null);
+    setLastActivityTime(Date.now()); // Reset activity time
   };
 
   const openLightbox = (imageUrl: string) => {
