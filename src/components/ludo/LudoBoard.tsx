@@ -48,6 +48,9 @@ interface LudoBoardProps {
   captureEvent?: CaptureEvent | null;
   onCaptureAnimationComplete?: () => void;
   diceValue?: number;
+  turnTimeLeft?: number; // seconds remaining (15s max)
+  onTurnTimeout?: () => void;
+  offlineTimeLeft?: number; // seconds remaining for offline player (60s max)
 }
 
 // Enhanced Ludo King colors - more vibrant
@@ -306,94 +309,187 @@ const PlayerProfileCard = ({
   );
 };
 
-// Bottom info bar - Clean style with avatars
+// Square Timer Avatar Component
+const TimerAvatar = ({
+  player,
+  uid,
+  isCurrentTurn,
+  turnTimeLeft,
+  offlineTimeLeft,
+}: {
+  player: Player | undefined;
+  uid: string;
+  isCurrentTurn: boolean;
+  turnTimeLeft?: number;
+  offlineTimeLeft?: number;
+}) => {
+  const colors = COLORS[player?.color as keyof typeof COLORS];
+  const avatarSrc = player?.avatar || COLOR_AVATARS[player?.color as keyof typeof COLOR_AVATARS] || redAvatar;
+  
+  // Calculate timer progress (15s for turn, 60s for offline)
+  const maxTime = offlineTimeLeft !== undefined ? 60 : 15;
+  const timeLeft = offlineTimeLeft ?? turnTimeLeft ?? maxTime;
+  const progress = (timeLeft / maxTime) * 100;
+  const isLowTime = timeLeft <= 5;
+  const isOffline = offlineTimeLeft !== undefined && offlineTimeLeft < 60;
+  
+  return (
+    <div className="relative">
+      {/* Square container with timer border */}
+      <div 
+        className="relative w-11 h-11 rounded-lg overflow-hidden"
+        style={{
+          background: colors?.main || '#1E88E5',
+        }}
+      >
+        {/* Timer border animation - only show when it's this player's turn */}
+        {isCurrentTurn && (
+          <svg 
+            className="absolute inset-0 w-full h-full -rotate-90"
+            style={{ zIndex: 10 }}
+          >
+            <rect
+              x="1"
+              y="1"
+              width="42"
+              height="42"
+              rx="7"
+              ry="7"
+              fill="none"
+              stroke={isOffline ? '#EF4444' : isLowTime ? '#F59E0B' : colors?.main || '#1E88E5'}
+              strokeWidth="3"
+              strokeDasharray={`${progress * 1.68} 168`}
+              className="transition-all duration-1000 ease-linear"
+              style={{
+                filter: isLowTime ? 'drop-shadow(0 0 4px #F59E0B)' : `drop-shadow(0 0 4px ${colors?.main})`,
+              }}
+            />
+          </svg>
+        )}
+        
+        {/* Avatar image */}
+        <img 
+          src={avatarSrc} 
+          alt={uid} 
+          className="w-full h-full object-cover"
+          style={{
+            opacity: isOffline ? 0.5 : 1,
+          }}
+        />
+        
+        {/* Offline indicator */}
+        {isOffline && (
+          <div className="absolute inset-0 flex items-center justify-center bg-black/40">
+            <span className="text-[8px] font-bold text-red-400 uppercase">Offline</span>
+          </div>
+        )}
+        
+        {/* Current turn glow */}
+        {isCurrentTurn && !isOffline && (
+          <motion.div
+            className="absolute inset-0 rounded-lg pointer-events-none"
+            style={{
+              boxShadow: `inset 0 0 10px ${colors?.main}80`,
+            }}
+            animate={{ opacity: [0.5, 1, 0.5] }}
+            transition={{ duration: 1.5, repeat: Infinity }}
+          />
+        )}
+      </div>
+      
+      {/* Timer text below avatar */}
+      {isCurrentTurn && (
+        <motion.div 
+          className="absolute -bottom-4 left-1/2 -translate-x-1/2 px-1.5 py-0.5 rounded text-[9px] font-bold"
+          style={{
+            background: isOffline ? '#EF4444' : isLowTime ? '#F59E0B' : colors?.main,
+            color: '#fff',
+          }}
+          animate={isLowTime ? { scale: [1, 1.1, 1] } : {}}
+          transition={{ duration: 0.5, repeat: Infinity }}
+        >
+          {timeLeft}s
+        </motion.div>
+      )}
+    </div>
+  );
+};
+
+// Bottom info bar with square timer avatars
 const BottomInfoBar = ({ 
-  players 
+  players,
+  turnTimeLeft,
+  offlineTimeLeft,
 }: { 
   players: Player[];
+  turnTimeLeft?: number;
+  offlineTimeLeft?: number;
 }) => {
   const leftPlayer = players[0];
   const rightPlayer = players[1];
   const leftUID = leftPlayer?.uid || useMemo(() => generateUID(), []);
   const rightUID = rightPlayer?.uid || useMemo(() => generateUID(), []);
-  const leftColors = COLORS[leftPlayer?.color as keyof typeof COLORS];
-  const rightColors = COLORS[rightPlayer?.color as keyof typeof COLORS];
   
   return (
     <div 
-      className="flex items-center justify-between px-3 py-2 rounded-xl"
+      className="flex items-center justify-between px-3 py-3 rounded-xl"
       style={{
-        background: 'linear-gradient(180deg, rgba(30,60,100,0.9) 0%, rgba(15,35,70,0.95) 100%)',
-        border: '1px solid rgba(100,150,200,0.3)',
-        boxShadow: '0 4px 20px rgba(0,0,0,0.3)'
+        background: 'linear-gradient(180deg, rgba(20,20,30,0.95) 0%, rgba(10,10,20,0.98) 100%)',
+        border: '1px solid rgba(255,255,255,0.08)',
+        boxShadow: '0 4px 20px rgba(0,0,0,0.4)'
       }}
     >
       {/* Left Player Info */}
-      <div className="flex items-center gap-2">
-        <div 
-          className="w-8 h-8 rounded-full overflow-hidden"
-          style={{ 
-            background: leftColors?.main || '#1E88E5',
-            boxShadow: `0 0 8px ${leftColors?.main || '#1E88E5'}50`,
-            border: `2px solid ${leftColors?.main || '#1E88E5'}`
-          }}
-        >
-<img 
-            src={leftPlayer?.avatar || COLOR_AVATARS[leftPlayer?.color as keyof typeof COLOR_AVATARS] || redAvatar} 
-            alt={leftUID} 
-            className="w-full h-full object-cover" 
-          />
-        </div>
-        <div className="text-left">
+      <div className="flex items-center gap-2.5">
+        <TimerAvatar
+          player={leftPlayer}
+          uid={leftUID}
+          isCurrentTurn={leftPlayer?.isCurrentTurn || false}
+          turnTimeLeft={leftPlayer?.isCurrentTurn ? turnTimeLeft : undefined}
+          offlineTimeLeft={leftPlayer?.isCurrentTurn ? offlineTimeLeft : undefined}
+        />
+        <div className="text-left pt-1">
           <div className="text-white font-bold text-sm">{leftUID}</div>
           <div className="flex items-center gap-1">
-            <span className="text-yellow-400 text-xs">💰</span>
-            <span className="text-yellow-300 text-xs font-medium">{leftPlayer?.coins || 1250}</span>
+            <span className="text-yellow-400 text-[10px]">💰</span>
+            <span className="text-yellow-300 text-[10px] font-medium">{leftPlayer?.coins || 1250}</span>
           </div>
         </div>
       </div>
 
       {/* VS Badge */}
       <div 
-        className="px-3 py-1 rounded-lg font-bold text-sm"
+        className="px-3 py-1 rounded-lg font-bold text-xs"
         style={{
           background: 'linear-gradient(135deg, #FFD700 0%, #FFA500 100%)',
           color: '#1a1a2e',
-          boxShadow: '0 2px 10px rgba(255,215,0,0.3)'
         }}
       >
         VS
       </div>
 
       {/* Right Player Info */}
-      <div className="flex items-center gap-2">
-        <div className="text-right">
+      <div className="flex items-center gap-2.5">
+        <div className="text-right pt-1">
           <div className="text-white font-bold text-sm">{rightUID}</div>
           <div className="flex items-center justify-end gap-1">
-            <span className="text-yellow-400 text-xs">💰</span>
-            <span className="text-yellow-300 text-xs font-medium">{rightPlayer?.coins || 1250}</span>
+            <span className="text-yellow-400 text-[10px]">💰</span>
+            <span className="text-yellow-300 text-[10px] font-medium">{rightPlayer?.coins || 1250}</span>
           </div>
         </div>
-        <div 
-          className="w-8 h-8 rounded-full overflow-hidden"
-          style={{ 
-            background: rightColors?.main || '#43A047',
-            boxShadow: `0 0 8px ${rightColors?.main || '#43A047'}50`,
-            border: `2px solid ${rightColors?.main || '#43A047'}`
-          }}
-        >
-<img 
-            src={rightPlayer?.avatar || COLOR_AVATARS[rightPlayer?.color as keyof typeof COLOR_AVATARS] || greenAvatar} 
-            alt={rightUID} 
-            className="w-full h-full object-cover" 
-          />
-        </div>
+        <TimerAvatar
+          player={rightPlayer}
+          uid={rightUID}
+          isCurrentTurn={rightPlayer?.isCurrentTurn || false}
+          turnTimeLeft={rightPlayer?.isCurrentTurn ? turnTimeLeft : undefined}
+          offlineTimeLeft={rightPlayer?.isCurrentTurn ? offlineTimeLeft : undefined}
+        />
       </div>
     </div>
   );
 };
 
-const LudoBoard = ({ players, onTokenClick, selectedToken, captureEvent, onCaptureAnimationComplete, diceValue = 1 }: LudoBoardProps) => {
+const LudoBoard = ({ players, onTokenClick, selectedToken, captureEvent, onCaptureAnimationComplete, diceValue = 1, turnTimeLeft = 15, onTurnTimeout, offlineTimeLeft }: LudoBoardProps) => {
   const boardRef = useRef<HTMLDivElement>(null);
   // Calculate size based on available viewport
   const [size, setSize] = useState(Math.min(window.innerWidth - 8, window.innerHeight - 120, 600));
@@ -686,6 +782,15 @@ const LudoBoard = ({ players, onTokenClick, selectedToken, captureEvent, onCaptu
           />
         </div>
       </motion.div>
+      
+      {/* Bottom Info Bar with Timer */}
+      <div className="mt-3 px-1">
+        <BottomInfoBar 
+          players={players} 
+          turnTimeLeft={turnTimeLeft}
+          offlineTimeLeft={offlineTimeLeft}
+        />
+      </div>
     </div>
   );
 };

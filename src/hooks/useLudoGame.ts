@@ -233,6 +233,13 @@ export const useLudoGame = () => {
 
   const [userAvatar, setUserAvatar] = useState<string | null>(null);
 
+  // Turn timer state (15s per turn)
+  const [turnTimeLeft, setTurnTimeLeft] = useState(15);
+  const turnTimerRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // Offline timer state (60s for disconnection)
+  const [offlineTimeLeft, setOfflineTimeLeft] = useState<number | undefined>(undefined);
+
   // Fetch user profile and UID
   useEffect(() => {
     if (!user) return;
@@ -1114,6 +1121,74 @@ export const useLudoGame = () => {
     }
   }, [gameState.winner, handleGameEnd]);
 
+  // Turn timer effect - 15 seconds per turn
+  useEffect(() => {
+    // Only run timer during playing phase
+    if (gameState.phase !== 'playing') {
+      setTurnTimeLeft(15);
+      if (turnTimerRef.current) {
+        clearInterval(turnTimerRef.current);
+        turnTimerRef.current = null;
+      }
+      return;
+    }
+
+    // Reset timer when turn changes
+    setTurnTimeLeft(15);
+
+    // Start countdown
+    turnTimerRef.current = setInterval(() => {
+      setTurnTimeLeft(prev => {
+        if (prev <= 1) {
+          // Time's up - skip to next turn
+          const currentPlayer = gameState.players[gameState.currentTurn];
+          const isUserTurn = currentPlayer && !currentPlayer.isBot && user && currentPlayer.id === user.id;
+          
+          if (isUserTurn) {
+            // Auto-skip user's turn
+            toast({
+              title: "Time's up!",
+              description: "Turn skipped to opponent",
+              variant: "destructive"
+            });
+            
+            // Move to next player
+            const nextTurn = (gameState.currentTurn + 1) % gameState.players.length;
+            setGameState(prev => ({
+              ...prev,
+              currentTurn: nextTurn,
+              canRoll: true,
+              selectedToken: null
+            }));
+          }
+          return 15; // Reset timer for next turn
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => {
+      if (turnTimerRef.current) {
+        clearInterval(turnTimerRef.current);
+        turnTimerRef.current = null;
+      }
+    };
+  }, [gameState.phase, gameState.currentTurn, gameState.players, user, toast]);
+
+  // Skip turn function for manual timeout handling
+  const skipTurn = useCallback(() => {
+    if (gameState.phase !== 'playing') return;
+    
+    const nextTurn = (gameState.currentTurn + 1) % gameState.players.length;
+    setGameState(prev => ({
+      ...prev,
+      currentTurn: nextTurn,
+      canRoll: true,
+      selectedToken: null
+    }));
+    setTurnTimeLeft(15);
+  }, [gameState.phase, gameState.currentTurn, gameState.players.length]);
+
   return {
     settings,
     gameState,
@@ -1134,6 +1209,10 @@ export const useLudoGame = () => {
     activeGameData,
     isCheckingActiveGame,
     resumeGame,
-    dismissActiveGame
+    dismissActiveGame,
+    // Timer states
+    turnTimeLeft,
+    offlineTimeLeft,
+    skipTurn
   };
 };

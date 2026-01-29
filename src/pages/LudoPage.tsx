@@ -109,7 +109,10 @@ const LudoPage = () => {
     activeGameData,
     isCheckingActiveGame,
     resumeGame,
-    dismissActiveGame
+    dismissActiveGame,
+    turnTimeLeft,
+    offlineTimeLeft,
+    skipTurn
   } = useLudoGame();
   
   // Friend multiplayer hook
@@ -283,13 +286,17 @@ const LudoPage = () => {
               isCurrentTurn: idx === gameState.currentTurn,
               name: p.name,
               uid: p.uid,
-              isBot: p.isBot
+              isBot: p.isBot,
+              avatar: p.avatar
             }))}
             onTokenClick={isUserTurn && !gameState.canRoll ? handleTokenClick : undefined}
             selectedToken={gameState.selectedToken}
             captureEvent={captureEvent}
             onCaptureAnimationComplete={clearCaptureEvent}
             diceValue={gameState.diceValue}
+            turnTimeLeft={turnTimeLeft}
+            onTurnTimeout={skipTurn}
+            offlineTimeLeft={offlineTimeLeft}
           />
         </div>
 
