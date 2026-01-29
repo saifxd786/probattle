@@ -215,6 +215,7 @@ const LudoPage = () => {
   const [gameMode, setGameMode] = useState<GameMode>('select');
   const [showRematchDialog, setShowRematchDialog] = useState(false);
   const [liveUsers, setLiveUsers] = useState(getLiveUsersCount);
+  const [selectedAvatar, setSelectedAvatar] = useState<string | null>('profile');
   
   // Bot game hook
   const {
@@ -1037,6 +1038,8 @@ const LudoPage = () => {
         liveUsers={liveUsers}
         startMatchmaking={startMatchmaking}
         onPlayWithFriend={() => setGameMode('vs-friend')}
+        selectedAvatar={selectedAvatar}
+        onSelectAvatar={setSelectedAvatar}
       />
     </>
   );

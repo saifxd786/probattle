@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import EntrySelector from './EntrySelector';
+import LudoAvatarPicker from './LudoAvatarPicker';
 
 interface LudoLobbyProps {
   user: any;
@@ -21,6 +22,8 @@ interface LudoLobbyProps {
   liveUsers: string;
   startMatchmaking: () => void;
   onPlayWithFriend: () => void;
+  selectedAvatar: string | null;
+  onSelectAvatar: (avatar: string | null) => void;
 }
 
 const ENTRY_AMOUNTS = [10, 20, 50, 100, 200, 500, 1000, 5000];
@@ -36,6 +39,8 @@ const LudoLobby = ({
   liveUsers,
   startMatchmaking,
   onPlayWithFriend,
+  selectedAvatar,
+  onSelectAvatar,
 }: LudoLobbyProps) => {
   const navigate = useNavigate();
   const rewardAmount = entryAmount * settings.rewardMultiplier;
@@ -64,36 +69,47 @@ const LudoLobby = ({
       />
 
       <div className="relative z-10 px-4 pt-4 pb-4 flex-1 flex flex-col overflow-hidden">
-        {/* Header - Compact with Back Button */}
+        {/* Header - Compact with Back Button and Avatar Picker */}
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           className="mb-3"
         >
-          <div className="flex items-center gap-3">
-            {/* Back Button */}
-            <button
-              onClick={() => navigate('/')}
-              className="w-9 h-9 rounded-xl bg-gray-800/60 border border-gray-700/50 flex items-center justify-center text-gray-400 hover:text-white hover:bg-gray-700/60 transition-colors"
-            >
-              <ArrowLeft className="w-5 h-5" />
-            </button>
-            
-            <motion.div
-              className="inline-flex items-center justify-center w-10 h-10 rounded-xl"
-              style={{
-                background: 'linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%)',
-              }}
-            >
-              <Dices className="w-5 h-5 text-white" />
-            </motion.div>
-            <div className="text-left">
-              <h1 className="text-lg font-bold text-white tracking-tight">Ludo Arena</h1>
-              <p className="text-[10px] text-gray-500 flex items-center gap-1">
-                <Flame className="w-3 h-3 text-orange-500" />
-                Win up to ₹{rewardAmount.toFixed(0)}
-              </p>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              {/* Back Button */}
+              <button
+                onClick={() => navigate('/')}
+                className="w-9 h-9 rounded-xl bg-gray-800/60 border border-gray-700/50 flex items-center justify-center text-gray-400 hover:text-white hover:bg-gray-700/60 transition-colors"
+              >
+                <ArrowLeft className="w-5 h-5" />
+              </button>
+              
+              <motion.div
+                className="inline-flex items-center justify-center w-10 h-10 rounded-xl"
+                style={{
+                  background: 'linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%)',
+                }}
+              >
+                <Dices className="w-5 h-5 text-white" />
+              </motion.div>
+              <div className="text-left">
+                <h1 className="text-lg font-bold text-white tracking-tight">Ludo Arena</h1>
+                <p className="text-[10px] text-gray-500 flex items-center gap-1">
+                  <Flame className="w-3 h-3 text-orange-500" />
+                  Win up to ₹{rewardAmount.toFixed(0)}
+                </p>
+              </div>
             </div>
+
+            {/* Avatar Picker - Top Right */}
+            {user && (
+              <LudoAvatarPicker
+                userAvatar={user.avatar_url}
+                selectedAvatar={selectedAvatar}
+                onSelectAvatar={onSelectAvatar}
+              />
+            )}
           </div>
         </motion.div>
 
