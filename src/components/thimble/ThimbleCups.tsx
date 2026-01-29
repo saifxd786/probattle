@@ -96,20 +96,13 @@ const ThimbleCups = ({
     }
   }, [phase]);
 
-  // Get X position based on cup's position in order array - responsive
-  const getXPosition = (cupIndex: number) => {
-    const orderIndex = cupOrder.indexOf(cupIndex);
-    // Increased spacing to prevent cup overlap during shuffling
+  // Get responsive gap spacing between cups
+  const getGapSpacing = () => {
     const screenWidth = typeof window !== 'undefined' ? window.innerWidth : 400;
-    let spacing = 110;
-    if (screenWidth < 360) {
-      spacing = 70;
-    } else if (screenWidth < 400) {
-      spacing = 80;
-    } else if (screenWidth < 500) {
-      spacing = 90;
-    }
-    return (orderIndex - 1) * spacing;
+    if (screenWidth < 360) return 16;
+    if (screenWidth < 400) return 20;
+    if (screenWidth < 500) return 28;
+    return 36;
   };
 
   const renderCup = (cupIndex: number) => {
@@ -119,21 +112,24 @@ const ThimbleCups = ({
     const isSelected = selectedCup === cupIndex;
     const canSelect = phase === 'selecting';
     const isRevealingOrResult = phase === 'revealing' || phase === 'result';
+    
+    // Get the visual order position for this cup (0=left, 1=center, 2=right)
+    const orderPosition = cupOrder.indexOf(cupIndex);
 
     return (
       <motion.div
         key={cupIndex}
+        layout // Enable layout-based animation - no manual positioning needed!
         className="relative cursor-pointer"
+        style={{ order: orderPosition }} // CSS order property handles positioning
         animate={{
-          x: getXPosition(cupIndex),
           y: isLifted ? -90 : 0,
           rotateZ: isLifted ? -5 : 0
         }}
         transition={{
-          type: 'spring',
-          stiffness: 350,
-          damping: 28,
-          mass: 0.8
+          layout: { type: 'spring', stiffness: 400, damping: 30 },
+          y: { type: 'spring', stiffness: 350, damping: 28, mass: 0.8 },
+          rotateZ: { type: 'spring', stiffness: 350, damping: 28, mass: 0.8 }
         }}
         onClick={() => canSelect && onSelectCup(cupIndex)}
         whileHover={canSelect ? { scale: 1.08, y: -8 } : {}}
@@ -243,6 +239,8 @@ const ThimbleCups = ({
     );
   };
 
+  const gapSpacing = getGapSpacing();
+
   return (
     <div className="relative flex items-center justify-center h-48 w-full px-4">
       {/* Table surface */}
@@ -262,8 +260,12 @@ const ThimbleCups = ({
         }}
       />
 
-      {/* Cups container */}
-      <div className="relative flex items-end justify-center gap-2 pb-6">
+      {/* Cups container - uses flexbox with CSS order for positioning */}
+      {/* Each cup stays in its flex slot, only the order changes - NO OVERLAP POSSIBLE */}
+      <div 
+        className="relative flex items-end justify-center pb-6"
+        style={{ gap: `${gapSpacing}px` }}
+      >
         {[0, 1, 2].map(renderCup)}
       </div>
     </div>
