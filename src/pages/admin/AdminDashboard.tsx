@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Users, Gamepad2, DollarSign, Clock, TrendingUp, ArrowUpRight, ArrowDownRight } from 'lucide-react';
+import { Users, Gamepad2, DollarSign, Clock, TrendingUp, ArrowUpRight, ArrowDownRight, Trophy, Dices, Gem, Percent } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { 
@@ -37,6 +37,15 @@ interface MatchStats {
   value: number;
 }
 
+interface GameStats {
+  totalGames: number;
+  playerWins: number;
+  platformWins: number;
+  totalWagered: number;
+  totalPaidOut: number;
+  platformProfit: number;
+}
+
 const COLORS = ['hsl(var(--primary))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3))', 'hsl(var(--chart-4))'];
 
 const AdminDashboard = () => {
@@ -49,6 +58,17 @@ const AdminDashboard = () => {
   const [recentRegistrations, setRecentRegistrations] = useState<any[]>([]);
   const [chartData, setChartData] = useState<ChartData[]>([]);
   const [matchStats, setMatchStats] = useState<MatchStats[]>([]);
+  const [gameStats, setGameStats] = useState<{
+    ludo: GameStats;
+    thimble: GameStats;
+    mines: GameStats;
+    total: GameStats;
+  }>({
+    ludo: { totalGames: 0, playerWins: 0, platformWins: 0, totalWagered: 0, totalPaidOut: 0, platformProfit: 0 },
+    thimble: { totalGames: 0, playerWins: 0, platformWins: 0, totalWagered: 0, totalPaidOut: 0, platformProfit: 0 },
+    mines: { totalGames: 0, playerWins: 0, platformWins: 0, totalWagered: 0, totalPaidOut: 0, platformProfit: 0 },
+    total: { totalGames: 0, playerWins: 0, platformWins: 0, totalWagered: 0, totalPaidOut: 0, platformProfit: 0 },
+  });
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -103,6 +123,7 @@ const AdminDashboard = () => {
       // Fetch chart data for last 7 days
       await fetchChartData();
       await fetchMatchStats();
+      await fetchGameStats();
       
       setIsLoading(false);
     };
@@ -179,6 +200,88 @@ const AdminDashboard = () => {
       { name: 'Completed', value: statusCounts.completed },
       { name: 'Cancelled', value: statusCounts.cancelled },
     ]);
+  };
+
+  const fetchGameStats = async () => {
+    // Fetch Ludo stats
+    const { data: ludoData } = await supabase
+      .from('ludo_matches')
+      .select('entry_amount, reward_amount, status, winner_id, ludo_match_players(user_id, is_bot, is_winner)')
+      .eq('status', 'completed');
+
+    const ludoStats: GameStats = { totalGames: 0, playerWins: 0, platformWins: 0, totalWagered: 0, totalPaidOut: 0, platformProfit: 0 };
+    ludoData?.forEach(match => {
+      ludoStats.totalGames++;
+      ludoStats.totalWagered += Number(match.entry_amount);
+      
+      const humanPlayer = match.ludo_match_players?.find((p: any) => !p.is_bot);
+      const humanWon = humanPlayer?.is_winner;
+      
+      if (humanWon) {
+        ludoStats.playerWins++;
+        ludoStats.totalPaidOut += Number(match.reward_amount);
+      } else {
+        ludoStats.platformWins++;
+      }
+    });
+    ludoStats.platformProfit = ludoStats.totalWagered - ludoStats.totalPaidOut;
+
+    // Fetch Thimble stats
+    const { data: thimbleData } = await supabase
+      .from('thimble_games')
+      .select('entry_amount, reward_amount, is_win')
+      .eq('status', 'completed');
+
+    const thimbleStats: GameStats = { totalGames: 0, playerWins: 0, platformWins: 0, totalWagered: 0, totalPaidOut: 0, platformProfit: 0 };
+    thimbleData?.forEach(game => {
+      thimbleStats.totalGames++;
+      thimbleStats.totalWagered += Number(game.entry_amount);
+      
+      if (game.is_win) {
+        thimbleStats.playerWins++;
+        thimbleStats.totalPaidOut += Number(game.reward_amount);
+      } else {
+        thimbleStats.platformWins++;
+      }
+    });
+    thimbleStats.platformProfit = thimbleStats.totalWagered - thimbleStats.totalPaidOut;
+
+    // Fetch Mines stats
+    const { data: minesData } = await supabase
+      .from('mines_games')
+      .select('entry_amount, final_amount, status')
+      .in('status', ['won', 'lost']);
+
+    const minesStats: GameStats = { totalGames: 0, playerWins: 0, platformWins: 0, totalWagered: 0, totalPaidOut: 0, platformProfit: 0 };
+    minesData?.forEach(game => {
+      minesStats.totalGames++;
+      minesStats.totalWagered += Number(game.entry_amount);
+      
+      if (game.status === 'won') {
+        minesStats.playerWins++;
+        minesStats.totalPaidOut += Number(game.final_amount || 0);
+      } else {
+        minesStats.platformWins++;
+      }
+    });
+    minesStats.platformProfit = minesStats.totalWagered - minesStats.totalPaidOut;
+
+    // Calculate totals
+    const totalStats: GameStats = {
+      totalGames: ludoStats.totalGames + thimbleStats.totalGames + minesStats.totalGames,
+      playerWins: ludoStats.playerWins + thimbleStats.playerWins + minesStats.playerWins,
+      platformWins: ludoStats.platformWins + thimbleStats.platformWins + minesStats.platformWins,
+      totalWagered: ludoStats.totalWagered + thimbleStats.totalWagered + minesStats.totalWagered,
+      totalPaidOut: ludoStats.totalPaidOut + thimbleStats.totalPaidOut + minesStats.totalPaidOut,
+      platformProfit: ludoStats.platformProfit + thimbleStats.platformProfit + minesStats.platformProfit,
+    };
+
+    setGameStats({
+      ludo: ludoStats,
+      thimble: thimbleStats,
+      mines: minesStats,
+      total: totalStats,
+    });
   };
 
   const statCards = [
@@ -289,6 +392,199 @@ const AdminDashboard = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Platform Game Statistics */}
+      <Card className="glass-card border-primary/20 bg-gradient-to-br from-primary/5 to-transparent">
+        <CardHeader>
+          <CardTitle className="text-lg font-display flex items-center gap-2">
+            <Trophy className="w-5 h-5 text-yellow-500" />
+            Platform Game Statistics
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {/* Overall Stats */}
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+            <div className="text-center p-4 bg-secondary/30 rounded-lg">
+              <Gamepad2 className="w-6 h-6 mx-auto mb-2 text-primary" />
+              <p className="font-display text-2xl font-bold">{gameStats.total.totalGames}</p>
+              <p className="text-xs text-muted-foreground">Total Games</p>
+            </div>
+            <div className="text-center p-4 bg-secondary/30 rounded-lg">
+              <Trophy className="w-6 h-6 mx-auto mb-2 text-yellow-500" />
+              <p className="font-display text-2xl font-bold">{gameStats.total.platformWins}</p>
+              <p className="text-xs text-muted-foreground">Platform Wins</p>
+            </div>
+            <div className="text-center p-4 bg-secondary/30 rounded-lg">
+              <Percent className="w-6 h-6 mx-auto mb-2 text-blue-500" />
+              <p className="font-display text-2xl font-bold">
+                {gameStats.total.totalGames > 0 
+                  ? ((gameStats.total.platformWins / gameStats.total.totalGames) * 100).toFixed(1) 
+                  : 0}%
+              </p>
+              <p className="text-xs text-muted-foreground">Win Rate</p>
+            </div>
+            <div className="text-center p-4 bg-secondary/30 rounded-lg">
+              <DollarSign className="w-6 h-6 mx-auto mb-2 text-emerald-500" />
+              <p className="font-display text-2xl font-bold">₹{gameStats.total.totalWagered.toLocaleString()}</p>
+              <p className="text-xs text-muted-foreground">Total Wagered</p>
+            </div>
+            <div className="text-center p-4 bg-secondary/30 rounded-lg">
+              <TrendingUp className="w-6 h-6 mx-auto mb-2" style={{ color: gameStats.total.platformProfit >= 0 ? '#22c55e' : '#ef4444' }} />
+              <p className={`font-display text-2xl font-bold ${gameStats.total.platformProfit >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                {gameStats.total.platformProfit >= 0 ? '+' : ''}₹{gameStats.total.platformProfit.toLocaleString()}
+              </p>
+              <p className="text-xs text-muted-foreground">Platform Profit</p>
+            </div>
+          </div>
+
+          {/* Per-Game Breakdown */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Ludo */}
+            <div className="p-4 bg-blue-500/10 rounded-xl border border-blue-500/20">
+              <div className="flex items-center gap-2 mb-3">
+                <Dices className="w-5 h-5 text-blue-500" />
+                <span className="font-display font-bold">Ludo</span>
+              </div>
+              <div className="grid grid-cols-2 gap-2 text-sm">
+                <div>
+                  <p className="text-muted-foreground">Games</p>
+                  <p className="font-bold">{gameStats.ludo.totalGames}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Win Rate</p>
+                  <p className="font-bold">
+                    {gameStats.ludo.totalGames > 0 
+                      ? ((gameStats.ludo.platformWins / gameStats.ludo.totalGames) * 100).toFixed(0) 
+                      : 0}%
+                  </p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Wagered</p>
+                  <p className="font-bold">₹{gameStats.ludo.totalWagered.toLocaleString()}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Profit</p>
+                  <p className={`font-bold ${gameStats.ludo.platformProfit >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                    ₹{gameStats.ludo.platformProfit.toLocaleString()}
+                  </p>
+                </div>
+              </div>
+              <div className="mt-3">
+                <div className="flex justify-between text-xs mb-1">
+                  <span>Platform: {gameStats.ludo.platformWins}</span>
+                  <span>Players: {gameStats.ludo.playerWins}</span>
+                </div>
+                <div className="h-2 bg-secondary rounded-full overflow-hidden flex">
+                  <div 
+                    className="h-full bg-green-500"
+                    style={{ width: `${gameStats.ludo.totalGames > 0 ? (gameStats.ludo.platformWins / gameStats.ludo.totalGames) * 100 : 0}%` }}
+                  />
+                  <div 
+                    className="h-full bg-red-500"
+                    style={{ width: `${gameStats.ludo.totalGames > 0 ? (gameStats.ludo.playerWins / gameStats.ludo.totalGames) * 100 : 0}%` }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Thimble */}
+            <div className="p-4 bg-purple-500/10 rounded-xl border border-purple-500/20">
+              <div className="flex items-center gap-2 mb-3">
+                <span className="text-lg">🎩</span>
+                <span className="font-display font-bold">Thimble</span>
+              </div>
+              <div className="grid grid-cols-2 gap-2 text-sm">
+                <div>
+                  <p className="text-muted-foreground">Games</p>
+                  <p className="font-bold">{gameStats.thimble.totalGames}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Win Rate</p>
+                  <p className="font-bold">
+                    {gameStats.thimble.totalGames > 0 
+                      ? ((gameStats.thimble.platformWins / gameStats.thimble.totalGames) * 100).toFixed(0) 
+                      : 0}%
+                  </p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Wagered</p>
+                  <p className="font-bold">₹{gameStats.thimble.totalWagered.toLocaleString()}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Profit</p>
+                  <p className={`font-bold ${gameStats.thimble.platformProfit >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                    ₹{gameStats.thimble.platformProfit.toLocaleString()}
+                  </p>
+                </div>
+              </div>
+              <div className="mt-3">
+                <div className="flex justify-between text-xs mb-1">
+                  <span>Platform: {gameStats.thimble.platformWins}</span>
+                  <span>Players: {gameStats.thimble.playerWins}</span>
+                </div>
+                <div className="h-2 bg-secondary rounded-full overflow-hidden flex">
+                  <div 
+                    className="h-full bg-green-500"
+                    style={{ width: `${gameStats.thimble.totalGames > 0 ? (gameStats.thimble.platformWins / gameStats.thimble.totalGames) * 100 : 0}%` }}
+                  />
+                  <div 
+                    className="h-full bg-red-500"
+                    style={{ width: `${gameStats.thimble.totalGames > 0 ? (gameStats.thimble.playerWins / gameStats.thimble.totalGames) * 100 : 0}%` }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Mines */}
+            <div className="p-4 bg-emerald-500/10 rounded-xl border border-emerald-500/20">
+              <div className="flex items-center gap-2 mb-3">
+                <Gem className="w-5 h-5 text-emerald-500" />
+                <span className="font-display font-bold">Mines</span>
+              </div>
+              <div className="grid grid-cols-2 gap-2 text-sm">
+                <div>
+                  <p className="text-muted-foreground">Games</p>
+                  <p className="font-bold">{gameStats.mines.totalGames}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Win Rate</p>
+                  <p className="font-bold">
+                    {gameStats.mines.totalGames > 0 
+                      ? ((gameStats.mines.platformWins / gameStats.mines.totalGames) * 100).toFixed(0) 
+                      : 0}%
+                  </p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Wagered</p>
+                  <p className="font-bold">₹{gameStats.mines.totalWagered.toLocaleString()}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground">Profit</p>
+                  <p className={`font-bold ${gameStats.mines.platformProfit >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                    ₹{gameStats.mines.platformProfit.toLocaleString()}
+                  </p>
+                </div>
+              </div>
+              <div className="mt-3">
+                <div className="flex justify-between text-xs mb-1">
+                  <span>Platform: {gameStats.mines.platformWins}</span>
+                  <span>Players: {gameStats.mines.playerWins}</span>
+                </div>
+                <div className="h-2 bg-secondary rounded-full overflow-hidden flex">
+                  <div 
+                    className="h-full bg-green-500"
+                    style={{ width: `${gameStats.mines.totalGames > 0 ? (gameStats.mines.platformWins / gameStats.mines.totalGames) * 100 : 0}%` }}
+                  />
+                  <div 
+                    className="h-full bg-red-500"
+                    style={{ width: `${gameStats.mines.totalGames > 0 ? (gameStats.mines.playerWins / gameStats.mines.totalGames) * 100 : 0}%` }}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Match Stats & Recent Registrations */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
