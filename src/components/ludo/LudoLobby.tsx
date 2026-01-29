@@ -1,9 +1,8 @@
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { 
   Dices, Wallet, Trophy, Users, Zap, UserPlus, Info, 
-  Crown, Gamepad2, Star, TrendingUp, Play, Sparkles,
-  ChevronRight, Shield, Timer
+  Gamepad2, Star, Play, ChevronRight, Shield, Timer, Gift, Flame
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import EntrySelector from './EntrySelector';
@@ -41,185 +40,111 @@ const LudoLobby = ({
   const rewardAmount = entryAmount * settings.rewardMultiplier;
 
   return (
-    <div className="min-h-screen relative overflow-hidden">
-      {/* Premium Background */}
+    <div className="min-h-screen bg-[#0A0A0F] relative overflow-hidden">
+      {/* Subtle gradient background */}
       <div 
         className="fixed inset-0 -z-10"
         style={{
           background: `
-            radial-gradient(ellipse at 20% 0%, rgba(79, 70, 229, 0.15) 0%, transparent 50%),
-            radial-gradient(ellipse at 80% 100%, rgba(16, 185, 129, 0.1) 0%, transparent 50%),
-            linear-gradient(180deg, hsl(var(--background)) 0%, hsl(220, 35%, 4%) 100%)
+            radial-gradient(circle at 0% 0%, rgba(99, 102, 241, 0.08) 0%, transparent 40%),
+            radial-gradient(circle at 100% 100%, rgba(236, 72, 153, 0.06) 0%, transparent 40%),
+            #0A0A0F
           `,
         }}
       />
 
-      {/* Floating particles */}
-      <div className="fixed inset-0 -z-5 overflow-hidden pointer-events-none">
-        {[...Array(20)].map((_, i) => (
-          <motion.div
-            key={i}
-            className="absolute w-1 h-1 rounded-full bg-primary/30"
-            style={{
-              left: `${Math.random() * 100}%`,
-              top: `${Math.random() * 100}%`,
-            }}
-            animate={{
-              y: [0, -30, 0],
-              opacity: [0.3, 0.8, 0.3],
-            }}
-            transition={{
-              duration: 3 + Math.random() * 2,
-              repeat: Infinity,
-              delay: Math.random() * 2,
-            }}
-          />
-        ))}
-      </div>
+      {/* Dot pattern overlay */}
+      <div 
+        className="fixed inset-0 -z-5 opacity-[0.03]"
+        style={{
+          backgroundImage: `radial-gradient(circle, #fff 1px, transparent 1px)`,
+          backgroundSize: '24px 24px',
+        }}
+      />
 
-      <div className="relative z-10 px-4 pt-4 pb-24">
-        {/* Hero Section */}
+      <div className="relative z-10 px-4 pt-6 pb-28">
+        {/* Header */}
         <motion.div
-          initial={{ opacity: 0, y: -20 }}
+          initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="text-center mb-6"
+          className="text-center mb-8"
         >
-          {/* Logo */}
+          {/* Game Icon */}
           <motion.div
-            className="relative inline-block mb-4"
-            animate={{ y: [0, -5, 0] }}
-            transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+            className="inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-4"
+            style={{
+              background: 'linear-gradient(135deg, #6366F1 0%, #8B5CF6 100%)',
+            }}
+            whileHover={{ scale: 1.05, rotate: 5 }}
+            transition={{ type: 'spring', stiffness: 300 }}
           >
-            <div 
-              className="w-20 h-20 rounded-3xl flex items-center justify-center mx-auto relative overflow-hidden"
-              style={{
-                background: 'linear-gradient(145deg, #FFD54F 0%, #FF8F00 50%, #E65100 100%)',
-                boxShadow: '0 10px 40px rgba(255, 152, 0, 0.4), inset 0 2px 10px rgba(255, 255, 255, 0.3)',
-              }}
-            >
-              <motion.div
-                className="absolute inset-0"
-                style={{
-                  background: 'linear-gradient(45deg, transparent 30%, rgba(255,255,255,0.4) 50%, transparent 70%)',
-                }}
-                animate={{ x: ['-100%', '200%'] }}
-                transition={{ duration: 2, repeat: Infinity, repeatDelay: 3 }}
-              />
-              <Dices className="w-10 h-10 text-amber-900" />
-            </div>
-            
-            {/* Crown badge */}
-            <motion.div
-              className="absolute -top-2 -right-2"
-              animate={{ rotate: [-5, 5, -5], scale: [1, 1.1, 1] }}
-              transition={{ duration: 2, repeat: Infinity }}
-            >
-              <div 
-                className="w-8 h-8 rounded-full flex items-center justify-center"
-                style={{
-                  background: 'linear-gradient(135deg, #FFD700 0%, #FFA500 100%)',
-                  boxShadow: '0 4px 15px rgba(255, 215, 0, 0.5)',
-                }}
-              >
-                <Crown className="w-4 h-4 text-amber-900" />
-              </div>
-            </motion.div>
+            <Dices className="w-8 h-8 text-white" />
           </motion.div>
 
-          <h1 className="font-display text-3xl font-black tracking-tight mb-1">
-            <span 
-              style={{
-                background: 'linear-gradient(135deg, #FFD54F 0%, #FFFFFF 50%, #FFD54F 100%)',
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-              }}
-            >
-              LUDO KING
-            </span>
+          <h1 className="text-2xl font-bold text-white mb-1 tracking-tight">
+            Ludo Arena
           </h1>
-          <p className="text-muted-foreground text-sm flex items-center justify-center gap-1.5">
-            <Zap className="w-4 h-4 text-yellow-500" />
-            Play & Win Real Cash
+          <p className="text-sm text-gray-500 flex items-center justify-center gap-1.5">
+            <Flame className="w-3.5 h-3.5 text-orange-500" />
+            Win up to ₹{rewardAmount.toFixed(0)}
           </p>
         </motion.div>
 
-        {/* Live Stats Bar */}
+        {/* Live Stats */}
         <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
           transition={{ delay: 0.1 }}
-          className="flex items-center justify-center gap-6 mb-6"
+          className="flex items-center justify-center gap-6 mb-8"
         >
           <div className="flex items-center gap-2">
-            <motion.div
-              className="w-2 h-2 rounded-full bg-green-500"
-              animate={{ scale: [1, 1.3, 1], opacity: [1, 0.5, 1] }}
-              transition={{ duration: 1.5, repeat: Infinity }}
-            />
-            <span className="text-sm text-muted-foreground">
-              <span className="text-green-400 font-bold">{liveUsers}</span> Online
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+            </span>
+            <span className="text-xs text-gray-400">
+              <span className="text-green-400 font-semibold">{liveUsers}</span> playing
             </span>
           </div>
-          <div className="w-px h-4 bg-border" />
+          <div className="h-3 w-px bg-gray-800" />
           <div className="flex items-center gap-1.5">
-            <Trophy className="w-4 h-4 text-yellow-500" />
-            <span className="text-sm text-muted-foreground">
-              <span className="text-yellow-400 font-bold">₹50L+</span> Won
+            <Trophy className="w-3.5 h-3.5 text-amber-500" />
+            <span className="text-xs text-gray-400">
+              <span className="text-amber-400 font-semibold">₹50L+</span> won
             </span>
           </div>
         </motion.div>
 
-        {/* Wallet Card */}
+        {/* Balance Card */}
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.15 }}
-          className="mb-6 p-4 rounded-2xl relative overflow-hidden"
-          style={{
-            background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(5, 150, 105, 0.05) 100%)',
-            border: '1px solid rgba(16, 185, 129, 0.2)',
-          }}
+          className="mb-6 p-4 rounded-2xl bg-gray-900/50 border border-gray-800"
         >
-          <motion.div
-            className="absolute inset-0 pointer-events-none"
-            style={{
-              background: 'radial-gradient(circle at 100% 0%, rgba(16, 185, 129, 0.15) 0%, transparent 50%)',
-            }}
-          />
-          <div className="relative flex items-center justify-between">
+          <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div 
-                className="w-12 h-12 rounded-xl flex items-center justify-center"
-                style={{
-                  background: 'linear-gradient(135deg, #10B981 0%, #059669 100%)',
-                  boxShadow: '0 4px 15px rgba(16, 185, 129, 0.3)',
-                }}
-              >
-                <Wallet className="w-6 h-6 text-white" />
+              <div className="w-11 h-11 rounded-xl bg-emerald-500/10 flex items-center justify-center">
+                <Wallet className="w-5 h-5 text-emerald-400" />
               </div>
               <div>
-                <p className="text-xs text-muted-foreground">Your Balance</p>
-                <p className="font-display font-bold text-2xl text-foreground">
-                  ₹{walletBalance.toFixed(0)}
-                </p>
+                <p className="text-[10px] uppercase tracking-wider text-gray-500 mb-0.5">Balance</p>
+                <p className="font-bold text-xl text-white">₹{walletBalance.toFixed(0)}</p>
               </div>
             </div>
             <Link to="/wallet">
               <Button 
                 size="sm" 
-                className="h-10 px-5 font-bold rounded-xl"
-                style={{
-                  background: 'linear-gradient(135deg, #10B981 0%, #059669 100%)',
-                  boxShadow: '0 4px 15px rgba(16, 185, 129, 0.3)',
-                }}
+                className="h-9 px-4 bg-emerald-500 hover:bg-emerald-600 text-white font-semibold rounded-xl border-0"
               >
-                + ADD
+                <Zap className="w-3.5 h-3.5 mr-1" />
+                Add Cash
               </Button>
             </Link>
           </div>
         </motion.div>
 
-        {/* Play Buttons */}
+        {/* Play Modes */}
         {user && (
           <motion.div
             initial={{ opacity: 0, y: 10 }}
@@ -227,52 +152,40 @@ const LudoLobby = ({
             transition={{ delay: 0.2 }}
             className="grid grid-cols-2 gap-3 mb-6"
           >
-            {/* Play vs Bot */}
+            {/* VS Bot */}
             <motion.button
-              whileHover={{ scale: 1.02, y: -2 }}
+              whileHover={{ y: -2 }}
               whileTap={{ scale: 0.98 }}
               onClick={startMatchmaking}
               disabled={walletBalance < entryAmount}
-              className="relative h-16 rounded-2xl overflow-hidden group disabled:opacity-50 disabled:cursor-not-allowed"
+              className="relative h-[72px] rounded-2xl overflow-hidden disabled:opacity-40 disabled:cursor-not-allowed group"
               style={{
                 background: walletBalance >= entryAmount
-                  ? 'linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--primary)/0.8) 100%)'
-                  : 'linear-gradient(135deg, #4B5563 0%, #374151 100%)',
-                boxShadow: walletBalance >= entryAmount
-                  ? '0 8px 30px rgba(var(--primary-rgb), 0.3)'
-                  : 'none',
+                  ? 'linear-gradient(135deg, #6366F1 0%, #4F46E5 100%)'
+                  : '#1F2937',
               }}
             >
-              <motion.div
-                className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0"
-                animate={{ x: ['-100%', '100%'] }}
-                transition={{ duration: 2, repeat: Infinity, repeatDelay: 1 }}
-              />
-              <div className="relative z-10 flex items-center justify-center gap-2">
-                <Gamepad2 className="w-5 h-5 text-primary-foreground" />
-                <span className="font-bold text-primary-foreground">VS BOT</span>
+              <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+              <div className="relative z-10 flex flex-col items-center justify-center h-full gap-1">
+                <Gamepad2 className="w-5 h-5 text-white" />
+                <span className="font-semibold text-white text-sm">Play Now</span>
               </div>
             </motion.button>
 
-            {/* Play with Friend */}
+            {/* With Friend */}
             <motion.button
-              whileHover={{ scale: 1.02, y: -2 }}
+              whileHover={{ y: -2 }}
               whileTap={{ scale: 0.98 }}
               onClick={onPlayWithFriend}
-              className="relative h-16 rounded-2xl overflow-hidden"
+              className="relative h-[72px] rounded-2xl overflow-hidden group"
               style={{
-                background: 'linear-gradient(135deg, #8B5CF6 0%, #7C3AED 50%, #6D28D9 100%)',
-                boxShadow: '0 8px 30px rgba(139, 92, 246, 0.3)',
+                background: 'linear-gradient(135deg, #EC4899 0%, #DB2777 100%)',
               }}
             >
-              <motion.div
-                className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0"
-                animate={{ x: ['-100%', '100%'] }}
-                transition={{ duration: 2, repeat: Infinity, repeatDelay: 1.5 }}
-              />
-              <div className="relative z-10 flex items-center justify-center gap-2">
+              <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+              <div className="relative z-10 flex flex-col items-center justify-center h-full gap-1">
                 <UserPlus className="w-5 h-5 text-white" />
-                <span className="font-bold text-white">WITH FRIEND</span>
+                <span className="font-semibold text-white text-sm">With Friend</span>
               </div>
             </motion.button>
           </motion.div>
@@ -288,11 +201,7 @@ const LudoLobby = ({
           >
             <Link to="/auth">
               <Button 
-                className="w-full h-14 text-sm font-bold rounded-2xl"
-                style={{
-                  background: 'linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--primary)/0.8) 100%)',
-                  boxShadow: '0 8px 30px rgba(var(--primary-rgb), 0.3)',
-                }}
+                className="w-full h-14 bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white font-semibold rounded-2xl border-0"
               >
                 <Play className="w-5 h-5 mr-2" />
                 Login to Play
@@ -318,35 +227,27 @@ const LudoLobby = ({
           />
         </motion.div>
 
-        {/* Insufficient Balance Warning */}
+        {/* Insufficient Balance */}
         {user && walletBalance < entryAmount && (
           <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
+            initial={{ opacity: 0, scale: 0.98 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="mb-6 p-4 rounded-2xl"
-            style={{
-              background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(185, 28, 28, 0.05) 100%)',
-              border: '1px solid rgba(239, 68, 68, 0.3)',
-            }}
+            className="mb-6 p-4 rounded-2xl bg-red-500/5 border border-red-500/20"
           >
             <div className="flex items-center gap-3">
-              <div 
-                className="w-10 h-10 rounded-xl flex items-center justify-center"
-                style={{ background: 'rgba(239, 68, 68, 0.2)' }}
-              >
+              <div className="w-10 h-10 rounded-xl bg-red-500/10 flex items-center justify-center">
                 <Wallet className="w-5 h-5 text-red-400" />
               </div>
               <div className="flex-1">
-                <p className="text-red-400 text-sm font-medium">Insufficient Balance</p>
-                <p className="text-xs text-muted-foreground">
-                  Add ₹{(entryAmount - walletBalance).toFixed(0)} more to play
+                <p className="text-red-400 text-sm font-medium">Low Balance</p>
+                <p className="text-xs text-gray-500">
+                  Need ₹{(entryAmount - walletBalance).toFixed(0)} more
                 </p>
               </div>
               <Link to="/wallet">
                 <Button 
                   size="sm" 
-                  variant="outline" 
-                  className="border-red-500/30 text-red-400 hover:bg-red-500/10"
+                  className="h-8 px-4 bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 rounded-lg"
                 >
                   Add
                 </Button>
@@ -355,78 +256,81 @@ const LudoLobby = ({
           </motion.div>
         )}
 
-        {/* Features Grid */}
+        {/* Features */}
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
-          className="grid grid-cols-3 gap-3 mb-6"
+          className="grid grid-cols-3 gap-2 mb-6"
         >
           {[
-            { icon: Shield, label: 'Fair Play', color: '#10B981' },
-            { icon: Timer, label: 'Instant Pay', color: '#8B5CF6' },
-            { icon: Star, label: '24/7 Support', color: '#F59E0B' },
+            { icon: Shield, label: 'Fair Play', color: 'text-emerald-400', bg: 'bg-emerald-500/10' },
+            { icon: Timer, label: 'Quick Pay', color: 'text-violet-400', bg: 'bg-violet-500/10' },
+            { icon: Gift, label: 'Rewards', color: 'text-amber-400', bg: 'bg-amber-500/10' },
           ].map((feature, idx) => (
             <motion.div
               key={feature.label}
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3 + idx * 0.05 }}
-              className="p-3 rounded-xl text-center"
-              style={{
-                background: `linear-gradient(135deg, ${feature.color}10 0%, ${feature.color}05 100%)`,
-                border: `1px solid ${feature.color}20`,
-              }}
+              className={`p-3 rounded-xl ${feature.bg} text-center`}
             >
-              <feature.icon 
-                className="w-5 h-5 mx-auto mb-1.5" 
-                style={{ color: feature.color }} 
-              />
-              <p className="text-xs text-muted-foreground font-medium">{feature.label}</p>
+              <feature.icon className={`w-4 h-4 mx-auto mb-1.5 ${feature.color}`} />
+              <p className="text-[10px] text-gray-400 font-medium">{feature.label}</p>
             </motion.div>
           ))}
         </motion.div>
 
-        {/* Friends Card */}
-        {user && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.35 }}
-            className="mb-6"
-          >
+        {/* Quick Links */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.35 }}
+          className="space-y-2 mb-6"
+        >
+          {/* Friends */}
+          {user && (
             <Link to="/friends">
               <motion.div
-                whileHover={{ scale: 1.01, y: -2 }}
-                whileTap={{ scale: 0.99 }}
-                className="p-4 rounded-2xl cursor-pointer"
-                style={{
-                  background: 'linear-gradient(135deg, rgba(6, 182, 212, 0.1) 0%, rgba(14, 165, 233, 0.05) 100%)',
-                  border: '1px solid rgba(6, 182, 212, 0.2)',
-                }}
+                whileHover={{ x: 4 }}
+                className="flex items-center justify-between p-4 rounded-xl bg-gray-900/50 border border-gray-800 cursor-pointer"
               >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div 
-                      className="w-10 h-10 rounded-xl flex items-center justify-center"
-                      style={{
-                        background: 'linear-gradient(135deg, #06B6D4 0%, #0EA5E9 100%)',
-                        boxShadow: '0 4px 15px rgba(6, 182, 212, 0.3)',
-                      }}
-                    >
-                      <Users className="w-5 h-5 text-white" />
-                    </div>
-                    <div>
-                      <p className="font-medium text-foreground text-sm">Friends</p>
-                      <p className="text-xs text-muted-foreground">Invite & play together</p>
-                    </div>
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-lg bg-cyan-500/10 flex items-center justify-center">
+                    <Users className="w-4 h-4 text-cyan-400" />
                   </div>
-                  <ChevronRight className="w-5 h-5 text-cyan-400" />
+                  <div>
+                    <p className="font-medium text-white text-sm">Friends</p>
+                    <p className="text-[10px] text-gray-500">Invite & earn bonus</p>
+                  </div>
                 </div>
+                <ChevronRight className="w-4 h-4 text-gray-600" />
               </motion.div>
             </Link>
+          )}
+
+          {/* Leaderboard */}
+          <motion.div
+            whileHover={{ x: 4 }}
+            className="flex items-center justify-between p-4 rounded-xl bg-gray-900/50 border border-gray-800 cursor-pointer"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-lg bg-amber-500/10 flex items-center justify-center">
+                <Trophy className="w-4 h-4 text-amber-400" />
+              </div>
+              <div>
+                <p className="font-medium text-white text-sm">Leaderboard</p>
+                <p className="text-[10px] text-gray-500">Top winners today</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] bg-amber-500/10 text-amber-400 px-2 py-0.5 rounded-full font-medium">
+                LIVE
+              </span>
+              <ChevronRight className="w-4 h-4 text-gray-600" />
+            </div>
           </motion.div>
-        )}
+        </motion.div>
 
         {/* Rules Link */}
         <motion.div 
@@ -437,10 +341,10 @@ const LudoLobby = ({
         >
           <Link 
             to="/ludo/rules" 
-            className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+            className="inline-flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-400 transition-colors"
           >
-            <Info className="w-4 h-4" />
-            Rules & Fair Play
+            <Info className="w-3.5 h-3.5" />
+            Rules & Fair Play Policy
           </Link>
         </motion.div>
       </div>
