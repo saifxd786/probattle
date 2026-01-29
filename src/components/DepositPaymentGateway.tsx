@@ -13,6 +13,7 @@ import { Progress } from '@/components/ui/progress';
 import phonepeLogo from '@/assets/phonepe-logo.png';
 import gpayLogo from '@/assets/gpay-logo.png';
 import paytmLogo from '@/assets/paytm-logo.png';
+import paymentProcessingGif from '@/assets/payment-processing.gif';
 import { toast } from '@/hooks/use-toast';
 
 const DEPOSIT_AMOUNTS = [100, 200, 500, 1000, 2000, 5000];
@@ -36,6 +37,7 @@ const DepositPaymentGateway = ({ isOpen, onClose, onSubmit, isSubmitting }: Depo
   const [screenshotPreview, setScreenshotPreview] = useState<string | null>(null);
   const [timeLeft, setTimeLeft] = useState(TIMER_DURATION);
   const [timerActive, setTimerActive] = useState(false);
+  const [showProcessing, setShowProcessing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const finalAmount = customAmount ? Number(customAmount) : selectedAmount;
@@ -105,8 +107,12 @@ const DepositPaymentGateway = ({ isOpen, onClose, onSubmit, isSubmitting }: Depo
       toast({ title: 'Error', description: 'Please enter UTR/Transaction ID', variant: 'destructive' });
       return;
     }
+    setShowProcessing(true);
     await onSubmit(finalAmount, utrId, screenshot);
-    handleClose();
+    setTimeout(() => {
+      setShowProcessing(false);
+      handleClose();
+    }, 3000);
   };
 
   const formatTime = (seconds: number) => {
@@ -139,8 +145,27 @@ const DepositPaymentGateway = ({ isOpen, onClose, onSubmit, isSubmitting }: Depo
   ];
 
   return (
-    <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-md max-h-[90vh] p-0 overflow-hidden bg-gradient-to-b from-card to-background border-primary/20 flex flex-col">
+    <>
+      {/* Full Screen Processing Overlay */}
+      <AnimatePresence>
+        {showProcessing && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-white"
+          >
+            <img 
+              src={paymentProcessingGif} 
+              alt="Payment Processing" 
+              className="w-full h-full object-contain"
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <Dialog open={isOpen} onOpenChange={handleClose}>
+        <DialogContent className="max-w-md max-h-[90vh] p-0 overflow-hidden bg-gradient-to-b from-card to-background border-primary/20 flex flex-col">
         {/* Header */}
         <div className="relative flex-shrink-0 bg-gradient-to-r from-primary/20 via-primary/10 to-primary/20 p-4 border-b border-primary/20">
           <div className="absolute inset-0 bg-grid-pattern opacity-10" />
@@ -449,13 +474,14 @@ const DepositPaymentGateway = ({ isOpen, onClose, onSubmit, isSubmitting }: Depo
           </AnimatePresence>
         </div>
 
-        {/* Footer */}
-        <div className="flex-shrink-0 px-4 py-3 bg-muted/30 border-t border-border/50 flex items-center justify-center gap-2">
-          <Shield className="w-3 h-3 text-muted-foreground" />
-          <span className="text-[10px] text-muted-foreground">256-bit SSL Secured Payment</span>
-        </div>
-      </DialogContent>
-    </Dialog>
+          {/* Footer */}
+          <div className="flex-shrink-0 px-4 py-3 bg-muted/30 border-t border-border/50 flex items-center justify-center gap-2">
+            <Shield className="w-3 h-3 text-muted-foreground" />
+            <span className="text-[10px] text-muted-foreground">256-bit SSL Secured Payment</span>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 };
 
