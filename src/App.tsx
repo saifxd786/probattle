@@ -1,6 +1,6 @@
 import { useState, useEffect, Suspense, lazy } from 'react';
 import SplashScreen from './components/SplashScreen';
-import UpdatePrompt from './components/UpdatePrompt';
+import ForceUpdatePopup from './components/ForceUpdatePopup';
 import OfflineIndicator from './components/OfflineIndicator';
 import NotificationPermissionGate from './components/NotificationPermissionGate';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -12,6 +12,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { useMemoryCleanup } from '@/hooks/useMemoryCleanup';
+import { useUpdateAvailable } from '@/hooks/useUpdateAvailable';
 
 // Lazy load all pages for better initial load performance
 const Index = lazy(() => import("./pages/Index"));
@@ -92,6 +93,22 @@ const MemoryCleanupWrapper = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
+// Force update wrapper component
+const ForceUpdateWrapper = ({ children }: { children: React.ReactNode }) => {
+  const { updateAvailable, applyUpdate, isUpdating } = useUpdateAvailable();
+  
+  return (
+    <>
+      <ForceUpdatePopup 
+        isOpen={updateAvailable} 
+        onUpdate={applyUpdate}
+        isUpdating={isUpdating}
+      />
+      {children}
+    </>
+  );
+};
+
 const App = () => {
   const [showSplash, setShowSplash] = useState(true);
   const [hasShownSplash, setHasShownSplash] = useState(false);
@@ -117,13 +134,13 @@ const App = () => {
         <AuthProvider>
           <TooltipProvider>
             <MemoryCleanupWrapper>
-              {showSplash && !hasShownSplash && (
-                <SplashScreen onComplete={handleSplashComplete} />
-              )}
-              <Toaster />
-              <Sonner />
-              <UpdatePrompt />
-              <OfflineIndicator />
+              <ForceUpdateWrapper>
+                {showSplash && !hasShownSplash && (
+                  <SplashScreen onComplete={handleSplashComplete} />
+                )}
+                <Toaster />
+                <Sonner />
+                <OfflineIndicator />
               <BrowserRouter>
                 <NotificationPermissionGate>
                   <Suspense fallback={<PageLoader />}>
@@ -180,6 +197,7 @@ const App = () => {
                   </Suspense>
                 </NotificationPermissionGate>
               </BrowserRouter>
+              </ForceUpdateWrapper>
             </MemoryCleanupWrapper>
           </TooltipProvider>
         </AuthProvider>
