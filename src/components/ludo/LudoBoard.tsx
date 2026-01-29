@@ -135,11 +135,12 @@ const BLUE_TRACK: { x: number; y: number }[] = [
   { x: 14.5, y: 7.5 },
 ];
 
+// Each color uses its own track path - CORRECT mapping
 const COLOR_TRACKS: { [color: string]: { x: number; y: number }[] } = {
-  red: GREEN_TRACK,
-  green: YELLOW_TRACK,
-  yellow: BLUE_TRACK,
-  blue: RED_TRACK,
+  red: RED_TRACK,
+  green: GREEN_TRACK,
+  yellow: YELLOW_TRACK,
+  blue: BLUE_TRACK,
 };
 
 const HOME_PATHS: { [color: string]: { x: number; y: number }[] } = {
@@ -157,7 +158,7 @@ const HOME_PATHS: { [color: string]: { x: number; y: number }[] } = {
   ],
 };
 
-// Ludo King style pin token
+// Clean circular token that fits perfectly in cells
 const LudoKingToken = ({ 
   color, 
   isActive,
@@ -173,7 +174,7 @@ const LudoKingToken = ({
   const id = `token-${color}-${Math.random().toString(36).substr(2, 9)}`;
   
   return (
-    <svg width={size} height={size * 1.5} viewBox="0 0 30 45" className="drop-shadow-lg">
+    <svg width={size} height={size} viewBox="0 0 30 30" className="drop-shadow-md">
       <defs>
         <linearGradient id={`${id}-body`} x1="0%" y1="0%" x2="100%" y2="100%">
           <stop offset="0%" stopColor={colors.light} />
@@ -189,30 +190,32 @@ const LudoKingToken = ({
             <feMergeNode in="SourceGraphic"/>
           </feMerge>
         </filter>
+        <filter id={`${id}-shadow`} x="-20%" y="-20%" width="140%" height="140%">
+          <feDropShadow dx="0" dy="1" stdDeviation="1.5" floodOpacity="0.4"/>
+        </filter>
       </defs>
       
-      <g filter={isSelected ? `url(#${id}-glow)` : undefined}>
-        {/* Base ring - red/maroon ring at bottom */}
-        <ellipse cx="15" cy="42" rx="10" ry="3" fill="#8B0000" />
-        <ellipse cx="15" cy="41" rx="9" ry="2.5" fill="#B22222" />
+      <g filter={isSelected ? `url(#${id}-glow)` : `url(#${id}-shadow)`}>
+        {/* Outer ring / base */}
+        <circle cx="15" cy="15" r="13" fill={colors.dark} />
         
-        {/* Pin body - teardrop shape */}
-        <path
-          d="M15 2 C7 2 2 10 2 17 C2 26 15 42 15 42 C15 42 28 26 28 17 C28 10 23 2 15 2 Z"
-          fill={`url(#${id}-body)`}
-          stroke={isSelected ? '#fff' : colors.dark}
-          strokeWidth={isSelected ? 2 : 1}
-        />
+        {/* Main body gradient */}
+        <circle cx="15" cy="15" r="11.5" fill={`url(#${id}-body)`} />
         
-        {/* White circle background */}
-        <circle cx="15" cy="15" r="9" fill="#fff" />
+        {/* White inner circle */}
+        <circle cx="15" cy="15" r="7" fill="#fff" />
         
-        {/* Colored inner circle */}
-        <circle cx="15" cy="15" r="7" fill={colors.main} />
+        {/* Colored center dot */}
+        <circle cx="15" cy="15" r="5" fill={colors.main} />
         
         {/* Highlight shine */}
-        <ellipse cx="12" cy="12" rx="3" ry="2.5" fill="rgba(255,255,255,0.6)" />
-        <ellipse cx="11" cy="11" rx="1.5" ry="1" fill="rgba(255,255,255,0.9)" />
+        <ellipse cx="12" cy="12" rx="3" ry="2.5" fill="rgba(255,255,255,0.5)" />
+        <ellipse cx="11" cy="11" rx="1.5" ry="1" fill="rgba(255,255,255,0.8)" />
+        
+        {/* Selection ring */}
+        {isSelected && (
+          <circle cx="15" cy="15" r="14" fill="none" stroke="#fff" strokeWidth="1.5" />
+        )}
       </g>
     </svg>
   );
@@ -781,13 +784,14 @@ const LudoBoard = ({ players, onTokenClick, selectedToken, captureEvent, onCaptu
             <text x="14.5" y="7.7" textAnchor="middle" fontSize="0.5" fill={COLORS.yellow.dark} fontWeight="bold">←</text>
           </svg>
 
-          {/* Pin Tokens */}
+          {/* Circular Tokens - properly centered in cells */}
           {players.map((player) => (
             player.tokens.map((token) => {
               const pos = getTokenPosition(token, player.color);
               const isSelected = selectedToken?.color === player.color && selectedToken?.tokenId === token.id;
               const colorKey = player.color as keyof typeof COLORS;
               const canMove = player.isCurrentTurn && canTokenMove(token.position, diceValue);
+              const tokenSize = cellSize * 0.75; // Token fits nicely within cell
 
               return (
                 <motion.button
@@ -798,35 +802,39 @@ const LudoBoard = ({ players, onTokenClick, selectedToken, captureEvent, onCaptu
                     isSelected && 'z-20',
                     canMove && !isSelected && 'z-15'
                   )}
-                  style={{ width: cellSize * 0.9, height: cellSize * 1.35 }}
+                  style={{ 
+                    width: tokenSize, 
+                    height: tokenSize 
+                  }}
                   initial={false}
                   animate={{
-                    left: pos.x - (cellSize * 0.45),
-                    top: pos.y - (cellSize * 0.8),
-                    scale: isSelected ? 1.25 : canMove ? 1.1 : 1,
+                    // Center the token on the cell position
+                    left: pos.x - (tokenSize / 2),
+                    top: pos.y - (tokenSize / 2),
+                    scale: isSelected ? 1.2 : canMove ? 1.05 : 1,
                   }}
                   transition={{ type: 'spring', stiffness: 350, damping: 22 }}
-                  whileHover={onTokenClick && player.isCurrentTurn ? { scale: 1.15, y: -2 } : {}}
+                  whileHover={onTokenClick && player.isCurrentTurn ? { scale: 1.15 } : {}}
                   whileTap={onTokenClick && player.isCurrentTurn ? { scale: 0.92 } : {}}
                   onClick={() => onTokenClick?.(player.color, token.id)}
                   disabled={!player.isCurrentTurn || !onTokenClick}
                 >
-                  <LudoKingToken color={colorKey} isActive={player.isCurrentTurn} isSelected={isSelected} size={cellSize * 0.65} />
+                  <LudoKingToken 
+                    color={colorKey} 
+                    isActive={player.isCurrentTurn} 
+                    isSelected={isSelected} 
+                    size={tokenSize} 
+                  />
                   
-                  {/* Movable indicator */}
+                  {/* Movable indicator - pulsing ring */}
                   {canMove && !isSelected && (
                     <motion.div
-                      className="absolute rounded-full pointer-events-none"
+                      className="absolute inset-0 rounded-full pointer-events-none"
                       style={{
-                        width: cellSize * 0.7,
-                        height: cellSize * 0.7,
-                        bottom: cellSize * 0.05,
-                        left: '50%',
-                        transform: 'translateX(-50%)',
                         border: `2px solid ${COLORS[colorKey].main}`,
                         boxShadow: `0 0 8px ${COLORS[colorKey].main}`,
                       }}
-                      animate={{ scale: [1, 1.15, 1], opacity: [0.8, 0.4, 0.8] }}
+                      animate={{ scale: [1, 1.2, 1], opacity: [0.8, 0.3, 0.8] }}
                       transition={{ duration: 1, repeat: Infinity }}
                     />
                   )}
