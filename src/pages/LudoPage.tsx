@@ -300,91 +300,121 @@ const LudoPage = () => {
           />
         </div>
 
-        {/* Bottom Section - Profile | Dice | Profile */}
-        <div className="shrink-0 px-3 py-2 border-t border-white/10 bg-black/40 flex items-center justify-between gap-2">
-          {/* Left Player Profile */}
-          {gameState.players[0] && (() => {
-            const player = gameState.players[0];
-            const colorMap: Record<string, string> = {
-              red: '#E53935',
-              green: '#43A047', 
-              yellow: '#FFD600',
-              blue: '#1E88E5'
-            };
-            const isActive = gameState.currentTurn === 0;
-            return (
-              <div 
-                className={`relative flex flex-col items-center p-1.5 rounded-lg transition-all ${
-                  isActive ? 'ring-2 ring-green-400 bg-white/10' : 'bg-black/30'
-                }`}
-              >
-                <div 
-                  className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm"
-                  style={{ 
-                    background: `linear-gradient(135deg, ${colorMap[player.color]}dd, ${colorMap[player.color]}88)`,
-                    border: `2px solid ${colorMap[player.color]}`,
-                    boxShadow: isActive ? `0 0 10px ${colorMap[player.color]}80` : 'none'
-                  }}
-                >
-                  {player.isBot ? '🤖' : player.name.slice(0, 2).toUpperCase()}
+        {/* Bottom Section - VS Bar Design */}
+        <div className="shrink-0 px-4 py-3 border-t border-white/10 bg-black/60">
+          <div className="flex items-center justify-between">
+            {/* Left Player */}
+            {gameState.players[0] && (() => {
+              const player = gameState.players[0];
+              const colorMap: Record<string, string> = {
+                red: '#E53935',
+                green: '#43A047', 
+                yellow: '#FFD600',
+                blue: '#1E88E5'
+              };
+              const isActive = gameState.currentTurn === 0;
+              return (
+                <div className="flex items-center gap-2">
+                  {/* Avatar with Timer */}
+                  <div className="relative">
+                    <div 
+                      className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold text-base"
+                      style={{ 
+                        background: `linear-gradient(135deg, ${colorMap[player.color]}dd, ${colorMap[player.color]}88)`,
+                        border: `2px solid ${colorMap[player.color]}`,
+                        boxShadow: isActive ? `0 0 12px ${colorMap[player.color]}80` : 'none'
+                      }}
+                    >
+                      {player.isBot ? '🤖' : player.name.slice(0, 2).toUpperCase()}
+                    </div>
+                    {/* Timer Badge - Only show for active player */}
+                    {isActive && turnTimeLeft !== null && (
+                      <div 
+                        className="absolute -bottom-1 -left-1 px-1.5 py-0.5 rounded text-[10px] font-bold text-white"
+                        style={{ background: turnTimeLeft <= 5 ? '#E53935' : '#43A047' }}
+                      >
+                        {turnTimeLeft}s
+                      </div>
+                    )}
+                  </div>
+                  {/* Info */}
+                  <div className="text-left">
+                    <p className="text-white font-bold text-sm">{player.uid || player.name.slice(0, 5)}</p>
+                    <div className="flex items-center gap-1">
+                      <span className="text-amber-400 text-xs">💰</span>
+                      <span className="text-amber-400 text-xs font-semibold">₹{rewardAmount}</span>
+                    </div>
+                  </div>
                 </div>
-                <span className="text-[9px] text-gray-400 mt-0.5 truncate max-w-[50px]">
-                  {player.uid || player.name.slice(0, 5)}
-                </span>
-                {isActive && (
-                  <div className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-green-400 animate-pulse" />
-                )}
-              </div>
-            );
-          })()}
+              );
+            })()}
 
-          {/* Dice in Middle */}
-          <div className="flex-1 flex justify-center">
-            <LudoDice
-              value={gameState.diceValue}
-              isRolling={gameState.isRolling}
-              onRoll={rollDice}
-              disabled={!isUserTurn}
-              canRoll={gameState.canRoll && isUserTurn}
-              compact
-            />
+            {/* VS Badge */}
+            <div 
+              className="px-3 py-1 rounded-full text-sm font-black text-black"
+              style={{ background: 'linear-gradient(135deg, #FFD600 0%, #FFA000 100%)' }}
+            >
+              VS
+            </div>
+
+            {/* Right Player */}
+            {gameState.players[1] && (() => {
+              const player = gameState.players[1];
+              const colorMap: Record<string, string> = {
+                red: '#E53935',
+                green: '#43A047', 
+                yellow: '#FFD600',
+                blue: '#1E88E5'
+              };
+              const isActive = gameState.currentTurn === 1;
+              return (
+                <div className="flex items-center gap-2 flex-row-reverse">
+                  {/* Avatar with Timer */}
+                  <div className="relative">
+                    <div 
+                      className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold text-base"
+                      style={{ 
+                        background: `linear-gradient(135deg, ${colorMap[player.color]}dd, ${colorMap[player.color]}88)`,
+                        border: `2px solid ${colorMap[player.color]}`,
+                        boxShadow: isActive ? `0 0 12px ${colorMap[player.color]}80` : 'none'
+                      }}
+                    >
+                      {player.isBot ? '🤖' : player.name.slice(0, 2).toUpperCase()}
+                    </div>
+                    {/* Timer Badge - Only show for active player */}
+                    {isActive && turnTimeLeft !== null && (
+                      <div 
+                        className="absolute -bottom-1 -right-1 px-1.5 py-0.5 rounded text-[10px] font-bold text-white"
+                        style={{ background: turnTimeLeft <= 5 ? '#E53935' : '#43A047' }}
+                      >
+                        {turnTimeLeft}s
+                      </div>
+                    )}
+                  </div>
+                  {/* Info */}
+                  <div className="text-right">
+                    <p className="text-white font-bold text-sm">{player.uid || player.name.slice(0, 5)}</p>
+                    <div className="flex items-center gap-1 justify-end">
+                      <span className="text-amber-400 text-xs">💰</span>
+                      <span className="text-amber-400 text-xs font-semibold">₹{rewardAmount}</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
+        </div>
 
-          {/* Right Player Profile */}
-          {gameState.players[1] && (() => {
-            const player = gameState.players[1];
-            const colorMap: Record<string, string> = {
-              red: '#E53935',
-              green: '#43A047', 
-              yellow: '#FFD600',
-              blue: '#1E88E5'
-            };
-            const isActive = gameState.currentTurn === 1;
-            return (
-              <div 
-                className={`relative flex flex-col items-center p-1.5 rounded-lg transition-all ${
-                  isActive ? 'ring-2 ring-green-400 bg-white/10' : 'bg-black/30'
-                }`}
-              >
-                <div 
-                  className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm"
-                  style={{ 
-                    background: `linear-gradient(135deg, ${colorMap[player.color]}dd, ${colorMap[player.color]}88)`,
-                    border: `2px solid ${colorMap[player.color]}`,
-                    boxShadow: isActive ? `0 0 10px ${colorMap[player.color]}80` : 'none'
-                  }}
-                >
-                  {player.isBot ? '🤖' : player.name.slice(0, 2).toUpperCase()}
-                </div>
-                <span className="text-[9px] text-gray-400 mt-0.5 truncate max-w-[50px]">
-                  {player.uid || player.name.slice(0, 5)}
-                </span>
-                {isActive && (
-                  <div className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-green-400 animate-pulse" />
-                )}
-              </div>
-            );
-          })()}
+        {/* Dice Section - Below VS Bar */}
+        <div className="shrink-0 px-4 py-3 bg-black/40 flex items-center justify-center">
+          <LudoDice
+            value={gameState.diceValue}
+            isRolling={gameState.isRolling}
+            onRoll={rollDice}
+            disabled={!isUserTurn}
+            canRoll={gameState.canRoll && isUserTurn}
+            compact
+          />
         </div>
       </div>
     );
