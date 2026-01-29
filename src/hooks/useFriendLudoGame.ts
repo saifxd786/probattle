@@ -236,7 +236,7 @@ export const useFriendLudoGame = () => {
     fetchBalance();
   }, [user]);
 
-  // Ensure we never show phone/email as player name inside an ongoing match
+  // Ensure we never show phone/email as player name inside an ongoing match, and always show avatars
   useEffect(() => {
     if (!gameState.roomId || gameState.phase !== 'playing') return;
     if (namesResolvedForRoomRef.current === gameState.roomId) return;
@@ -249,7 +249,7 @@ export const useFriendLudoGame = () => {
         const ids = gameState.players.map(p => p.id).filter(Boolean);
         const { data: profiles } = await supabase
           .from('profiles')
-          .select('id, username, user_code')
+          .select('id, username, user_code, avatar_url')
           .in('id', ids);
 
         const byId = new Map((profiles || []).map(p => [p.id, p]));
@@ -260,7 +260,12 @@ export const useFriendLudoGame = () => {
             if (!prof) return p;
             const uid = (prof.user_code || p.uid || '').toString();
             const safeName = prof.username || (uid ? `Player ${uid}` : 'Player');
-            return { ...p, uid: uid || p.uid, name: safeName };
+            return { 
+              ...p, 
+              uid: uid || p.uid, 
+              name: safeName,
+              avatar: prof.avatar_url || p.avatar || undefined
+            };
           });
           return { ...prev, players: updatedPlayers };
         });
