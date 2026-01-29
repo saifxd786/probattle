@@ -20,6 +20,7 @@ interface LudoChatProps {
   onSendMessage: (message: string, isEmoji: boolean) => void;
   currentUserId: string;
   playerColor: string;
+  inHeader?: boolean;
 }
 
 const QUICK_EMOJIS = ['👋', '😂', '😢', '🎉', '👍', '👎', '😎', '🔥', '💪', '🤔', '😡', '❤️'];
@@ -56,7 +57,7 @@ const COLORS = {
   }
 };
 
-const LudoChat = ({ messages, onSendMessage, currentUserId, playerColor }: LudoChatProps) => {
+const LudoChat = ({ messages, onSendMessage, currentUserId, playerColor, inHeader = false }: LudoChatProps) => {
   const [isOpen, setIsOpen] = useState(false);
   const [inputValue, setInputValue] = useState('');
   const [showEmojis, setShowEmojis] = useState(false);
@@ -125,23 +126,29 @@ const LudoChat = ({ messages, onSendMessage, currentUserId, playerColor }: LudoC
 
   return (
     <>
-      {/* Premium Chat Toggle Button - Positioned above bottom bar */}
+      {/* Chat Toggle Button */}
       <motion.button
-        onClick={() => setIsOpen(!isOpen)}
-        className="fixed bottom-24 right-3 z-50 p-3 rounded-2xl"
+        onClick={(e) => {
+          e.stopPropagation();
+          setIsOpen(!isOpen);
+        }}
+        className={cn(
+          "z-50 p-2.5 rounded-xl",
+          inHeader ? "relative" : "fixed bottom-24 right-3"
+        )}
         style={{
           background: colorConfig.gradient,
-          boxShadow: `0 6px 25px ${colorConfig.glow}, 0 3px 10px rgba(0,0,0,0.3), inset 0 1px 3px rgba(255,255,255,0.3)`,
-          border: '2px solid rgba(255,255,255,0.2)',
+          boxShadow: `0 4px 15px ${colorConfig.glow}, 0 2px 6px rgba(0,0,0,0.3)`,
+          border: '1px solid rgba(255,255,255,0.2)',
           opacity: isMuted ? 0.7 : 1,
         }}
-        whileHover={{ scale: 1.08, y: -2 }}
+        whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
       >
         {isMuted ? (
-          <VolumeX className="w-5 h-5 text-white drop-shadow" />
+          <VolumeX className="w-4 h-4 text-white drop-shadow" />
         ) : (
-          <MessageCircle className="w-5 h-5 text-white drop-shadow" />
+          <MessageCircle className="w-4 h-4 text-white drop-shadow" />
         )}
         
         {/* Unread badge */}
@@ -149,39 +156,29 @@ const LudoChat = ({ messages, onSendMessage, currentUserId, playerColor }: LudoC
           <motion.div
             initial={{ scale: 0 }}
             animate={{ scale: 1 }}
-            className="absolute -top-2 -right-2 min-w-6 h-6 px-1.5 rounded-full flex items-center justify-center"
+            className="absolute -top-1.5 -right-1.5 min-w-5 h-5 px-1 rounded-full flex items-center justify-center"
             style={{
               background: 'linear-gradient(135deg, #EF5350 0%, #C62828 100%)',
-              boxShadow: '0 3px 10px rgba(239,83,80,0.5), inset 0 1px 2px rgba(255,255,255,0.3)',
-              border: '2px solid rgba(255,255,255,0.3)',
+              boxShadow: '0 2px 6px rgba(239,83,80,0.5)',
+              border: '1.5px solid rgba(255,255,255,0.3)',
             }}
           >
-            <span className="text-white text-[10px] font-black">
+            <span className="text-white text-[9px] font-bold">
               {unreadCount > 9 ? '9+' : unreadCount}
             </span>
           </motion.div>
         )}
-        
-        {/* Pulse ring animation */}
-        {unreadCount > 0 && !isMuted && (
-          <motion.div
-            className="absolute inset-0 rounded-2xl"
-            style={{ border: `2px solid ${colorConfig.main}` }}
-            animate={{ scale: [1, 1.3, 1], opacity: [0.8, 0, 0.8] }}
-            transition={{ duration: 1.5, repeat: Infinity }}
-          />
-        )}
       </motion.button>
 
-      {/* Premium Chat Panel */}
+      {/* Chat Panel */}
       <AnimatePresence>
         {isOpen && (
           <motion.div
-            initial={{ opacity: 0, y: 100, scale: 0.9 }}
+            initial={{ opacity: 0, y: -20, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 100, scale: 0.9 }}
-            transition={{ type: 'spring', stiffness: 300, damping: 25 }}
-            className="fixed bottom-24 right-3 left-3 z-50 max-w-sm ml-auto overflow-hidden"
+            exit={{ opacity: 0, y: -20, scale: 0.95 }}
+            transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+            className="fixed top-14 right-3 left-3 z-50 max-w-sm ml-auto overflow-hidden"
             style={{
               maxHeight: '70vh',
               borderRadius: 20,

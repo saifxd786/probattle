@@ -248,7 +248,7 @@ const LudoPage = () => {
           background: 'linear-gradient(180deg, #1a1a2e 0%, #0f0f23 100%)',
         }}
       >
-        {/* Compact Game Header - Prize & Controls Only */}
+        {/* Compact Game Header - Prize, Chat & Controls */}
         <div className="shrink-0 px-3 py-2 border-b border-white/10 flex items-center justify-between">
           <SoundToggle compact />
           <motion.div 
@@ -259,6 +259,16 @@ const LudoPage = () => {
             <p className="text-[8px] text-yellow-500 uppercase tracking-wide">Prize</p>
             <p className="font-bold text-sm text-yellow-400">₹{rewardAmount}</p>
           </motion.div>
+          {/* Chat Button in Header */}
+          {user && (
+            <LudoChat
+              messages={[]}
+              onSendMessage={() => {}}
+              currentUserId={user.id}
+              playerColor={gameState.players.find(p => !p.isBot)?.color || 'red'}
+              inHeader
+            />
+          )}
         </div>
 
 
@@ -337,10 +347,6 @@ const LudoPage = () => {
                   {/* Info */}
                   <div className="text-left">
                     <p className="text-white font-bold text-sm">{player.name}</p>
-                    <div className="flex items-center gap-1">
-                      <span className="text-amber-400 text-xs">💰</span>
-                      <span className="text-amber-400 text-xs font-semibold">₹{rewardAmount}</span>
-                    </div>
                   </div>
                 </div>
               );
@@ -407,26 +413,12 @@ const LudoPage = () => {
                   {/* Info */}
                   <div className="text-right">
                     <p className="text-white font-bold text-sm">{player.name}</p>
-                    <div className="flex items-center gap-1 justify-end">
-                      <span className="text-amber-400 text-xs">💰</span>
-                      <span className="text-amber-400 text-xs font-semibold">₹{rewardAmount}</span>
-                    </div>
                   </div>
                 </div>
               );
             })()}
           </div>
         </div>
-        
-        {/* In-Game Chat for Bot Mode */}
-        {user && (
-          <LudoChat
-            messages={[]}
-            onSendMessage={() => {}}
-            currentUserId={user.id}
-            playerColor={gameState.players.find(p => !p.isBot)?.color || 'red'}
-          />
-        )}
       </div>
     );
   }
@@ -541,6 +533,16 @@ const LudoPage = () => {
               <p className="text-[8px] text-yellow-500 uppercase tracking-wide">Prize</p>
               <p className="font-bold text-sm text-yellow-400">₹{friendGameState.rewardAmount}</p>
             </motion.div>
+            {/* Chat Button in Header */}
+            {user && (
+              <LudoChat
+                messages={friendGameState.chatMessages}
+                onSendMessage={sendChatMessage}
+                currentUserId={user.id}
+                playerColor={friendGameState.players.find(p => p.id === user.id)?.color || 'red'}
+                inHeader
+              />
+            )}
           </div>
         </div>
 
@@ -614,10 +616,6 @@ const LudoPage = () => {
                   {/* Info */}
                   <div className="text-left">
                     <p className="text-white font-bold text-sm">{isCurrentUser ? 'You' : player.name}</p>
-                    <div className="flex items-center gap-1">
-                      <span className="text-amber-400 text-xs">💰</span>
-                      <span className="text-amber-400 text-xs font-semibold">₹{friendGameState.rewardAmount}</span>
-                    </div>
                   </div>
                 </div>
               );
@@ -724,26 +722,12 @@ const LudoPage = () => {
                   {/* Info */}
                   <div className="text-right">
                     <p className="text-white font-bold text-sm">{isCurrentUser ? 'You' : player.name}</p>
-                    <div className="flex items-center gap-1 justify-end">
-                      <span className="text-amber-400 text-xs">💰</span>
-                      <span className="text-amber-400 text-xs font-semibold">₹{friendGameState.rewardAmount}</span>
-                    </div>
                   </div>
                 </div>
               );
             })()}
           </div>
         </div>
-
-        {/* In-Game Chat */}
-        {user && (
-          <LudoChat
-            messages={friendGameState.chatMessages}
-            onSendMessage={sendChatMessage}
-            currentUserId={user.id}
-            playerColor={friendGameState.players.find(p => p.id === user.id)?.color || 'red'}
-          />
-        )}
 
         {/* Capture Animation */}
         {friendGameState.captureAnimation && (
