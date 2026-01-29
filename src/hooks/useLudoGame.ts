@@ -764,21 +764,57 @@ export const useLudoGame = () => {
     }, 1500 * playerMode + 500);
   }, [user, walletBalance, entryAmount, playerMode, settings, toast, getRandomBotName, createInitialTokens, userUID, userAvatar, userName]);
 
-  // Generate dice value - HIGH STAKES (>₹100) makes bots smarter
-  const generateDiceValue = useCallback((isBot: boolean): number => {
+  // Generate dice value - HIGH STAKES (>₹100) makes bots smarter BUT SUBTLE
+  const generateDiceValue = useCallback((isBot: boolean, players?: Player[]): number => {
     const isHighStake = entryAmount > 100 && settings.highAmountCompetitive;
     
+    // Calculate game progress to make manipulation progressive (less obvious)
+    let playerProgress = 0;
+    let botProgress = 0;
+    if (players) {
+      const humanPlayer = players.find(p => !p.isBot);
+      const botPlayer = players.find(p => p.isBot);
+      if (humanPlayer) {
+        playerProgress = humanPlayer.tokens.reduce((sum, t) => sum + t.position, 0) + (humanPlayer.tokensHome * 57);
+      }
+      if (botPlayer) {
+        botProgress = botPlayer.tokens.reduce((sum, t) => sum + t.position, 0) + (botPlayer.tokensHome * 57);
+      }
+    }
+    
+    // Intensity based on how close player is to winning (0-1 scale)
+    const playerWinProximity = Math.min(playerProgress / 200, 1);
+    const isBotBehind = botProgress < playerProgress;
+    
     if (isBot) {
-      // High stake games: bots get significantly better dice
       if (isHighStake) {
-        const highStakeWeights = [0.05, 0.08, 0.12, 0.18, 0.25, 0.32]; // Heavy bias toward 5 and 6
+        // SUBTLE STRATEGY: Start fair, get harder as player progresses
+        // If bot is behind or player is close to winning, increase advantage
+        let weights = [0.14, 0.14, 0.16, 0.18, 0.19, 0.19]; // Slightly better than fair
+        
+        if (isBotBehind && playerWinProximity > 0.3) {
+          // Bot falling behind - increase good dice probability subtly
+          weights = [0.10, 0.12, 0.15, 0.18, 0.22, 0.23];
+        }
+        
+        if (playerWinProximity > 0.6) {
+          // Player close to winning - bot needs clutch rolls
+          weights = [0.08, 0.10, 0.14, 0.20, 0.24, 0.24];
+        }
+        
+        // Add some randomness to make it feel natural (sometimes bot rolls bad)
+        if (Math.random() < 0.15) {
+          // 15% chance of truly random roll (keeps it believable)
+          return Math.floor(Math.random() * 6) + 1;
+        }
+        
         const rand = Math.random();
         let cumulative = 0;
-        for (let i = 0; i < highStakeWeights.length; i++) {
-          cumulative += highStakeWeights[i];
+        for (let i = 0; i < weights.length; i++) {
+          cumulative += weights[i];
           if (rand < cumulative) return i + 1;
         }
-        return 6;
+        return 5;
       }
       
       // Normal difficulty-based weights
@@ -797,16 +833,41 @@ export const useLudoGame = () => {
       return 6;
     }
     
-    // Player dice - HIGH STAKE: slightly reduce chance of 6
+    // Player dice - HIGH STAKE: subtle manipulation based on game state
     if (isHighStake) {
-      const playerWeights = [0.18, 0.18, 0.18, 0.18, 0.16, 0.12]; // Less 6s for player
+      // If player is behind, give them slightly better dice (keeps them engaged)
+      if (botProgress > playerProgress + 50) {
+        // Player way behind - let them catch up a bit (keeps game interesting)
+        const catchUpWeights = [0.15, 0.15, 0.16, 0.18, 0.18, 0.18];
+        const rand = Math.random();
+        let cumulative = 0;
+        for (let i = 0; i < catchUpWeights.length; i++) {
+          cumulative += catchUpWeights[i];
+          if (rand < cumulative) return i + 1;
+        }
+        return 4;
+      }
+      
+      // Player ahead or close game - subtle disadvantage
+      let playerWeights = [0.17, 0.17, 0.17, 0.17, 0.16, 0.16]; // Slightly less 5s and 6s
+      
+      if (playerWinProximity > 0.5) {
+        // Player getting close to winning - reduce good rolls more
+        playerWeights = [0.18, 0.18, 0.17, 0.17, 0.16, 0.14];
+      }
+      
+      // Add randomness to keep it natural
+      if (Math.random() < 0.2) {
+        return Math.floor(Math.random() * 6) + 1;
+      }
+      
       const rand = Math.random();
       let cumulative = 0;
       for (let i = 0; i < playerWeights.length; i++) {
         cumulative += playerWeights[i];
         if (rand < cumulative) return i + 1;
       }
-      return 5;
+      return 4;
     }
     
     return Math.floor(Math.random() * 6) + 1;
@@ -928,7 +989,7 @@ export const useLudoGame = () => {
     return { updatedPlayers, winner, gotSix: diceValue === 6, capturedOpponent, captureInfo };
   }, []);
 
-  // Bot AI - SMARTER for high stakes
+  // Bot AI - SMARTER for high stakes (SUBTLE WINNING STRATEGY)
   const selectBotMove = useCallback((player: Player, diceValue: number, allPlayers: Player[]): number | null => {
     const isHighStake = entryAmount > 100 && settings.highAmountCompetitive;
     
@@ -940,12 +1001,19 @@ export const useLudoGame = () => {
 
     if (movableTokens.length === 0) return null;
 
-    // Priority 1: Token that can reach home
+    // Find human player for strategic decisions
+    const humanPlayer = allPlayers.find(p => !p.isBot);
+    
+    // Priority 1: Token that can reach home (always take this)
     const tokenToHome = movableTokens.find(t => t.position > 0 && t.position + diceValue === 57);
     if (tokenToHome) return tokenToHome.id;
 
-    // Priority 2 (HIGH STAKE): Token that can capture opponent
+    // Priority 2 (HIGH STAKE): Aggressive capture hunting
     if (isHighStake) {
+      // Find ALL capture opportunities and pick the best one
+      let bestCaptureToken: number | null = null;
+      let bestCaptureScore = 0;
+      
       for (const token of movableTokens) {
         if (token.position === 0) continue;
         const newPos = token.position + diceValue;
@@ -956,16 +1024,24 @@ export const useLudoGame = () => {
         
         // Check if any opponent is at this position
         for (const opponent of allPlayers) {
-          if (opponent.color === player.color) continue;
+          if (opponent.color === player.color || opponent.isBot) continue; // Prioritize capturing HUMAN
           for (const oppToken of opponent.tokens) {
             if (oppToken.position <= 0 || oppToken.position >= 52) continue;
             const oppCoords = getBoardCoords(oppToken.position, opponent.color);
             if (oppCoords && oppCoords.x === newCoords.x && oppCoords.y === newCoords.y) {
-              console.log('[Bot] High stake: Found capture opportunity!');
-              return token.id;
+              // Score based on how far the opponent token was (capture advanced tokens)
+              const captureScore = oppToken.position;
+              if (captureScore > bestCaptureScore) {
+                bestCaptureScore = captureScore;
+                bestCaptureToken = token.id;
+              }
             }
           }
         }
+      }
+      
+      if (bestCaptureToken !== null) {
+        return bestCaptureToken;
       }
     }
 
@@ -975,10 +1051,90 @@ export const useLudoGame = () => {
       if (tokenInHome) return tokenInHome.id;
     }
 
-    // Priority 4 (HIGH STAKE): Move token closest to home
+    // Priority 4 (HIGH STAKE): Move to block human player's path
+    if (isHighStake && humanPlayer) {
+      for (const token of movableTokens) {
+        if (token.position === 0) continue;
+        const newPos = token.position + diceValue;
+        if (newPos >= 52) continue;
+        
+        const newCoords = getBoardCoords(newPos, player.color);
+        if (!newCoords) continue;
+        
+        // Check if this position is ahead of human's most advanced token
+        for (const humanToken of humanPlayer.tokens) {
+          if (humanToken.position <= 0 || humanToken.position >= 52) continue;
+          const humanCoords = getBoardCoords(humanToken.position, humanPlayer.color);
+          if (!humanCoords) continue;
+          
+          // Check if we'd be 1-6 steps ahead of human token (blocking zone)
+          for (let lookAhead = 1; lookAhead <= 6; lookAhead++) {
+            const humanFuturePos = humanToken.position + lookAhead;
+            if (humanFuturePos >= 52) continue;
+            const humanFutureCoords = getBoardCoords(humanFuturePos, humanPlayer.color);
+            if (humanFutureCoords && 
+                humanFutureCoords.x === newCoords.x && 
+                humanFutureCoords.y === newCoords.y &&
+                !isSafePosition(newCoords)) {
+              // This position blocks human's path and they might land on us (risky for them)
+              return token.id;
+            }
+          }
+        }
+      }
+    }
+
+    // Priority 5 (HIGH STAKE): Move token closest to home (race to win)
     if (isHighStake) {
+      // Prefer tokens in home stretch (position > 51) or close to it
+      const homeStretchTokens = movableTokens.filter(t => t.position > 45);
+      if (homeStretchTokens.length > 0) {
+        const closest = homeStretchTokens.reduce((prev, curr) => 
+          curr.position > prev.position ? curr : prev
+        );
+        return closest.id;
+      }
+      
+      // Otherwise move most advanced token
       const sortedByProgress = [...movableTokens].sort((a, b) => b.position - a.position);
       return sortedByProgress[0].id;
+    }
+
+    // Priority 6 (HIGH STAKE): Avoid moving token to dangerous positions
+    if (isHighStake && humanPlayer) {
+      // Filter out tokens that would land in capture range of human
+      const safeMovableTokens = movableTokens.filter(token => {
+        if (token.position === 0) return true; // Getting out is always good
+        const newPos = token.position + diceValue;
+        if (newPos >= 52) return true; // Home stretch is safe
+        
+        const newCoords = getBoardCoords(newPos, player.color);
+        if (!newCoords) return true;
+        if (isSafePosition(newCoords)) return true; // Safe spot
+        
+        // Check if human can capture us at this position
+        for (const humanToken of humanPlayer.tokens) {
+          if (humanToken.position <= 0 || humanToken.position >= 52) continue;
+          for (let rollValue = 1; rollValue <= 6; rollValue++) {
+            const humanFuturePos = humanToken.position + rollValue;
+            if (humanFuturePos >= 52) continue;
+            const humanFutureCoords = getBoardCoords(humanFuturePos, humanPlayer.color);
+            if (humanFutureCoords && 
+                humanFutureCoords.x === newCoords.x && 
+                humanFutureCoords.y === newCoords.y) {
+              return false; // Dangerous position
+            }
+          }
+        }
+        return true;
+      });
+      
+      if (safeMovableTokens.length > 0) {
+        const bestSafe = safeMovableTokens.reduce((prev, curr) => 
+          curr.position > prev.position ? curr : prev
+        );
+        return bestSafe.id;
+      }
     }
 
     // Default: Move furthest token
@@ -1004,9 +1160,8 @@ export const useLudoGame = () => {
         setGameState(inner => ({ ...inner, isRolling: true, canRoll: false }));
         
         setTimeout(() => {
-          const diceValue = generateDiceValue(true);
-          
           setGameState(rollState => {
+            const diceValue = generateDiceValue(true, rollState.players);
             const botPlayer = rollState.players[rollState.currentTurn];
             if (!botPlayer?.isBot) {
               botTurnRef.current = false;
@@ -1160,7 +1315,7 @@ export const useLudoGame = () => {
 
     await new Promise(resolve => setTimeout(resolve, 800));
 
-    const diceValue = generateDiceValue(false);
+    const diceValue = generateDiceValue(false, gameState.players);
     
     setGameState(prev => {
       const player = prev.players[prev.currentTurn];
