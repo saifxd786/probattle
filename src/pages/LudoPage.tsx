@@ -275,8 +275,6 @@ const LudoPage = () => {
     requestRematch,
     respondToRematch,
     manualReconnect,
-    extendDisconnectCountdown,
-    skipCountdownAndClaimWin,
     // Active room resume functionality
     hasActiveFriendRoom,
     activeFriendRoomData,
@@ -875,36 +873,15 @@ const LudoPage = () => {
             <div className="flex flex-col items-center gap-1">
               {/* Connection Status - Compact */}
               {!opponentOnline && opponentDisconnectCountdown !== null && (
-                <div className="flex items-center gap-1 px-2 py-0.5 rounded bg-red-500/30 border border-red-500/50 mb-1">
-                  <WifiOff className="w-2.5 h-2.5 text-red-400 animate-pulse" />
-                  <span className="text-[9px] text-red-400 font-mono">{opponentDisconnectCountdown}s</span>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={extendDisconnectCountdown}
-                    className="h-4 px-1 text-[8px] text-yellow-400 hover:bg-yellow-500/20"
-                  >
-                    +60s
-                  </Button>
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button variant="ghost" size="sm" className="h-4 px-1 text-[8px] text-green-400 hover:bg-green-500/20">
-                        Win
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent className="max-w-xs">
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Claim Victory?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          Your opponent is disconnected. Claim the win now?
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Wait</AlertDialogCancel>
-                        <AlertDialogAction onClick={skipCountdownAndClaimWin}>Claim Win</AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
+                <div className="flex flex-col items-center gap-0.5 px-2 py-1 rounded bg-red-500/30 border border-red-500/50 mb-1">
+                  <div className="flex items-center gap-1">
+                    <WifiOff className="w-2.5 h-2.5 text-red-400 animate-pulse" />
+                    <span className="text-[9px] text-red-400 font-medium">Opponent Disconnected</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span className="text-[10px] text-white font-mono font-bold">{opponentDisconnectCountdown}s</span>
+                    <span className="text-[8px] text-red-300">until auto-win</span>
+                  </div>
                 </div>
               )}
               {!opponentOnline && opponentDisconnectCountdown === null && (
