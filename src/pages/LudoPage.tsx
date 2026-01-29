@@ -346,7 +346,7 @@ const LudoPage = () => {
                   </div>
                   {/* Info */}
                   <div className="text-left">
-                    <p className="text-white/80 font-medium text-xs">{player.isBot ? player.name : player.uid}</p>
+                    <p className="text-white/80 font-medium text-xs">{player.name}</p>
                   </div>
                 </div>
               );
@@ -412,7 +412,7 @@ const LudoPage = () => {
                   </div>
                   {/* Info */}
                   <div className="text-right">
-                    <p className="text-white/80 font-medium text-xs">{player.isBot ? player.name : player.uid}</p>
+                    <p className="text-white/80 font-medium text-xs">{player.name}</p>
                   </div>
                 </div>
               );
@@ -615,7 +615,7 @@ const LudoPage = () => {
                   </div>
                   {/* Info */}
                   <div className="text-left">
-                    <p className="text-white/80 font-medium text-xs">{isCurrentUser ? 'You' : player.uid}</p>
+                    <p className="text-white/80 font-medium text-xs">{player.name}</p>
                   </div>
                 </div>
               );
@@ -721,7 +721,7 @@ const LudoPage = () => {
                   </div>
                   {/* Info */}
                   <div className="text-right">
-                    <p className="text-white/80 font-medium text-xs">{isCurrentUser ? 'You' : player.uid}</p>
+                    <p className="text-white/80 font-medium text-xs">{player.name}</p>
                   </div>
                 </div>
               );
