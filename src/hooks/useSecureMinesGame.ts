@@ -308,6 +308,8 @@ export const useSecureMinesGame = () => {
     if (gameState.phase !== 'playing') return;
     // Wait for real gameId (not 'pending')
     if (!gameState.gameId || gameState.gameId === 'pending') return;
+    // Limit max pending tiles to prevent overwhelming server
+    if (pendingRevealsRef.current.size >= 3) return;
     // Check both confirmed AND pending positions
     if (gameState.revealedPositions.includes(position)) return;
     if (gameState.pendingPositions.includes(position)) return;
