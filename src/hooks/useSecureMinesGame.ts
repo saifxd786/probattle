@@ -187,10 +187,15 @@ export const useSecureMinesGame = () => {
   }, [user, session, walletBalance, gameState.entryAmount, gameState.minesCount, settings, toast]);
 
   const revealTile = useCallback(async (position: number) => {
-    if (gameState.phase !== 'playing' || !gameState.gameId || isLoading) return;
+    if (gameState.phase !== 'playing' || !gameState.gameId) return;
     if (gameState.revealedPositions.includes(position)) return;
 
-    setIsLoading(true);
+    // Optimistic update - immediately show the tile as "pending"
+    // This removes the perceived delay
+    setGameState(prev => ({
+      ...prev,
+      revealedPositions: [...prev.revealedPositions, position]
+    }));
 
     try {
       const { data, error } = await supabase.functions.invoke('mines-game-server', {
@@ -204,6 +209,11 @@ export const useSecureMinesGame = () => {
       if (error) throw error;
 
       if (!data.success) {
+        // Revert optimistic update
+        setGameState(prev => ({
+          ...prev,
+          revealedPositions: prev.revealedPositions.filter(p => p !== position)
+        }));
         throw new Error(data.error || 'Failed to reveal tile');
       }
 
@@ -227,7 +237,7 @@ export const useSecureMinesGame = () => {
           variant: 'destructive'
         });
       } else {
-        // Safe tile
+        // Safe tile - update with server data
         soundManager.playGemReveal();
         hapticManager.tokenMove();
         
@@ -252,10 +262,8 @@ export const useSecureMinesGame = () => {
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : 'Failed to reveal tile';
       toast({ title: message, variant: 'destructive' });
-    } finally {
-      setIsLoading(false);
     }
-  }, [gameState, isLoading, toast]);
+  }, [gameState.phase, gameState.gameId, gameState.revealedPositions, toast]);
 
   const cashOut = useCallback(async () => {
     if (gameState.phase !== 'playing' || !gameState.gameId || gameState.revealedPositions.length === 0) {
