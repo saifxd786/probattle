@@ -44,7 +44,7 @@ const AdminLayout = () => {
   useEffect(() => {
     if (!authLoading && !checkingRole) {
       if (!user) {
-        navigate('/auth');
+        navigate('/admin/login');
       } else if (!isAdmin) {
         navigate('/');
       }
