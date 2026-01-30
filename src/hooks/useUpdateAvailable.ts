@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
+import { toast } from '@/hooks/use-toast';
 
 export const useUpdateAvailable = () => {
   const [updateAvailable, setUpdateAvailable] = useState(false);
@@ -6,10 +7,15 @@ export const useUpdateAvailable = () => {
   const [isChecking, setIsChecking] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
 
-  // Check for updates immediately on mount
-  const checkForUpdate = useCallback(async () => {
+  // Check for updates - returns true if update found
+  const checkForUpdate = useCallback(async (): Promise<boolean> => {
     if (!('serviceWorker' in navigator)) {
-      return;
+      toast({
+        title: "Not Supported",
+        description: "Service workers are not supported in this browser.",
+        variant: "destructive",
+      });
+      return false;
     }
 
     setIsChecking(true);
@@ -19,25 +25,53 @@ export const useUpdateAvailable = () => {
       // Force update check
       await reg.update();
       
+      // Small delay to allow state change events to fire
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
       // Check for waiting worker (update available)
       if (reg.waiting) {
         setRegistration(reg);
         setUpdateAvailable(true);
-        return;
+        toast({
+          title: "Update Available! 🎉",
+          description: "A new version is ready. Tap 'Apply Update' to install.",
+        });
+        return true;
       }
 
       // Check installing worker
       if (reg.installing) {
-        reg.installing.addEventListener('statechange', function() {
-          if (this.state === 'installed' && navigator.serviceWorker.controller) {
-            setRegistration(reg);
-            setUpdateAvailable(true);
-          }
+        return new Promise((resolve) => {
+          reg.installing!.addEventListener('statechange', function() {
+            if (this.state === 'installed' && navigator.serviceWorker.controller) {
+              setRegistration(reg);
+              setUpdateAvailable(true);
+              toast({
+                title: "Update Available! 🎉",
+                description: "A new version is ready. Tap 'Apply Update' to install.",
+              });
+              resolve(true);
+            }
+          });
+          // Timeout after 5 seconds
+          setTimeout(() => resolve(false), 5000);
         });
-        return;
       }
+
+      // No update available
+      toast({
+        title: "You're Up to Date ✓",
+        description: `Running the latest version (v1.2.1)`,
+      });
+      return false;
     } catch (err) {
       console.log('Update check failed:', err);
+      toast({
+        title: "Check Failed",
+        description: "Could not check for updates. Try again later.",
+        variant: "destructive",
+      });
+      return false;
     } finally {
       setIsChecking(false);
     }
@@ -76,17 +110,21 @@ export const useUpdateAvailable = () => {
 
     // Check immediately on mount
     setupUpdateListener();
-    checkForUpdate();
 
     // Listen for controller change (after update)
     navigator.serviceWorker.addEventListener('controllerchange', () => {
       window.location.reload();
     });
-  }, [checkForUpdate]);
+  }, []);
 
   const applyUpdate = useCallback(() => {
     if (registration?.waiting) {
       setIsUpdating(true);
+      
+      toast({
+        title: "Updating...",
+        description: "Installing new version, please wait.",
+      });
       
       // Give a slight delay to show the progress animation
       setTimeout(() => {
