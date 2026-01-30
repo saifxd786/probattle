@@ -338,13 +338,33 @@ export const useSecureMinesGame = () => {
       return;
     }
 
-    setIsLoading(true);
+    // INSTANT: Optimistic UI update
+    const expectedWin = gameState.potentialWin;
+    const currentGameId = gameState.gameId;
+    
+    // Clear pending queue
+    pendingRevealsRef.current.clear();
+    
+    // Immediately show result
+    soundManager.playCashOut();
+    hapticManager.tokenHome();
+    
+    setGameState(prev => ({
+      ...prev,
+      phase: 'result',
+      pendingPositions: [],
+      isWin: true,
+      finalAmount: expectedWin
+    }));
+    
+    setWalletBalance(prev => prev + expectedWin);
 
+    // Server call in background
     try {
       const { data, error } = await supabase.functions.invoke('mines-game-server', {
         body: {
           action: 'cashout',
-          gameId: gameState.gameId
+          gameId: currentGameId
         }
       });
 
@@ -354,28 +374,33 @@ export const useSecureMinesGame = () => {
         throw new Error(data.error || 'Failed to cash out');
       }
 
-      soundManager.playCashOut();
-      hapticManager.tokenHome();
-
+      // Update with actual server values (mine positions for reveal)
       setGameState(prev => ({
         ...prev,
-        phase: 'result',
-        isWin: true,
         finalAmount: data.finalAmount,
-        minePositions: data.minePositions // Now we can see mines
+        minePositions: data.minePositions
       }));
-
-      setWalletBalance(prev => prev + data.finalAmount);
+      
+      // Correct balance if server amount differs
+      if (data.finalAmount !== expectedWin) {
+        setWalletBalance(prev => prev - expectedWin + data.finalAmount);
+      }
 
       toast({
         title: '💎 Cashed Out!',
         description: `₹${data.finalAmount} added to your wallet!`
       });
     } catch (error: unknown) {
+      // Rollback on error
+      setWalletBalance(prev => prev - expectedWin);
+      setGameState(prev => ({
+        ...prev,
+        phase: 'playing',
+        isWin: null,
+        finalAmount: 0
+      }));
       const message = error instanceof Error ? error.message : 'Failed to cash out';
       toast({ title: message, variant: 'destructive' });
-    } finally {
-      setIsLoading(false);
     }
   }, [gameState, toast]);
 
