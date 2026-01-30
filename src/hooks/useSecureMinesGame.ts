@@ -152,14 +152,33 @@ export const useSecureMinesGame = () => {
       return;
     }
 
-    setIsLoading(true);
+    // INSTANT: Update UI immediately before server call
+    const entryAmount = gameState.entryAmount;
+    const minesCount = gameState.minesCount;
+    
+    setWalletBalance(prev => prev - entryAmount);
+    setGameState(prev => ({
+      ...prev,
+      phase: 'playing',
+      gameId: 'pending',
+      minePositions: [],
+      revealedPositions: [],
+      pendingPositions: [],
+      currentMultiplier: 1,
+      potentialWin: entryAmount,
+      isWin: null,
+      finalAmount: 0
+    }));
+    
+    hapticManager.tokenEnter();
 
+    // Server call in background
     try {
       const { data, error } = await supabase.functions.invoke('mines-game-server', {
         body: {
           action: 'start',
-          entryAmount: gameState.entryAmount,
-          minesCount: gameState.minesCount
+          entryAmount,
+          minesCount
         }
       });
 
@@ -169,27 +188,24 @@ export const useSecureMinesGame = () => {
         throw new Error(data.error || 'Failed to start game');
       }
 
-      setWalletBalance(prev => prev - gameState.entryAmount);
-
+      // Update with real game ID
       setGameState(prev => ({
         ...prev,
-        phase: 'playing',
         gameId: data.game.id,
-        minePositions: [],
         revealedPositions: data.game.revealedPositions || [],
-        pendingPositions: [],
         currentMultiplier: data.game.currentMultiplier || 1,
-        potentialWin: data.game.potentialWin || prev.entryAmount,
-        isWin: null,
-        finalAmount: 0
+        potentialWin: data.game.potentialWin || entryAmount
       }));
-
-      hapticManager.tokenEnter();
     } catch (error: unknown) {
+      // Rollback on error
+      setWalletBalance(prev => prev + entryAmount);
+      setGameState(prev => ({
+        ...prev,
+        phase: 'idle',
+        gameId: null
+      }));
       const message = error instanceof Error ? error.message : 'Failed to start game';
       toast({ title: message, variant: 'destructive' });
-    } finally {
-      setIsLoading(false);
     }
   }, [user, session, walletBalance, gameState.entryAmount, gameState.minesCount, settings, toast]);
 
@@ -288,7 +304,9 @@ export const useSecureMinesGame = () => {
   }, [gameState.gameId, gameState.phase, toast]);
 
   const revealTile = useCallback((position: number) => {
-    if (gameState.phase !== 'playing' || !gameState.gameId) return;
+    if (gameState.phase !== 'playing') return;
+    // Wait for real gameId (not 'pending')
+    if (!gameState.gameId || gameState.gameId === 'pending') return;
     // Check both confirmed AND pending positions
     if (gameState.revealedPositions.includes(position)) return;
     if (gameState.pendingPositions.includes(position)) return;
