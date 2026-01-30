@@ -235,16 +235,20 @@ export const useSecureThimbleGame = () => {
           setGameState(prev => ({ ...prev, phase: 'selecting' }));
           
           // Start countdown timer
+          let timeRemaining = diffSettings.selectionTime;
           timerRef.current = setInterval(() => {
-            setGameState(prev => {
-              if (prev.timeLeft <= 1) {
-                if (timerRef.current) clearInterval(timerRef.current);
-                // Time's up - auto-select nothing (loss)
-                handleSelection(-1);
-                return prev;
-              }
-              return { ...prev, timeLeft: prev.timeLeft - 1 };
-            });
+            timeRemaining -= 1;
+            
+            if (timeRemaining <= 0) {
+              if (timerRef.current) clearInterval(timerRef.current);
+              timerRef.current = null;
+              // Time's up - trigger timeout loss
+              setGameState(prev => ({ ...prev, timeLeft: 0 }));
+              handleTimeoutLoss();
+              return;
+            }
+            
+            setGameState(prev => ({ ...prev, timeLeft: timeRemaining }));
           }, 1000);
         }, diffSettings.shuffleDuration);
       }, 2000);
@@ -255,6 +259,65 @@ export const useSecureThimbleGame = () => {
       setIsLoading(false);
     }
   }, [user, session, selectedDifficulty, gameState.entryAmount, getDifficultySettings, toast]);
+
+  // Handle timeout - player didn't select in time
+  const handleTimeoutLoss = useCallback(async () => {
+    const currentGameId = gameState.gameId;
+    if (!currentGameId) return;
+
+    setIsLoading(true);
+
+    try {
+      const { data, error } = await supabase.functions.invoke('thimble-game-server', {
+        body: {
+          action: 'select',
+          gameId: currentGameId,
+          selectedPosition: -1 // Timeout indicator
+        }
+      });
+
+      if (error) throw error;
+
+      // Show loss result
+      setGameState(prev => ({
+        ...prev,
+        phase: 'revealing',
+        selectedCup: -1,
+        ballPosition: data?.ballPosition ?? 0,
+        isWin: false
+      }));
+
+      hapticManager.tokenMove();
+
+      // After reveal, show result
+      setTimeout(() => {
+        setGameState(prev => ({
+          ...prev,
+          phase: 'result'
+        }));
+
+        toast({
+          title: '⏱️ Time\'s Up!',
+          description: 'You didn\'t select in time!',
+          variant: 'destructive'
+        });
+      }, 2000);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Failed to process timeout';
+      toast({ title: message, variant: 'destructive' });
+      // Reset to idle on error
+      setGameState(prev => ({
+        ...prev,
+        phase: 'idle',
+        gameId: null,
+        ballPosition: -1,
+        selectedCup: null,
+        isWin: null
+      }));
+    } finally {
+      setIsLoading(false);
+    }
+  }, [gameState.gameId, toast]);
 
   const handleSelection = useCallback(async (cupIndex: number) => {
     if (gameState.phase !== 'selecting' || !gameState.gameId || isLoading) return;
