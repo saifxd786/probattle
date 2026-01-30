@@ -15,34 +15,34 @@
 
 import { RealtimeChannel } from '@supabase/supabase-js';
 
-// ===== SYNC ENGINE CONFIGURATION =====
+// ===== ESPORTS-GRADE SYNC ENGINE (20ms TARGET) =====
 export const SYNC_CONFIG = {
-  // Optimistic Update Settings
-  OPTIMISTIC_TIMEOUT_MS: 2000, // Rollback if no confirmation within 2s
-  MAX_PENDING_ACTIONS: 10, // Max unconfirmed actions before blocking
+  // Optimistic Update Settings - Faster confirmations
+  OPTIMISTIC_TIMEOUT_MS: 1500, // 1.5s rollback timeout
+  MAX_PENDING_ACTIONS: 15, // Allow more concurrent actions
   
-  // Delta Compression
+  // Delta Compression - Minimal overhead
   ENABLE_DELTA_COMPRESSION: true,
-  MIN_DELTA_SIZE_BYTES: 50, // Don't compress below this
+  MIN_DELTA_SIZE_BYTES: 30, // Compress more aggressively
   
-  // Predictive Animation
-  ANIMATION_LEAD_TIME_MS: 50, // Start animation this early
-  DICE_ANIMATION_DURATION_MS: 800,
-  TOKEN_MOVE_DURATION_MS: 300,
+  // Predictive Animation - Start earlier for perceived speed
+  ANIMATION_LEAD_TIME_MS: 20, // Ultra-early animation start
+  DICE_ANIMATION_DURATION_MS: 600, // Faster dice
+  TOKEN_MOVE_DURATION_MS: 200, // Faster tokens
   
-  // State Reconciliation  
-  RECONCILE_INTERVAL_MS: 250, // Check state every 250ms (4x/second)
-  MAX_STATE_AGE_MS: 5000, // Force sync if state older than 5s
-  CHECKSUM_BITS: 32, // Faster checksum calculation
+  // State Reconciliation - Higher frequency
+  RECONCILE_INTERVAL_MS: 150, // Check state every 150ms (6.6x/second)
+  MAX_STATE_AGE_MS: 3000, // Force sync if state older than 3s
+  CHECKSUM_BITS: 32, // Fast checksum
   
-  // Network Optimization
-  BATCH_WINDOW_MS: 8, // Batch actions within 8ms (~120fps)
-  PRIORITY_EVENTS: ['dice_roll', 'token_move', 'game_end'] as const,
+  // Network Optimization - Minimal batching
+  BATCH_WINDOW_MS: 4, // 4ms batch window (~250fps)
+  PRIORITY_EVENTS: ['dice_roll', 'dice_rolling', 'token_move', 'token_select', 'game_end', 'turn_complete'] as const,
   
-  // Latency Prediction
-  LATENCY_SAMPLES: 50, // Track last 50 pings
-  LATENCY_PREDICTION_WEIGHT: 0.7, // Weight for EMA prediction
-  JITTER_COMPENSATION_MS: 20, // Extra buffer for jitter
+  // Latency Prediction - More samples, faster adaptation
+  LATENCY_SAMPLES: 80, // More samples for accuracy
+  LATENCY_PREDICTION_WEIGHT: 0.8, // Faster adaptation to changes
+  JITTER_COMPENSATION_MS: 10, // Less buffer = faster feel
 } as const;
 
 // ===== TYPES =====

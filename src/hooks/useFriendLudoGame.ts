@@ -118,29 +118,29 @@ const generateChecksum = (players: Player[], currentTurn: number, diceValue?: nu
   return fastChecksum(stateString);
 };
 
-// Optimized constants from SYNC_CONFIG
-const CHECKSUM_INTERVAL_MS = SYNC_CONFIG.RECONCILE_INTERVAL_MS; // 250ms for Ludo King-level sync
-const CHECKSUM_MISMATCH_THRESHOLD = 2;
-const CHECKSUM_RESYNC_COOLDOWN_MS = 1500; // Faster recovery
+// Optimized constants from SYNC_CONFIG (esports-grade 20ms target)
+const CHECKSUM_INTERVAL_MS = SYNC_CONFIG.RECONCILE_INTERVAL_MS; // 150ms for esports-grade sync
+const CHECKSUM_MISMATCH_THRESHOLD = 3; // Allow 3 mismatches before resync (less sensitive)
+const CHECKSUM_RESYNC_COOLDOWN_MS = 2000; // 2s cooldown to avoid spam
 
 // Toast dedupe / anti-spam (Friends vs Friends)
 const TOAST_ID_HIGH_LATENCY = 'ludo-high-latency';
 const TOAST_ID_SYNC_RECOVERED = 'ludo-sync-recovered';
-const AUTO_RESYNC_TOAST_COOLDOWN_MS = 20000; // avoid multiple "synced" popups back-to-back
+const AUTO_RESYNC_TOAST_COOLDOWN_MS = 30000; // 30s - avoid multiple "synced" popups
 
 // Grace window to avoid checksum false-positives while an action is still in-flight
-const CHECKSUM_IN_FLIGHT_GRACE_MS = 900;
+const CHECKSUM_IN_FLIGHT_GRACE_MS = 600; // Reduced for faster detection
 
-// === ENTERPRISE LATENCY OPTIMIZATION ===
-const PING_INTERVAL_MS = 300; // Ultra-fast: 300ms pings
-const PING_TIMEOUT_MS = 1000; // Shorter timeout
-const HEARTBEAT_INTERVAL_MS = 1500; // Faster heartbeat
-const HEARTBEAT_MISS_THRESHOLD = 2;
-const MAX_PING_HISTORY = 30; // More samples for accuracy
-const HIGH_PING_WARNING_THRESHOLD = 200; // Lower threshold
-const HIGH_PING_WARNING_COOLDOWN = 30000; // 30 seconds
-const BROADCAST_RETRY_COUNT = 3; // More retries
-const BROADCAST_RETRY_DELAY = 25; // Faster retries
+// === ESPORTS-GRADE LATENCY (20ms TARGET) ===
+const PING_INTERVAL_MS = 100; // 100ms pings for sub-20ms response tracking
+const PING_TIMEOUT_MS = 600; // Faster timeout detection
+const HEARTBEAT_INTERVAL_MS = 800; // 800ms heartbeat
+const HEARTBEAT_MISS_THRESHOLD = 3; // Allow 3 misses before disconnect
+const MAX_PING_HISTORY = 50; // More samples for stable median
+const HIGH_PING_WARNING_THRESHOLD = 150; // Show warning at 150ms+ (lower for esports)
+const HIGH_PING_WARNING_COOLDOWN = 45000; // 45 seconds between warnings
+const BROADCAST_RETRY_COUNT = 4; // More retries for reliability
+const BROADCAST_RETRY_DELAY = 15; // 15ms retry delay (ultra-fast)
 
 // Calculate median for more stable ping display (removes outliers)
 const calculateMedian = (arr: number[]): number => {
@@ -734,11 +734,11 @@ export const useFriendLudoGame = () => {
             pingHistoryRef.current.shift();
           }
           
-          // Use exponential moving average for ultra-smooth display
+          // Use exponential moving average for ultra-smooth display (esports-grade)
           setPingLatency(prev => {
             if (prev === null) return stats.median;
-            // EMA with 0.7 weight for new value (fast response)
-            return Math.round(prev * 0.3 + stats.median * 0.7);
+            // EMA with 0.85 weight for new value (faster response for 20ms target)
+            return Math.round(prev * 0.15 + stats.median * 0.85);
           });
           
           // Update QoS manager with quality
@@ -842,23 +842,24 @@ export const useFriendLudoGame = () => {
       }
     };
 
-    // Send initial ping IMMEDIATELY (10ms delay)
-    const initialDelay = setTimeout(sendPing, 10);
+    // Send initial ping IMMEDIATELY (5ms delay for esports-grade start)
+    const initialDelay = setTimeout(sendPing, 5);
     
-    // Ultra-fast adaptive ping interval
+    // Esports-grade adaptive ping interval (100ms base, adapts to connection)
     const setupPingInterval = () => {
       if (pingIntervalRef.current) {
         clearInterval(pingIntervalRef.current);
       }
-      // Ludo King uses ~300ms pings, we do the same
-      const interval = Math.max(PING_INTERVAL_MS, globalQoSManager.getPingInterval());
+      // Use minimum of our target (100ms) or QoS-recommended interval
+      const qosInterval = globalQoSManager.getPingInterval();
+      const interval = Math.min(PING_INTERVAL_MS, qosInterval);
       pingIntervalRef.current = setInterval(sendPing, interval);
     };
     
     setupPingInterval();
     
-    // Re-adjust interval every 5 seconds for responsiveness
-    const adaptiveInterval = setInterval(setupPingInterval, 5000);
+    // Re-adjust interval every 3 seconds for faster adaptation
+    const adaptiveInterval = setInterval(setupPingInterval, 3000);
 
     return () => {
       clearTimeout(initialDelay);
@@ -2043,13 +2044,13 @@ export const useFriendLudoGame = () => {
       lastResyncTimeRef.current = 0;
       checksumHistoryRef.current = [];
       
-      // Broadcast checksum more frequently (800ms instead of 1500ms)
+      // Broadcast checksum at esports-grade frequency (150ms from SYNC_CONFIG)
       checksumIntervalRef.current = setInterval(() => {
         broadcastChecksum();
       }, CHECKSUM_INTERVAL_MS);
 
-      // Initial checksum broadcast
-      setTimeout(() => broadcastChecksum(), 500);
+      // Initial checksum broadcast (faster start)
+      setTimeout(() => broadcastChecksum(), 200);
 
       return () => {
         if (checksumIntervalRef.current) {
