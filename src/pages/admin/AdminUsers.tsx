@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Search, Ban, CheckCircle, Shield, ShieldOff, Gamepad2, Trash2, Eye, KeyRound, UserCog, Settings2 } from 'lucide-react';
+import { Search, Ban, CheckCircle, Shield, ShieldOff, Gamepad2, Trash2, Eye, KeyRound, UserCog, Settings2, Wallet } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -10,6 +10,9 @@ import BanUserDialog from '@/components/admin/BanUserDialog';
 import UserDetailDialog from '@/components/admin/UserDetailDialog';
 import ResetPasswordDialog from '@/components/admin/ResetPasswordDialog';
 import AgentPermissionsDialog from '@/components/admin/AgentPermissionsDialog';
+import WalletUpdateDialog from '@/components/admin/WalletUpdateDialog';
+import { useAuth } from '@/contexts/AuthContext';
+import { safeError } from '@/utils/safeLogger';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -41,6 +44,7 @@ type UserRole = {
 };
 
 const AdminUsers = () => {
+  const { user: adminUser } = useAuth();
   const [users, setUsers] = useState<Profile[]>([]);
   const [userRoles, setUserRoles] = useState<Record<string, string[]>>({});
   const [searchTerm, setSearchTerm] = useState('');
@@ -54,6 +58,8 @@ const AdminUsers = () => {
   const [viewDialogOpen, setViewDialogOpen] = useState(false);
   const [resetPasswordUser, setResetPasswordUser] = useState<Profile | null>(null);
   const [agentPermissionsUser, setAgentPermissionsUser] = useState<Profile | null>(null);
+  const [walletDialogOpen, setWalletDialogOpen] = useState(false);
+  const [walletUpdateUser, setWalletUpdateUser] = useState<Profile | null>(null);
 
   const fetchUsers = async () => {
     const { data: profiles, error } = await supabase
@@ -227,23 +233,47 @@ const AdminUsers = () => {
     }
   };
 
-  const updateWallet = async (userId: string, amount: number) => {
-    const user = users.find((u) => u.id === userId);
-    if (!user) return;
+  // Secure wallet update using atomic database function
+  const updateWallet = async (userId: string, amount: number, reason: string) => {
+    if (!adminUser?.id) {
+      toast({ title: 'Error', description: 'Admin session not found', variant: 'destructive' });
+      return;
+    }
 
-    const newBalance = Math.max(0, user.wallet_balance + amount);
-
-    const { error } = await supabase
-      .from('profiles')
-      .update({ wallet_balance: newBalance })
-      .eq('id', userId);
+    // Call atomic wallet update function
+    const { data, error } = await supabase.rpc('atomic_wallet_update', {
+      p_user_id: userId,
+      p_amount: amount,
+      p_reason: reason,
+      p_admin_id: adminUser.id
+    });
 
     if (error) {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
-    } else {
-      toast({ title: 'Success', description: `Wallet ${amount > 0 ? 'credited' : 'debited'} successfully` });
-      fetchUsers();
+      safeError('updateWallet', error);
+      toast({ title: 'Error', description: 'Failed to update wallet', variant: 'destructive' });
+      return;
     }
+
+    const result = data?.[0];
+    if (!result?.success) {
+      toast({ 
+        title: 'Error', 
+        description: result?.error_message || 'Failed to update wallet', 
+        variant: 'destructive' 
+      });
+      return;
+    }
+
+    toast({ 
+      title: 'Success', 
+      description: `Wallet ${amount > 0 ? 'credited' : 'debited'} successfully. New balance: ₹${result.new_balance}` 
+    });
+    fetchUsers();
+  };
+
+  const openWalletDialog = (user: Profile) => {
+    setWalletUpdateUser(user);
+    setWalletDialogOpen(true);
   };
 
   const deleteUser = async () => {
@@ -366,30 +396,15 @@ const AdminUsers = () => {
                         <td className="p-4">
                           <div className="flex items-center gap-2">
                             <span className="font-medium">₹{user.wallet_balance}</span>
-                            <div className="flex gap-1">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-6 px-2 text-xs"
-                                onClick={() => {
-                                  const amount = prompt('Enter amount to add:');
-                                  if (amount) updateWallet(user.id, Number(amount));
-                                }}
-                              >
-                                +
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-6 px-2 text-xs"
-                                onClick={() => {
-                                  const amount = prompt('Enter amount to deduct:');
-                                  if (amount) updateWallet(user.id, -Number(amount));
-                                }}
-                              >
-                                -
-                              </Button>
-                            </div>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 px-2 text-xs gap-1"
+                              onClick={() => openWalletDialog(user)}
+                            >
+                              <Wallet className="w-3 h-3" />
+                              Edit
+                            </Button>
                           </div>
                         </td>
                         <td className="p-4 text-sm">
@@ -565,6 +580,16 @@ const AdminUsers = () => {
         onClose={() => setAgentPermissionsUser(null)}
         userId={agentPermissionsUser?.id || ''}
         username={agentPermissionsUser?.username || null}
+      />
+
+      <WalletUpdateDialog
+        open={walletDialogOpen}
+        onOpenChange={(open) => {
+          setWalletDialogOpen(open);
+          if (!open) setWalletUpdateUser(null);
+        }}
+        user={walletUpdateUser}
+        onConfirm={updateWallet}
       />
     </div>
   );

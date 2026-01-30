@@ -11,6 +11,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
 import MatchParticipantsDialog from './MatchParticipantsDialog';
+import { safeError } from '@/utils/safeLogger';
 
 // Map images
 import mapErangel from '@/assets/map-erangel.jpg';
@@ -213,14 +214,14 @@ const MatchCard = ({
       });
       
       if (error) {
-        console.error('Error fetching credentials:', error);
+        safeError('fetchCredentials', error);
         toast({ title: 'Error', description: 'Could not fetch room credentials', variant: 'destructive' });
       } else if (data && data.length > 0) {
         setSecureRoomId(data[0].room_id);
         setSecureRoomPassword(data[0].room_password);
       }
     } catch (err) {
-      console.error('Error:', err);
+      safeError('fetchCredentials', err);
     } finally {
       setIsLoadingCredentials(false);
     }
