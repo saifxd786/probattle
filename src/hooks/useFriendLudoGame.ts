@@ -6,6 +6,13 @@ import { toast as sonnerToast } from 'sonner';
 import { soundManager } from '@/utils/soundManager';
 import { hapticManager } from '@/utils/hapticManager';
 import { RealtimeChannel } from '@supabase/supabase-js';
+import { 
+  globalLatencyTracker, 
+  globalChannelManager, 
+  globalQoSManager,
+  shortId,
+  REALTIME_CONFIG 
+} from '@/utils/realtimeOptimizer';
 
 interface Token {
   id: number;
@@ -565,7 +572,10 @@ export const useFriendLudoGame = () => {
             if (!canMove) {
               const nextTurn = (prev.currentTurn + 1) % prev.players.length;
               const isMyTurn = prev.players[nextTurn]?.id === user?.id;
-              soundManager.playDiceResult(diceValue);
+              // Play sound only if QoS allows
+              if (globalQoSManager.shouldPlaySounds()) {
+                soundManager.playDiceResult(diceValue);
+              }
               return { 
                 ...prev, 
                 diceValue, 
@@ -575,7 +585,10 @@ export const useFriendLudoGame = () => {
               };
             }
 
-            soundManager.playDiceResult(diceValue);
+            // Play sound only if QoS allows
+            if (globalQoSManager.shouldPlaySounds()) {
+              soundManager.playDiceResult(diceValue);
+            }
             return { ...prev, diceValue, isRolling: false };
           });
         }
@@ -586,8 +599,13 @@ export const useFriendLudoGame = () => {
           lastActionRef.current = timestamp;
           console.log('[LudoSync] Received token move:', { color, tokenId });
           
-          soundManager.playTokenMove();
-          hapticManager.tokenMove();
+          // QoS-aware feedback
+          if (globalQoSManager.shouldPlaySounds()) {
+            soundManager.playTokenMove();
+          }
+          if (globalQoSManager.shouldUseHaptics()) {
+            hapticManager.tokenMove();
+          }
 
           setGameState(prev => {
             const isMyTurn = newPlayers[nextTurn]?.id === user?.id;
@@ -657,54 +675,43 @@ export const useFriendLudoGame = () => {
           const latency = Date.now() - originalTimestamp;
           pendingPingsRef.current.delete(pingId);
           
-          // Track ping history for stability (increased history for better accuracy)
+          // Use global latency tracker for enterprise-grade stats
+          globalLatencyTracker.addSample(latency);
+          const stats = globalLatencyTracker.getStats();
+          const quality = globalLatencyTracker.getQuality();
+          
+          // Track locally too for backwards compatibility
           pingHistoryRef.current.push(latency);
           if (pingHistoryRef.current.length > MAX_PING_HISTORY) {
             pingHistoryRef.current.shift();
           }
           
-          // Use MEDIAN instead of average to remove outliers (more stable display)
-          const medianPing = calculateMedian(pingHistoryRef.current);
-          
-          // Calculate average for variance calculation
-          const avgPing = pingHistoryRef.current.length > 0 
-            ? Math.round(pingHistoryRef.current.reduce((a, b) => a + b, 0) / pingHistoryRef.current.length)
-            : latency;
-          
-          // Use exponential moving average with faster response (0.5/0.5 instead of 0.6/0.4)
+          // Use median from global tracker for stable display
           setPingLatency(prev => {
-            if (prev === null) return Math.round(medianPing);
-            // Faster response to changes
-            return Math.round(prev * 0.4 + medianPing * 0.6);
+            if (prev === null) return stats.median;
+            // Smooth transition
+            return Math.round(prev * 0.3 + stats.median * 0.7);
           });
           
-          // Calculate connection quality based on ping AND stability
-          const pingVariance = pingHistoryRef.current.length > 1
-            ? Math.sqrt(pingHistoryRef.current.reduce((sum, p) => sum + Math.pow(p - avgPing, 2), 0) / pingHistoryRef.current.length)
-            : 0;
+          // Set quality and update QoS manager (filter out 'disconnected' for local state)
+          const localQuality = quality === 'disconnected' ? 'poor' : quality;
+          setConnectionQuality(localQuality);
+          globalQoSManager.updateQuality(quality);
           
-          // More granular quality thresholds
-          if (medianPing < 60 && pingVariance < 20) {
-            setConnectionQuality('excellent');
-          } else if (medianPing < 120 && pingVariance < 40) {
-            setConnectionQuality('good');
-          } else if (medianPing < 250) {
-            setConnectionQuality('fair');
-          } else {
-            setConnectionQuality('poor');
-          }
+          // Update channel health
+          globalChannelManager.markActivity(`ludo-actions-${gameState.roomId}`, 'receive');
           
           // Update heartbeat on successful pong
           lastHeartbeatRef.current = Date.now();
           heartbeatMissedRef.current = 0;
           setConnectionStatus('connected');
           
-          // Show warning at lower threshold (300ms instead of 800ms)
+          // Show warning at lower threshold - only if QoS allows sounds
           const now = Date.now();
           if (latency > HIGH_PING_WARNING_THRESHOLD && now - lastHighPingWarningRef.current > HIGH_PING_WARNING_COOLDOWN) {
             lastHighPingWarningRef.current = now;
             sonnerToast.warning(`High latency: ${latency}ms`, {
-              description: 'Switch to a faster network for better gameplay',
+              description: `Jitter: ${stats.jitter}ms. Switch to faster network.`,
               duration: 2500,
             });
           }
@@ -771,16 +778,29 @@ export const useFriendLudoGame = () => {
       }
     };
 
-    // Send initial ping immediately (reduced delay from 500ms to 100ms)
+    // Send initial ping immediately
     const initialDelay = setTimeout(() => {
       sendPing();
-    }, 100);
+    }, 50); // Reduced to 50ms for faster initial measurement
     
-    // Send ping more frequently for real-time feel
-    pingIntervalRef.current = setInterval(sendPing, PING_INTERVAL_MS);
+    // Adaptive ping interval based on connection quality
+    const setupPingInterval = () => {
+      if (pingIntervalRef.current) {
+        clearInterval(pingIntervalRef.current);
+      }
+      // Use QoS manager for adaptive interval (faster when good, slower when poor to reduce overhead)
+      const interval = globalQoSManager.getPingInterval();
+      pingIntervalRef.current = setInterval(sendPing, interval);
+    };
+    
+    setupPingInterval();
+    
+    // Re-adjust ping interval every 10 seconds based on current quality
+    const adaptiveInterval = setInterval(setupPingInterval, 10000);
 
     return () => {
       clearTimeout(initialDelay);
+      clearInterval(adaptiveInterval);
       if (pingIntervalRef.current) {
         clearInterval(pingIntervalRef.current);
         pingIntervalRef.current = null;
@@ -795,11 +815,17 @@ export const useFriendLudoGame = () => {
     const timestamp = Date.now();
     lastActionRef.current = timestamp;
     
+    // Use shortId for more efficient message IDs
+    const messageId = shortId();
+    
     const message = {
       type: 'broadcast' as const,
       event,
-      payload: { ...payload, senderId: user.id, timestamp }
+      payload: { ...payload, senderId: user.id, timestamp, msgId: messageId }
     };
+    
+    // Track channel activity
+    globalChannelManager.markActivity(`ludo-actions-${gameState.roomId}`, 'send');
     
     // Attempt to send with retry on failure
     for (let attempt = 0; attempt <= BROADCAST_RETRY_COUNT; attempt++) {
@@ -807,15 +833,18 @@ export const useFriendLudoGame = () => {
         await gameActionChannelRef.current.send(message);
         return; // Success - exit
       } catch (err) {
+        globalChannelManager.markError(`ludo-actions-${gameState.roomId}`);
         if (attempt < BROADCAST_RETRY_COUNT) {
           console.warn(`[LudoSync] Broadcast attempt ${attempt + 1} failed, retrying...`);
-          await new Promise(resolve => setTimeout(resolve, BROADCAST_RETRY_DELAY));
+          await new Promise(resolve => setTimeout(resolve, BROADCAST_RETRY_DELAY * (attempt + 1)));
         } else {
           console.error('[LudoSync] All broadcast attempts failed:', err);
+          // Update connection status on persistent failures
+          setConnectionStatus('disconnected');
         }
       }
     }
-  }, [user]);
+  }, [user, gameState.roomId]);
 
   // Reconnection with exponential backoff
   const attemptReconnection = useCallback(() => {
