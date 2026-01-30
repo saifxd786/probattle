@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Clock, Copy, Check, Upload, Shield, Zap, 
@@ -136,7 +136,8 @@ const DepositPaymentGateway = ({ isOpen, onClose, onSubmit, isSubmitting }: Depo
 
   const timerPercent = (timeLeft / TIMER_DURATION) * 100;
 
-  const upiApps = [
+  // Memoized UPI deep links - automatically update when admin changes UPI ID
+  const upiApps = useMemo(() => [
     { 
       name: 'PhonePe', 
       logo: phonepeLogo, 
@@ -155,7 +156,7 @@ const DepositPaymentGateway = ({ isOpen, onClose, onSubmit, isSubmitting }: Depo
       scheme: `paytmmp://pay?pa=${UPI_ID}&pn=ProBattle&am=${finalAmount}&cu=INR`,
       color: 'from-sky-500 to-sky-700'
     },
-  ];
+  ], [UPI_ID, finalAmount]);
 
   return (
     <>
