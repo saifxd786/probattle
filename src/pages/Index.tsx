@@ -11,6 +11,7 @@ import TrustSection from '@/components/TrustSection';
 import PullToRefresh from '@/components/PullToRefresh';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePullToRefresh } from '@/hooks/usePullToRefresh';
+import { useGameAvailability } from '@/hooks/useGameAvailability';
 
 import heroBanner from '@/assets/hero-banner.jpg';
 import bgmiCard from '@/assets/bgmi-card.jpg';
@@ -20,17 +21,19 @@ import thimbleCard from '@/assets/thimble-card.jpg';
 import minesCard from '@/assets/mines-card.jpg';
 import SupportChat from '@/components/SupportChat';
 
-const games = [
-  { title: 'BGMI', image: bgmiCard, status: 'active' as const, path: '/bgmi' },
-  { title: 'Ludo', image: ludoCard, status: 'active' as const, path: '/ludo' },
-  { title: 'Thimble', image: thimbleCard, status: 'active' as const, path: '/thimble' },
-  { title: 'Mines', image: minesCard, status: 'active' as const, path: '/mines' },
-  { title: 'Free Fire', image: freefireCard, status: 'coming-soon' as const, path: '/freefire' },
-];
-
 const Index = () => {
   const { user } = useAuth();
   const { handleRefresh } = usePullToRefresh();
+  const { availability, isLoading: isLoadingAvailability } = useGameAvailability();
+
+  // Games configuration with availability status
+  const games = [
+    { title: 'BGMI', image: bgmiCard, status: 'active' as const, path: '/bgmi', gameKey: 'bgmi' as const },
+    { title: 'Ludo', image: ludoCard, status: 'active' as const, path: '/ludo', gameKey: 'ludo' as const },
+    { title: 'Thimble', image: thimbleCard, status: 'active' as const, path: '/thimble', gameKey: 'thimble' as const },
+    { title: 'Mines', image: minesCard, status: 'active' as const, path: '/mines', gameKey: 'mines' as const },
+    { title: 'Free Fire', image: freefireCard, status: 'coming-soon' as const, path: '/freefire', gameKey: 'freefire' as const },
+  ];
   
   return (
     <PullToRefresh onRefresh={handleRefresh}>
@@ -128,7 +131,15 @@ const Index = () => {
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-4xl mx-auto">
             {games.map((game, index) => (
-              <GameCard key={game.title} {...game} delay={index * 0.1} />
+              <GameCard 
+                key={game.title} 
+                title={game.title}
+                image={game.image}
+                status={game.status}
+                path={game.path}
+                delay={index * 0.1} 
+                isOnline={availability[game.gameKey]}
+              />
             ))}
           </div>
         </div>
