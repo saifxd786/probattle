@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, Loader2, Ban, MapPin, Clock, User, Trophy } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import BottomNav from '@/components/BottomNav';
 
 import MatchCard from '@/components/MatchCard';
 import { supabase } from '@/integrations/supabase/client';
@@ -50,7 +49,7 @@ const BGMIPage = () => {
   // Show banned message
   if (isBanned && !isBanLoading) {
     return (
-      <div className="min-h-screen bg-background pb-20">
+      <div className="min-h-screen bg-background pb-6">
         <main className="container mx-auto px-4 pt-6 text-center">
           <div className="glass-card p-8 max-w-md mx-auto">
             <div className="w-16 h-16 rounded-full bg-destructive/20 flex items-center justify-center mx-auto mb-4">
@@ -65,7 +64,6 @@ const BGMIPage = () => {
             </Link>
           </div>
         </main>
-        <BottomNav />
       </div>
     );
   }
@@ -182,7 +180,7 @@ const BGMIPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background pb-20">
+    <div className="min-h-screen bg-background pb-6">
       {/* Hero Banner - Changes based on selected tab and map */}
       <section className="relative">
         <AnimatePresence mode="wait">
@@ -395,7 +393,6 @@ const BGMIPage = () => {
         )}
       </section>
 
-      <BottomNav />
     </div>
   );
 };
