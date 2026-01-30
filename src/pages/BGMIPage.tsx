@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Loader2, Ban, MapPin } from 'lucide-react';
+import { ArrowLeft, Loader2, Ban, MapPin, Clock, User, Trophy } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import Header from '@/components/Header';
 import BottomNav from '@/components/BottomNav';
 
 import MatchCard from '@/components/MatchCard';
@@ -26,6 +25,7 @@ type Match = Database['public']['Tables']['matches']['Row'];
 type MatchType = Database['public']['Enums']['match_type'];
 
 const tabs = ['TDM Matches', 'Classic Matches'] as const;
+const filterTabs = ['Upcoming', 'My Matches', 'Results'] as const;
 
 // Map configurations with banners and colors
 const CLASSIC_MAPS = [
@@ -42,6 +42,7 @@ const BGMIPage = () => {
   const nowMs = useNow(1000);
   const { isBanned, isLoading: isBanLoading } = useGameBan('bgmi');
   const [activeTab, setActiveTab] = useState<typeof tabs[number]>('TDM Matches');
+  const [activeFilter, setActiveFilter] = useState<typeof filterTabs[number]>('Upcoming');
   const [selectedMap, setSelectedMap] = useState<string>('all');
   const [matches, setMatches] = useState<Match[]>([]);
   const [userRegistrations, setUserRegistrations] = useState<string[]>([]);
@@ -54,8 +55,7 @@ const BGMIPage = () => {
   if (isBanned && !isBanLoading) {
     return (
       <div className="min-h-screen bg-background pb-20">
-        <Header />
-        <main className="container mx-auto px-4 pt-20 text-center">
+        <main className="container mx-auto px-4 pt-6 text-center">
           <div className="glass-card p-8 max-w-md mx-auto">
             <div className="w-16 h-16 rounded-full bg-destructive/20 flex items-center justify-center mx-auto mb-4">
               <Ban className="w-8 h-8 text-destructive" />
@@ -81,13 +81,21 @@ const BGMIPage = () => {
       ? ['tdm_1v1', 'tdm_2v2', 'tdm_4v4'] 
       : ['classic'];
     
-    const { data, error } = await supabase
+    // Build query based on active filter
+    let query = supabase
       .from('matches')
       .select('*')
       .eq('game', 'bgmi')
-      .in('match_type', matchTypes)
-      .in('status', ['upcoming', 'live'])
-      .order('match_time', { ascending: true });
+      .in('match_type', matchTypes);
+    
+    if (activeFilter === 'Upcoming') {
+      query = query.in('status', ['upcoming', 'live']);
+    } else if (activeFilter === 'Results') {
+      query = query.eq('status', 'completed');
+    }
+    // For 'My Matches', we'll filter client-side based on registrations
+    
+    const { data, error } = await query.order('match_time', { ascending: activeFilter !== 'Results' });
 
     if (!error && data) {
       setMatches(data);
@@ -113,7 +121,7 @@ const BGMIPage = () => {
 
   useEffect(() => {
     fetchMatches();
-  }, [activeTab]);
+  }, [activeTab, activeFilter]);
 
   useEffect(() => {
     fetchUserRegistrations();
@@ -124,10 +132,16 @@ const BGMIPage = () => {
     fetchUserRegistrations();
   };
 
-  // Filter matches by map for Classic mode
-  const filteredMatches = activeTab === 'Classic Matches' && selectedMap !== 'all'
-    ? matches.filter(m => m.map_name === selectedMap)
-    : matches;
+  // Filter matches by map for Classic mode and by user registration for My Matches
+  let filteredMatches = matches;
+  
+  if (activeFilter === 'My Matches') {
+    filteredMatches = matches.filter(m => userRegistrations.includes(m.id));
+  }
+  
+  if (activeTab === 'Classic Matches' && selectedMap !== 'all') {
+    filteredMatches = filteredMatches.filter(m => m.map_name === selectedMap);
+  }
 
   // Dynamic banner based on tab and selected map
   const currentBanner = activeTab === 'TDM Matches' ? tdmBanner : currentMapConfig.banner;
@@ -172,10 +186,8 @@ const BGMIPage = () => {
 
   return (
     <div className="min-h-screen bg-background pb-20">
-      <Header />
-      
       {/* Hero Banner - Changes based on selected tab and map */}
-      <section className="relative pt-16">
+      <section className="relative">
         <AnimatePresence mode="wait">
           <motion.div 
             key={`${activeTab}-${selectedMap}`}
@@ -183,7 +195,7 @@ const BGMIPage = () => {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.3 }}
-            className="relative h-52 md:h-64 overflow-hidden"
+            className="relative h-44 md:h-56 overflow-hidden"
           >
             <img 
               src={currentBanner}
@@ -223,8 +235,44 @@ const BGMIPage = () => {
         </AnimatePresence>
       </section>
 
-      {/* Tabs */}
-      <section className="sticky top-16 z-30 bg-background/95 backdrop-blur-sm border-b border-border/50">
+      {/* Filter Tabs - Upcoming, My Matches, Results */}
+      <section className="sticky top-0 z-40 bg-background/95 backdrop-blur-sm border-b border-border/50">
+        <div className="container mx-auto px-4">
+          <div className="flex gap-1 py-2">
+            {filterTabs.map((filter) => {
+              const icons = {
+                'Upcoming': <Clock className="w-4 h-4" />,
+                'My Matches': <User className="w-4 h-4" />,
+                'Results': <Trophy className="w-4 h-4" />
+              };
+              return (
+                <button
+                  key={filter}
+                  onClick={() => setActiveFilter(filter)}
+                  className={`relative flex-1 py-2.5 px-3 rounded-lg font-medium text-xs flex items-center justify-center gap-1.5 transition-all duration-300 ${
+                    activeFilter === filter
+                      ? 'text-primary'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  {icons[filter]}
+                  {filter}
+                  {activeFilter === filter && (
+                    <motion.div
+                      layoutId="activeFilter"
+                      className="absolute inset-0 bg-primary/10 rounded-lg border border-primary/30"
+                      transition={{ duration: 0.2 }}
+                    />
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+
+      {/* Game Mode Tabs - TDM / Classic */}
+      <section className="sticky top-12 z-30 bg-background/95 backdrop-blur-sm border-b border-border/50">
         <div className="container mx-auto px-4">
           <div className="flex gap-1 py-2">
             {tabs.map((tab) => (
@@ -234,7 +282,7 @@ const BGMIPage = () => {
                   setActiveTab(tab);
                   if (tab === 'TDM Matches') setSelectedMap('all');
                 }}
-                className={`relative flex-1 py-3 px-4 rounded-lg font-display text-xs uppercase tracking-wider transition-all duration-300 ${
+                className={`relative flex-1 py-2.5 px-4 rounded-lg font-display text-xs uppercase tracking-wider transition-all duration-300 ${
                   activeTab === tab
                     ? 'text-primary'
                     : 'text-muted-foreground hover:text-foreground'
