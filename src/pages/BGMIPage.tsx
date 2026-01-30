@@ -268,36 +268,6 @@ const BGMIPage = () => {
         </div>
       </section>
 
-      {/* Game Mode Tabs - TDM / Classic */}
-      <section className="sticky top-12 z-30 bg-background/95 backdrop-blur-sm border-b border-border/50">
-        <div className="container mx-auto px-4">
-          <div className="flex gap-1 py-2">
-            {tabs.map((tab) => (
-              <button
-                key={tab}
-                onClick={() => {
-                  setActiveTab(tab);
-                  if (tab === 'TDM Matches') setSelectedMap('all');
-                }}
-                className={`relative flex-1 py-2.5 px-4 rounded-lg font-display text-xs uppercase tracking-wider transition-all duration-300 ${
-                  activeTab === tab
-                    ? 'text-primary'
-                    : 'text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                {tab}
-                {activeTab === tab && (
-                  <motion.div
-                    layoutId="activeTab"
-                    className="absolute inset-0 bg-primary/10 rounded-lg border border-primary/30"
-                    transition={{ duration: 0.2 }}
-                  />
-                )}
-              </button>
-            ))}
-          </div>
-        </div>
-      </section>
 
       {/* Map Selector - Only for Classic Matches */}
       <AnimatePresence>
