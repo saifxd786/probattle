@@ -118,23 +118,61 @@ export const useMinesGame = () => {
     fetchSettings();
   }, []);
 
-  // Fetch wallet balance
+  // Fetch wallet balance and check for active game
   useEffect(() => {
     if (!user) return;
     
-    const fetchBalance = async () => {
-      const { data } = await supabase
+    const fetchUserData = async () => {
+      // Fetch wallet balance
+      const { data: profileData } = await supabase
         .from('profiles')
         .select('wallet_balance')
         .eq('id', user.id)
         .maybeSingle();
       
-      if (data) {
-        setWalletBalance(Number(data.wallet_balance) || 0);
+      if (profileData) {
+        setWalletBalance(Number(profileData.wallet_balance) || 0);
+      }
+
+      // Check for active (in_progress) game to restore
+      const { data: activeGame } = await supabase
+        .from('mines_games')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('status', 'in_progress')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (activeGame) {
+        // Restore the active game state
+        const minePositions = activeGame.mine_positions as number[];
+        const revealedPositions = (activeGame.revealed_positions as number[]) || [];
+        const minesCount = activeGame.mines_count;
+        const entryAmount = Number(activeGame.entry_amount);
+        
+        // Recalculate multiplier based on revealed tiles
+        const currentMultiplier = Number(activeGame.current_multiplier) || 1;
+        const potentialWin = Number(activeGame.potential_win) || entryAmount;
+
+        setGameState({
+          phase: 'playing',
+          gameId: activeGame.id,
+          entryAmount,
+          minesCount,
+          minePositions,
+          revealedPositions,
+          currentMultiplier,
+          potentialWin,
+          isWin: null,
+          finalAmount: 0
+        });
+
+        console.log('[Mines] Restored active game:', activeGame.id);
       }
     };
     
-    fetchBalance();
+    fetchUserData();
   }, [user]);
 
   // Generate mine positions with difficulty-based weighting
