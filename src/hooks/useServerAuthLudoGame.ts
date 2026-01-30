@@ -73,6 +73,26 @@ interface AnimationLockState {
   lockType: 'DICE_ROLL' | 'TOKEN_MOVE' | 'CAPTURE' | null;
 }
 
+// Optimistic animation state for Ludo King-like feel
+interface OptimisticAnimationState {
+  // Dice rolling optimistic state
+  isDiceAnimating: boolean;
+  diceAnimationStart: number;
+  pendingDiceValue: number | null;
+  serverDiceConfirmed: boolean;
+  
+  // Token move optimistic state
+  isTokenAnimating: boolean;
+  tokenAnimationStart: number;
+  pendingTokenMove: {
+    tokenId: number;
+    color: string;
+    fromPosition: number;
+    estimatedToPosition: number;
+  } | null;
+  serverMoveConfirmed: boolean;
+}
+
 interface ServerAuthGameState {
   phase: 'idle' | 'waiting' | 'playing' | 'result';
   roomId: string | null;
@@ -102,6 +122,8 @@ interface ServerAuthGameState {
   pendingAction: string | null;
   // Animation lock (client mirrors server lock)
   animationLock: AnimationLockState;
+  // Optimistic animations for Ludo King feel
+  optimisticAnimation: OptimisticAnimationState;
 }
 
 // ===== CONFIGURATION =====
@@ -125,11 +147,20 @@ export const useServerAuthLudoGame = () => {
   const animationLockTimerRef = useRef<NodeJS.Timeout | null>(null);
   const staleChannelCleanupRef = useRef<NodeJS.Timeout | null>(null);
   
+  // Faster disconnect detection refs
+  const missedHeartbeatsRef = useRef<number>(0);
+  const lastHeartbeatResponseRef = useRef<number>(Date.now());
+  const isAppInBackgroundRef = useRef<boolean>(false);
+  const backgroundTimestampRef = useRef<number>(0);
+  
   // Reconnection refs
   const lastRoomIdRef = useRef<string | null>(null);
   const isReconnectingRef = useRef<boolean>(false);
   const reconnectAttemptsRef = useRef<number>(0);
   const maxReconnectAttempts = 5;
+  
+  // Sticky session - persist channel across match
+  const sessionIdRef = useRef<string>(`session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`);
   
   // Game state
   const [gameState, setGameState] = useState<ServerAuthGameState>({
@@ -158,6 +189,16 @@ export const useServerAuthLudoGame = () => {
       isLocked: false,
       lockUntil: 0,
       lockType: null
+    },
+    optimisticAnimation: {
+      isDiceAnimating: false,
+      diceAnimationStart: 0,
+      pendingDiceValue: null,
+      serverDiceConfirmed: false,
+      isTokenAnimating: false,
+      tokenAnimationStart: 0,
+      pendingTokenMove: null,
+      serverMoveConfirmed: false
     }
   });
 
@@ -261,17 +302,34 @@ export const useServerAuthLudoGame = () => {
     }));
   }, [user]);
 
-  // ===== SUBSCRIBE TO SERVER EVENTS =====
+  // ===== SUBSCRIBE TO SERVER EVENTS (Sticky session per match) =====
   
   const subscribeToServerEvents = useCallback((roomId: string) => {
+    // STICKY SESSION: Only remove if switching rooms, not on reconnect
     if (serverChannelRef.current) {
-      supabase.removeChannel(serverChannelRef.current);
+      const existingChannelName = `ludo-server-${lastRoomIdRef.current}`;
+      const newChannelName = `ludo-server-${roomId}`;
+      
+      // Only cleanup if actually switching to a different room
+      if (existingChannelName !== newChannelName) {
+        console.log('[ServerAuth] Switching rooms, cleaning up old channel');
+        supabase.removeChannel(serverChannelRef.current);
+        serverChannelRef.current = null;
+      } else if (serverChannelRef.current.state === 'joined') {
+        // Already connected to same room, skip resubscription
+        console.log('[ServerAuth] Already subscribed to room, reusing channel');
+        setConnectionStatus('connected');
+        return;
+      }
     }
 
+    console.log(`[ServerAuth] Creating sticky channel for room: ${roomId} (session: ${sessionIdRef.current})`);
+    
     const channel = supabase
       .channel(`ludo-server-${roomId}`, {
         config: {
-          broadcast: { self: false, ack: false }
+          broadcast: { self: false, ack: false },
+          presence: { key: sessionIdRef.current } // Use session ID for sticky presence
         }
       })
       .on('broadcast', { event: 'server_event' }, (payload) => {
@@ -282,6 +340,8 @@ export const useServerAuthLudoGame = () => {
         console.log('[ServerAuth] Channel status:', status);
         if (status === 'SUBSCRIBED') {
           setConnectionStatus('connected');
+          missedHeartbeatsRef.current = 0;
+          reconnectAttemptsRef.current = 0;
         } else if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
           setConnectionStatus('disconnected');
         }
@@ -470,14 +530,26 @@ export const useServerAuthLudoGame = () => {
     }
   }, [user, gameState.serverVersion, requestSync]);
 
-  // ===== GAME ACTIONS =====
+  // ===== GAME ACTIONS (Optimistic Animations for Ludo King feel) =====
 
   /**
-   * Roll dice - sends to server
+   * Calculate estimated token position for optimistic animation
+   */
+  const calculateEstimatedPosition = useCallback((token: Token, diceValue: number): number => {
+    if (token.position === 0) {
+      return diceValue === 6 ? 1 : 0; // Can only exit with 6
+    }
+    const newPos = token.position + diceValue;
+    return newPos <= 57 ? newPos : token.position; // Don't exceed home
+  }, []);
+
+  /**
+   * Roll dice - with OPTIMISTIC animation (Ludo King feel)
+   * Shows dice rolling immediately, server confirms value after
    */
   const rollDice = useCallback(async () => {
     // Check animation lock first
-    if (gameState.animationLock.isLocked) {
+    if (gameState.animationLock.isLocked || gameState.optimisticAnimation.isDiceAnimating) {
       console.log('[ServerAuth] Action blocked: animation in progress');
       return;
     }
@@ -494,41 +566,118 @@ export const useServerAuthLudoGame = () => {
       return;
     }
 
-    console.log('[ServerAuth] Rolling dice...');
-    setGameState(prev => ({ ...prev, isRolling: true, canRoll: false }));
+    console.log('[ServerAuth] Rolling dice (optimistic)...');
+    
+    // OPTIMISTIC: Start dice animation IMMEDIATELY (before server response)
+    const animationStartTime = Date.now();
+    setGameState(prev => ({ 
+      ...prev, 
+      isRolling: true, 
+      canRoll: false,
+      optimisticAnimation: {
+        ...prev.optimisticAnimation,
+        isDiceAnimating: true,
+        diceAnimationStart: animationStartTime,
+        pendingDiceValue: null,
+        serverDiceConfirmed: false
+      }
+    }));
+    
+    // Play dice sound immediately for instant feedback
+    soundManager.playDiceResult(1); // Placeholder sound, real sound plays on confirm
+    hapticManager.diceRoll();
 
+    // Send to server (async, don't block animation)
     const action = createAction('roll_dice', gameState.roomId, user.id);
     const response = await sendServerAction(action);
 
     if (!response) {
-      // Revert on failure
-      setGameState(prev => ({ ...prev, isRolling: false, canRoll: true }));
-      toast({ title: 'Failed to roll', description: 'Please try again', variant: 'destructive' });
+      // Revert on failure - but respect minimum animation time
+      const elapsed = Date.now() - animationStartTime;
+      const remainingTime = Math.max(0, SERVER_SYNC_CONFIG.OPTIMISTIC_DICE_DURATION_MS - elapsed);
+      
+      setTimeout(() => {
+        setGameState(prev => ({ 
+          ...prev, 
+          isRolling: false, 
+          canRoll: true,
+          optimisticAnimation: {
+            ...prev.optimisticAnimation,
+            isDiceAnimating: false,
+            serverDiceConfirmed: false
+          }
+        }));
+        toast({ title: 'Failed to roll', description: 'Please try again', variant: 'destructive' });
+      }, remainingTime);
       return;
     }
     
     // Handle rate limit / animation lock errors specifically
     if (response.type === 'ERROR') {
       const error = (response as any).error;
-      setGameState(prev => ({ ...prev, isRolling: false, canRoll: true }));
+      const elapsed = Date.now() - animationStartTime;
+      const remainingTime = Math.max(0, 300 - elapsed);
       
-      if (error === 'ANIMATION_LOCK' || error === 'ANIMATION_IN_PROGRESS') {
-        toast({ title: 'Please wait', description: 'Animation in progress', variant: 'default' });
-      } else if (error === 'ACTION_TOO_FAST' || error?.includes('RATE_LIMIT')) {
-        toast({ title: 'Too fast!', description: 'Please slow down', variant: 'destructive' });
-      }
+      setTimeout(() => {
+        setGameState(prev => ({ 
+          ...prev, 
+          isRolling: false, 
+          canRoll: true,
+          optimisticAnimation: {
+            ...prev.optimisticAnimation,
+            isDiceAnimating: false,
+            serverDiceConfirmed: false
+          }
+        }));
+        
+        if (error === 'ANIMATION_LOCK' || error === 'ANIMATION_IN_PROGRESS') {
+          toast({ title: 'Please wait', description: 'Animation in progress', variant: 'default' });
+        } else if (error === 'ACTION_TOO_FAST' || error?.includes('RATE_LIMIT')) {
+          toast({ title: 'Too fast!', description: 'Please slow down', variant: 'destructive' });
+        }
+      }, remainingTime);
       return;
     }
 
-    // Server response handled via broadcast
+    // Server confirmed! Mark as confirmed but let animation complete
+    const serverDiceValue = (response.payload as any)?.diceValue || 1;
+    const elapsed = Date.now() - animationStartTime;
+    const remainingAnimTime = Math.max(0, SERVER_SYNC_CONFIG.OPTIMISTIC_DICE_DURATION_MS - elapsed);
+    
+    // Store server value and finish animation after minimum time
+    setGameState(prev => ({
+      ...prev,
+      optimisticAnimation: {
+        ...prev.optimisticAnimation,
+        pendingDiceValue: serverDiceValue,
+        serverDiceConfirmed: true
+      }
+    }));
+    
+    // After animation completes, apply final server state
+    setTimeout(() => {
+      setGameState(prev => ({
+        ...prev,
+        diceValue: serverDiceValue,
+        isRolling: false,
+        optimisticAnimation: {
+          ...prev.optimisticAnimation,
+          isDiceAnimating: false
+        }
+      }));
+      // Play final dice sound with actual value
+      soundManager.playDiceResult(serverDiceValue);
+    }, remainingAnimTime);
+    
   }, [gameState, user, sendServerAction, toast]);
 
   /**
-   * Move token - sends to server for validation
+   * Move token - with OPTIMISTIC animation (Ludo King feel)
+   * Shows token moving immediately, server validates after
    */
   const handleTokenClick = useCallback(async (color: string, tokenId: number) => {
     // Check animation lock first
-    if (gameState.animationLock.isLocked) {
+    if (gameState.animationLock.isLocked || gameState.optimisticAnimation.isTokenAnimating) {
       console.log('[ServerAuth] Action blocked: animation in progress');
       return;
     }
@@ -542,35 +691,99 @@ export const useServerAuthLudoGame = () => {
     if (currentPlayer?.id !== user.id || currentPlayer.color !== color) {
       return;
     }
+    
+    // Find the token for optimistic position calculation
+    const token = currentPlayer.tokens.find(t => t.id === tokenId);
+    if (!token) return;
+    
+    const estimatedNewPosition = calculateEstimatedPosition(token, gameState.diceValue);
 
-    console.log('[ServerAuth] Moving token:', tokenId);
-    setGameState(prev => ({ ...prev, canMove: false }));
+    console.log('[ServerAuth] Moving token (optimistic):', tokenId, '->', estimatedNewPosition);
+    
+    // OPTIMISTIC: Start move animation IMMEDIATELY
+    const animationStartTime = Date.now();
+    setGameState(prev => ({ 
+      ...prev, 
+      canMove: false,
+      optimisticAnimation: {
+        ...prev.optimisticAnimation,
+        isTokenAnimating: true,
+        tokenAnimationStart: animationStartTime,
+        pendingTokenMove: {
+          tokenId,
+          color,
+          fromPosition: token.position,
+          estimatedToPosition: estimatedNewPosition
+        },
+        serverMoveConfirmed: false
+      }
+    }));
+    
+    // Play move sound immediately for instant feedback
+    soundManager.playTokenMove();
+    hapticManager.tokenMove();
 
     const action = createAction('move_token', gameState.roomId, user.id, tokenId);
     const response = await sendServerAction(action);
 
     if (!response || response.type === 'ERROR') {
-      // Revert on failure
-      setGameState(prev => ({ ...prev, canMove: true }));
-      const error = (response as any)?.error;
-      const errorMsg = (response?.payload as any)?.message || 'Invalid move';
+      // Revert on failure - but respect minimum animation time for smooth rollback
+      const elapsed = Date.now() - animationStartTime;
+      const remainingTime = Math.max(0, 300 - elapsed);
       
-      // Handle specific errors
-      if (error === 'ANIMATION_LOCK' || error === 'ANIMATION_IN_PROGRESS') {
-        toast({ title: 'Please wait', description: 'Animation in progress', variant: 'default' });
-      } else if (error === 'ACTION_TOO_FAST' || error?.includes('RATE_LIMIT')) {
-        toast({ title: 'Too fast!', description: 'Please slow down', variant: 'destructive' });
-      } else if (error === 'DUPLICATE_ACTION') {
-        // Silently ignore duplicates
-        console.log('[ServerAuth] Duplicate action ignored');
-      } else {
-        toast({ title: 'Move rejected', description: errorMsg, variant: 'destructive' });
-      }
+      setTimeout(() => {
+        setGameState(prev => ({ 
+          ...prev, 
+          canMove: true,
+          optimisticAnimation: {
+            ...prev.optimisticAnimation,
+            isTokenAnimating: false,
+            pendingTokenMove: null,
+            serverMoveConfirmed: false
+          }
+        }));
+        
+        const error = (response as any)?.error;
+        const errorMsg = (response?.payload as any)?.message || 'Invalid move';
+        
+        if (error === 'ANIMATION_LOCK' || error === 'ANIMATION_IN_PROGRESS') {
+          toast({ title: 'Please wait', description: 'Animation in progress', variant: 'default' });
+        } else if (error === 'ACTION_TOO_FAST' || error?.includes('RATE_LIMIT')) {
+          toast({ title: 'Too fast!', description: 'Please slow down', variant: 'destructive' });
+        } else if (error === 'DUPLICATE_ACTION') {
+          console.log('[ServerAuth] Duplicate action ignored');
+        } else {
+          toast({ title: 'Move rejected', description: errorMsg, variant: 'destructive' });
+        }
+      }, remainingTime);
       return;
     }
 
-    // Success - server response handled via broadcast
-  }, [gameState, user, sendServerAction, toast]);
+    // Server confirmed! Complete animation smoothly
+    const elapsed = Date.now() - animationStartTime;
+    const remainingAnimTime = Math.max(0, SERVER_SYNC_CONFIG.OPTIMISTIC_MOVE_DURATION_MS - elapsed);
+    
+    setGameState(prev => ({
+      ...prev,
+      optimisticAnimation: {
+        ...prev.optimisticAnimation,
+        serverMoveConfirmed: true
+      }
+    }));
+    
+    // After animation completes, clear optimistic state (server broadcast will update real state)
+    setTimeout(() => {
+      setGameState(prev => ({
+        ...prev,
+        optimisticAnimation: {
+          ...prev.optimisticAnimation,
+          isTokenAnimating: false,
+          pendingTokenMove: null
+        }
+      }));
+    }, remainingAnimTime);
+    
+  }, [gameState, user, sendServerAction, toast, calculateEstimatedPosition]);
 
   // ===== PRESENCE TRACKING =====
   
@@ -688,7 +901,7 @@ export const useServerAuthLudoGame = () => {
     sonnerToast.success('Reconnected!');
   }, [subscribeToServerEvents, subscribeToPresence, requestSync, cleanupStaleConnections]);
 
-  // Online/offline detection
+  // Online/offline detection + INSTANT foreground resync
   useEffect(() => {
     const handleOnline = () => {
       if (gameState.phase === 'playing' && connectionStatus === 'disconnected') {
@@ -702,27 +915,57 @@ export const useServerAuthLudoGame = () => {
       }
     };
     
-    // Handle visibility change (mobile background/foreground)
+    // INSTANT foreground resync (Ludo King feel)
     const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible' && gameState.phase === 'playing') {
-        // App came back to foreground
-        console.log('[ServerAuth] App returned to foreground, syncing...');
+      if (document.visibilityState === 'hidden') {
+        // App went to background
+        isAppInBackgroundRef.current = true;
+        backgroundTimestampRef.current = Date.now();
+        console.log('[ServerAuth] App moved to background');
+      } else if (document.visibilityState === 'visible' && gameState.phase === 'playing') {
+        // App came back to foreground - INSTANT resync
+        isAppInBackgroundRef.current = false;
+        const backgroundDuration = Date.now() - backgroundTimestampRef.current;
+        console.log(`[ServerAuth] App returned to foreground after ${backgroundDuration}ms`);
         
-        // Request sync to ensure state is current
+        // Request sync immediately (no delay)
         if (gameState.roomId) {
-          requestSync();
+          // If was in background for more than 5s, do full reconnection
+          if (backgroundDuration > 5000) {
+            console.log('[ServerAuth] Long background period, doing full reconnect...');
+            missedHeartbeatsRef.current = 0;
+            attemptReconnection();
+          } else {
+            // Quick sync for short background periods
+            console.log('[ServerAuth] Quick resync after short background...');
+            requestSync();
+          }
         }
+        
+        // Reset heartbeat tracking
+        missedHeartbeatsRef.current = 0;
+        lastHeartbeatResponseRef.current = Date.now();
+      }
+    };
+    
+    // Also handle page focus for desktop
+    const handleFocus = () => {
+      if (gameState.phase === 'playing' && gameState.roomId) {
+        // Light-touch sync on focus
+        requestSync();
       }
     };
     
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
     document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleFocus);
     
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleFocus);
     };
   }, [gameState.phase, gameState.roomId, connectionStatus, attemptReconnection, requestSync]);
   
@@ -832,12 +1075,22 @@ export const useServerAuthLudoGame = () => {
         isLocked: false,
         lockUntil: 0,
         lockType: null
+      },
+      optimisticAnimation: {
+        isDiceAnimating: false,
+        diceAnimationStart: 0,
+        pendingDiceValue: null,
+        serverDiceConfirmed: false,
+        isTokenAnimating: false,
+        tokenAnimationStart: 0,
+        pendingTokenMove: null,
+        serverMoveConfirmed: false
       }
     });
     setOpponentOnline(false);
   }, []);
 
-  // ===== HEARTBEAT =====
+  // ===== FAST HEARTBEAT (5s interval, 3s timeout, 2 missed = disconnect) =====
   
   useEffect(() => {
     if (gameState.phase !== 'playing' || !gameState.roomId || !user) {
@@ -845,15 +1098,53 @@ export const useServerAuthLudoGame = () => {
         clearInterval(heartbeatIntervalRef.current);
         heartbeatIntervalRef.current = null;
       }
+      missedHeartbeatsRef.current = 0;
       return;
     }
 
+    // Fast heartbeat for Ludo King-like responsiveness
     heartbeatIntervalRef.current = setInterval(async () => {
+      // Skip heartbeat if app is in background
+      if (isAppInBackgroundRef.current) {
+        return;
+      }
+      
+      const heartbeatStart = Date.now();
       const action = createAction('heartbeat', gameState.roomId!, user.id);
-      const response = await sendServerAction(action);
+      
+      // Race between heartbeat and timeout
+      const timeoutPromise = new Promise<null>((resolve) => {
+        setTimeout(() => resolve(null), SERVER_SYNC_CONFIG.HEARTBEAT_TIMEOUT_MS);
+      });
+      
+      const response = await Promise.race([
+        sendServerAction(action),
+        timeoutPromise
+      ]);
       
       if (!response) {
-        console.warn('[ServerAuth] Heartbeat failed');
+        missedHeartbeatsRef.current += 1;
+        console.warn(`[ServerAuth] Heartbeat timeout (${missedHeartbeatsRef.current}/${SERVER_SYNC_CONFIG.MISSED_HEARTBEATS_DISCONNECT})`);
+        
+        // Fast disconnect detection
+        if (missedHeartbeatsRef.current >= SERVER_SYNC_CONFIG.MISSED_HEARTBEATS_DISCONNECT) {
+          console.error('[ServerAuth] Connection lost - too many missed heartbeats');
+          setConnectionStatus('disconnected');
+          attemptReconnection();
+        }
+      } else {
+        // Heartbeat successful
+        missedHeartbeatsRef.current = 0;
+        lastHeartbeatResponseRef.current = Date.now();
+        
+        // Update latency display
+        const latency = Date.now() - heartbeatStart;
+        uiLatencyTracker.addSample(latency);
+        setPingLatency(uiLatencyTracker.getDisplayLatency());
+        
+        if (connectionStatus !== 'connected') {
+          setConnectionStatus('connected');
+        }
       }
     }, SERVER_SYNC_CONFIG.HEARTBEAT_INTERVAL_MS);
 
@@ -863,7 +1154,7 @@ export const useServerAuthLudoGame = () => {
         heartbeatIntervalRef.current = null;
       }
     };
-  }, [gameState.phase, gameState.roomId, user, sendServerAction]);
+  }, [gameState.phase, gameState.roomId, user, sendServerAction, connectionStatus, attemptReconnection]);
 
   // ===== WALLET BALANCE =====
   
