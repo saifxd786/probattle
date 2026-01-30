@@ -174,7 +174,13 @@ Deno.serve(async (req) => {
       }
 
       case 'select': {
-        if (!gameId || selectedPosition === undefined || selectedPosition < 0 || selectedPosition > 2) {
+        // selectedPosition:
+        // - 0..2 = user selected a cup
+        // - -1   = timeout (user did not select)
+        const isTimeout = selectedPosition === -1
+        const isValidSelection = selectedPosition !== undefined && (isTimeout || (selectedPosition >= 0 && selectedPosition <= 2))
+
+        if (!gameId || !isValidSelection) {
           return new Response(JSON.stringify({ error: 'Invalid selection' }), { 
             status: 400, 
             headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
@@ -198,13 +204,13 @@ Deno.serve(async (req) => {
         }
 
         const typedGame = game as ThimbleGame
-        const isWin = selectedPosition === typedGame.ball_position
+        const isWin = !isTimeout && selectedPosition === typedGame.ball_position
 
         // Update game with result
         await supabaseAdmin
           .from('thimble_games')
           .update({
-            selected_position: selectedPosition,
+            selected_position: isTimeout ? null : selectedPosition,
             is_win: isWin,
             status: 'completed',
             completed_at: new Date().toISOString()
@@ -243,7 +249,8 @@ Deno.serve(async (req) => {
           success: true,
           isWin,
           ballPosition: typedGame.ball_position, // Reveal after game ends
-          selectedPosition,
+          selectedPosition: isTimeout ? null : selectedPosition,
+          timedOut: isTimeout,
           rewardAmount: isWin ? typedGame.reward_amount : 0
         }), { 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 

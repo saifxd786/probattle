@@ -277,13 +277,16 @@ export const useSecureThimbleGame = () => {
       });
 
       if (error) throw error;
+      if (!data?.success) {
+        throw new Error(data?.error || 'Failed to process timeout');
+      }
 
       // Show loss result
       setGameState(prev => ({
         ...prev,
         phase: 'revealing',
         selectedCup: -1,
-        ballPosition: data?.ballPosition ?? 0,
+        ballPosition: data.ballPosition ?? 0,
         isWin: false
       }));
 
