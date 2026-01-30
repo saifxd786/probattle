@@ -1,15 +1,17 @@
 /**
- * LUDO GAME SERVER - Server-Authoritative Architecture
+ * LUDO GAME SERVER - Server-Authoritative Architecture (HARDENED)
  * 
- * This edge function implements a fully server-authoritative game server for Ludo.
+ * Production-ready server-authoritative game server for Ludo.
  * 
- * Features:
- * 1. Secure cryptographic dice generation (not predictable by clients)
+ * HARDENED Features:
+ * 1. Secure cryptographic dice generation (Web Crypto API)
  * 2. Server validates ALL token moves
- * 3. Server controls turn switching
- * 4. Anti-cheat: Rejects invalid moves
- * 5. State persistence with version tracking
- * 6. Reconnect/resync support
+ * 3. Strict turn locking with animation cooldown
+ * 4. Server-side rate limiting (per-user, per-action)
+ * 5. Duplicate event replay prevention (action deduplication)
+ * 6. Comprehensive anti-cheat logging
+ * 7. Stale connection cleanup
+ * 8. Reconnect-resync with last confirmed state
  */
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
@@ -24,6 +26,42 @@ const TRACK_LENGTH = 57; // Position 57 = HOME
 const SAFE_POSITIONS = new Set([1, 9, 14, 22, 27, 35, 40, 48]); // Safe squares
 const STARTING_POSITION = 1;
 
+// ===== RATE LIMITING CONFIG =====
+const RATE_LIMIT_CONFIG = {
+  MAX_DICE_ROLLS_PER_MINUTE: 30,
+  MAX_MOVES_PER_MINUTE: 60,
+  MIN_ACTION_INTERVAL_MS: 100,    // 100ms minimum between actions
+  ANIMATION_LOCK_MS: 800,          // 800ms animation lock after moves
+  STALE_ACTION_THRESHOLD_MS: 30000, // 30s - reject actions with old timestamps
+};
+
+// ===== IN-MEMORY RATE LIMITING (per edge function instance) =====
+const rateLimitStore = new Map<string, { 
+  diceRolls: number[];
+  moves: number[];
+  lastAction: number;
+  animationLockUntil: number;
+  processedActions: Set<string>; // Deduplication
+}>();
+
+function getRateLimitData(userId: string) {
+  if (!rateLimitStore.has(userId)) {
+    rateLimitStore.set(userId, {
+      diceRolls: [],
+      moves: [],
+      lastAction: 0,
+      animationLockUntil: 0,
+      processedActions: new Set()
+    });
+  }
+  return rateLimitStore.get(userId)!;
+}
+
+function cleanupOldEntries(entries: number[], windowMs: number): number[] {
+  const now = Date.now();
+  return entries.filter(t => now - t < windowMs);
+}
+
 // ===== MESSAGE TYPES =====
 type ServerMessageType = 
   | 'DICE_ROLL'
@@ -33,7 +71,8 @@ type ServerMessageType =
   | 'GAME_STATE'
   | 'GAME_END'
   | 'ERROR'
-  | 'SYNC';
+  | 'SYNC'
+  | 'ANIMATION_LOCK';
 
 interface ServerMessage {
   type: ServerMessageType;
@@ -49,6 +88,7 @@ interface ClientAction {
   userId: string;
   tokenId?: number;
   timestamp: number;
+  actionId?: string; // For deduplication
 }
 
 interface Token {
@@ -75,12 +115,100 @@ interface GameState {
   phase: 'waiting' | 'playing' | 'result';
   version: number;
   lastActionTime: number;
+  animationLockUntil: number; // Animation lock timestamp
+  lastProcessedActionId?: string; // For deduplication
   pendingCapture?: {
     capturedColor: string;
     capturedTokenId: number;
     capturerColor: string;
     position: number;
   } | null;
+}
+
+// ===== LOGGING UTILITIES =====
+function logAntiCheat(type: string, userId: string, roomId: string, details: Record<string, any>) {
+  console.warn(`[ANTI-CHEAT] ${type} | User: ${userId} | Room: ${roomId} | ${JSON.stringify(details)}`);
+}
+
+function logAction(action: string, userId: string, roomId: string, success: boolean, details?: Record<string, any>) {
+  const level = success ? 'log' : 'warn';
+  console[level](`[LudoServer] ${action} | User: ${userId} | Room: ${roomId} | Success: ${success}`, details || '');
+}
+
+// ===== RATE LIMITING FUNCTIONS =====
+function checkRateLimit(userId: string, actionType: 'dice' | 'move'): { allowed: boolean; reason?: string } {
+  const data = getRateLimitData(userId);
+  const now = Date.now();
+  
+  // Check minimum action interval
+  if (now - data.lastAction < RATE_LIMIT_CONFIG.MIN_ACTION_INTERVAL_MS) {
+    logAntiCheat('RATE_LIMIT_INTERVAL', userId, '', { 
+      timeSinceLastAction: now - data.lastAction,
+      minInterval: RATE_LIMIT_CONFIG.MIN_ACTION_INTERVAL_MS
+    });
+    return { allowed: false, reason: 'ACTION_TOO_FAST' };
+  }
+  
+  // Check animation lock
+  if (now < data.animationLockUntil) {
+    logAntiCheat('ANIMATION_LOCK_VIOLATION', userId, '', {
+      lockRemainingMs: data.animationLockUntil - now
+    });
+    return { allowed: false, reason: 'ANIMATION_IN_PROGRESS' };
+  }
+  
+  // Clean up old entries and check limits
+  if (actionType === 'dice') {
+    data.diceRolls = cleanupOldEntries(data.diceRolls, 60000);
+    if (data.diceRolls.length >= RATE_LIMIT_CONFIG.MAX_DICE_ROLLS_PER_MINUTE) {
+      logAntiCheat('RATE_LIMIT_DICE', userId, '', { rollCount: data.diceRolls.length });
+      return { allowed: false, reason: 'DICE_RATE_LIMIT_EXCEEDED' };
+    }
+    data.diceRolls.push(now);
+  } else {
+    data.moves = cleanupOldEntries(data.moves, 60000);
+    if (data.moves.length >= RATE_LIMIT_CONFIG.MAX_MOVES_PER_MINUTE) {
+      logAntiCheat('RATE_LIMIT_MOVE', userId, '', { moveCount: data.moves.length });
+      return { allowed: false, reason: 'MOVE_RATE_LIMIT_EXCEEDED' };
+    }
+    data.moves.push(now);
+  }
+  
+  data.lastAction = now;
+  return { allowed: true };
+}
+
+function setAnimationLock(userId: string) {
+  const data = getRateLimitData(userId);
+  data.animationLockUntil = Date.now() + RATE_LIMIT_CONFIG.ANIMATION_LOCK_MS;
+}
+
+function checkDuplicateAction(userId: string, actionId: string | undefined): boolean {
+  if (!actionId) return false;
+  
+  const data = getRateLimitData(userId);
+  if (data.processedActions.has(actionId)) {
+    logAntiCheat('DUPLICATE_ACTION', userId, '', { actionId });
+    return true;
+  }
+  
+  // Add to processed, keep set size manageable
+  data.processedActions.add(actionId);
+  if (data.processedActions.size > 100) {
+    // Clear oldest entries
+    const entries = Array.from(data.processedActions);
+    data.processedActions = new Set(entries.slice(-50));
+  }
+  
+  return false;
+}
+
+function validateActionTimestamp(timestamp: number): boolean {
+  const now = Date.now();
+  const age = now - timestamp;
+  
+  // Reject stale actions (older than 30s) or future actions (clock skew > 5s)
+  return age < RATE_LIMIT_CONFIG.STALE_ACTION_THRESHOLD_MS && age > -5000;
 }
 
 // ===== SECURE DICE GENERATION =====
@@ -264,9 +392,55 @@ Deno.serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     const body: ClientAction = await req.json();
-    const { action, roomId, userId, tokenId, timestamp } = body;
+    const { action, roomId, userId, tokenId, timestamp, actionId } = body;
 
-    console.log(`[LudoServer] Action: ${action}, Room: ${roomId}, User: ${userId}`);
+    logAction(action, userId, roomId, true, { tokenId, timestamp, actionId });
+
+    // ===== VALIDATION LAYER =====
+    
+    // 1. Validate action timestamp (reject stale/future actions)
+    if (!validateActionTimestamp(timestamp)) {
+      logAntiCheat('STALE_ACTION', userId, roomId, { 
+        actionTimestamp: timestamp, 
+        serverTime: Date.now(),
+        drift: Date.now() - timestamp
+      });
+      return new Response(JSON.stringify({
+        type: 'ERROR',
+        error: 'STALE_ACTION',
+        message: 'Action timestamp is too old or in the future'
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 400
+      });
+    }
+
+    // 2. Check for duplicate action replay
+    if (checkDuplicateAction(userId, actionId)) {
+      return new Response(JSON.stringify({
+        type: 'ERROR',
+        error: 'DUPLICATE_ACTION',
+        message: 'This action has already been processed'
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 409
+      });
+    }
+
+    // 3. Apply rate limiting (skip for sync/heartbeat)
+    if (action !== 'request_sync' && action !== 'heartbeat') {
+      const rateCheck = checkRateLimit(userId, action === 'roll_dice' ? 'dice' : 'move');
+      if (!rateCheck.allowed) {
+        return new Response(JSON.stringify({
+          type: 'ERROR',
+          error: rateCheck.reason,
+          message: `Rate limit: ${rateCheck.reason}`
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 429
+        });
+      }
+    }
 
     // Fetch current room state
     const { data: room, error: roomError } = await supabase
@@ -276,6 +450,7 @@ Deno.serve(async (req) => {
       .single();
 
     if (roomError || !room) {
+      logAntiCheat('ROOM_NOT_FOUND', userId, roomId, { error: roomError });
       return new Response(
         JSON.stringify({ 
           type: 'ERROR', 
@@ -293,12 +468,28 @@ Deno.serve(async (req) => {
       phase: 'waiting',
       version: 0,
       lastActionTime: Date.now(),
+      animationLockUntil: 0,
       pendingCapture: null
     };
 
-    // Ensure version exists
-    if (gameState.version === undefined) {
-      gameState.version = 0;
+    // Ensure version and animationLock exist
+    if (gameState.version === undefined) gameState.version = 0;
+    if (gameState.animationLockUntil === undefined) gameState.animationLockUntil = 0;
+
+    // 4. Check server-side animation lock
+    const now = Date.now();
+    if (action !== 'request_sync' && action !== 'heartbeat' && now < gameState.animationLockUntil) {
+      logAntiCheat('SERVER_ANIMATION_LOCK', userId, roomId, {
+        lockRemainingMs: gameState.animationLockUntil - now
+      });
+      return new Response(JSON.stringify({
+        type: 'ERROR',
+        error: 'ANIMATION_LOCK',
+        message: 'Please wait for animation to complete'
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 400
+      });
     }
 
     // ===== HANDLE ACTIONS =====
@@ -336,6 +527,10 @@ Deno.serve(async (req) => {
         // Validate it's this player's turn
         const currentPlayer = gameState.players[gameState.currentTurn];
         if (!currentPlayer || currentPlayer.id !== userId) {
+          logAntiCheat('OUT_OF_TURN_ROLL', userId, roomId, {
+            expectedPlayer: currentPlayer?.id,
+            currentTurnIndex: gameState.currentTurn
+          });
           return new Response(JSON.stringify({
             type: 'ERROR',
             error: 'NOT_YOUR_TURN',
@@ -351,6 +546,10 @@ Deno.serve(async (req) => {
         gameState.diceValue = diceValue;
         gameState.version += 1;
         gameState.lastActionTime = Date.now();
+        
+        // Set animation lock (500ms for dice animation)
+        gameState.animationLockUntil = Date.now() + 500;
+        setAnimationLock(userId);
 
         // Check if player can make any move
         const canMove = canPlayerMove(gameState, diceValue);
@@ -361,6 +560,13 @@ Deno.serve(async (req) => {
           nextTurn = (gameState.currentTurn + 1) % gameState.players.length;
           gameState.currentTurn = nextTurn;
         }
+        
+        logAction('roll_dice', userId, roomId, true, { 
+          diceValue, 
+          canMove, 
+          nextTurn,
+          version: gameState.version
+        });
 
         // Save to database
         await supabase
@@ -373,6 +579,24 @@ Deno.serve(async (req) => {
 
         // Broadcast via realtime
         const channel = supabase.channel(`ludo-server-${roomId}`);
+        
+        // First broadcast animation lock to both clients
+        await channel.send({
+          type: 'broadcast',
+          event: 'server_event',
+          payload: {
+            type: 'ANIMATION_LOCK',
+            roomId,
+            timestamp: Date.now(),
+            version: gameState.version,
+            payload: {
+              lockUntil: gameState.animationLockUntil,
+              lockedBy: userId,
+              lockType: 'DICE_ROLL'
+            }
+          }
+        });
+        
         await channel.send({
           type: 'broadcast',
           event: 'server_event',
@@ -386,7 +610,8 @@ Deno.serve(async (req) => {
               playerId: userId,
               canMove,
               currentTurn: gameState.currentTurn,
-              nextPlayerId: gameState.players[gameState.currentTurn]?.id
+              nextPlayerId: gameState.players[gameState.currentTurn]?.id,
+              animationLockUntil: gameState.animationLockUntil
             }
           }
         });
@@ -420,7 +645,8 @@ Deno.serve(async (req) => {
             diceValue,
             canMove,
             currentTurn: gameState.currentTurn,
-            nextPlayerId: gameState.players[gameState.currentTurn]?.id
+            nextPlayerId: gameState.players[gameState.currentTurn]?.id,
+            animationLockUntil: gameState.animationLockUntil
           }
         };
 
@@ -431,6 +657,7 @@ Deno.serve(async (req) => {
 
       case 'move_token': {
         if (tokenId === undefined) {
+          logAntiCheat('MISSING_TOKEN_ID', userId, roomId, {});
           return new Response(JSON.stringify({
             type: 'ERROR',
             error: 'MISSING_TOKEN_ID',
@@ -445,7 +672,13 @@ Deno.serve(async (req) => {
         const validation = validateMove(gameState, userId, tokenId, gameState.diceValue);
         
         if (!validation.valid) {
-          console.log(`[LudoServer] Invalid move: ${validation.error}`);
+          logAntiCheat('INVALID_MOVE', userId, roomId, {
+            tokenId,
+            diceValue: gameState.diceValue,
+            error: validation.error,
+            currentTurn: gameState.currentTurn,
+            expectedPlayer: gameState.players[gameState.currentTurn]?.id
+          });
           return new Response(JSON.stringify({
             type: 'ERROR',
             error: validation.error,
@@ -460,6 +693,10 @@ Deno.serve(async (req) => {
         const previousState = JSON.parse(JSON.stringify(gameState));
         gameState = applyMove(gameState, userId, tokenId, validation.newPosition!);
         
+        // Set animation lock (800ms for token movement)
+        gameState.animationLockUntil = Date.now() + RATE_LIMIT_CONFIG.ANIMATION_LOCK_MS;
+        setAnimationLock(userId);
+        
         const hadCapture = gameState.pendingCapture !== null;
         const winner = checkWinner(gameState);
         
@@ -467,6 +704,16 @@ Deno.serve(async (req) => {
         if (!winner) {
           gameState.currentTurn = getNextTurn(previousState, gameState.diceValue, hadCapture);
         }
+        
+        logAction('move_token', userId, roomId, true, {
+          tokenId,
+          from: previousState.players.find((p: Player) => p.id === userId)
+            ?.tokens.find((t: Token) => t.id === tokenId)?.position,
+          to: validation.newPosition,
+          hadCapture,
+          winner: winner?.id,
+          version: gameState.version
+        });
 
         // Handle win
         if (winner) {
@@ -497,6 +744,23 @@ Deno.serve(async (req) => {
         // Broadcast events
         const channel = supabase.channel(`ludo-server-${roomId}`);
         
+        // First broadcast animation lock to both clients
+        await channel.send({
+          type: 'broadcast',
+          event: 'server_event',
+          payload: {
+            type: 'ANIMATION_LOCK',
+            roomId,
+            timestamp: Date.now(),
+            version: gameState.version,
+            payload: {
+              lockUntil: gameState.animationLockUntil,
+              lockedBy: userId,
+              lockType: 'TOKEN_MOVE'
+            }
+          }
+        });
+        
         // Token move event
         await channel.send({
           type: 'broadcast',
@@ -512,13 +776,17 @@ Deno.serve(async (req) => {
               fromPosition: previousState.players.find((p: Player) => p.id === userId)
                 ?.tokens.find((t: Token) => t.id === tokenId)?.position || 0,
               toPosition: validation.newPosition,
-              players: gameState.players
+              players: gameState.players,
+              animationLockUntil: gameState.animationLockUntil
             }
           }
         });
 
         // Capture event if applicable
         if (hadCapture && gameState.pendingCapture) {
+          // Extend animation lock for capture animation
+          gameState.animationLockUntil = Date.now() + RATE_LIMIT_CONFIG.ANIMATION_LOCK_MS + 500;
+          
           await channel.send({
             type: 'broadcast',
             event: 'server_event',
@@ -529,7 +797,8 @@ Deno.serve(async (req) => {
               version: gameState.version,
               payload: {
                 ...gameState.pendingCapture,
-                players: gameState.players
+                players: gameState.players,
+                animationLockUntil: gameState.animationLockUntil
               }
             }
           });
@@ -590,7 +859,8 @@ Deno.serve(async (req) => {
             currentTurn: gameState.currentTurn,
             nextPlayerId: gameState.players[gameState.currentTurn]?.id,
             winner: winner ? { id: winner.id, name: winner.name, color: winner.color } : null,
-            players: gameState.players
+            players: gameState.players,
+            animationLockUntil: gameState.animationLockUntil
           }
         };
 
@@ -600,6 +870,7 @@ Deno.serve(async (req) => {
       }
 
       default:
+        logAntiCheat('UNKNOWN_ACTION', userId, roomId, { action });
         return new Response(JSON.stringify({
           type: 'ERROR',
           error: 'UNKNOWN_ACTION',

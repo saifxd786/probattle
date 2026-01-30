@@ -37,7 +37,7 @@ export interface ServerMessage<T = any> {
 }
 
 /**
- * Client action request
+ * Client action request with deduplication
  */
 export interface ClientAction {
   action: ClientActionType;
@@ -45,6 +45,7 @@ export interface ClientAction {
   userId: string;
   tokenId?: number;
   timestamp: number;
+  actionId: string; // Required for deduplication
 }
 
 // ===== PAYLOAD TYPES =====
@@ -160,7 +161,14 @@ export const SERVER_SYNC_CONFIG = {
 // ===== UTILITY FUNCTIONS =====
 
 /**
- * Create a client action message
+ * Generate unique action ID for deduplication
+ */
+function generateActionId(): string {
+  return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+}
+
+/**
+ * Create a client action message with unique ID
  */
 export function createAction(
   action: ClientActionType,
@@ -173,7 +181,8 @@ export function createAction(
     roomId,
     userId,
     tokenId,
-    timestamp: Date.now()
+    timestamp: Date.now(),
+    actionId: generateActionId()
   };
 }
 
