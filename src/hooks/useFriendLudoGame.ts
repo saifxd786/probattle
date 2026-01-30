@@ -123,6 +123,14 @@ const CHECKSUM_INTERVAL_MS = SYNC_CONFIG.RECONCILE_INTERVAL_MS; // 250ms for Lud
 const CHECKSUM_MISMATCH_THRESHOLD = 2;
 const CHECKSUM_RESYNC_COOLDOWN_MS = 1500; // Faster recovery
 
+// Toast dedupe / anti-spam (Friends vs Friends)
+const TOAST_ID_HIGH_LATENCY = 'ludo-high-latency';
+const TOAST_ID_SYNC_RECOVERED = 'ludo-sync-recovered';
+const AUTO_RESYNC_TOAST_COOLDOWN_MS = 20000; // avoid multiple "synced" popups back-to-back
+
+// Grace window to avoid checksum false-positives while an action is still in-flight
+const CHECKSUM_IN_FLIGHT_GRACE_MS = 900;
+
 // === ENTERPRISE LATENCY OPTIMIZATION ===
 const PING_INTERVAL_MS = 300; // Ultra-fast: 300ms pings
 const PING_TIMEOUT_MS = 1000; // Shorter timeout
@@ -160,6 +168,9 @@ export const useFriendLudoGame = () => {
   const lastResyncTimeRef = useRef<number>(0);
   const lastReceivedChecksumRef = useRef<string | null>(null);
   const checksumHistoryRef = useRef<{ checksum: string; timestamp: number }[]>([]);
+
+  // Toast anti-spam refs
+  const lastAutoResyncToastRef = useRef<number>(0);
   
   // Reconnection handling refs
   const reconnectAttemptsRef = useRef<number>(0);
@@ -750,6 +761,7 @@ export const useFriendLudoGame = () => {
               now - lastHighPingWarningRef.current > HIGH_PING_WARNING_COOLDOWN) {
             lastHighPingWarningRef.current = now;
             sonnerToast.warning(`High latency: ${latency}ms`, {
+              id: TOAST_ID_HIGH_LATENCY,
               description: `Average: ${stats.average}ms. Consider switching to WiFi.`,
               duration: 2000,
             });
@@ -1879,10 +1891,15 @@ export const useFriendLudoGame = () => {
       
       if (isAuto) {
         console.log('[LudoSync] Auto-resynced from database');
-        sonnerToast.info('Game state synchronized', {
-          description: 'Recovered from state mismatch',
-          duration: 2000,
-        });
+        const now = Date.now();
+        if (now - lastAutoResyncToastRef.current > AUTO_RESYNC_TOAST_COOLDOWN_MS) {
+          lastAutoResyncToastRef.current = now;
+          sonnerToast.info('Game state synchronized', {
+            id: TOAST_ID_SYNC_RECOVERED,
+            description: 'Recovered from state mismatch',
+            duration: 2000,
+          });
+        }
       } else {
         toast({ title: '✅ Synced!', description: 'Game state updated' });
       }
@@ -1918,6 +1935,12 @@ export const useFriendLudoGame = () => {
             checksumHistoryRef.current.shift();
           }
           
+          // Avoid false desync during in-flight actions (optimistic / network delay)
+          const now = Date.now();
+          if (now - lastActionRef.current < CHECKSUM_IN_FLIGHT_GRACE_MS) {
+            return;
+          }
+
           if (myChecksum !== theirChecksum) {
             consecutiveMismatchesRef.current += 1;
             console.warn('[LudoSync] Checksum mismatch!', { 
@@ -1932,7 +1955,6 @@ export const useFriendLudoGame = () => {
             setSyncStatus('mismatch');
             
             // Only auto-resync if we hit threshold AND cooldown has passed
-            const now = Date.now();
             const cooldownPassed = now - lastResyncTimeRef.current > CHECKSUM_RESYNC_COOLDOWN_MS;
             
             if (consecutiveMismatchesRef.current >= CHECKSUM_MISMATCH_THRESHOLD && cooldownPassed) {
