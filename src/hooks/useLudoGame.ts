@@ -33,6 +33,7 @@ interface GameState {
   diceValue: number;
   isRolling: boolean;
   canRoll: boolean;
+  hasRolled: boolean; // Track if dice was rolled this turn (prevents re-roll exploit on resume)
   selectedToken: { color: string; tokenId: number } | null;
   winner: Player | null;
 }
@@ -226,6 +227,7 @@ export const useLudoGame = () => {
     diceValue: 1,
     isRolling: false,
     canRoll: false,
+    hasRolled: false,
     selectedToken: null,
     winner: null
   });
@@ -263,6 +265,7 @@ export const useLudoGame = () => {
             diceValue: 1,
             isRolling: false,
             canRoll: false,
+            hasRolled: false,
             selectedToken: null,
             winner: null
           });
@@ -549,6 +552,9 @@ export const useLudoGame = () => {
 
       // Set game state
       gameInProgressRef.current = true;
+      // Check if dice was rolled this turn from saved state
+      const hasRolledFromState = savedState?.hasRolled ?? false;
+      
       setGameState({
         phase: 'playing',
         matchId: activeGameData.matchId,
@@ -556,7 +562,9 @@ export const useLudoGame = () => {
         currentTurn,
         diceValue,
         isRolling: false,
-        canRoll: currentTurn === 0, // User's turn
+        // Only allow roll if it's user's turn AND they haven't rolled yet
+        canRoll: currentTurn === 0 && !hasRolledFromState,
+        hasRolled: hasRolledFromState,
         selectedToken: null,
         winner: null
       });
@@ -1034,6 +1042,38 @@ export const useLudoGame = () => {
     return { updatedPlayers, winner, gotSix: diceValue === 6, capturedOpponent, captureInfo };
   }, []);
 
+  // Sync game state to database for resume capability
+  const syncGameStateToDb = useCallback(async (matchId: string, players: Player[], currentTurn: number, diceValue: number, hasRolled: boolean) => {
+    try {
+      // Save game state
+      await supabase.from('ludo_matches').update({
+        game_state: {
+          currentTurn,
+          diceValue,
+          hasRolled
+        }
+      }).eq('id', matchId);
+      
+      // Also update player token positions
+      for (const player of players) {
+        const tokenPositions = player.tokens.map(t => t.position);
+        if (player.isBot) {
+          await supabase.from('ludo_match_players').update({
+            token_positions: tokenPositions,
+            tokens_home: player.tokensHome
+          }).eq('match_id', matchId).eq('is_bot', true).eq('player_color', player.color);
+        } else {
+          await supabase.from('ludo_match_players').update({
+            token_positions: tokenPositions,
+            tokens_home: player.tokensHome
+          }).eq('match_id', matchId).eq('user_id', player.id);
+        }
+      }
+    } catch (err) {
+      console.error('[LudoGame] Failed to sync game state:', err);
+    }
+  }, []);
+
   // Bot AI - SMARTER for high stakes (SUBTLE WINNING STRATEGY)
   const selectBotMove = useCallback((player: Player, diceValue: number, allPlayers: Player[]): number | null => {
     const isHighStake = entryAmount > 100 && settings.highAmountCompetitive;
@@ -1369,7 +1409,7 @@ export const useLudoGame = () => {
     }
 
     console.log('[LudoGame Bot] User rolling dice, effectiveUserId:', effectiveUserId);
-    setGameState(prev => ({ ...prev, isRolling: true, canRoll: false }));
+    setGameState(prev => ({ ...prev, isRolling: true, canRoll: false, hasRolled: true }));
 
     await new Promise(resolve => setTimeout(resolve, 800));
 
@@ -1400,6 +1440,7 @@ export const useLudoGame = () => {
             ...inner,
             currentTurn: nextTurn,
             canRoll: isNextUser,
+            hasRolled: false, // Reset for next turn
             selectedToken: null
           }));
           
@@ -1407,11 +1448,19 @@ export const useLudoGame = () => {
             setTimeout(() => executeBotTurn(), 800);
           }
         }, 600);
+        
+        // No valid moves, reset hasRolled for turn switch
+        return { ...prev, diceValue, isRolling: false, hasRolled: false };
       }
 
-      return { ...prev, diceValue, isRolling: false };
+      // Player can move - hasRolled stays true until they move a token
+      // Sync to DB for resume capability
+      if (gameState.matchId) {
+        syncGameStateToDb(gameState.matchId, prev.players, prev.currentTurn, diceValue, true);
+      }
+      return { ...prev, diceValue, isRolling: false, hasRolled: true };
     });
-  }, [gameState.canRoll, gameState.isRolling, gameState.players, gameState.currentTurn, user, isRefreshing, lastUserId, generateDiceValue, executeBotTurn]);
+  }, [gameState.canRoll, gameState.isRolling, gameState.players, gameState.currentTurn, gameState.matchId, user, isRefreshing, lastUserId, generateDiceValue, executeBotTurn, syncGameStateToDb]);
 
   // Handle user token click
   const handleTokenClick = useCallback((color: string, tokenId: number) => {
@@ -1472,10 +1521,15 @@ export const useLudoGame = () => {
       }
 
       if (gotSix) {
+        // Sync state - player rolled 6 and can roll again
+        if (gameState.matchId) {
+          syncGameStateToDb(gameState.matchId, updatedPlayers, prev.currentTurn, prev.diceValue, false);
+        }
         return {
           ...prev,
           players: updatedPlayers,
           canRoll: true,
+          hasRolled: false, // Reset so player can roll again
           selectedToken: null
         };
       }
@@ -1489,15 +1543,21 @@ export const useLudoGame = () => {
         setTimeout(() => executeBotTurn(), 800);
       }
 
+      // Sync state after turn change
+      if (gameState.matchId) {
+        syncGameStateToDb(gameState.matchId, updatedPlayers, nextTurn, prev.diceValue, false);
+      }
+
       return {
         ...prev,
         players: updatedPlayers,
         currentTurn: nextTurn,
         canRoll: isNextUser,
+        hasRolled: false, // Reset for next turn
         selectedToken: null
       };
     });
-  }, [moveToken, executeBotTurn]);
+  }, [moveToken, executeBotTurn, gameState.matchId, syncGameStateToDb]);
 
   const handleGameEnd = useCallback(async (winner: Player) => {
     if (!user || !gameState.matchId) return;
@@ -1545,6 +1605,7 @@ export const useLudoGame = () => {
       diceValue: 1,
       isRolling: false,
       canRoll: false,
+      hasRolled: false,
       selectedToken: null,
       winner: null
     });
