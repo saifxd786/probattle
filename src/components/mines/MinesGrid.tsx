@@ -69,15 +69,12 @@ const MinesGrid = ({
               {isRevealed ? (
                 <motion.div
                   key={`revealed-${index}`}
-                  initial={{ scale: 0.85, opacity: 0.9 }}
+                  initial={{ scale: 0.5, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
                   transition={{ 
-                    type: "spring",
-                    stiffness: 600,
-                    damping: 25,
-                    mass: 0.5
+                    duration: 0.1,
+                    ease: "easeOut"
                   }}
-                  style={{ willChange: 'transform, opacity' }}
                 >
                   {isMine ? (
                     <Bomb className="w-8 h-8 text-red-500" />
