@@ -10,6 +10,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { z } from 'zod';
 import { generateDeviceFingerprint } from '@/utils/deviceFingerprint';
+import { logDeviceToServer } from '@/utils/deviceInfo';
 import PasswordStrengthMeter from '@/components/PasswordStrengthMeter';
 import { useRateLimit } from '@/hooks/useRateLimit';
 import { 
@@ -797,10 +798,15 @@ const AuthPage = () => {
           }
         }
 
-        // Save device fingerprint (non-blocking, don't await)
-        if (userId) {
-          saveDeviceFingerprint(userId);
-        }
+        // Log comprehensive device info with geolocation for registration (non-blocking)
+        // This captures IP, location, device details for fraud prevention
+        logDeviceToServer(supabase, true).then(result => {
+          if (result.location) {
+            console.log('[Auth] Registration device logged from:', result.location);
+          }
+        }).catch(err => {
+          console.error('[Auth] Failed to log registration device:', err);
+        });
 
         toast({
           title: 'Account created!',
