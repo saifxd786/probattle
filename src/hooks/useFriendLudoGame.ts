@@ -90,6 +90,7 @@ interface FriendGameState {
   diceValue: number;
   isRolling: boolean;
   canRoll: boolean;
+  hasRolled: boolean; // Track if dice was rolled this turn (prevents re-roll exploit)
   selectedToken: { color: string; tokenId: number } | null;
   winner: Player | null;
   entryAmount: number;
@@ -235,6 +236,7 @@ export const useFriendLudoGame = () => {
     diceValue: 1,
     isRolling: false,
     canRoll: false,
+    hasRolled: false,
     selectedToken: null,
     winner: null,
     entryAmount: 0,
@@ -628,6 +630,7 @@ export const useFriendLudoGame = () => {
                 ...prev, 
                 diceValue, 
                 isRolling: false, 
+                hasRolled: false, // Reset for next turn
                 currentTurn: nextTurn,
                 canRoll: isMyTurn
               };
@@ -636,7 +639,8 @@ export const useFriendLudoGame = () => {
             if (globalQoSManager.shouldPlaySounds()) {
               soundManager.playDiceResult(diceValue);
             }
-            return { ...prev, diceValue, isRolling: false };
+            // Opponent rolled - set hasRolled true (they need to move a token now)
+            return { ...prev, diceValue, isRolling: false, hasRolled: true };
           });
         }
       })
@@ -687,15 +691,18 @@ export const useFriendLudoGame = () => {
                 currentTurn: nextTurn,
                 phase: 'result',
                 winner,
-                canRoll: false
+                canRoll: false,
+                hasRolled: false
               };
             }
 
+            // Reset hasRolled when turn changes, keep it true if got six (same player continues)
             return {
               ...prev,
               players: newPlayers,
               currentTurn: nextTurn,
               canRoll: isMyTurn && !gotSix,
+              hasRolled: gotSix ? true : false, // Reset when turn switches
               selectedToken: null
             };
           });
@@ -705,21 +712,51 @@ export const useFriendLudoGame = () => {
           }
         }
       })
+      .on('broadcast', { event: 'turn_timeout' }, (payload) => {
+        const senderId = payload.payload.senderId || payload.payload.s;
+        const { fromTurn, toTurn, reason } = payload.payload;
+        const timestamp = payload.payload.timestamp || payload.payload.t;
+        
+        if (senderId !== user?.id && timestamp > lastActionRef.current) {
+          lastActionRef.current = timestamp;
+          console.log('[LudoTimer] Received turn_timeout from opponent', { fromTurn, toTurn, reason });
+          
+          setGameState(prev => {
+            const isMyTurn = prev.players[toTurn]?.id === user?.id;
+            return {
+              ...prev,
+              currentTurn: toTurn,
+              canRoll: isMyTurn,
+              hasRolled: false,
+              selectedToken: null
+            };
+          });
+          
+          soundManager.playTurnChange();
+          sonnerToast.info('Opponent\'s time expired', {
+            description: 'Your turn now!',
+            duration: 2000
+          });
+        }
+      })
       .on('broadcast', { event: 'full_sync' }, (payload) => {
-        const { senderId, players, currentTurn, diceValue, phase, timestamp } = payload.payload;
+        const { senderId, players, currentTurn, diceValue, phase, hasRolled, timestamp } = payload.payload;
         if (senderId !== user?.id && timestamp > lastActionRef.current) {
           lastActionRef.current = timestamp;
           console.log('[LudoSync] Received full sync');
           
           setGameState(prev => {
             const isMyTurn = players[currentTurn]?.id === user?.id;
+            // Only allow roll if it's my turn AND dice hasn't been rolled this turn
+            const canRollNow = isMyTurn && !hasRolled;
             return {
               ...prev,
               players,
               currentTurn,
               diceValue,
               phase,
-              canRoll: isMyTurn,
+              canRoll: canRollNow,
+              hasRolled: hasRolled || false,
               isRolling: false,
               lastSyncTime: Date.now()
             };
@@ -1294,13 +1331,16 @@ export const useFriendLudoGame = () => {
         const myPlayer = gameData.players.find(p => p.id === user.id);
         const isMyTurn = gameData.players[gameData.currentTurn]?.id === user.id;
         
+        // Only allow roll if it's my turn AND I haven't rolled yet
+        const canRollNow = isMyTurn && !prev.hasRolled;
+        
         return {
           ...prev,
           phase: 'playing',
           players: gameData.players,
           currentTurn: gameData.currentTurn,
           diceValue: gameData.diceValue,
-          canRoll: isMyTurn,
+          canRoll: canRollNow,
           isRolling: false
         };
       });
@@ -1679,7 +1719,7 @@ export const useFriendLudoGame = () => {
     // === LUDO KING PREDICTIVE ANIMATION ===
     // 1. Start local animation IMMEDIATELY (no waiting)
     const predictedValue = ludoPredictiveAnimator.startDiceRoll();
-    setGameState(prev => ({ ...prev, isRolling: true, canRoll: false }));
+    setGameState(prev => ({ ...prev, isRolling: true, canRoll: false, hasRolled: true }));
     
     // 2. Broadcast rolling start so opponent syncs animation
     broadcastAction('dice_rolling', { predictedValue });
@@ -1715,10 +1755,12 @@ export const useFriendLudoGame = () => {
       if (!canMove) {
         const nextTurn = (prev.currentTurn + 1) % prev.players.length;
         syncGameState(prev.players, nextTurn, diceValue);
-        return { ...prev, diceValue, isRolling: false, currentTurn: nextTurn, canRoll: false };
+        // Reset hasRolled for next player's turn
+        return { ...prev, diceValue, isRolling: false, hasRolled: false, currentTurn: nextTurn, canRoll: false };
       }
 
-      return { ...prev, diceValue, isRolling: false };
+      // Player can move - hasRolled stays true until they move a token
+      return { ...prev, diceValue, isRolling: false, hasRolled: true };
     });
   }, [gameState.canRoll, gameState.isRolling, gameState.players, gameState.currentTurn, user, isRefreshing, lastUserId, generateDiceValue, broadcastAction, toast]);
 
@@ -1813,6 +1855,7 @@ export const useFriendLudoGame = () => {
         ...prev,
         players: updatedPlayers,
         canRoll: true,
+        hasRolled: false, // Reset so player can roll again
         selectedToken: null
       }));
       return;
@@ -1826,6 +1869,7 @@ export const useFriendLudoGame = () => {
       players: updatedPlayers,
       currentTurn: nextTurn,
       canRoll: false,
+      hasRolled: false, // Reset for opponent's turn
       selectedToken: null
     }));
   }, [user, isRefreshing, lastUserId, gameState.players, gameState.currentTurn, gameState.canRoll, gameState.diceValue, moveToken, broadcastAction]);
@@ -1905,6 +1949,7 @@ export const useFriendLudoGame = () => {
       diceValue: 1,
       isRolling: false,
       canRoll: false,
+      hasRolled: false,
       selectedToken: null,
       winner: null,
       entryAmount: 0,
@@ -1960,16 +2005,20 @@ export const useFriendLudoGame = () => {
       consecutiveMismatchesRef.current = 0;
       lastReceivedChecksumRef.current = checksum;
 
-      setGameState(prev => ({
-        ...prev,
-        players: gameData.players,
-        currentTurn: gameData.currentTurn,
-        diceValue: gameData.diceValue,
-        canRoll: isMyTurn && !prev.isRolling,
-        isRolling: false,
-        stateChecksum: checksum,
-        lastSyncTime: Date.now()
-      }));
+      setGameState(prev => {
+        // Check if we should allow roll - only if it's our turn AND we haven't rolled yet
+        const canRollNow = isMyTurn && !prev.isRolling && !prev.hasRolled;
+        return {
+          ...prev,
+          players: gameData.players,
+          currentTurn: gameData.currentTurn,
+          diceValue: gameData.diceValue,
+          canRoll: canRollNow,
+          isRolling: false,
+          stateChecksum: checksum,
+          lastSyncTime: Date.now()
+        };
+      });
 
       setSyncStatus('synced');
       
@@ -2068,7 +2117,8 @@ export const useFriendLudoGame = () => {
             players: gameState.players,
             currentTurn: gameState.currentTurn,
             diceValue: gameState.diceValue,
-            phase: gameState.phase
+            phase: gameState.phase,
+            hasRolled: gameState.hasRolled // Include roll state to prevent re-roll exploit
           });
         }
       })
@@ -2369,7 +2419,7 @@ export const useFriendLudoGame = () => {
     };
   }, []);
 
-  // Turn timer effect (15 seconds per turn)
+  // Turn timer effect (15 seconds per turn) - NOW WITH AUTO TURN SWITCH
   useEffect(() => {
     // Only run timer during playing phase
     if (gameState.phase !== 'playing') {
@@ -2388,9 +2438,46 @@ export const useFriendLudoGame = () => {
     turnTimerRef.current = setInterval(() => {
       setTurnTimeLeft(prev => {
         if (prev <= 1) {
-          // Time's up - auto skip happens server-side or via opponent action
-          // Just reset timer for UI
-          return 15;
+          // Time's up - switch turn to opponent
+          const currentPlayer = gameState.players[gameState.currentTurn];
+          const isMyTurn = currentPlayer?.id === user?.id;
+          
+          if (isMyTurn && !gameState.isRolling) {
+            console.log('[LudoTimer] Time expired - switching turn to opponent');
+            
+            // Calculate next turn
+            const nextTurn = (gameState.currentTurn + 1) % gameState.players.length;
+            
+            // Broadcast turn skip to opponent
+            broadcastAction('turn_timeout', { 
+              fromTurn: gameState.currentTurn, 
+              toTurn: nextTurn,
+              reason: 'timeout'
+            });
+            
+            // Sync to database
+            syncGameState(gameState.players, nextTurn, gameState.diceValue);
+            
+            // Update local state
+            setGameState(prev => ({
+              ...prev,
+              currentTurn: nextTurn,
+              canRoll: false,
+              hasRolled: false,
+              selectedToken: null
+            }));
+            
+            // Play turn change sound
+            soundManager.playTurnChange();
+            hapticManager.warning();
+            
+            sonnerToast.warning('Time expired!', {
+              description: 'Turn passed to opponent',
+              duration: 2000
+            });
+          }
+          
+          return 15; // Reset timer
         }
         return prev - 1;
       });
@@ -2402,7 +2489,7 @@ export const useFriendLudoGame = () => {
         turnTimerRef.current = null;
       }
     };
-  }, [gameState.phase, gameState.currentTurn]);
+  }, [gameState.phase, gameState.currentTurn, gameState.players, gameState.isRolling, gameState.diceValue, user?.id, broadcastAction]);
 
   return {
     gameState,
