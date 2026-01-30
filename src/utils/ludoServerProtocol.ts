@@ -135,11 +135,15 @@ export interface ServerGameState {
   } | null;
 }
 
-// ===== SYNC CONFIGURATION =====
+// ===== SYNC CONFIGURATION (Ludo King-style real-time feel) =====
 export const SERVER_SYNC_CONFIG = {
   // Server communication
   SERVER_TIMEOUT_MS: 5000,        // 5s timeout for server responses
-  HEARTBEAT_INTERVAL_MS: 30000,   // 30s heartbeat to keep connection alive
+  
+  // FASTER HEARTBEAT for Ludo King feel (5s instead of 30s)
+  HEARTBEAT_INTERVAL_MS: 5000,    // 5s heartbeat for responsive disconnect detection
+  HEARTBEAT_TIMEOUT_MS: 3000,     // 3s timeout - if no response, consider disconnected
+  MISSED_HEARTBEATS_DISCONNECT: 2, // 2 missed = disconnected (10s total)
   
   // Delta sync (30-50ms target)
   DELTA_BROADCAST_INTERVAL_MS: 40, // 40ms between delta broadcasts
@@ -156,7 +160,29 @@ export const SERVER_SYNC_CONFIG = {
   // Anti-cheat
   MAX_ACTIONS_PER_SECOND: 10,     // Rate limit per player
   ACTION_COOLDOWN_MS: 100,        // Min time between actions
+  
+  // Optimistic animations (mask server latency)
+  OPTIMISTIC_DICE_DURATION_MS: 800,   // Show dice rolling animation
+  OPTIMISTIC_MOVE_DURATION_MS: 600,   // Token move animation time
+  LATENCY_MASK_THRESHOLD_MS: 150,     // If latency > this, extend animations
 } as const;
+
+// ===== OPTIMISTIC ANIMATION TYPES =====
+export interface OptimisticDiceRoll {
+  startTime: number;
+  isOptimistic: boolean;
+  serverConfirmed: boolean;
+  serverValue: number | null;
+}
+
+export interface OptimisticTokenMove {
+  tokenId: number;
+  fromPosition: number;
+  toPosition: number;
+  startTime: number;
+  isOptimistic: boolean;
+  serverConfirmed: boolean;
+}
 
 // ===== UTILITY FUNCTIONS =====
 
