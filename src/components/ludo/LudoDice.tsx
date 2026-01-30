@@ -340,7 +340,7 @@ const Dice3DCube = ({
   );
 };
 
-// Bouncing animation wrapper - Enhanced physics
+// Bouncing animation wrapper - Enhanced physics with FAST-START easing
 const BouncingDice = ({ value, size = 72 }: { value: number; size?: number }) => {
   return (
     <motion.div
@@ -350,8 +350,9 @@ const BouncingDice = ({ value, size = 72 }: { value: number; size?: number }) =>
         scale: [1, 1.05, 0.98, 1.02, 0.99, 1.01, 1],
       }}
       transition={{ 
-        duration: 0.75, 
-        ease: [0.25, 0.46, 0.45, 0.94],
+        duration: 0.7, 
+        // MICRO-LATENCY: Fast-start ease-out for Ludo King feel
+        ease: [0.25, 0.9, 0.3, 1],
         times: [0, 0.12, 0.28, 0.42, 0.56, 0.68, 0.8, 0.9, 1]
       }}
     >

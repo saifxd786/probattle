@@ -2,16 +2,48 @@
 class SoundManager {
   private audioContext: AudioContext | null = null;
   private enabled: boolean = true;
+  private preloadedBuffers: Map<string, AudioBuffer> = new Map();
 
   private getContext(): AudioContext {
     if (!this.audioContext) {
       this.audioContext = new AudioContext();
+    }
+    // Resume context if suspended (browser autoplay policy)
+    if (this.audioContext.state === 'suspended') {
+      this.audioContext.resume();
     }
     return this.audioContext;
   }
 
   setEnabled(enabled: boolean) {
     this.enabled = enabled;
+  }
+  
+  /**
+   * Check if sound is enabled
+   */
+  isEnabled(): boolean {
+    return this.enabled;
+  }
+  
+  /**
+   * Pre-warm audio context for minimal latency
+   * Call this on first user interaction
+   */
+  prewarm(): void {
+    try {
+      const ctx = this.getContext();
+      // Create and immediately stop a silent oscillator to warm up
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      gain.gain.value = 0;
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.001);
+    } catch (e) {
+      // Silent fail
+    }
   }
 
   // Play a beep/tone sound

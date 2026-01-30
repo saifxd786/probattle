@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { Crown } from 'lucide-react';
 import CaptureAnimation from './CaptureAnimation';
+import SyncIndicator from './SyncIndicator';
 
 // Color-specific avatars
 import redAvatar from '@/assets/ludo-avatar-red.png';
@@ -51,6 +52,9 @@ interface LudoBoardProps {
   turnTimeLeft?: number; // seconds remaining (15s max)
   onTurnTimeout?: () => void;
   offlineTimeLeft?: number; // seconds remaining for offline player (60s max)
+  // Micro-latency UX enhancements
+  opponentPulseScale?: number; // 1.0 = no pulse, 1.03 = subtle pulse
+  showSyncIndicator?: boolean;
 }
 
 // Enhanced Ludo King colors - more vibrant
@@ -375,12 +379,14 @@ const TimerAvatar = ({
   isCurrentTurn,
   turnTimeLeft,
   offlineTimeLeft,
+  presencePulseScale = 1, // MICRO-LATENCY: Opponent presence pulse
 }: {
   player: Player | undefined;
   uid: string;
   isCurrentTurn: boolean;
   turnTimeLeft?: number;
   offlineTimeLeft?: number;
+  presencePulseScale?: number;
 }) => {
   const colors = COLORS[player?.color as keyof typeof COLORS];
   const avatarSrc = player?.avatar || COLOR_AVATARS[player?.color as keyof typeof COLOR_AVATARS] || redAvatar;
@@ -400,7 +406,16 @@ const TimerAvatar = ({
   const strokeDashoffset = perimeter - (progress / 100) * perimeter;
   
   return (
-    <div className="relative" style={{ width: size, height: size }}>
+    <motion.div 
+      className="relative" 
+      style={{ width: size, height: size }}
+      // MICRO-LATENCY: Subtle presence pulse for opponent (1.03x scale, 120ms)
+      animate={{ scale: presencePulseScale }}
+      transition={{ 
+        duration: 0.12, 
+        ease: [0.25, 0.9, 0.3, 1] // Fast-start ease-out
+      }}
+    >
       {/* SVG Square Timer Border */}
       <svg 
         className="absolute inset-0"
@@ -532,7 +547,7 @@ const TimerAvatar = ({
           Turn
         </motion.div>
       )}
-    </div>
+    </motion.div>
   );
 };
 
@@ -716,7 +731,7 @@ const BottomInfoBar = ({
   );
 };
 
-const LudoBoard = ({ players, onTokenClick, selectedToken, captureEvent, onCaptureAnimationComplete, diceValue = 1, turnTimeLeft = 15, onTurnTimeout, offlineTimeLeft }: LudoBoardProps) => {
+const LudoBoard = ({ players, onTokenClick, selectedToken, captureEvent, onCaptureAnimationComplete, diceValue = 1, turnTimeLeft = 15, onTurnTimeout, offlineTimeLeft, opponentPulseScale = 1, showSyncIndicator = false }: LudoBoardProps) => {
   const boardRef = useRef<HTMLDivElement>(null);
   // Calculate size based on available viewport
   const [size, setSize] = useState(Math.min(window.innerWidth - 8, window.innerHeight - 120, 600));
@@ -1043,7 +1058,13 @@ const LudoBoard = ({ players, onTokenClick, selectedToken, captureEvent, onCaptu
                       top: pos.y - (tokenSize / 2) + stackOffset.y,
                       scale: isSelected ? 1.3 : canMove ? 1.1 : 1,
                     }}
-                    transition={{ type: 'spring', stiffness: 350, damping: 22 }}
+                    // MICRO-LATENCY: Fast-start ease-out for snappy Ludo King feel
+                    transition={{ 
+                      type: 'spring', 
+                      stiffness: 400, 
+                      damping: 25,
+                      // Use cubic-bezier equivalent spring parameters for fast start
+                    }}
                     whileHover={onTokenClick && player.isCurrentTurn ? { scale: isSingleToken ? 1.15 : 1.3 } : {}}
                     whileTap={onTokenClick && player.isCurrentTurn ? { scale: 0.92 } : {}}
                     onClick={() => onTokenClick?.(player.color, token.id)}
@@ -1082,6 +1103,13 @@ const LudoBoard = ({ players, onTokenClick, selectedToken, captureEvent, onCaptu
             onComplete={() => onCaptureAnimationComplete?.()}
           />
         </div>
+        
+        {/* MICRO-LATENCY: Sync indicator for network latency masking */}
+        {showSyncIndicator && (
+          <div className="absolute top-2 left-1/2 -translate-x-1/2 z-50">
+            <SyncIndicator />
+          </div>
+        )}
       </motion.div>
     </div>
   );

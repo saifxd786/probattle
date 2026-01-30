@@ -38,6 +38,12 @@ import {
   actionRateLimiter,
   uiLatencyTracker
 } from '@/utils/ludoServerProtocol';
+import {
+  microLatencyManager,
+  MICRO_LATENCY,
+  syncIndicator,
+  opponentPulse
+} from '@/utils/ludoMicroLatency';
 
 // ===== TYPES =====
 interface Token {
@@ -568,28 +574,43 @@ export const useServerAuthLudoGame = () => {
 
     console.log('[ServerAuth] Rolling dice (optimistic)...');
     
-    // OPTIMISTIC: Start dice animation IMMEDIATELY (before server response)
-    const animationStartTime = Date.now();
-    setGameState(prev => ({ 
-      ...prev, 
-      isRolling: true, 
-      canRoll: false,
-      optimisticAnimation: {
-        ...prev.optimisticAnimation,
-        isDiceAnimating: true,
-        diceAnimationStart: animationStartTime,
-        pendingDiceValue: null,
-        serverDiceConfirmed: false
-      }
-    }));
+    // ===== MICRO-LATENCY: Pre-trigger sound 60ms before animation =====
+    // Prewarm audio context for instant playback
+    soundManager.prewarm();
     
-    // Play dice sound immediately for instant feedback
-    soundManager.playDiceResult(1); // Placeholder sound, real sound plays on confirm
+    // Pre-trigger dice roll sound for instant feel
+    microLatencyManager.preTriggerDiceRoll();
+    
+    // Track for sync indicator
+    syncIndicator.actionSent();
+    
+    // Start animation 60ms AFTER sound (creates perception of instant response)
+    const animationStartTime = Date.now();
+    
+    setTimeout(() => {
+      setGameState(prev => ({ 
+        ...prev, 
+        isRolling: true, 
+        canRoll: false,
+        optimisticAnimation: {
+          ...prev.optimisticAnimation,
+          isDiceAnimating: true,
+          diceAnimationStart: Date.now(),
+          pendingDiceValue: null,
+          serverDiceConfirmed: false
+        }
+      }));
+    }, MICRO_LATENCY.DICE_SOUND_LEAD_MS);
+    
+    // Haptic feedback immediately
     hapticManager.diceRoll();
 
     // Send to server (async, don't block animation)
     const action = createAction('roll_dice', gameState.roomId, user.id);
     const response = await sendServerAction(action);
+    
+    // Confirm action for sync indicator
+    syncIndicator.actionConfirmed();
 
     if (!response) {
       // Revert on failure - but respect minimum animation time
@@ -700,31 +721,46 @@ export const useServerAuthLudoGame = () => {
 
     console.log('[ServerAuth] Moving token (optimistic):', tokenId, '->', estimatedNewPosition);
     
-    // OPTIMISTIC: Start move animation IMMEDIATELY
-    const animationStartTime = Date.now();
-    setGameState(prev => ({ 
-      ...prev, 
-      canMove: false,
-      optimisticAnimation: {
-        ...prev.optimisticAnimation,
-        isTokenAnimating: true,
-        tokenAnimationStart: animationStartTime,
-        pendingTokenMove: {
-          tokenId,
-          color,
-          fromPosition: token.position,
-          estimatedToPosition: estimatedNewPosition
-        },
-        serverMoveConfirmed: false
-      }
-    }));
+    // ===== MICRO-LATENCY: Ghost movement 80ms before actual move =====
+    // Calculate direction for ghost movement
+    const moveDirection = { x: 1, y: 0 }; // Simplified - actual direction calculated from board position
     
-    // Play move sound immediately for instant feedback
-    soundManager.playTokenMove();
+    // Pre-trigger ghost movement and sound
+    microLatencyManager.preTriggerTokenMove(color, tokenId, moveDirection);
+    
+    // Track for sync indicator
+    syncIndicator.actionSent();
+    
+    // OPTIMISTIC: Start move animation after ghost movement
+    const animationStartTime = Date.now();
+    
+    setTimeout(() => {
+      setGameState(prev => ({ 
+        ...prev, 
+        canMove: false,
+        optimisticAnimation: {
+          ...prev.optimisticAnimation,
+          isTokenAnimating: true,
+          tokenAnimationStart: Date.now(),
+          pendingTokenMove: {
+            tokenId,
+            color,
+            fromPosition: token.position,
+            estimatedToPosition: estimatedNewPosition
+          },
+          serverMoveConfirmed: false
+        }
+      }));
+    }, MICRO_LATENCY.GHOST_MOVEMENT_LEAD_MS);
+    
+    // Haptic immediately
     hapticManager.tokenMove();
 
     const action = createAction('move_token', gameState.roomId, user.id, tokenId);
     const response = await sendServerAction(action);
+    
+    // Confirm action for sync indicator
+    microLatencyManager.confirmAction();
 
     if (!response || response.type === 'ERROR') {
       // Revert on failure - but respect minimum animation time for smooth rollback
