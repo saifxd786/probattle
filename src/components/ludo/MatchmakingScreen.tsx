@@ -234,11 +234,52 @@ const MatchmakingScreen = ({ players, totalPlayers, entryAmount, rewardAmount }:
             </div>
           </div>
           
-          {/* Prize Badge */}
-          <div className="bg-gray-900/50 border border-gray-800 px-3 py-1.5 rounded-lg">
-            <p className="text-[9px] text-gray-500 uppercase tracking-wider font-medium">Prize</p>
-            <p className="text-emerald-400 font-bold text-sm">₹{rewardAmount}</p>
-          </div>
+          {/* Premium Prize Badge */}
+          <motion.div 
+            className="relative overflow-hidden"
+            animate={{ scale: [1, 1.015, 1] }}
+            transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+          >
+            {/* Outer glow */}
+            <div className="absolute -inset-1 bg-gradient-to-r from-amber-500/30 via-yellow-400/20 to-amber-500/30 rounded-xl blur-sm" />
+            
+            {/* Main badge container */}
+            <div 
+              className="relative px-4 py-2 rounded-xl border-2"
+              style={{
+                background: 'linear-gradient(135deg, rgba(180, 130, 60, 0.25) 0%, rgba(120, 80, 40, 0.35) 100%)',
+                borderColor: 'rgba(212, 175, 55, 0.6)',
+                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.1), 0 2px 8px rgba(0,0,0,0.3)'
+              }}
+            >
+              {/* Inner shine effect */}
+              <div 
+                className="absolute inset-0 rounded-xl opacity-30"
+                style={{
+                  background: 'linear-gradient(180deg, rgba(255,255,255,0.15) 0%, transparent 50%)'
+                }}
+              />
+              
+              {/* Content */}
+              <div className="relative text-center">
+                <p 
+                  className="text-[9px] font-bold uppercase tracking-[0.15em]"
+                  style={{ color: 'rgba(212, 175, 55, 0.9)' }}
+                >
+                  Prize
+                </p>
+                <p 
+                  className="font-bold text-base leading-tight"
+                  style={{ 
+                    color: '#F5D77A',
+                    textShadow: '0 1px 2px rgba(0,0,0,0.4)'
+                  }}
+                >
+                  ₹{rewardAmount}
+                </p>
+              </div>
+            </div>
+          </motion.div>
         </div>
       </div>
 
