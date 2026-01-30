@@ -106,9 +106,28 @@ const generateChecksum = (players: Player[], currentTurn: number, diceValue?: nu
 };
 
 // Checksum verification constants
-const CHECKSUM_INTERVAL_MS = 800; // More frequent: every 800ms
+const CHECKSUM_INTERVAL_MS = 500; // Reduced: every 500ms for faster desync detection
 const CHECKSUM_MISMATCH_THRESHOLD = 2; // Auto-resync after 2 consecutive mismatches
-const CHECKSUM_RESYNC_COOLDOWN_MS = 3000; // Minimum time between auto-resyncs
+const CHECKSUM_RESYNC_COOLDOWN_MS = 2000; // Reduced cooldown for faster recovery
+
+// === ADVANCED LATENCY OPTIMIZATION CONSTANTS ===
+const PING_INTERVAL_MS = 500; // Faster ping: every 500ms (was 2000ms)
+const PING_TIMEOUT_MS = 1500; // Timeout for pending pings (was 3000ms)
+const HEARTBEAT_INTERVAL_MS = 2000; // Faster heartbeat: every 2 seconds (was 5 seconds)
+const HEARTBEAT_MISS_THRESHOLD = 2; // Disconnect after 2 missed heartbeats (was 3)
+const MAX_PING_HISTORY = 20; // Track more pings for accurate averaging (was 10)
+const HIGH_PING_WARNING_THRESHOLD = 300; // Show warning at 300ms (was 800ms)
+const HIGH_PING_WARNING_COOLDOWN = 60000; // 1 minute between warnings (was 2 minutes)
+const BROADCAST_RETRY_COUNT = 2; // Retry failed broadcasts
+const BROADCAST_RETRY_DELAY = 50; // Delay between retries (ms)
+
+// Calculate median for more stable ping display (removes outliers)
+const calculateMedian = (arr: number[]): number => {
+  if (arr.length === 0) return 0;
+  const sorted = [...arr].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 !== 0 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+};
 
 export const useFriendLudoGame = () => {
   const { user, isRefreshing, lastUserId } = useAuth();
@@ -453,7 +472,7 @@ export const useFriendLudoGame = () => {
             last_heartbeat: Date.now()
           });
           
-          // Start heartbeat interval - track presence every 5 seconds
+          // Start heartbeat interval - track presence every 2 seconds (optimized)
           if (heartbeatIntervalRef.current) {
             clearInterval(heartbeatIntervalRef.current);
           }
@@ -465,16 +484,17 @@ export const useFriendLudoGame = () => {
                 last_heartbeat: Date.now()
               });
               lastHeartbeatRef.current = Date.now();
+              heartbeatMissedRef.current = 0;
             } catch (err) {
               console.warn('[LudoPresence] Heartbeat failed:', err);
               heartbeatMissedRef.current++;
               
-              // If we miss 3 heartbeats, mark as disconnected
-              if (heartbeatMissedRef.current >= 3) {
+              // If we miss heartbeats, mark as disconnected (faster detection)
+              if (heartbeatMissedRef.current >= HEARTBEAT_MISS_THRESHOLD) {
                 setConnectionStatus('disconnected');
               }
             }
-          }, 5000);
+          }, HEARTBEAT_INTERVAL_MS);
         } else if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
           setConnectionStatus('disconnected');
         }
@@ -503,14 +523,22 @@ export const useFriendLudoGame = () => {
     chatChannelRef.current = channel;
   }, []);
 
-  // NEW: Subscribe to game action broadcast for instant sync (like Ludo King)
+  // Subscribe to game action broadcast for instant sync - OPTIMIZED for low latency
   const subscribeToGameActions = useCallback((roomId: string) => {
     if (gameActionChannelRef.current) {
       supabase.removeChannel(gameActionChannelRef.current);
     }
 
+    // Create channel with optimized broadcast configuration
     const channel = supabase
-      .channel(`ludo-actions-${roomId}`)
+      .channel(`ludo-actions-${roomId}`, {
+        config: {
+          broadcast: {
+            self: false, // Don't receive our own broadcasts (reduces overhead)
+            ack: false, // Disable acknowledgments for faster delivery
+          },
+        },
+      })
       // Rolling start event - sync animation instantly
       .on('broadcast', { event: 'dice_rolling' }, (payload) => {
         const { senderId, timestamp } = payload.payload;
@@ -629,33 +657,38 @@ export const useFriendLudoGame = () => {
           const latency = Date.now() - originalTimestamp;
           pendingPingsRef.current.delete(pingId);
           
-          // Track ping history for stability (last 10 pings)
+          // Track ping history for stability (increased history for better accuracy)
           pingHistoryRef.current.push(latency);
-          if (pingHistoryRef.current.length > 10) {
+          if (pingHistoryRef.current.length > MAX_PING_HISTORY) {
             pingHistoryRef.current.shift();
           }
           
-          // Calculate average ping from history for stability
+          // Use MEDIAN instead of average to remove outliers (more stable display)
+          const medianPing = calculateMedian(pingHistoryRef.current);
+          
+          // Calculate average for variance calculation
           const avgPing = pingHistoryRef.current.length > 0 
             ? Math.round(pingHistoryRef.current.reduce((a, b) => a + b, 0) / pingHistoryRef.current.length)
             : latency;
           
-          // Use exponential moving average for smooth display
+          // Use exponential moving average with faster response (0.5/0.5 instead of 0.6/0.4)
           setPingLatency(prev => {
-            if (prev === null) return avgPing;
-            return Math.round(prev * 0.6 + avgPing * 0.4);
+            if (prev === null) return Math.round(medianPing);
+            // Faster response to changes
+            return Math.round(prev * 0.4 + medianPing * 0.6);
           });
           
-          // Calculate connection quality based on ping stability
+          // Calculate connection quality based on ping AND stability
           const pingVariance = pingHistoryRef.current.length > 1
             ? Math.sqrt(pingHistoryRef.current.reduce((sum, p) => sum + Math.pow(p - avgPing, 2), 0) / pingHistoryRef.current.length)
             : 0;
           
-          if (avgPing < 100 && pingVariance < 30) {
+          // More granular quality thresholds
+          if (medianPing < 60 && pingVariance < 20) {
             setConnectionQuality('excellent');
-          } else if (avgPing < 200 && pingVariance < 50) {
+          } else if (medianPing < 120 && pingVariance < 40) {
             setConnectionQuality('good');
-          } else if (avgPing < 400) {
+          } else if (medianPing < 250) {
             setConnectionQuality('fair');
           } else {
             setConnectionQuality('poor');
@@ -666,13 +699,13 @@ export const useFriendLudoGame = () => {
           heartbeatMissedRef.current = 0;
           setConnectionStatus('connected');
           
-          // Only show warning for very poor connection
+          // Show warning at lower threshold (300ms instead of 800ms)
           const now = Date.now();
-          if (latency > 800 && now - lastHighPingWarningRef.current > 120000) {
+          if (latency > HIGH_PING_WARNING_THRESHOLD && now - lastHighPingWarningRef.current > HIGH_PING_WARNING_COOLDOWN) {
             lastHighPingWarningRef.current = now;
-            sonnerToast.warning(`High latency detected: ${latency}ms`, {
-              description: 'Try moving closer to your router',
-              duration: 3000,
+            sonnerToast.warning(`High latency: ${latency}ms`, {
+              description: 'Switch to a faster network for better gameplay',
+              duration: 2500,
             });
           }
         }
@@ -707,42 +740,44 @@ export const useFriendLudoGame = () => {
     const sendPing = () => {
       if (!gameActionChannelRef.current) return;
       
-      const pingId = `ping-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      const pingId = `ping-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
       const timestamp = Date.now();
       
       pendingPingsRef.current.set(pingId, timestamp);
       
+      // Send ping with minimal payload for speed
       gameActionChannelRef.current.send({
         type: 'broadcast',
         event: 'ping',
         payload: { senderId: user.id, pingId, timestamp }
+      }).catch(() => {
+        // Silent fail - next ping will try again
+        pendingPingsRef.current.delete(pingId);
       });
       
-      // Clean up old pending pings (> 3 seconds = likely no response coming)
+      // Clean up old pending pings with faster timeout
       const now = Date.now();
       let missedPings = 0;
       pendingPingsRef.current.forEach((time, id) => {
-        if (now - time > 3000) {
+        if (now - time > PING_TIMEOUT_MS) {
           pendingPingsRef.current.delete(id);
           missedPings++;
         }
       });
       
-      // If we're missing too many pings and opponent is supposed to be online, connection might be bad
-      // But don't show high ping if opponent is offline - that's expected
+      // If opponent is offline, don't show misleading high ping values
       if (missedPings > 0 && !opponentOnline) {
-        // Opponent offline - reset ping to null (don't show high values)
         setPingLatency(null);
       }
     };
 
-    // Send initial ping after short delay to let channel establish
+    // Send initial ping immediately (reduced delay from 500ms to 100ms)
     const initialDelay = setTimeout(() => {
       sendPing();
-    }, 500);
+    }, 100);
     
-    // Send ping every 2 seconds for more responsive updates
-    pingIntervalRef.current = setInterval(sendPing, 2000);
+    // Send ping more frequently for real-time feel
+    pingIntervalRef.current = setInterval(sendPing, PING_INTERVAL_MS);
 
     return () => {
       clearTimeout(initialDelay);
@@ -753,18 +788,33 @@ export const useFriendLudoGame = () => {
     };
   }, [gameState.phase, user, opponentOnline]);
 
-  // Broadcast game action instantly
+  // Broadcast game action instantly with retry mechanism for reliability
   const broadcastAction = useCallback(async (event: string, payload: any) => {
     if (!gameActionChannelRef.current || !user) return;
     
     const timestamp = Date.now();
     lastActionRef.current = timestamp;
     
-    await gameActionChannelRef.current.send({
-      type: 'broadcast',
+    const message = {
+      type: 'broadcast' as const,
       event,
       payload: { ...payload, senderId: user.id, timestamp }
-    });
+    };
+    
+    // Attempt to send with retry on failure
+    for (let attempt = 0; attempt <= BROADCAST_RETRY_COUNT; attempt++) {
+      try {
+        await gameActionChannelRef.current.send(message);
+        return; // Success - exit
+      } catch (err) {
+        if (attempt < BROADCAST_RETRY_COUNT) {
+          console.warn(`[LudoSync] Broadcast attempt ${attempt + 1} failed, retrying...`);
+          await new Promise(resolve => setTimeout(resolve, BROADCAST_RETRY_DELAY));
+        } else {
+          console.error('[LudoSync] All broadcast attempts failed:', err);
+        }
+      }
+    }
   }, [user]);
 
   // Reconnection with exponential backoff
