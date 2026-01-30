@@ -325,6 +325,17 @@ export const useMinesGame = () => {
 
       setWalletBalance(prev => prev - gameState.entryAmount);
 
+      // Cancel any existing in_progress games before starting new one (mark as lost)
+      await supabase
+        .from('mines_games')
+        .update({ 
+          status: 'lost',
+          final_amount: 0,
+          completed_at: new Date().toISOString()
+        })
+        .eq('user_id', user.id)
+        .eq('status', 'in_progress');
+
       // Generate mine positions
       const minePositions = generateMinePositions(gameState.minesCount);
 
