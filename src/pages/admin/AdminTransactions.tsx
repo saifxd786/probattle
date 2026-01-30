@@ -93,12 +93,22 @@ const AdminTransactions = () => {
   };
 
   const viewScreenshot = async (path: string) => {
-    const { data } = supabase.storage
-      .from('payment-screenshots')
-      .getPublicUrl(path);
-    
-    setScreenshotUrl(data.publicUrl);
-    setIsScreenshotOpen(true);
+    try {
+      // Use signed URL for secure, time-limited access (1 hour expiry)
+      const { data, error } = await supabase.storage
+        .from('payment-screenshots')
+        .createSignedUrl(path, 3600); // 1 hour expiry
+      
+      if (error || !data?.signedUrl) {
+        toast({ title: 'Error', description: 'Could not load screenshot', variant: 'destructive' });
+        return;
+      }
+      
+      setScreenshotUrl(data.signedUrl);
+      setIsScreenshotOpen(true);
+    } catch (err) {
+      toast({ title: 'Error', description: 'Failed to load screenshot', variant: 'destructive' });
+    }
   };
 
   const handleApprove = async (tx: Transaction) => {
