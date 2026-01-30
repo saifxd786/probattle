@@ -226,7 +226,8 @@ export const useSecureMinesGame = () => {
     
     try {
       const currentGameId = gameState.gameId;
-      if (!currentGameId || gameState.phase !== 'playing') {
+      // Wait for real gameId (not 'pending')
+      if (!currentGameId || currentGameId === 'pending' || gameState.phase !== 'playing') {
         processingRef.current = false;
         return;
       }
@@ -329,7 +330,8 @@ export const useSecureMinesGame = () => {
   }, [gameState.phase, gameState.gameId, gameState.revealedPositions, gameState.pendingPositions, processRevealQueue]);
 
   const cashOut = useCallback(async () => {
-    if (gameState.phase !== 'playing' || !gameState.gameId || gameState.revealedPositions.length === 0) {
+    // Wait for real gameId (not 'pending')
+    if (gameState.phase !== 'playing' || !gameState.gameId || gameState.gameId === 'pending' || gameState.revealedPositions.length === 0) {
       toast({ title: 'No gems revealed yet!', variant: 'destructive' });
       return;
     }
