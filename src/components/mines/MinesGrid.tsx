@@ -69,11 +69,11 @@ const MinesGrid = ({
               {isRevealed ? (
                 <motion.div
                   key={`revealed-${index}`}
-                  initial={{ scale: 0.5, opacity: 0 }}
+                  initial={{ scale: 0.8, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
                   transition={{ 
-                    duration: 0.1,
-                    ease: "easeOut"
+                    duration: 0.02,
+                    ease: "linear"
                   }}
                 >
                   {isMine ? (
