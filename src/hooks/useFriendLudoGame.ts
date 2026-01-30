@@ -268,6 +268,10 @@ export const useFriendLudoGame = () => {
   const [walletBalance, setWalletBalance] = useState(0);
   const [opponentOnline, setOpponentOnline] = useState(false);
   
+  // Turn timer state (15s per turn) - matching bot mode
+  const [turnTimeLeft, setTurnTimeLeft] = useState(15);
+  const turnTimerRef = useRef<NodeJS.Timeout | null>(null);
+  
   // Opponent disconnect timeout (1 minute = 60 seconds)
   const [opponentDisconnectCountdown, setOpponentDisconnectCountdown] = useState<number | null>(null);
   const disconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -2359,8 +2363,46 @@ export const useFriendLudoGame = () => {
       if (heartbeatIntervalRef.current) {
         clearInterval(heartbeatIntervalRef.current);
       }
+      if (turnTimerRef.current) {
+        clearInterval(turnTimerRef.current);
+      }
     };
   }, []);
+
+  // Turn timer effect (15 seconds per turn)
+  useEffect(() => {
+    // Only run timer during playing phase
+    if (gameState.phase !== 'playing') {
+      setTurnTimeLeft(15);
+      if (turnTimerRef.current) {
+        clearInterval(turnTimerRef.current);
+        turnTimerRef.current = null;
+      }
+      return;
+    }
+
+    // Reset timer when turn changes
+    setTurnTimeLeft(15);
+
+    // Start countdown
+    turnTimerRef.current = setInterval(() => {
+      setTurnTimeLeft(prev => {
+        if (prev <= 1) {
+          // Time's up - auto skip happens server-side or via opponent action
+          // Just reset timer for UI
+          return 15;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => {
+      if (turnTimerRef.current) {
+        clearInterval(turnTimerRef.current);
+        turnTimerRef.current = null;
+      }
+    };
+  }, [gameState.phase, gameState.currentTurn]);
 
   return {
     gameState,
@@ -2372,6 +2414,7 @@ export const useFriendLudoGame = () => {
     connectionQuality,
     reconnectAttempts,
     pingLatency,
+    turnTimeLeft,
     startRoom,
     rollDice,
     handleTokenClick,
