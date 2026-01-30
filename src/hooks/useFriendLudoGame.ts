@@ -23,6 +23,14 @@ import {
   ludoPredictiveAnimator,
   ANIMATION_TIMING
 } from '@/utils/ludoPredictiveAnimator';
+import {
+  ultraLatencyPredictor,
+  networkAnalyzer,
+  connectionWarmer,
+  HighPrecisionTimer,
+  ultraShortId,
+  ULTRA_CONFIG
+} from '@/utils/ultraLowLatencyEngine';
 
 interface Token {
   id: number;
@@ -131,16 +139,16 @@ const AUTO_RESYNC_TOAST_COOLDOWN_MS = 30000; // 30s - avoid multiple "synced" po
 // Grace window to avoid checksum false-positives while an action is still in-flight
 const CHECKSUM_IN_FLIGHT_GRACE_MS = 600; // Reduced for faster detection
 
-// === ESPORTS-GRADE LATENCY (20ms TARGET) ===
-const PING_INTERVAL_MS = 100; // 100ms pings for sub-20ms response tracking
-const PING_TIMEOUT_MS = 600; // Faster timeout detection
-const HEARTBEAT_INTERVAL_MS = 800; // 800ms heartbeat
+// === ULTRA-LOW LATENCY (Sub-20ms TARGET) ===
+const PING_INTERVAL_MS = 80; // 80ms pings for sub-20ms response tracking
+const PING_TIMEOUT_MS = 400; // 400ms timeout (faster detection)
+const HEARTBEAT_INTERVAL_MS = 600; // 600ms heartbeat
 const HEARTBEAT_MISS_THRESHOLD = 3; // Allow 3 misses before disconnect
-const MAX_PING_HISTORY = 50; // More samples for stable median
-const HIGH_PING_WARNING_THRESHOLD = 150; // Show warning at 150ms+ (lower for esports)
-const HIGH_PING_WARNING_COOLDOWN = 45000; // 45 seconds between warnings
-const BROADCAST_RETRY_COUNT = 4; // More retries for reliability
-const BROADCAST_RETRY_DELAY = 15; // 15ms retry delay (ultra-fast)
+const MAX_PING_HISTORY = 80; // More samples for Kalman filter accuracy
+const HIGH_PING_WARNING_THRESHOLD = 100; // Show warning at 100ms+ (esports-grade)
+const HIGH_PING_WARNING_COOLDOWN = 60000; // 60 seconds between warnings (less spam)
+const BROADCAST_RETRY_COUNT = 5; // More retries for reliability
+const BROADCAST_RETRY_DELAY = 10; // 10ms retry delay (ultra-fast)
 
 // Calculate median for more stable ping display (removes outliers)
 const calculateMedian = (arr: number[]): number => {
@@ -565,20 +573,26 @@ export const useFriendLudoGame = () => {
       })
       // Predictive dice animation - syncs rolling state INSTANTLY
       .on('broadcast', { event: 'dice_rolling' }, (payload) => {
-        const { senderId, timestamp, predictedValue } = payload.payload;
+        const senderId = payload.payload.senderId || payload.payload.s;
+        const timestamp = payload.payload.timestamp || payload.payload.t;
+        const predictedValue = payload.payload.predictedValue;
+        
         if (senderId !== user?.id && timestamp > lastActionRef.current) {
-          console.log('[LudoKingSync] Dice rolling animation sync');
-          // Start animation immediately - Ludo King style
+          console.log('[UltraLatency] Dice rolling animation sync');
+          // Start animation immediately - sub-20ms response
           setGameState(prev => ({ ...prev, isRolling: true, canRoll: false }));
-          // Initialize predictive animator for opponent
           ludoPredictiveAnimator.startDiceRoll();
         }
       })
       .on('broadcast', { event: 'dice_roll' }, (payload) => {
-        const { senderId, diceValue, timestamp, actionId } = payload.payload;
+        const senderId = payload.payload.senderId || payload.payload.s;
+        const diceValue = payload.payload.diceValue;
+        const timestamp = payload.payload.timestamp || payload.payload.t;
+        const actionId = payload.payload.actionId || payload.payload.a;
+        
         if (senderId !== user?.id && timestamp > lastActionRef.current) {
           lastActionRef.current = timestamp;
-          console.log('[LudoKingSync] Dice result:', diceValue, 'Action:', actionId);
+          console.log('[UltraLatency] Dice result:', diceValue);
           
           // Confirm predictive animation
           ludoPredictiveAnimator.confirmDiceRoll(diceValue);
@@ -623,10 +637,15 @@ export const useFriendLudoGame = () => {
         }
       })
       .on('broadcast', { event: 'token_move' }, (payload) => {
-        const { senderId, color, tokenId, newPlayers, nextTurn, gotSix, winnerId, timestamp, actionId } = payload.payload;
+        // Support both old and new payload formats
+        const senderId = payload.payload.senderId || payload.payload.s;
+        const timestamp = payload.payload.timestamp || payload.payload.t;
+        const actionId = payload.payload.actionId || payload.payload.a;
+        const { color, tokenId, newPlayers, nextTurn, gotSix, winnerId } = payload.payload;
+        
         if (senderId !== user?.id && timestamp > lastActionRef.current) {
           lastActionRef.current = timestamp;
-          console.log('[LudoKingSync] Token move:', { color, tokenId, actionId });
+          console.log('[UltraLatency] Token move:', { color, tokenId });
           
           // Confirm predictive animation
           if (newPlayers) {
@@ -705,23 +724,38 @@ export const useFriendLudoGame = () => {
       })
       // Ping/Pong for ultra-low latency measurement - Ludo King style
       .on('broadcast', { event: 'ping' }, (payload) => {
-        const { senderId, pingId, timestamp } = payload.payload;
+        // Support both old and new ping formats
+        const senderId = payload.payload.senderId || payload.payload.s;
+        const pingId = payload.payload.pingId || payload.payload.p;
+        const timestamp = payload.payload.timestamp || payload.payload.t;
+        
         if (senderId !== user?.id) {
-          // Respond with pong IMMEDIATELY
+          // Respond with pong IMMEDIATELY using minimal payload
           channel.send({
             type: 'broadcast',
             event: 'pong',
-            payload: { senderId: user?.id, pingId, originalTimestamp: timestamp, responseTime: Date.now() }
+            payload: { s: user?.id, p: pingId, o: timestamp, r: HighPrecisionTimer.timestamp() }
           });
         }
       })
       .on('broadcast', { event: 'pong' }, (payload) => {
-        const { senderId, pingId, originalTimestamp } = payload.payload;
+        // Support both old and new pong formats
+        const senderId = payload.payload.senderId || payload.payload.s;
+        const pingId = payload.payload.pingId || payload.payload.p;
+        const originalTimestamp = payload.payload.originalTimestamp || payload.payload.o;
+        
         if (senderId !== user?.id && pendingPingsRef.current.has(pingId)) {
+          // Use high-precision timing for sub-20ms accuracy
+          const receiveTime = HighPrecisionTimer.now();
+          const sendTime = pendingPingsRef.current.get(pingId)!;
           const latency = Date.now() - originalTimestamp;
           pendingPingsRef.current.delete(pingId);
           
-          // Use global latency tracker + sync engine for enterprise-grade stats
+          // Feed into Kalman filter for professional prediction
+          const predictedLatency = ultraLatencyPredictor.update(latency);
+          networkAnalyzer.recordPing(latency);
+          
+          // Also feed legacy systems for compatibility
           globalLatencyTracker.addSample(latency);
           ludoSyncEngine.recordLatency(latency);
           
@@ -734,11 +768,12 @@ export const useFriendLudoGame = () => {
             pingHistoryRef.current.shift();
           }
           
-          // Use exponential moving average for ultra-smooth display (esports-grade)
+          // Use Kalman-filtered smoothed latency for ultra-stable display
+          const smoothedLatency = ultraLatencyPredictor.getSmoothedLatency();
           setPingLatency(prev => {
-            if (prev === null) return stats.median;
-            // EMA with 0.85 weight for new value (faster response for 20ms target)
-            return Math.round(prev * 0.15 + stats.median * 0.85);
+            if (prev === null) return Math.round(smoothedLatency);
+            // Ultra-smooth EMA with 0.9 weight for 20ms target responsiveness
+            return Math.round(prev * 0.1 + smoothedLatency * 0.9);
           });
           
           // Update QoS manager with quality
@@ -803,36 +838,40 @@ export const useFriendLudoGame = () => {
       return;
     }
 
+    // Ultra-fast ping with high-precision timing
     const sendPing = () => {
       if (!gameActionChannelRef.current) return;
       
-      // Use short ID for efficiency
-      const pingId = shortId();
-      const timestamp = Date.now();
+      // Use ultra-short ID for minimal payload
+      const pingId = ultraShortId();
+      const timestamp = HighPrecisionTimer.timestamp();
       
-      pendingPingsRef.current.set(pingId, timestamp);
+      // Store with high-precision time for accurate measurement
+      pendingPingsRef.current.set(pingId, HighPrecisionTimer.now());
       
-      // Send ping with minimal payload - Ludo King style
+      // Send ping with minimal payload (esports-optimized)
       gameActionChannelRef.current.send({
         type: 'broadcast',
         event: 'ping',
-        payload: { senderId: user.id, pingId, timestamp }
+        payload: { s: user.id, p: pingId, t: timestamp } // Shortened keys for smaller payload
       }).catch(() => {
         pendingPingsRef.current.delete(pingId);
+        networkAnalyzer.recordLoss(); // Track packet loss
       });
       
-      // Clean up old pending pings aggressively
-      const now = Date.now();
+      // Clean up old pending pings aggressively (shorter timeout)
+      const now = HighPrecisionTimer.now();
       let missedPings = 0;
       pendingPingsRef.current.forEach((time, id) => {
         if (now - time > PING_TIMEOUT_MS) {
           pendingPingsRef.current.delete(id);
           missedPings++;
+          networkAnalyzer.recordLoss();
         }
       });
       
       // Track missed pings for connection quality
-      if (missedPings > 2) {
+      if (missedPings > 1) {
         setConnectionQuality('poor');
       }
       
@@ -842,27 +881,50 @@ export const useFriendLudoGame = () => {
       }
     };
 
-    // Send initial ping IMMEDIATELY (5ms delay for esports-grade start)
-    const initialDelay = setTimeout(sendPing, 5);
-    
-    // Esports-grade adaptive ping interval (100ms base, adapts to connection)
+    // Connection warmup for optimal first-ping performance
+    const performWarmup = async () => {
+      console.log('[UltraLatency] Starting connection warmup...');
+      let warmupPings = 0;
+      const warmupInterval = setInterval(() => {
+        if (warmupPings < ULTRA_CONFIG.CONNECTION_WARMUP_PINGS) {
+          sendPing();
+          warmupPings++;
+        } else {
+          clearInterval(warmupInterval);
+          console.log('[UltraLatency] Warmup complete, starting regular pings');
+          setupPingInterval();
+        }
+      }, ULTRA_CONFIG.WARMUP_INTERVAL);
+    };
+
+    // Esports-grade adaptive ping interval (80ms ultra-low target)
     const setupPingInterval = () => {
       if (pingIntervalRef.current) {
         clearInterval(pingIntervalRef.current);
       }
-      // Use minimum of our target (100ms) or QoS-recommended interval
-      const qosInterval = globalQoSManager.getPingInterval();
-      const interval = Math.min(PING_INTERVAL_MS, qosInterval);
+      
+      // Adaptive interval based on network quality
+      const analysis = networkAnalyzer.analyze();
+      let interval: number;
+      
+      if (analysis.grade === 'S' || analysis.grade === 'A') {
+        interval = ULTRA_CONFIG.PING_INTERVAL_ULTRA; // 80ms for excellent
+      } else if (analysis.grade === 'B') {
+        interval = PING_INTERVAL_MS; // 100ms for good
+      } else {
+        interval = Math.min(150, globalQoSManager.getPingInterval()); // 150ms max for poor
+      }
+      
       pingIntervalRef.current = setInterval(sendPing, interval);
     };
     
-    setupPingInterval();
+    // Start with warmup, then regular pings
+    performWarmup();
     
-    // Re-adjust interval every 3 seconds for faster adaptation
-    const adaptiveInterval = setInterval(setupPingInterval, 3000);
+    // Re-adjust interval every 2 seconds for ultra-responsive adaptation
+    const adaptiveInterval = setInterval(setupPingInterval, 2000);
 
     return () => {
-      clearTimeout(initialDelay);
       clearInterval(adaptiveInterval);
       if (pingIntervalRef.current) {
         clearInterval(pingIntervalRef.current);
@@ -871,38 +933,55 @@ export const useFriendLudoGame = () => {
     };
   }, [gameState.phase, user, opponentOnline]);
 
-  // Broadcast game action with Ludo King-level reliability
+  // Ultra-low latency broadcast with fast-path routing
   const broadcastAction = useCallback(async (event: string, payload: any) => {
     if (!gameActionChannelRef.current || !user) return;
     
-    const timestamp = Date.now();
+    const timestamp = HighPrecisionTimer.timestamp();
     lastActionRef.current = timestamp;
     
-    // Generate action ID for optimistic update tracking
-    const actionId = generateActionId();
+    // Generate ultra-short action ID for minimal payload
+    const actionId = ultraShortId();
+    
+    // Check if this is a priority event (fast-path)
+    const isPriority = ULTRA_CONFIG.PRIORITY_EVENTS.has(event);
     
     const message = {
       type: 'broadcast' as const,
       event,
-      payload: { ...payload, senderId: user.id, timestamp, actionId }
+      payload: { 
+        ...payload, 
+        s: user.id, // Shortened key
+        t: timestamp, 
+        a: actionId 
+      }
     };
     
     // Track channel activity
     globalChannelManager.markActivity(`ludo-actions-${gameState.roomId}`, 'send');
     
-    // Fast retry with exponential backoff
+    // Priority events: send immediately without waiting
+    if (isPriority) {
+      gameActionChannelRef.current.send(message).catch(() => {
+        networkAnalyzer.recordLoss();
+      });
+      return actionId;
+    }
+    
+    // Non-priority: ultra-fast retry with minimal backoff
     for (let attempt = 0; attempt <= BROADCAST_RETRY_COUNT; attempt++) {
       try {
         await gameActionChannelRef.current.send(message);
-        console.log(`[LudoKingSync] Broadcast ${event} success, actionId: ${actionId}`);
-        return actionId; // Success - return action ID for tracking
+        return actionId;
       } catch (err) {
         globalChannelManager.markError(`ludo-actions-${gameState.roomId}`);
+        networkAnalyzer.recordLoss();
+        
         if (attempt < BROADCAST_RETRY_COUNT) {
-          console.warn(`[LudoKingSync] Retry ${attempt + 1}/${BROADCAST_RETRY_COUNT}`);
-          await new Promise(resolve => setTimeout(resolve, BROADCAST_RETRY_DELAY * Math.pow(2, attempt)));
+          // Ultra-fast backoff: 10ms, 15ms, 22ms, 33ms, 50ms
+          await new Promise(resolve => setTimeout(resolve, BROADCAST_RETRY_DELAY * Math.pow(1.5, attempt)));
         } else {
-          console.error('[LudoKingSync] Broadcast failed after retries:', err);
+          console.error('[UltraLatency] Broadcast failed after retries');
           setConnectionStatus('disconnected');
         }
       }
