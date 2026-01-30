@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils';
 interface MinesGridProps {
   minePositions: number[];
   revealedPositions: number[];
+  pendingPositions?: number[];
   isGameOver: boolean;
   onTileClick: (position: number) => void;
   disabled: boolean;
@@ -13,13 +14,19 @@ interface MinesGridProps {
 const MinesGrid = ({ 
   minePositions, 
   revealedPositions, 
+  pendingPositions = [],
   isGameOver, 
   onTileClick,
   disabled 
 }: MinesGridProps) => {
   const getTileState = (position: number) => {
+    // Confirmed revealed positions
     if (revealedPositions.includes(position)) {
       return minePositions.includes(position) ? 'mine' : 'gem';
+    }
+    // Pending positions (optimistic UI) - show as gem until confirmed
+    if (pendingPositions.includes(position)) {
+      return 'pending';
     }
     if (isGameOver && minePositions.includes(position)) {
       return 'mine-revealed';
@@ -32,8 +39,9 @@ const MinesGrid = ({
       {Array.from({ length: 25 }).map((_, index) => {
         const state = getTileState(index);
         const isRevealed = state !== 'hidden';
+        const isPending = state === 'pending';
         const isMine = state === 'mine' || state === 'mine-revealed';
-        const isGem = state === 'gem';
+        const isGem = state === 'gem' || isPending;
         
         return (
           <motion.button

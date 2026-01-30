@@ -31,6 +31,7 @@ const MinesGame = () => {
         <MinesGrid
           minePositions={gameState.minePositions}
           revealedPositions={gameState.revealedPositions}
+          pendingPositions={gameState.pendingPositions}
           isGameOver={isGameOver}
           onTileClick={revealTile}
           disabled={!isPlaying}

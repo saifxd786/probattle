@@ -23,6 +23,7 @@ interface GameState {
   minesCount: number;
   minePositions: number[]; // Only populated after game ends
   revealedPositions: number[];
+  pendingPositions: number[]; // Optimistic UI - tapped but not confirmed
   currentMultiplier: number;
   potentialWin: number;
   isWin: boolean | null;
@@ -51,6 +52,7 @@ export const useSecureMinesGame = () => {
     minesCount: 3,
     minePositions: [],
     revealedPositions: [],
+    pendingPositions: [],
     currentMultiplier: 1,
     potentialWin: 0,
     isWin: null,
@@ -173,8 +175,9 @@ export const useSecureMinesGame = () => {
         ...prev,
         phase: 'playing',
         gameId: data.game.id,
-        minePositions: [], // NEVER set from server response during game
+        minePositions: [],
         revealedPositions: data.game.revealedPositions || [],
+        pendingPositions: [],
         currentMultiplier: data.game.currentMultiplier || 1,
         potentialWin: data.game.potentialWin || prev.entryAmount,
         isWin: null,
@@ -236,6 +239,7 @@ export const useSecureMinesGame = () => {
           ...prev,
           phase: 'result',
           revealedPositions: data.revealedPositions,
+          pendingPositions: [],
           minePositions: data.minePositions,
           isWin: false,
           finalAmount: 0
@@ -254,6 +258,7 @@ export const useSecureMinesGame = () => {
         setGameState(prev => ({
           ...prev,
           revealedPositions: data.revealedPositions,
+          pendingPositions: prev.pendingPositions.filter(p => !data.revealedPositions.includes(p)),
           currentMultiplier: data.currentMultiplier,
           potentialWin: data.potentialWin
         }));
@@ -263,6 +268,7 @@ export const useSecureMinesGame = () => {
           setGameState(prev => ({
             ...prev,
             phase: 'result',
+            pendingPositions: [],
             isWin: true,
             finalAmount: data.potentialWin
           }));
@@ -283,24 +289,26 @@ export const useSecureMinesGame = () => {
 
   const revealTile = useCallback((position: number) => {
     if (gameState.phase !== 'playing' || !gameState.gameId) return;
+    // Check both confirmed AND pending positions
     if (gameState.revealedPositions.includes(position)) return;
+    if (gameState.pendingPositions.includes(position)) return;
     if (pendingRevealsRef.current.has(position)) return;
     
-    // Instant optimistic UI - show as "pending" visually
+    // Add to pending queue and visual pending state
     pendingRevealsRef.current.add(position);
     
-    // Optimistically add to revealed for instant visual feedback
+    // Optimistically show as pending (not confirmed)
     setGameState(prev => ({
       ...prev,
-      revealedPositions: [...prev.revealedPositions, position]
+      pendingPositions: [...prev.pendingPositions, position]
     }));
     
-    // Instant sound & haptic
+    // Instant haptic feedback
     hapticManager.tokenMove();
     
     // Process queue
     processRevealQueue();
-  }, [gameState.phase, gameState.gameId, gameState.revealedPositions, processRevealQueue]);
+  }, [gameState.phase, gameState.gameId, gameState.revealedPositions, gameState.pendingPositions, processRevealQueue]);
 
   const cashOut = useCallback(async () => {
     if (gameState.phase !== 'playing' || !gameState.gameId || gameState.revealedPositions.length === 0) {
@@ -350,12 +358,14 @@ export const useSecureMinesGame = () => {
   }, [gameState, toast]);
 
   const resetGame = useCallback(() => {
+    pendingRevealsRef.current.clear();
     setGameState(prev => ({
       ...prev,
       phase: 'idle',
       gameId: null,
       minePositions: [],
       revealedPositions: [],
+      pendingPositions: [],
       currentMultiplier: 1,
       potentialWin: prev.entryAmount,
       isWin: null,
