@@ -13,6 +13,16 @@ import {
   shortId,
   REALTIME_CONFIG 
 } from '@/utils/realtimeOptimizer';
+import {
+  ludoSyncEngine,
+  generateActionId,
+  fastChecksum,
+  SYNC_CONFIG
+} from '@/utils/ludoSyncEngine';
+import {
+  ludoPredictiveAnimator,
+  ANIMATION_TIMING
+} from '@/utils/ludoPredictiveAnimator';
 
 interface Token {
   id: number;
@@ -93,7 +103,8 @@ interface FriendGameState {
 
 const COLORS = ['red', 'green'];
 
-// Enhanced checksum for state comparison - includes more state data
+// === LUDO KING-LEVEL SYNC CONFIGURATION ===
+// Ultra-fast checksum for state comparison (uses FNV-1a from sync engine)
 const generateChecksum = (players: Player[], currentTurn: number, diceValue?: number): string => {
   const stateString = JSON.stringify({
     tokens: players.map(p => ({
@@ -104,29 +115,24 @@ const generateChecksum = (players: Player[], currentTurn: number, diceValue?: nu
     turn: currentTurn,
     dice: diceValue || 0
   });
-  let hash = 0;
-  for (let i = 0; i < stateString.length; i++) {
-    hash = ((hash << 5) - hash) + stateString.charCodeAt(i);
-    hash = hash & hash;
-  }
-  return hash.toString(16);
+  return fastChecksum(stateString);
 };
 
-// Checksum verification constants
-const CHECKSUM_INTERVAL_MS = 500; // Reduced: every 500ms for faster desync detection
-const CHECKSUM_MISMATCH_THRESHOLD = 2; // Auto-resync after 2 consecutive mismatches
-const CHECKSUM_RESYNC_COOLDOWN_MS = 2000; // Reduced cooldown for faster recovery
+// Optimized constants from SYNC_CONFIG
+const CHECKSUM_INTERVAL_MS = SYNC_CONFIG.RECONCILE_INTERVAL_MS; // 250ms for Ludo King-level sync
+const CHECKSUM_MISMATCH_THRESHOLD = 2;
+const CHECKSUM_RESYNC_COOLDOWN_MS = 1500; // Faster recovery
 
-// === ADVANCED LATENCY OPTIMIZATION CONSTANTS ===
-const PING_INTERVAL_MS = 500; // Faster ping: every 500ms (was 2000ms)
-const PING_TIMEOUT_MS = 1500; // Timeout for pending pings (was 3000ms)
-const HEARTBEAT_INTERVAL_MS = 2000; // Faster heartbeat: every 2 seconds (was 5 seconds)
-const HEARTBEAT_MISS_THRESHOLD = 2; // Disconnect after 2 missed heartbeats (was 3)
-const MAX_PING_HISTORY = 20; // Track more pings for accurate averaging (was 10)
-const HIGH_PING_WARNING_THRESHOLD = 300; // Show warning at 300ms (was 800ms)
-const HIGH_PING_WARNING_COOLDOWN = 60000; // 1 minute between warnings (was 2 minutes)
-const BROADCAST_RETRY_COUNT = 2; // Retry failed broadcasts
-const BROADCAST_RETRY_DELAY = 50; // Delay between retries (ms)
+// === ENTERPRISE LATENCY OPTIMIZATION ===
+const PING_INTERVAL_MS = 300; // Ultra-fast: 300ms pings
+const PING_TIMEOUT_MS = 1000; // Shorter timeout
+const HEARTBEAT_INTERVAL_MS = 1500; // Faster heartbeat
+const HEARTBEAT_MISS_THRESHOLD = 2;
+const MAX_PING_HISTORY = 30; // More samples for accuracy
+const HIGH_PING_WARNING_THRESHOLD = 200; // Lower threshold
+const HIGH_PING_WARNING_COOLDOWN = 30000; // 30 seconds
+const BROADCAST_RETRY_COUNT = 3; // More retries
+const BROADCAST_RETRY_DELAY = 25; // Faster retries
 
 // Calculate median for more stable ping display (removes outliers)
 const calculateMedian = (arr: number[]): number => {
@@ -530,37 +536,51 @@ export const useFriendLudoGame = () => {
     chatChannelRef.current = channel;
   }, []);
 
-  // Subscribe to game action broadcast for instant sync - OPTIMIZED for low latency
+  // Subscribe to game action broadcast for instant sync - LUDO KING OPTIMIZED
   const subscribeToGameActions = useCallback((roomId: string) => {
     if (gameActionChannelRef.current) {
       supabase.removeChannel(gameActionChannelRef.current);
     }
 
-    // Create channel with optimized broadcast configuration
+    // Create channel with Ludo King-level optimization
     const channel = supabase
       .channel(`ludo-actions-${roomId}`, {
         config: {
           broadcast: {
-            self: false, // Don't receive our own broadcasts (reduces overhead)
-            ack: false, // Disable acknowledgments for faster delivery
+            self: false, // Don't receive own broadcasts
+            ack: false, // Disable acknowledgments for sub-50ms delivery
           },
         },
       })
-      // Rolling start event - sync animation instantly
+      // Predictive dice animation - syncs rolling state INSTANTLY
       .on('broadcast', { event: 'dice_rolling' }, (payload) => {
-        const { senderId, timestamp } = payload.payload;
+        const { senderId, timestamp, predictedValue } = payload.payload;
         if (senderId !== user?.id && timestamp > lastActionRef.current) {
-          console.log('[LudoSync] Received dice rolling start - syncing animation');
+          console.log('[LudoKingSync] Dice rolling animation sync');
+          // Start animation immediately - Ludo King style
           setGameState(prev => ({ ...prev, isRolling: true, canRoll: false }));
+          // Initialize predictive animator for opponent
+          ludoPredictiveAnimator.startDiceRoll();
         }
       })
       .on('broadcast', { event: 'dice_roll' }, (payload) => {
-        const { senderId, diceValue, timestamp } = payload.payload;
+        const { senderId, diceValue, timestamp, actionId } = payload.payload;
         if (senderId !== user?.id && timestamp > lastActionRef.current) {
           lastActionRef.current = timestamp;
-          console.log('[LudoSync] Received dice result:', diceValue);
+          console.log('[LudoKingSync] Dice result:', diceValue, 'Action:', actionId);
           
-          // Update immediately - animation was already synced via dice_rolling event
+          // Confirm predictive animation
+          ludoPredictiveAnimator.confirmDiceRoll(diceValue);
+          
+          // Send action confirmation for optimistic update tracking
+          if (actionId && gameActionChannelRef.current) {
+            gameActionChannelRef.current.send({
+              type: 'broadcast',
+              event: 'action_confirm',
+              payload: { actionId, senderId: user?.id }
+            });
+          }
+          
           setGameState(prev => {
             const player = prev.players[prev.currentTurn];
             const canMove = player?.tokens.some(token => {
@@ -572,7 +592,6 @@ export const useFriendLudoGame = () => {
             if (!canMove) {
               const nextTurn = (prev.currentTurn + 1) % prev.players.length;
               const isMyTurn = prev.players[nextTurn]?.id === user?.id;
-              // Play sound only if QoS allows
               if (globalQoSManager.shouldPlaySounds()) {
                 soundManager.playDiceResult(diceValue);
               }
@@ -585,7 +604,6 @@ export const useFriendLudoGame = () => {
               };
             }
 
-            // Play sound only if QoS allows
             if (globalQoSManager.shouldPlaySounds()) {
               soundManager.playDiceResult(diceValue);
             }
@@ -594,10 +612,27 @@ export const useFriendLudoGame = () => {
         }
       })
       .on('broadcast', { event: 'token_move' }, (payload) => {
-        const { senderId, color, tokenId, newPlayers, nextTurn, gotSix, winnerId, timestamp } = payload.payload;
+        const { senderId, color, tokenId, newPlayers, nextTurn, gotSix, winnerId, timestamp, actionId } = payload.payload;
         if (senderId !== user?.id && timestamp > lastActionRef.current) {
           lastActionRef.current = timestamp;
-          console.log('[LudoSync] Received token move:', { color, tokenId });
+          console.log('[LudoKingSync] Token move:', { color, tokenId, actionId });
+          
+          // Confirm predictive animation
+          if (newPlayers) {
+            const movedToken = newPlayers.find((p: Player) => p.color === color)?.tokens.find((t: Token) => t.id === tokenId);
+            if (movedToken) {
+              ludoPredictiveAnimator.confirmTokenMove(color, tokenId, movedToken.position);
+            }
+          }
+          
+          // Send action confirmation
+          if (actionId && gameActionChannelRef.current) {
+            gameActionChannelRef.current.send({
+              type: 'broadcast',
+              event: 'action_confirm',
+              payload: { actionId, senderId: user?.id }
+            });
+          }
           
           // QoS-aware feedback
           if (globalQoSManager.shouldPlaySounds()) {
@@ -657,15 +692,15 @@ export const useFriendLudoGame = () => {
           });
         }
       })
-      // Ping/Pong for latency measurement
+      // Ping/Pong for ultra-low latency measurement - Ludo King style
       .on('broadcast', { event: 'ping' }, (payload) => {
         const { senderId, pingId, timestamp } = payload.payload;
         if (senderId !== user?.id) {
-          // Respond with pong
+          // Respond with pong IMMEDIATELY
           channel.send({
             type: 'broadcast',
             event: 'pong',
-            payload: { senderId: user?.id, pingId, originalTimestamp: timestamp }
+            payload: { senderId: user?.id, pingId, originalTimestamp: timestamp, responseTime: Date.now() }
           });
         }
       })
@@ -675,25 +710,27 @@ export const useFriendLudoGame = () => {
           const latency = Date.now() - originalTimestamp;
           pendingPingsRef.current.delete(pingId);
           
-          // Use global latency tracker for enterprise-grade stats
+          // Use global latency tracker + sync engine for enterprise-grade stats
           globalLatencyTracker.addSample(latency);
+          ludoSyncEngine.recordLatency(latency);
+          
           const stats = globalLatencyTracker.getStats();
           const quality = globalLatencyTracker.getQuality();
           
-          // Track locally too for backwards compatibility
+          // Track locally for backwards compatibility
           pingHistoryRef.current.push(latency);
           if (pingHistoryRef.current.length > MAX_PING_HISTORY) {
             pingHistoryRef.current.shift();
           }
           
-          // Use median from global tracker for stable display
+          // Use exponential moving average for ultra-smooth display
           setPingLatency(prev => {
             if (prev === null) return stats.median;
-            // Smooth transition
+            // EMA with 0.7 weight for new value (fast response)
             return Math.round(prev * 0.3 + stats.median * 0.7);
           });
           
-          // Set quality and update QoS manager (filter out 'disconnected' for local state)
+          // Update QoS manager with quality
           const localQuality = quality === 'disconnected' ? 'poor' : quality;
           setConnectionQuality(localQuality);
           globalQoSManager.updateQuality(quality);
@@ -701,24 +738,34 @@ export const useFriendLudoGame = () => {
           // Update channel health
           globalChannelManager.markActivity(`ludo-actions-${gameState.roomId}`, 'receive');
           
-          // Update heartbeat on successful pong
+          // Reset heartbeat on successful pong
           lastHeartbeatRef.current = Date.now();
           heartbeatMissedRef.current = 0;
           setConnectionStatus('connected');
           
-          // Show warning at lower threshold - only if QoS allows sounds
+          // Show warning only for persistent high latency
           const now = Date.now();
-          if (latency > HIGH_PING_WARNING_THRESHOLD && now - lastHighPingWarningRef.current > HIGH_PING_WARNING_COOLDOWN) {
+          if (latency > HIGH_PING_WARNING_THRESHOLD && 
+              stats.median > HIGH_PING_WARNING_THRESHOLD && // Only if median is also high
+              now - lastHighPingWarningRef.current > HIGH_PING_WARNING_COOLDOWN) {
             lastHighPingWarningRef.current = now;
             sonnerToast.warning(`High latency: ${latency}ms`, {
-              description: `Jitter: ${stats.jitter}ms. Switch to faster network.`,
-              duration: 2500,
+              description: `Average: ${stats.average}ms. Consider switching to WiFi.`,
+              duration: 2000,
             });
           }
         }
       })
+      // Action confirmation for optimistic updates
+      .on('broadcast', { event: 'action_confirm' }, (payload) => {
+        const { actionId, senderId } = payload.payload;
+        if (senderId !== user?.id && actionId) {
+          ludoSyncEngine.confirmAction(actionId);
+          console.log('[LudoKingSync] Action confirmed:', actionId);
+        }
+      })
       .subscribe((status) => {
-        console.log('[LudoSync] Game action channel status:', status);
+        console.log('[LudoKingSync] Channel status:', status);
         if (status === 'SUBSCRIBED') {
           setConnectionStatus('connected');
           reconnectAttemptsRef.current = 0;
@@ -747,22 +794,22 @@ export const useFriendLudoGame = () => {
     const sendPing = () => {
       if (!gameActionChannelRef.current) return;
       
-      const pingId = `ping-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
+      // Use short ID for efficiency
+      const pingId = shortId();
       const timestamp = Date.now();
       
       pendingPingsRef.current.set(pingId, timestamp);
       
-      // Send ping with minimal payload for speed
+      // Send ping with minimal payload - Ludo King style
       gameActionChannelRef.current.send({
         type: 'broadcast',
         event: 'ping',
         payload: { senderId: user.id, pingId, timestamp }
       }).catch(() => {
-        // Silent fail - next ping will try again
         pendingPingsRef.current.delete(pingId);
       });
       
-      // Clean up old pending pings with faster timeout
+      // Clean up old pending pings aggressively
       const now = Date.now();
       let missedPings = 0;
       pendingPingsRef.current.forEach((time, id) => {
@@ -772,31 +819,34 @@ export const useFriendLudoGame = () => {
         }
       });
       
-      // If opponent is offline, don't show misleading high ping values
+      // Track missed pings for connection quality
+      if (missedPings > 2) {
+        setConnectionQuality('poor');
+      }
+      
+      // Don't show misleading values when opponent is offline
       if (missedPings > 0 && !opponentOnline) {
         setPingLatency(null);
       }
     };
 
-    // Send initial ping immediately
-    const initialDelay = setTimeout(() => {
-      sendPing();
-    }, 50); // Reduced to 50ms for faster initial measurement
+    // Send initial ping IMMEDIATELY (10ms delay)
+    const initialDelay = setTimeout(sendPing, 10);
     
-    // Adaptive ping interval based on connection quality
+    // Ultra-fast adaptive ping interval
     const setupPingInterval = () => {
       if (pingIntervalRef.current) {
         clearInterval(pingIntervalRef.current);
       }
-      // Use QoS manager for adaptive interval (faster when good, slower when poor to reduce overhead)
-      const interval = globalQoSManager.getPingInterval();
+      // Ludo King uses ~300ms pings, we do the same
+      const interval = Math.max(PING_INTERVAL_MS, globalQoSManager.getPingInterval());
       pingIntervalRef.current = setInterval(sendPing, interval);
     };
     
     setupPingInterval();
     
-    // Re-adjust ping interval every 10 seconds based on current quality
-    const adaptiveInterval = setInterval(setupPingInterval, 10000);
+    // Re-adjust interval every 5 seconds for responsiveness
+    const adaptiveInterval = setInterval(setupPingInterval, 5000);
 
     return () => {
       clearTimeout(initialDelay);
@@ -808,42 +858,43 @@ export const useFriendLudoGame = () => {
     };
   }, [gameState.phase, user, opponentOnline]);
 
-  // Broadcast game action instantly with retry mechanism for reliability
+  // Broadcast game action with Ludo King-level reliability
   const broadcastAction = useCallback(async (event: string, payload: any) => {
     if (!gameActionChannelRef.current || !user) return;
     
     const timestamp = Date.now();
     lastActionRef.current = timestamp;
     
-    // Use shortId for more efficient message IDs
-    const messageId = shortId();
+    // Generate action ID for optimistic update tracking
+    const actionId = generateActionId();
     
     const message = {
       type: 'broadcast' as const,
       event,
-      payload: { ...payload, senderId: user.id, timestamp, msgId: messageId }
+      payload: { ...payload, senderId: user.id, timestamp, actionId }
     };
     
     // Track channel activity
     globalChannelManager.markActivity(`ludo-actions-${gameState.roomId}`, 'send');
     
-    // Attempt to send with retry on failure
+    // Fast retry with exponential backoff
     for (let attempt = 0; attempt <= BROADCAST_RETRY_COUNT; attempt++) {
       try {
         await gameActionChannelRef.current.send(message);
-        return; // Success - exit
+        console.log(`[LudoKingSync] Broadcast ${event} success, actionId: ${actionId}`);
+        return actionId; // Success - return action ID for tracking
       } catch (err) {
         globalChannelManager.markError(`ludo-actions-${gameState.roomId}`);
         if (attempt < BROADCAST_RETRY_COUNT) {
-          console.warn(`[LudoSync] Broadcast attempt ${attempt + 1} failed, retrying...`);
-          await new Promise(resolve => setTimeout(resolve, BROADCAST_RETRY_DELAY * (attempt + 1)));
+          console.warn(`[LudoKingSync] Retry ${attempt + 1}/${BROADCAST_RETRY_COUNT}`);
+          await new Promise(resolve => setTimeout(resolve, BROADCAST_RETRY_DELAY * Math.pow(2, attempt)));
         } else {
-          console.error('[LudoSync] All broadcast attempts failed:', err);
-          // Update connection status on persistent failures
+          console.error('[LudoKingSync] Broadcast failed after retries:', err);
           setConnectionStatus('disconnected');
         }
       }
     }
+    return null;
   }, [user, gameState.roomId]);
 
   // Reconnection with exponential backoff
@@ -1527,27 +1578,34 @@ export const useFriendLudoGame = () => {
       return;
     }
 
-    console.log('[LudoGame] Rolling dice for user:', effectiveUserId);
+    console.log('[LudoKingSync] Rolling dice for user:', effectiveUserId);
 
-    // Broadcast rolling START immediately - opponent sees animation in sync
-    broadcastAction('dice_rolling', {});
-    
+    // === LUDO KING PREDICTIVE ANIMATION ===
+    // 1. Start local animation IMMEDIATELY (no waiting)
+    const predictedValue = ludoPredictiveAnimator.startDiceRoll();
     setGameState(prev => ({ ...prev, isRolling: true, canRoll: false }));
-
-    // Generate dice value immediately but wait for animation
+    
+    // 2. Broadcast rolling start so opponent syncs animation
+    broadcastAction('dice_rolling', { predictedValue });
+    
+    // 3. Generate actual dice value
     const diceValue = generateDiceValue();
     
-    await new Promise(resolve => setTimeout(resolve, 800));
+    // 4. Wait for animation (reduced from 800ms for snappier feel)
+    await new Promise(resolve => setTimeout(resolve, ANIMATION_TIMING.DICE_ROLL_MIN_DURATION));
 
-    // Broadcast dice result - opponent updates immediately (already animated)
+    // 5. Confirm predictive animation with actual value
+    ludoPredictiveAnimator.confirmDiceRoll(diceValue);
+    
+    // 6. Broadcast result - opponent already animated, just needs value
     broadcastAction('dice_roll', { diceValue });
 
     setGameState(prev => {
       const player = prev.players[prev.currentTurn];
       
-      // Double-check user still matches (session could have changed)
+      // Double-check user still matches
       if (player?.id !== user.id) {
-        console.error('[LudoGame] Player ID changed during roll!');
+        console.error('[LudoKingSync] Player ID changed during roll!');
         return { ...prev, isRolling: false };
       }
 
@@ -1559,12 +1617,8 @@ export const useFriendLudoGame = () => {
       });
 
       if (!canMove) {
-        // No valid moves, go to next turn
         const nextTurn = (prev.currentTurn + 1) % prev.players.length;
-        
-        // Sync to database (background)
         syncGameState(prev.players, nextTurn, diceValue);
-
         return { ...prev, diceValue, isRolling: false, currentTurn: nextTurn, canRoll: false };
       }
 
@@ -1616,18 +1670,31 @@ export const useFriendLudoGame = () => {
 
     if (!canMove) return;
 
+    // === LUDO KING PREDICTIVE TOKEN MOVE ===
+    // Calculate new position for predictive animation
+    const fromPosition = token.position;
+    const toPosition = token.position === 0 ? 1 : Math.min(token.position + gameState.diceValue, 57);
+    
+    // Start predictive animation
+    ludoPredictiveAnimator.startTokenMove(color, tokenId, fromPosition, toPosition);
+    
     const { updatedPlayers, winner, gotSix } = moveToken(color, tokenId, gameState.diceValue, gameState.players);
     const nextTurn = gotSix ? gameState.currentTurn : (gameState.currentTurn + 1) % gameState.players.length;
 
-    // Broadcast token move immediately to opponent
+    // Broadcast token move with action tracking
     broadcastAction('token_move', {
       color,
       tokenId,
+      fromPosition,
+      toPosition,
       newPlayers: updatedPlayers,
       nextTurn,
       gotSix,
       winnerId: winner?.id || null
     });
+
+    // Confirm predictive animation
+    ludoPredictiveAnimator.confirmTokenMove(color, tokenId, toPosition);
 
     if (winner) {
       handleGameEnd(winner);
@@ -1702,6 +1769,10 @@ export const useFriendLudoGame = () => {
 
   // Reset game
   const resetGame = useCallback(() => {
+    // Clean up sync engine and predictive animator
+    ludoSyncEngine.destroy();
+    ludoPredictiveAnimator.destroy();
+    
     // Clean up channels
     if (channelRef.current) {
       supabase.removeChannel(channelRef.current);
