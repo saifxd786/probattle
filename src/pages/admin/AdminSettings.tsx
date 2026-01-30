@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Save, AlertTriangle, Loader2, Upload, QrCode, Trash2, ImageIcon } from 'lucide-react';
+import { Save, AlertTriangle, Loader2, Upload, QrCode, Trash2, ImageIcon, Wifi, WifiOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -10,6 +10,7 @@ import { toast } from '@/hooks/use-toast';
 import { useMaintenanceMode } from '@/hooks/useMaintenanceMode';
 import { usePaymentQR } from '@/hooks/usePaymentQR';
 import { usePaymentUPI, validateUPIId } from '@/hooks/usePaymentUPI';
+import { useGameAvailability } from '@/hooks/useGameAvailability';
 
 const AdminSettings = () => {
   const { 
@@ -36,6 +37,13 @@ const AdminSettings = () => {
     isLoading: isUPILoading,
   } = usePaymentUPI();
 
+  const {
+    availability: gameAvailability,
+    isLoading: isGameAvailabilityLoading,
+    isUpdating: isGameAvailabilityUpdating,
+    updateGameAvailability
+  } = useGameAvailability();
+
   const [maintenanceEnabled, setMaintenanceEnabled] = useState(false);
   const [maintenanceMsg, setMaintenanceMsg] = useState('');
   const [qrEnabledLocal, setQrEnabledLocal] = useState(false);
@@ -45,10 +53,6 @@ const AdminSettings = () => {
   const qrInputRef = useRef<HTMLInputElement>(null);
 
   const [settings, setSettings] = useState({
-    bgmiEnabled: true,
-    freefireEnabled: false,
-    clashEnabled: false,
-    ludoEnabled: false,
     telegramLink: 'https://t.me/ProBattleTournament',
   });
 
@@ -417,58 +421,176 @@ const AdminSettings = () => {
         </Card>
 
         {/* Game Settings */}
-        <Card className="glass-card">
+        <Card className="glass-card border-primary/20">
           <CardHeader>
-            <CardTitle className="text-lg">Game Availability</CardTitle>
-            <CardDescription>Enable or disable games on the platform</CardDescription>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Wifi className="w-5 h-5 text-primary" />
+              Game Availability
+            </CardTitle>
+            <CardDescription>
+              Enable or disable games on the platform. 
+              <span className="text-yellow-500 ml-1">Changes are live instantly!</span>
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <Label>BGMI</Label>
-                <p className="text-xs text-muted-foreground">Battlegrounds Mobile India</p>
+            {/* BGMI */}
+            <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30 border border-border">
+              <div className="flex items-center gap-3">
+                {gameAvailability.bgmi ? (
+                  <div className="w-8 h-8 rounded-full bg-green-500/20 flex items-center justify-center">
+                    <Wifi className="w-4 h-4 text-green-500" />
+                  </div>
+                ) : (
+                  <div className="w-8 h-8 rounded-full bg-red-500/20 flex items-center justify-center">
+                    <WifiOff className="w-4 h-4 text-red-500" />
+                  </div>
+                )}
+                <div>
+                  <Label className="text-base font-medium">BGMI</Label>
+                  <p className="text-xs text-muted-foreground">Battlegrounds Mobile India</p>
+                </div>
               </div>
-              <Switch
-                checked={settings.bgmiEnabled}
-                onCheckedChange={(checked) =>
-                  setSettings({ ...settings, bgmiEnabled: checked })
-                }
-              />
+              {isGameAvailabilityLoading ? (
+                <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+              ) : (
+                <Switch
+                  checked={gameAvailability.bgmi}
+                  onCheckedChange={(checked) =>
+                    updateGameAvailability('bgmi', checked, {
+                      onSuccess: () => toast({ 
+                        title: checked ? '✅ BGMI Online' : '🔴 BGMI Offline',
+                        description: `BGMI is now ${checked ? 'available' : 'unavailable'} for users`
+                      }),
+                      onError: () => toast({ title: 'Error', description: 'Failed to update', variant: 'destructive' })
+                    })
+                  }
+                  disabled={isGameAvailabilityUpdating}
+                />
+              )}
             </div>
-            <div className="flex items-center justify-between">
-              <div>
-                <Label>Free Fire</Label>
-                <p className="text-xs text-muted-foreground">Garena Free Fire</p>
+
+            {/* Ludo */}
+            <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30 border border-border">
+              <div className="flex items-center gap-3">
+                {gameAvailability.ludo ? (
+                  <div className="w-8 h-8 rounded-full bg-green-500/20 flex items-center justify-center">
+                    <Wifi className="w-4 h-4 text-green-500" />
+                  </div>
+                ) : (
+                  <div className="w-8 h-8 rounded-full bg-red-500/20 flex items-center justify-center">
+                    <WifiOff className="w-4 h-4 text-red-500" />
+                  </div>
+                )}
+                <div>
+                  <Label className="text-base font-medium">Ludo</Label>
+                  <p className="text-xs text-muted-foreground">Ludo King Multiplayer</p>
+                </div>
               </div>
-              <Switch
-                checked={settings.freefireEnabled}
-                onCheckedChange={(checked) =>
-                  setSettings({ ...settings, freefireEnabled: checked })
-                }
-              />
+              {isGameAvailabilityLoading ? (
+                <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+              ) : (
+                <Switch
+                  checked={gameAvailability.ludo}
+                  onCheckedChange={(checked) =>
+                    updateGameAvailability('ludo', checked, {
+                      onSuccess: () => toast({ 
+                        title: checked ? '✅ Ludo Online' : '🔴 Ludo Offline',
+                        description: `Ludo is now ${checked ? 'available' : 'unavailable'} for users`
+                      }),
+                      onError: () => toast({ title: 'Error', description: 'Failed to update', variant: 'destructive' })
+                    })
+                  }
+                  disabled={isGameAvailabilityUpdating}
+                />
+              )}
             </div>
-            <div className="flex items-center justify-between">
-              <div>
-                <Label>Clash Royale</Label>
-                <p className="text-xs text-muted-foreground">Supercell Clash Royale</p>
+
+            {/* Thimble */}
+            <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30 border border-border">
+              <div className="flex items-center gap-3">
+                {gameAvailability.thimble ? (
+                  <div className="w-8 h-8 rounded-full bg-green-500/20 flex items-center justify-center">
+                    <Wifi className="w-4 h-4 text-green-500" />
+                  </div>
+                ) : (
+                  <div className="w-8 h-8 rounded-full bg-red-500/20 flex items-center justify-center">
+                    <WifiOff className="w-4 h-4 text-red-500" />
+                  </div>
+                )}
+                <div>
+                  <Label className="text-base font-medium">Thimble</Label>
+                  <p className="text-xs text-muted-foreground">Cup & Ball Game</p>
+                </div>
               </div>
-              <Switch
-                checked={settings.clashEnabled}
-                onCheckedChange={(checked) =>
-                  setSettings({ ...settings, clashEnabled: checked })
-                }
-              />
+              {isGameAvailabilityLoading ? (
+                <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+              ) : (
+                <Switch
+                  checked={gameAvailability.thimble}
+                  onCheckedChange={(checked) =>
+                    updateGameAvailability('thimble', checked, {
+                      onSuccess: () => toast({ 
+                        title: checked ? '✅ Thimble Online' : '🔴 Thimble Offline',
+                        description: `Thimble is now ${checked ? 'available' : 'unavailable'} for users`
+                      }),
+                      onError: () => toast({ title: 'Error', description: 'Failed to update', variant: 'destructive' })
+                    })
+                  }
+                  disabled={isGameAvailabilityUpdating}
+                />
+              )}
             </div>
-            <div className="flex items-center justify-between">
-              <div>
-                <Label>Ludo</Label>
-                <p className="text-xs text-muted-foreground">Ludo King</p>
+
+            {/* Mines */}
+            <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30 border border-border">
+              <div className="flex items-center gap-3">
+                {gameAvailability.mines ? (
+                  <div className="w-8 h-8 rounded-full bg-green-500/20 flex items-center justify-center">
+                    <Wifi className="w-4 h-4 text-green-500" />
+                  </div>
+                ) : (
+                  <div className="w-8 h-8 rounded-full bg-red-500/20 flex items-center justify-center">
+                    <WifiOff className="w-4 h-4 text-red-500" />
+                  </div>
+                )}
+                <div>
+                  <Label className="text-base font-medium">Mines</Label>
+                  <p className="text-xs text-muted-foreground">Minesweeper Game</p>
+                </div>
+              </div>
+              {isGameAvailabilityLoading ? (
+                <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+              ) : (
+                <Switch
+                  checked={gameAvailability.mines}
+                  onCheckedChange={(checked) =>
+                    updateGameAvailability('mines', checked, {
+                      onSuccess: () => toast({ 
+                        title: checked ? '✅ Mines Online' : '🔴 Mines Offline',
+                        description: `Mines is now ${checked ? 'available' : 'unavailable'} for users`
+                      }),
+                      onError: () => toast({ title: 'Error', description: 'Failed to update', variant: 'destructive' })
+                    })
+                  }
+                  disabled={isGameAvailabilityUpdating}
+                />
+              )}
+            </div>
+
+            {/* Free Fire */}
+            <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30 border border-border opacity-60">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-gray-500/20 flex items-center justify-center">
+                  <WifiOff className="w-4 h-4 text-gray-500" />
+                </div>
+                <div>
+                  <Label className="text-base font-medium">Free Fire</Label>
+                  <p className="text-xs text-muted-foreground">Coming Soon</p>
+                </div>
               </div>
               <Switch
-                checked={settings.ludoEnabled}
-                onCheckedChange={(checked) =>
-                  setSettings({ ...settings, ludoEnabled: checked })
-                }
+                checked={false}
+                disabled
               />
             </div>
           </CardContent>
