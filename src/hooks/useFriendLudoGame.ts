@@ -4,7 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { toast as sonnerToast } from 'sonner';
 import { soundManager } from '@/utils/soundManager';
-import { hapticManager } from '@/utils/hapticManager';
+// hapticManager removed - vibration disabled for Friend mode per user request
 import { RealtimeChannel } from '@supabase/supabase-js';
 import { 
   globalLatencyTracker, 
@@ -366,7 +366,6 @@ export const useFriendLudoGame = () => {
           } else {
             // Play alert sound for manual resume
             soundManager.playDisconnectAlert();
-            hapticManager.warning();
           }
         }
       } catch (err) {
@@ -494,7 +493,6 @@ export const useFriendLudoGame = () => {
         
         // Play sound when opponent joins
         soundManager.playTurnChange();
-        hapticManager.selection();
       })
       .on('presence', { event: 'leave' }, ({ key }) => {
         console.log('[LudoPresence] Player left:', key);
@@ -675,9 +673,6 @@ export const useFriendLudoGame = () => {
           // QoS-aware feedback
           if (globalQoSManager.shouldPlaySounds()) {
             soundManager.playTokenMove();
-          }
-          if (globalQoSManager.shouldUseHaptics()) {
-            hapticManager.tokenMove();
           }
 
           setGameState(prev => {
@@ -1220,7 +1215,6 @@ export const useFriendLudoGame = () => {
       // Opponent went offline - start 60 second countdown
       console.log('[LudoSync] Opponent offline - starting disconnect countdown');
       soundManager.playDisconnectAlert();
-      hapticManager.warning();
       setOpponentDisconnectCountdown(60);
       
       // Start countdown interval
@@ -1579,7 +1573,6 @@ export const useFriendLudoGame = () => {
   // Move token function
   const moveToken = useCallback((color: string, tokenId: number, diceValue: number, players: Player[]): { updatedPlayers: Player[]; winner: Player | null; gotSix: boolean; capturedOpponent: boolean } => {
     soundManager.playTokenMove();
-    hapticManager.tokenMove();
 
     let winner: Player | null = null;
     let capturedOpponent = false;
@@ -1605,12 +1598,10 @@ export const useFriendLudoGame = () => {
           if (token.position === 0 && diceValue === 6) {
             newPosition = 1;
             soundManager.playTokenEnter();
-            hapticManager.tokenEnter();
           } else if (token.position > 0) {
             newPosition = Math.min(token.position + diceValue, 57);
             if (newPosition === 57) {
               soundManager.playTokenHome();
-              hapticManager.tokenHome();
             }
           }
 
@@ -1647,7 +1638,6 @@ export const useFriendLudoGame = () => {
     if (capturedOpponent) {
       setTimeout(() => {
         soundManager.playCapture();
-        hapticManager.tokenCapture();
       }, 200);
     }
 
@@ -2469,7 +2459,6 @@ export const useFriendLudoGame = () => {
             
             // Play turn change sound
             soundManager.playTurnChange();
-            hapticManager.warning();
             
             sonnerToast.warning('Time expired!', {
               description: 'Turn passed to opponent',
