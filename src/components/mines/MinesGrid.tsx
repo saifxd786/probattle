@@ -57,10 +57,16 @@ const MinesGrid = ({
             <AnimatePresence mode="sync">
               {isRevealed ? (
                 <motion.div
-                  key={state}
-                  initial={false}
+                  key={`revealed-${index}`}
+                  initial={{ scale: 0.85, opacity: 0.9 }}
                   animate={{ scale: 1, opacity: 1 }}
-                  transition={{ duration: 0 }}
+                  transition={{ 
+                    type: "spring",
+                    stiffness: 600,
+                    damping: 25,
+                    mass: 0.5
+                  }}
+                  style={{ willChange: 'transform, opacity' }}
                 >
                   {isMine ? (
                     <Bomb className="w-8 h-8 text-red-500" />
