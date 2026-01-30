@@ -24,3 +24,9 @@ verify_jwt = false
 # Run deposit cleanup every hour
 [functions.scheduled-deposit-cleanup.schedule]
 cron = "0 * * * *"
+
+[functions.ludo-game-server]
+verify_jwt = false
+
+[functions.ai-support-chat]
+verify_jwt = false
