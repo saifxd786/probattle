@@ -1,4 +1,4 @@
-import { LayoutDashboard, Gamepad2, Users, CreditCard, Settings, LogOut, ChevronLeft, ArrowLeftRight, Bell, Dices, Trophy, Ticket, Gem, MessageCircle, RotateCcw, Calendar, ShieldBan, UserX, Timer } from 'lucide-react';
+import { LayoutDashboard, Gamepad2, Users, CreditCard, Settings, LogOut, ChevronLeft, ArrowLeftRight, Bell, Dices, Trophy, Ticket, Gem, MessageCircle, RotateCcw, Calendar, ShieldBan, UserX, Timer, Smartphone } from 'lucide-react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
@@ -24,6 +24,7 @@ const navItems = [
   { title: 'Support', url: '/admin/support', icon: MessageCircle },
   { title: 'Users', url: '/admin/users', icon: Users },
   { title: 'Multi-Account', url: '/admin/multi-account', icon: UserX },
+  { title: 'Devices', url: '/admin/devices', icon: Smartphone },
   { title: 'Device Bans', url: '/admin/device-bans', icon: ShieldBan },
   { title: 'Payments', url: '/admin/payments', icon: CreditCard },
   { title: 'Transactions', url: '/admin/transactions', icon: ArrowLeftRight },

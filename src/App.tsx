@@ -57,6 +57,7 @@ const AdminSupport = lazy(() => import("./pages/admin/AdminSupport"));
 const AdminSpinWheelSettings = lazy(() => import("./pages/admin/AdminSpinWheelSettings"));
 const AdminDailyLoginSettings = lazy(() => import("./pages/admin/AdminDailyLoginSettings"));
 const AdminDeviceBans = lazy(() => import("./pages/admin/AdminDeviceBans"));
+const AdminDevices = lazy(() => import("./pages/admin/AdminDevices"));
 const AdminMultiAccountDetection = lazy(() => import("./pages/admin/AdminMultiAccountDetection"));
 const AdminTDMScheduler = lazy(() => import("./pages/admin/AdminTDMScheduler"));
 
@@ -210,6 +211,7 @@ const App = () => {
                         <Route path="redeem-codes" element={<AdminRedeemCodes />} />
                         <Route path="support" element={<AdminSupport />} />
                         <Route path="device-bans" element={<AdminDeviceBans />} />
+                        <Route path="devices" element={<AdminDevices />} />
                         <Route path="multi-account" element={<AdminMultiAccountDetection />} />
                         <Route path="tdm-scheduler" element={<AdminTDMScheduler />} />
                       </Route>

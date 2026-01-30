@@ -233,6 +233,72 @@ export type Database = {
         }
         Relationships: []
       }
+      devices: {
+        Row: {
+          account_count: number
+          app_version: string | null
+          ban_reason: string | null
+          banned_at: string | null
+          banned_by: string | null
+          created_at: string
+          device_id: string
+          device_model: string | null
+          first_seen_at: string
+          flag_reason: string | null
+          id: string
+          is_banned: boolean
+          is_emulator: boolean | null
+          is_flagged: boolean | null
+          is_rooted: boolean | null
+          last_seen_at: string
+          os_version: string | null
+          platform: string
+          updated_at: string
+        }
+        Insert: {
+          account_count?: number
+          app_version?: string | null
+          ban_reason?: string | null
+          banned_at?: string | null
+          banned_by?: string | null
+          created_at?: string
+          device_id: string
+          device_model?: string | null
+          first_seen_at?: string
+          flag_reason?: string | null
+          id?: string
+          is_banned?: boolean
+          is_emulator?: boolean | null
+          is_flagged?: boolean | null
+          is_rooted?: boolean | null
+          last_seen_at?: string
+          os_version?: string | null
+          platform: string
+          updated_at?: string
+        }
+        Update: {
+          account_count?: number
+          app_version?: string | null
+          ban_reason?: string | null
+          banned_at?: string | null
+          banned_by?: string | null
+          created_at?: string
+          device_id?: string
+          device_model?: string | null
+          first_seen_at?: string
+          flag_reason?: string | null
+          id?: string
+          is_banned?: boolean
+          is_emulator?: boolean | null
+          is_flagged?: boolean | null
+          is_rooted?: boolean | null
+          last_seen_at?: string
+          os_version?: string | null
+          platform?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       error_logs: {
         Row: {
           correlation_id: string
@@ -1594,6 +1660,41 @@ export type Database = {
         }
         Relationships: []
       }
+      user_devices: {
+        Row: {
+          device_id: string
+          id: string
+          is_primary: boolean | null
+          last_login_at: string
+          linked_at: string
+          user_id: string
+        }
+        Insert: {
+          device_id: string
+          id?: string
+          is_primary?: boolean | null
+          last_login_at?: string
+          linked_at?: string
+          user_id: string
+        }
+        Update: {
+          device_id?: string
+          id?: string
+          is_primary?: boolean | null
+          last_login_at?: string
+          linked_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_devices_device_id_fkey"
+            columns: ["device_id"]
+            isOneToOne: false
+            referencedRelation: "devices"
+            referencedColumns: ["device_id"]
+          },
+        ]
+      }
       user_login_sessions: {
         Row: {
           city: string | null
@@ -1898,7 +1999,29 @@ export type Database = {
         Args: { p_match_id: string }
         Returns: Json
       }
+      ban_device: {
+        Args: {
+          p_admin_id: string
+          p_cascade_to_users?: boolean
+          p_device_id: string
+          p_reason: string
+        }
+        Returns: {
+          affected_users: number
+          success: boolean
+        }[]
+      }
       cancel_ludo_room: { Args: { p_room_id: string }; Returns: Json }
+      check_device_status: {
+        Args: { p_device_id: string }
+        Returns: {
+          account_count: number
+          ban_reason: string
+          is_banned: boolean
+          is_flagged: boolean
+          max_accounts_reached: boolean
+        }[]
+      }
       check_referral_eligibility: { Args: { p_user_id: string }; Returns: Json }
       check_spin_availability: { Args: never; Returns: Json }
       claim_daily_bonus: { Args: never; Returns: Json }
@@ -1935,6 +2058,13 @@ export type Database = {
         Returns: boolean
       }
       join_ludo_room: { Args: { p_room_code: string }; Returns: Json }
+      link_user_to_device: {
+        Args: { p_device_id: string; p_user_id: string }
+        Returns: {
+          error_message: string
+          success: boolean
+        }[]
+      }
       log_user_session: {
         Args: {
           p_device_fingerprint?: string
@@ -1948,7 +2078,26 @@ export type Database = {
         Args: { _match_id: string; _user_id: string }
         Returns: boolean
       }
+      register_device: {
+        Args: {
+          p_app_version?: string
+          p_device_id: string
+          p_device_model?: string
+          p_is_emulator?: boolean
+          p_is_rooted?: boolean
+          p_os_version?: string
+          p_platform: string
+        }
+        Returns: {
+          account_count: number
+          ban_reason: string
+          can_create_account: boolean
+          device_banned: boolean
+          success: boolean
+        }[]
+      }
       spin_wheel: { Args: never; Returns: Json }
+      unban_device: { Args: { p_device_id: string }; Returns: boolean }
     }
     Enums: {
       app_role: "admin" | "moderator" | "user" | "agent"
