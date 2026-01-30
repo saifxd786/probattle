@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
-import { ArrowLeft, Loader2, Ban } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { ArrowLeft, Loader2, Ban, MapPin } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import Header from '@/components/Header';
 import BottomNav from '@/components/BottomNav';
@@ -13,23 +13,42 @@ import { useGameBan } from '@/hooks/useGameBan';
 import { Database } from '@/integrations/supabase/types';
 
 import bgmiCard from '@/assets/bgmi-card.jpg';
-import bgmiHeroBanner from '@/assets/bgmi-hero-banner.jpg';
 import tdmBanner from '@/assets/bgmi-tdm-banner.jpg';
-import classicBanner from '@/assets/classic-erangel-banner.jpg';
+
+// Map-specific banners
+import erangelBanner from '@/assets/map-erangel.jpg';
+import miramarBanner from '@/assets/map-miramar.jpg';
+import sanhokBanner from '@/assets/map-sanhok.jpg';
+import vikendiBanner from '@/assets/map-vikendi.jpg';
+import livikBanner from '@/assets/map-livik.jpg';
 
 type Match = Database['public']['Tables']['matches']['Row'];
 type MatchType = Database['public']['Enums']['match_type'];
 
 const tabs = ['TDM Matches', 'Classic Matches'] as const;
 
+// Map configurations with banners and colors
+const CLASSIC_MAPS = [
+  { id: 'all', name: 'All Maps', banner: erangelBanner, color: 'from-emerald-500/20' },
+  { id: 'Erangel', name: 'Erangel', banner: erangelBanner, color: 'from-green-500/20' },
+  { id: 'Miramar', name: 'Miramar', banner: miramarBanner, color: 'from-amber-500/20' },
+  { id: 'Sanhok', name: 'Sanhok', banner: sanhokBanner, color: 'from-lime-500/20' },
+  { id: 'Vikendi', name: 'Vikendi', banner: vikendiBanner, color: 'from-cyan-500/20' },
+  { id: 'Livik', name: 'Livik', banner: livikBanner, color: 'from-purple-500/20' },
+] as const;
+
 const BGMIPage = () => {
   const { user } = useAuth();
   const nowMs = useNow(1000);
   const { isBanned, isLoading: isBanLoading } = useGameBan('bgmi');
   const [activeTab, setActiveTab] = useState<typeof tabs[number]>('TDM Matches');
+  const [selectedMap, setSelectedMap] = useState<string>('all');
   const [matches, setMatches] = useState<Match[]>([]);
   const [userRegistrations, setUserRegistrations] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Get current map config for Classic mode
+  const currentMapConfig = CLASSIC_MAPS.find(m => m.id === selectedMap) || CLASSIC_MAPS[0];
 
   // Show banned message
   if (isBanned && !isBanLoading) {
@@ -105,8 +124,19 @@ const BGMIPage = () => {
     fetchUserRegistrations();
   };
 
-  const currentBanner = activeTab === 'TDM Matches' ? tdmBanner : classicBanner;
-  const currentBannerTitle = activeTab === 'TDM Matches' ? 'TDM Matches' : 'Classic Matches';
+  // Filter matches by map for Classic mode
+  const filteredMatches = activeTab === 'Classic Matches' && selectedMap !== 'all'
+    ? matches.filter(m => m.map_name === selectedMap)
+    : matches;
+
+  // Dynamic banner based on tab and selected map
+  const currentBanner = activeTab === 'TDM Matches' ? tdmBanner : currentMapConfig.banner;
+  const currentBannerTitle = activeTab === 'TDM Matches' ? 'TDM Matches' : `Classic - ${currentMapConfig.name}`;
+  const bannerSubtitle = activeTab === 'TDM Matches' 
+    ? 'Fast-paced close combat action' 
+    : currentMapConfig.id === 'all' 
+      ? 'Battle royale survival mode' 
+      : `Survive in ${currentMapConfig.name}`;
 
   const getMatchMode = (match: Match) => {
     switch (match.match_type) {
@@ -144,52 +174,53 @@ const BGMIPage = () => {
     <div className="min-h-screen bg-background pb-20">
       <Header />
       
-      {/* Hero Banner - Changes based on selected tab */}
+      {/* Hero Banner - Changes based on selected tab and map */}
       <section className="relative pt-16">
-        <motion.div 
-          key={activeTab}
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.3 }}
-          className="relative h-52 md:h-64 overflow-hidden"
-        >
-          <img 
-            src={currentBanner}
-            alt={currentBannerTitle}
-            className="w-full h-full object-cover"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent" />
-          
-          {/* Back button */}
-          <Link 
-            to="/" 
-            className="absolute top-4 left-4 flex items-center gap-2 text-sm text-foreground/80 hover:text-primary transition-colors z-10"
+        <AnimatePresence mode="wait">
+          <motion.div 
+            key={`${activeTab}-${selectedMap}`}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
+            className="relative h-52 md:h-64 overflow-hidden"
           >
-            <ArrowLeft className="w-4 h-4" />
-            Back
-          </Link>
+            <img 
+              src={currentBanner}
+              alt={currentBannerTitle}
+              className="w-full h-full object-cover"
+            />
+            <div className={`absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent`} />
+            
+            {/* Back button */}
+            <Link 
+              to="/" 
+              className="absolute top-4 left-4 flex items-center gap-2 text-sm text-foreground/80 hover:text-primary transition-colors z-10"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Back
+            </Link>
 
-          {/* Title - Mode specific */}
-          <div className="absolute bottom-4 left-4 right-4">
-            <div className="flex items-center gap-3">
-              <img 
-                src={bgmiCard} 
-                alt="BGMI" 
-                className="w-12 h-12 rounded-lg object-cover border border-primary/30"
-              />
-              <div>
-                <h1 className="font-display text-2xl font-bold drop-shadow-lg">
-                  {activeTab === 'TDM Matches' ? 'TDM Matches' : 'Classic Matches'}
-                </h1>
-                <p className="text-xs text-foreground/80">
-                  {activeTab === 'TDM Matches' 
-                    ? 'Fast-paced close combat action' 
-                    : 'Battle royale survival mode'}
-                </p>
+            {/* Title - Mode specific */}
+            <div className="absolute bottom-4 left-4 right-4">
+              <div className="flex items-center gap-3">
+                <img 
+                  src={bgmiCard} 
+                  alt="BGMI" 
+                  className="w-12 h-12 rounded-lg object-cover border border-primary/30"
+                />
+                <div>
+                  <h1 className="font-display text-2xl font-bold drop-shadow-lg">
+                    {currentBannerTitle}
+                  </h1>
+                  <p className="text-xs text-foreground/80">
+                    {bannerSubtitle}
+                  </p>
+                </div>
               </div>
             </div>
-          </div>
-        </motion.div>
+          </motion.div>
+        </AnimatePresence>
       </section>
 
       {/* Tabs */}
@@ -199,7 +230,10 @@ const BGMIPage = () => {
             {tabs.map((tab) => (
               <button
                 key={tab}
-                onClick={() => setActiveTab(tab)}
+                onClick={() => {
+                  setActiveTab(tab);
+                  if (tab === 'TDM Matches') setSelectedMap('all');
+                }}
                 className={`relative flex-1 py-3 px-4 rounded-lg font-display text-xs uppercase tracking-wider transition-all duration-300 ${
                   activeTab === tab
                     ? 'text-primary'
@@ -220,26 +254,72 @@ const BGMIPage = () => {
         </div>
       </section>
 
+      {/* Map Selector - Only for Classic Matches */}
+      <AnimatePresence>
+        {activeTab === 'Classic Matches' && (
+          <motion.section
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.2 }}
+            className="bg-background/80 backdrop-blur-sm border-b border-border/30"
+          >
+            <div className="container mx-auto px-4 py-3">
+              <div className="flex items-center gap-2 mb-2">
+                <MapPin className="w-4 h-4 text-primary" />
+                <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">Select Map</span>
+              </div>
+              <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+                {CLASSIC_MAPS.map((map) => (
+                  <button
+                    key={map.id}
+                    onClick={() => setSelectedMap(map.id)}
+                    className={`relative flex-shrink-0 px-4 py-2 rounded-lg text-xs font-medium transition-all duration-200 ${
+                      selectedMap === map.id
+                        ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/25'
+                        : 'bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground'
+                    }`}
+                  >
+                    {map.name}
+                    {selectedMap === map.id && (
+                      <motion.div
+                        layoutId="selectedMap"
+                        className="absolute inset-0 bg-primary rounded-lg -z-10"
+                        transition={{ duration: 0.2 }}
+                      />
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </motion.section>
+        )}
+      </AnimatePresence>
+
       {/* Matches Grid */}
-      <section className="container mx-auto px-4 pb-6">
+      <section className="container mx-auto px-4 pb-6 pt-4">
         {isLoading ? (
           <div className="flex items-center justify-center py-12">
             <Loader2 className="w-6 h-6 animate-spin text-primary" />
           </div>
-        ) : matches.length === 0 ? (
+        ) : filteredMatches.length === 0 ? (
           <div className="text-center py-12">
-            <p className="text-muted-foreground">No matches available right now</p>
+            <p className="text-muted-foreground">
+              {selectedMap !== 'all' 
+                ? `No ${selectedMap} matches available right now` 
+                : 'No matches available right now'}
+            </p>
             <p className="text-sm text-muted-foreground mt-1">Check back later for new matches!</p>
           </div>
         ) : (
           <motion.div
-            key={activeTab}
+            key={`${activeTab}-${selectedMap}`}
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3 }}
             className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
           >
-            {matches.map((match, index) => (
+            {filteredMatches.map((match, index) => (
               <MatchCard
                 key={match.id}
                 id={match.id}
