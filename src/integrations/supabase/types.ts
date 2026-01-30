@@ -2022,6 +2022,7 @@ export type Database = {
           max_accounts_reached: boolean
         }[]
       }
+      check_ludo_room: { Args: { p_room_code: string }; Returns: Json }
       check_referral_eligibility: { Args: { p_user_id: string }; Returns: Json }
       check_spin_availability: { Args: never; Returns: Json }
       claim_daily_bonus: { Args: never; Returns: Json }
