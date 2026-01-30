@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { ArrowLeft, Trophy, Users, Coins, HelpCircle, Shield, Ban } from 'lucide-react';
+import { ArrowLeft, HelpCircle, Shield, Ban } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import Header from '@/components/Header';
 import BottomNav from '@/components/BottomNav';
@@ -12,9 +12,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { useDynamicStats, formatNumber, formatCurrency } from '@/hooks/useDynamicStats';
 import { useGameBan } from '@/hooks/useGameBan';
-import thimbleBanner from '@/assets/thimble-banner.jpg';
 
 const howToPlay = [
   { step: 1, title: 'Select Amount', description: 'Choose how much you want to play with (₹10 - ₹500)' },
@@ -25,14 +23,7 @@ const howToPlay = [
 
 const ThimblePage = () => {
   const navigate = useNavigate();
-  const dynamicStats = useDynamicStats();
   const { isBanned, isLoading: isBanLoading } = useGameBan('thimble');
-
-  const stats = [
-    { icon: Trophy, label: 'Winners Today', value: formatNumber(dynamicStats.winnersToday) },
-    { icon: Users, label: 'Playing Now', value: formatNumber(dynamicStats.playingNow) },
-    { icon: Coins, label: 'Distributed Today', value: formatCurrency(dynamicStats.distributedToday) },
-  ];
 
   // Show banned message
   if (isBanned && !isBanLoading) {
@@ -77,51 +68,6 @@ const ThimblePage = () => {
             <ArrowLeft className="w-4 h-4" />
             Back to Games
           </Button>
-        </motion.div>
-
-        {/* Hero Banner */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="relative rounded-2xl overflow-hidden mb-6"
-        >
-          <img 
-            src={thimbleBanner} 
-            alt="Thimble Game" 
-            className="w-full h-40 md:h-56 object-cover"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/60 to-transparent" />
-          <div className="absolute bottom-0 left-0 right-0 p-4 md:p-6">
-            <h1 className="font-display text-2xl md:text-4xl font-bold mb-1">
-              <span className="text-gradient">Thimble</span> Game
-            </h1>
-            <p className="text-sm md:text-base text-muted-foreground">
-              Track the ball, pick the right cup, win up to 3x instantly!
-            </p>
-          </div>
-        </motion.div>
-
-        {/* Stats */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="grid grid-cols-3 gap-3 mb-6"
-        >
-          {stats.map((stat, i) => (
-            <div key={i} className="glass-card p-3 text-center">
-              <stat.icon className="w-5 h-5 mx-auto mb-1 text-primary" />
-              <motion.p 
-                key={stat.value}
-                initial={{ scale: 1.1 }}
-                animate={{ scale: 1 }}
-                className="font-display text-lg font-bold text-foreground"
-              >
-                {stat.value}
-              </motion.p>
-              <p className="text-xs text-muted-foreground">{stat.label}</p>
-            </div>
-          ))}
         </motion.div>
 
         {/* Game Area */}
