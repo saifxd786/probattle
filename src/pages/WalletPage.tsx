@@ -497,22 +497,22 @@ const WalletPage = () => {
               )}
             </div>
             
-            <div className="flex gap-3">
+            <div className="flex gap-2 w-full overflow-hidden">
               <Button 
                 size="sm" 
-                className="flex-1 bg-green-600 hover:bg-green-700 text-white border-none" 
+                className="flex-1 min-w-0 bg-green-600 hover:bg-green-700 text-white border-none truncate" 
                 onClick={() => setIsDepositOpen(true)}
               >
-                <Plus className="w-4 h-4 mr-1" />
-                Add Money
+                <Plus className="w-4 h-4 shrink-0 mr-1" />
+                <span className="truncate">Add Money</span>
               </Button>
               <Button 
                 size="sm" 
-                className="flex-1 bg-red-600 hover:bg-red-700 text-white border-none" 
+                className="flex-1 min-w-0 bg-red-600 hover:bg-red-700 text-white border-none truncate" 
                 onClick={() => setIsWithdrawOpen(true)}
               >
-                <ArrowUpRight className="w-4 h-4 mr-1" />
-                Withdraw
+                <ArrowUpRight className="w-4 h-4 shrink-0 mr-1" />
+                <span className="truncate">Withdraw</span>
               </Button>
             </div>
             
