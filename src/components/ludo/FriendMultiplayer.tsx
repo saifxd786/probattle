@@ -23,7 +23,7 @@ const FriendMultiplayer = ({
   pingLatency,
   opponentOnline
 }: FriendMultiplayerProps) => {
-  const [mode, setMode] = useState<'select' | 'create' | 'join'>('select');
+  const [mode, setMode] = useState<'select' | 'create' | 'join' | 'confirm-join'>('select');
   const [roomCode, setRoomCode] = useState('');
   const [createdRoomCode, setCreatedRoomCode] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -31,6 +31,16 @@ const FriendMultiplayer = ({
   const [waitingForPlayer, setWaitingForPlayer] = useState(false);
   const [currentRoomId, setCurrentRoomId] = useState<string | null>(null);
   const [isFreeMatch, setIsFreeMatch] = useState(false);
+  
+  // Room preview info for join confirmation
+  const [roomPreview, setRoomPreview] = useState<{
+    roomCode: string;
+    entryAmount: number;
+    rewardAmount: number;
+    isFree: boolean;
+    hostName: string;
+    hostAvatar: string | null;
+  } | null>(null);
 
   const actualEntryAmount = isFreeMatch ? 0 : entryAmount;
   const rewardAmount = isFreeMatch ? 0 : Math.floor(entryAmount * 1.5);
@@ -91,7 +101,8 @@ const FriendMultiplayer = ({
     }
   };
 
-  const handleJoinRoom = async () => {
+  // Check room info before joining
+  const handleCheckRoom = async () => {
     if (!roomCode.trim() || roomCode.length !== 6) {
       toast.error('Please enter a valid 6-digit code');
       return;
@@ -99,8 +110,59 @@ const FriendMultiplayer = ({
 
     setIsLoading(true);
     try {
-      const { data, error } = await supabase.rpc('join_ludo_room', {
+      const { data, error } = await supabase.rpc('check_ludo_room', {
         p_room_code: roomCode.toUpperCase()
+      });
+
+      if (error) throw error;
+      
+      const result = data as { 
+        success: boolean; 
+        message?: string; 
+        room_code?: string; 
+        entry_amount?: number; 
+        reward_amount?: number;
+        is_free?: boolean;
+        host_name?: string;
+        host_avatar?: string | null;
+      };
+      
+      if (!result.success) {
+        toast.error(result.message || 'Room not found');
+        return;
+      }
+
+      // Set room preview and switch to confirmation mode
+      setRoomPreview({
+        roomCode: result.room_code!,
+        entryAmount: result.entry_amount || 0,
+        rewardAmount: result.reward_amount || 0,
+        isFree: result.is_free || false,
+        hostName: result.host_name || 'Unknown',
+        hostAvatar: result.host_avatar || null
+      });
+      setMode('confirm-join');
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to check room');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Actually join the room after confirmation
+  const handleJoinRoom = async () => {
+    if (!roomPreview) return;
+
+    // Check wallet balance if paid match
+    if (!roomPreview.isFree && walletBalance < roomPreview.entryAmount) {
+      toast.error(`Insufficient balance. Need ₹${roomPreview.entryAmount}`);
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const { data, error } = await supabase.rpc('join_ludo_room', {
+        p_room_code: roomPreview.roomCode
       });
 
       if (error) throw error;
@@ -113,7 +175,7 @@ const FriendMultiplayer = ({
       }
 
       toast.success('Joined room! Game starting...');
-      onRoomCreated(result.room_id!, result.room_code!, false, result.entry_amount || entryAmount, result.reward_amount || rewardAmount);
+      onRoomCreated(result.room_id!, result.room_code!, false, result.entry_amount || roomPreview.entryAmount, result.reward_amount || roomPreview.rewardAmount);
     } catch (error: any) {
       toast.error(error.message || 'Failed to join room');
     } finally {
@@ -595,7 +657,185 @@ const FriendMultiplayer = ({
     );
   }
 
-  // Join Room Screen
+  // Join Confirmation Screen - Shows room info before joining
+  if (mode === 'confirm-join' && roomPreview) {
+    const hasEnoughBalance = roomPreview.isFree || walletBalance >= roomPreview.entryAmount;
+    
+    return (
+      <div className="min-h-screen bg-[#0A0A0F] p-4 pb-24">
+        {/* Background */}
+        <div 
+          className="fixed inset-0 -z-10 pointer-events-none"
+          style={{
+            background: `
+              radial-gradient(circle at 50% 50%, ${roomPreview.isFree ? 'rgba(99, 102, 241, 0.08)' : 'rgba(245, 158, 11, 0.08)'} 0%, transparent 50%),
+              #0A0A0F
+            `,
+          }}
+        />
+
+        {/* Header */}
+        <motion.div 
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex items-center gap-3 mb-6"
+        >
+          <button 
+            type="button"
+            onClick={() => {
+              setMode('join');
+              setRoomPreview(null);
+            }}
+            className="w-10 h-10 rounded-xl bg-gray-900/50 border border-gray-800 flex items-center justify-center hover:bg-gray-800/50 active:scale-95 transition-all"
+          >
+            <ArrowLeft className="w-5 h-5 text-gray-400" />
+          </button>
+          <div>
+            <h1 className="font-bold text-lg text-white">Confirm Join</h1>
+            <p className="text-xs text-gray-500">Review room details</p>
+          </div>
+        </motion.div>
+
+        {/* Room Info Card */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 0.1 }}
+          className={`p-5 rounded-xl border mb-5 ${
+            roomPreview.isFree 
+              ? 'bg-indigo-500/10 border-indigo-500/30' 
+              : 'bg-amber-500/10 border-amber-500/30'
+          }`}
+        >
+          {/* Room Code */}
+          <div className="text-center mb-4">
+            <p className="text-xs text-gray-500 uppercase tracking-wider mb-1">Room Code</p>
+            <p className="font-mono text-2xl font-bold text-white tracking-[0.3em]">
+              {roomPreview.roomCode}
+            </p>
+          </div>
+
+          {/* Match Type Badge */}
+          <div className="flex justify-center mb-4">
+            {roomPreview.isFree ? (
+              <div className="px-4 py-2 rounded-lg bg-indigo-500/20 border border-indigo-500/40">
+                <div className="flex items-center gap-2">
+                  <Gift className="w-5 h-5 text-indigo-400" />
+                  <span className="font-semibold text-indigo-400">FREE MATCH</span>
+                </div>
+              </div>
+            ) : (
+              <div className="px-4 py-2 rounded-lg bg-amber-500/20 border border-amber-500/40">
+                <div className="flex items-center gap-2">
+                  <Coins className="w-5 h-5 text-amber-400" />
+                  <span className="font-semibold text-amber-400">PAID MATCH</span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Host Info */}
+          <div className="flex items-center justify-center gap-3 mb-4 p-3 rounded-lg bg-gray-900/50">
+            <div className="w-10 h-10 rounded-full bg-gray-800 flex items-center justify-center overflow-hidden">
+              {roomPreview.hostAvatar ? (
+                <img src={roomPreview.hostAvatar} alt="Host" className="w-full h-full object-cover" />
+              ) : (
+                <Users className="w-5 h-5 text-gray-500" />
+              )}
+            </div>
+            <div>
+              <p className="text-xs text-gray-500">Created by</p>
+              <p className="text-sm font-medium text-white">{roomPreview.hostName}</p>
+            </div>
+          </div>
+
+          {/* Entry & Prize */}
+          {!roomPreview.isFree && (
+            <div className="space-y-2">
+              <div className="flex justify-between items-center p-2 rounded-lg bg-gray-900/50">
+                <span className="text-xs text-gray-500">Entry Fee</span>
+                <span className="text-lg font-bold text-white">₹{roomPreview.entryAmount}</span>
+              </div>
+              <div className="flex justify-between items-center p-2 rounded-lg bg-emerald-500/10">
+                <span className="text-xs text-gray-500 flex items-center gap-1">
+                  <Trophy className="w-3 h-3 text-amber-400" />
+                  Winner Prize
+                </span>
+                <span className="text-lg font-bold text-emerald-400">₹{roomPreview.rewardAmount}</span>
+              </div>
+            </div>
+          )}
+        </motion.div>
+
+        {/* Balance Check */}
+        {!roomPreview.isFree && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.15 }}
+            className={`p-3 rounded-xl border mb-5 ${
+              hasEnoughBalance 
+                ? 'bg-gray-900/50 border-gray-800' 
+                : 'bg-red-500/10 border-red-500/30'
+            }`}
+          >
+            <div className="flex justify-between items-center">
+              <span className="text-xs text-gray-500">Your Balance</span>
+              <span className={`text-sm font-medium ${hasEnoughBalance ? 'text-white' : 'text-red-400'}`}>
+                ₹{walletBalance.toFixed(2)}
+              </span>
+            </div>
+            {!hasEnoughBalance && (
+              <p className="text-xs text-red-400 mt-2 text-center">
+                ⚠️ Need ₹{(roomPreview.entryAmount - walletBalance).toFixed(2)} more
+              </p>
+            )}
+          </motion.div>
+        )}
+
+        {/* Action Buttons */}
+        <div className="space-y-3">
+          <motion.button
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            onClick={handleJoinRoom}
+            disabled={!hasEnoughBalance || isLoading}
+            className="w-full py-3.5 rounded-xl font-bold text-sm text-white flex items-center justify-center gap-2 disabled:opacity-50"
+            style={{
+              background: roomPreview.isFree 
+                ? 'linear-gradient(135deg, #6366F1 0%, #4F46E5 100%)'
+                : 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)',
+            }}
+          >
+            {isLoading ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Joining...
+              </>
+            ) : (
+              <>
+                <UserPlus className="w-4 h-4" />
+                {roomPreview.isFree ? 'Join Free Match' : `Join & Pay ₹${roomPreview.entryAmount}`}
+              </>
+            )}
+          </motion.button>
+
+          <button
+            onClick={() => {
+              setMode('join');
+              setRoomPreview(null);
+            }}
+            className="w-full py-3 rounded-xl bg-gray-900/50 border border-gray-800 text-gray-400 font-medium text-sm"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Join Room Screen - Enter code
   return (
     <div className="min-h-screen bg-[#0A0A0F] p-4 pb-24">
       {/* Background */}
@@ -657,7 +897,7 @@ const FriendMultiplayer = ({
         className="p-3 rounded-xl bg-gray-900/50 border border-gray-800 mb-5"
       >
         <p className="text-[10px] text-gray-500 text-center mb-2">
-          Entry fee will be deducted upon joining
+          Room type will be shown after entering code
         </p>
         <div className="flex justify-between items-center">
           <span className="text-xs text-gray-500">Your Balance</span>
@@ -665,12 +905,12 @@ const FriendMultiplayer = ({
         </div>
       </motion.div>
 
-      {/* Join Button */}
+      {/* Check Room Button */}
       <motion.button
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.2 }}
-        onClick={handleJoinRoom}
+        onClick={handleCheckRoom}
         disabled={roomCode.length !== 6 || isLoading}
         className="w-full py-3.5 rounded-xl font-bold text-sm text-white flex items-center justify-center gap-2 disabled:opacity-50"
         style={{
@@ -680,29 +920,26 @@ const FriendMultiplayer = ({
         {isLoading ? (
           <>
             <Loader2 className="w-4 h-4 animate-spin" />
-            Joining...
+            Checking...
           </>
         ) : (
           <>
-            <UserPlus className="w-4 h-4" />
-            Join Room
+            <Hash className="w-4 h-4" />
+            Check Room
           </>
         )}
       </motion.button>
 
-      {/* Prize Preview */}
+      {/* Info Note */}
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.25 }}
-        className="mt-5 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-center"
+        className="mt-5 p-3 rounded-xl bg-blue-500/10 border border-blue-500/20 text-center"
       >
-        <div className="flex items-center justify-center gap-2">
-          <Trophy className="w-4 h-4 text-amber-400" />
-          <span className="text-xs text-gray-400">Winner takes</span>
-          <span className="text-sm font-bold text-amber-400">1.5x</span>
-          <span className="text-xs text-gray-400">of combined entry</span>
-        </div>
+        <p className="text-xs text-gray-400">
+          You'll see the room details (paid/free, entry amount) before joining
+        </p>
       </motion.div>
     </div>
   );
