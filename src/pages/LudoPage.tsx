@@ -270,6 +270,7 @@ const LudoPage = () => {
     rollDice: friendRollDice,
     handleTokenClick: friendHandleTokenClick,
     resetGame: friendResetGame,
+    exitAndForfeit: friendExitAndForfeit,
     sendChatMessage,
     clearCaptureAnimation,
     resyncGameState,
@@ -708,13 +709,23 @@ const LudoPage = () => {
                 <AlertDialogHeader>
                   <AlertDialogTitle>Exit Game?</AlertDialogTitle>
                   <AlertDialogDescription>
-                    If you exit now, you will lose the match and forfeit your entry fee of ₹{friendGameState.entryAmount}.
+                    {friendGameState.entryAmount > 0 
+                      ? `If you exit now, you will lose the match and forfeit your entry fee of ₹${friendGameState.entryAmount}. Your opponent wins immediately.`
+                      : 'If you exit now, your opponent will win the match immediately.'
+                    }
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                   <AlertDialogCancel>Continue Playing</AlertDialogCancel>
-                  <AlertDialogAction onClick={() => { friendResetGame(); setGameMode('select'); }} className="bg-red-600 hover:bg-red-700">
-                    Exit
+                  <AlertDialogAction 
+                    onClick={async () => { 
+                      await friendExitAndForfeit(); 
+                      friendResetGame(); 
+                      setGameMode('select'); 
+                    }} 
+                    className="bg-red-600 hover:bg-red-700"
+                  >
+                    Exit & Forfeit
                   </AlertDialogAction>
                 </AlertDialogFooter>
               </AlertDialogContent>

@@ -707,6 +707,26 @@ export const useFriendLudoGame = () => {
           }
         }
       })
+      // Listen for explicit forfeit (exit) from opponent - give immediate win
+      .on('broadcast', { event: 'player_forfeit' }, (payload) => {
+        const senderId = payload.payload.senderId || payload.payload.s;
+        const timestamp = payload.payload.timestamp || payload.payload.t;
+        
+        if (senderId !== user?.id && timestamp > lastActionRef.current) {
+          lastActionRef.current = timestamp;
+          console.log('[LudoSync] Opponent forfeited! Claiming immediate win');
+          
+          // Clear any disconnect countdown
+          if (countdownIntervalRef.current) {
+            clearInterval(countdownIntervalRef.current);
+            countdownIntervalRef.current = null;
+          }
+          setOpponentDisconnectCountdown(null);
+          
+          // Immediately claim win - no waiting
+          claimWinByForfeit();
+        }
+      })
       .on('broadcast', { event: 'turn_timeout' }, (payload) => {
         const senderId = payload.payload.senderId || payload.payload.s;
         const { fromTurn, toTurn, reason } = payload.payload;
@@ -1176,6 +1196,152 @@ export const useFriendLudoGame = () => {
       description: 'Opponent was disconnected for too long.',
     });
   }, [user, gameState.roomId, gameState.phase, gameState.players, gameState.roomCode, gameState.rewardAmount, walletBalance, toast]);
+
+  // Claim win when opponent explicitly forfeits (exits the match)
+  const claimWinByForfeit = useCallback(async () => {
+    if (!user || !gameState.roomId || gameState.phase !== 'playing') return;
+    
+    const currentPlayer = gameState.players.find(p => p.id === user.id);
+    if (!currentPlayer) return;
+
+    console.log('[LudoSync] Claiming win by opponent forfeit (explicit exit)');
+    
+    // Update room status
+    await supabase
+      .from('ludo_rooms')
+      .update({
+        status: 'completed',
+        winner_id: user.id,
+        ended_at: new Date().toISOString()
+      })
+      .eq('id', gameState.roomId);
+
+    // Credit reward to wallet (only for paid matches)
+    if (gameState.rewardAmount > 0) {
+      await supabase.from('profiles').update({
+        wallet_balance: walletBalance + gameState.rewardAmount
+      }).eq('id', user.id);
+
+      // Create transaction
+      await supabase.from('transactions').insert({
+        user_id: user.id,
+        type: 'prize',
+        amount: gameState.rewardAmount,
+        status: 'completed',
+        description: `Won Ludo match by opponent forfeit (Room: ${gameState.roomCode})`
+      });
+
+      setWalletBalance(prev => prev + gameState.rewardAmount);
+
+      // Send notification
+      await supabase.from('notifications').insert({
+        user_id: user.id,
+        title: '🏆 Victory!',
+        message: `Opponent quit the match. You won ₹${gameState.rewardAmount}!`,
+        type: 'success'
+      });
+    } else {
+      // Free match - just send notification
+      await supabase.from('notifications').insert({
+        user_id: user.id,
+        title: '🏆 Victory!',
+        message: 'Opponent quit the match. You win!',
+        type: 'success'
+      });
+    }
+
+    // Update game state to show win
+    setGameState(prev => ({
+      ...prev,
+      phase: 'result',
+      winner: currentPlayer,
+      canRoll: false
+    }));
+
+    // Clear any countdown
+    setOpponentDisconnectCountdown(null);
+    
+    toast({
+      title: '🏆 You Win!',
+      description: 'Opponent left the match.',
+    });
+  }, [user, gameState.roomId, gameState.phase, gameState.players, gameState.roomCode, gameState.rewardAmount, walletBalance, toast]);
+
+  // Exit match and forfeit to opponent (explicit quit - immediate loss)
+  const exitAndForfeit = useCallback(async () => {
+    if (!user || !gameState.roomId || gameState.phase !== 'playing') return;
+
+    console.log('[LudoSync] Player exiting - forfeiting match to opponent');
+    
+    // Broadcast forfeit to opponent FIRST (so they get immediate win)
+    if (gameActionChannelRef.current) {
+      await gameActionChannelRef.current.send({
+        type: 'broadcast',
+        event: 'player_forfeit',
+        payload: { 
+          senderId: user.id, 
+          s: user.id,
+          timestamp: Date.now(),
+          t: Date.now()
+        }
+      });
+    }
+
+    // Find opponent to award them the win
+    const opponent = gameState.players.find(p => p.id !== user.id);
+    
+    if (opponent) {
+      // Update room status - opponent wins
+      await supabase
+        .from('ludo_rooms')
+        .update({
+          status: 'completed',
+          winner_id: opponent.id,
+          ended_at: new Date().toISOString()
+        })
+        .eq('id', gameState.roomId);
+
+      // Award opponent (only for paid matches)
+      if (gameState.rewardAmount > 0) {
+        // Credit reward to opponent's wallet
+        const { data: opponentProfile } = await supabase
+          .from('profiles')
+          .select('wallet_balance')
+          .eq('id', opponent.id)
+          .single();
+        
+        if (opponentProfile) {
+          await supabase.from('profiles').update({
+            wallet_balance: Number(opponentProfile.wallet_balance) + gameState.rewardAmount
+          }).eq('id', opponent.id);
+
+          // Create transaction for opponent
+          await supabase.from('transactions').insert({
+            user_id: opponent.id,
+            type: 'prize',
+            amount: gameState.rewardAmount,
+            status: 'completed',
+            description: `Won Ludo match by opponent forfeit (Room: ${gameState.roomCode})`
+          });
+        }
+
+        // Notify opponent
+        await supabase.from('notifications').insert({
+          user_id: opponent.id,
+          title: '🏆 Victory!',
+          message: `Opponent quit the match. You won ₹${gameState.rewardAmount}!`,
+          type: 'success'
+        });
+      }
+    }
+
+    // Show loss toast to current user
+    toast({
+      title: 'Match Forfeited',
+      description: 'You left the match. Opponent wins.',
+      variant: 'destructive'
+    });
+  }, [user, gameState.roomId, gameState.phase, gameState.players, gameState.roomCode, gameState.rewardAmount, toast]);
 
   // Extend countdown - give opponent more time
   const extendDisconnectCountdown = useCallback(() => {
@@ -2495,6 +2661,7 @@ export const useFriendLudoGame = () => {
     rollDice,
     handleTokenClick,
     resetGame,
+    exitAndForfeit,
     sendChatMessage,
     triggerCaptureAnimation,
     clearCaptureAnimation,
