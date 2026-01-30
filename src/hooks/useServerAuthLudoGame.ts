@@ -66,6 +66,13 @@ interface ChatMessage {
   timestamp: Date;
 }
 
+// Animation lock state for UI
+interface AnimationLockState {
+  isLocked: boolean;
+  lockUntil: number;
+  lockType: 'DICE_ROLL' | 'TOKEN_MOVE' | 'CAPTURE' | null;
+}
+
 interface ServerAuthGameState {
   phase: 'idle' | 'waiting' | 'playing' | 'result';
   roomId: string | null;
@@ -93,6 +100,8 @@ interface ServerAuthGameState {
   serverVersion: number;
   lastServerSync: number;
   pendingAction: string | null;
+  // Animation lock (client mirrors server lock)
+  animationLock: AnimationLockState;
 }
 
 // ===== CONFIGURATION =====
@@ -113,12 +122,14 @@ export const useServerAuthLudoGame = () => {
   const lastActionTimeRef = useRef<number>(0);
   const pendingActionRef = useRef<string | null>(null);
   const heartbeatIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const pingIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const pendingPingsRef = useRef<Map<string, number>>(new Map());
+  const animationLockTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const staleChannelCleanupRef = useRef<NodeJS.Timeout | null>(null);
   
   // Reconnection refs
   const lastRoomIdRef = useRef<string | null>(null);
   const isReconnectingRef = useRef<boolean>(false);
+  const reconnectAttemptsRef = useRef<number>(0);
+  const maxReconnectAttempts = 5;
   
   // Game state
   const [gameState, setGameState] = useState<ServerAuthGameState>({
@@ -142,7 +153,12 @@ export const useServerAuthLudoGame = () => {
     rematchRequester: null,
     serverVersion: 0,
     lastServerSync: Date.now(),
-    pendingAction: null
+    pendingAction: null,
+    animationLock: {
+      isLocked: false,
+      lockUntil: 0,
+      lockType: null
+    }
   });
 
   // Connection state
@@ -275,6 +291,47 @@ export const useServerAuthLudoGame = () => {
   }, []);
 
   /**
+   * Set animation lock on client side (mirrors server)
+   */
+  const setClientAnimationLock = useCallback((lockUntil: number, lockType: 'DICE_ROLL' | 'TOKEN_MOVE' | 'CAPTURE') => {
+    const now = Date.now();
+    const lockDuration = lockUntil - now;
+    
+    if (lockDuration <= 0) return;
+    
+    setGameState(prev => ({
+      ...prev,
+      animationLock: {
+        isLocked: true,
+        lockUntil,
+        lockType
+      },
+      canRoll: false,
+      canMove: false
+    }));
+    
+    // Clear the lock when it expires
+    if (animationLockTimerRef.current) {
+      clearTimeout(animationLockTimerRef.current);
+    }
+    
+    animationLockTimerRef.current = setTimeout(() => {
+      setGameState(prev => {
+        const isMyTurn = user ? prev.players[prev.currentTurn]?.id === user.id : false;
+        return {
+          ...prev,
+          animationLock: {
+            isLocked: false,
+            lockUntil: 0,
+            lockType: null
+          },
+          canRoll: isMyTurn && prev.phase === 'playing'
+        };
+      });
+    }, lockDuration);
+  }, [user]);
+
+  /**
    * Handle server broadcast events
    */
   const handleServerEvent = useCallback((message: ServerMessage) => {
@@ -289,19 +346,31 @@ export const useServerAuthLudoGame = () => {
     }
 
     switch (message.type) {
+      // Handle animation lock from server
+      case 'ANIMATION_LOCK' as any: {
+        const payload = message.payload as { lockUntil: number; lockType: 'DICE_ROLL' | 'TOKEN_MOVE' | 'CAPTURE' };
+        setClientAnimationLock(payload.lockUntil, payload.lockType);
+        break;
+      }
+      
       case 'DICE_ROLL': {
-        const payload = message.payload as DiceRollPayload;
+        const payload = message.payload as DiceRollPayload & { animationLockUntil?: number };
         const isMyTurn = user?.id === payload.nextPlayerId;
         
         soundManager.playDiceResult(payload.diceValue);
         hapticManager.diceRoll();
         
+        // Apply animation lock if provided
+        if (payload.animationLockUntil) {
+          setClientAnimationLock(payload.animationLockUntil, 'DICE_ROLL');
+        }
+        
         setGameState(prev => ({
           ...prev,
           diceValue: payload.diceValue,
           isRolling: false,
-          canMove: payload.canMove && payload.playerId === user?.id,
-          canRoll: !payload.canMove && isMyTurn,
+          canMove: payload.canMove && payload.playerId === user?.id && !prev.animationLock.isLocked,
+          canRoll: !payload.canMove && isMyTurn && !prev.animationLock.isLocked,
           currentTurn: payload.currentTurn,
           serverVersion: message.version
         }));
@@ -309,10 +378,15 @@ export const useServerAuthLudoGame = () => {
       }
 
       case 'TOKEN_MOVE': {
-        const payload = message.payload as TokenMovePayload;
+        const payload = message.payload as TokenMovePayload & { animationLockUntil?: number };
         
         soundManager.playTokenMove();
         hapticManager.tokenMove();
+        
+        // Apply animation lock if provided
+        if (payload.animationLockUntil) {
+          setClientAnimationLock(payload.animationLockUntil, 'TOKEN_MOVE');
+        }
         
         setGameState(prev => ({
           ...prev,
@@ -324,10 +398,15 @@ export const useServerAuthLudoGame = () => {
       }
 
       case 'CAPTURE': {
-        const payload = message.payload as CapturePayload;
+        const payload = message.payload as CapturePayload & { animationLockUntil?: number };
         
         soundManager.playCapture();
         hapticManager.tokenCapture();
+        
+        // Apply animation lock if provided
+        if (payload.animationLockUntil) {
+          setClientAnimationLock(payload.animationLockUntil, 'CAPTURE');
+        }
         
         setGameState(prev => ({
           ...prev,
@@ -358,7 +437,8 @@ export const useServerAuthLudoGame = () => {
         setGameState(prev => ({
           ...prev,
           currentTurn: payload.turnIndex,
-          canRoll: isMyTurn,
+          // Only enable roll if animation is not locked
+          canRoll: isMyTurn && !prev.animationLock.isLocked,
           canMove: false,
           serverVersion: message.version
         }));
@@ -396,6 +476,12 @@ export const useServerAuthLudoGame = () => {
    * Roll dice - sends to server
    */
   const rollDice = useCallback(async () => {
+    // Check animation lock first
+    if (gameState.animationLock.isLocked) {
+      console.log('[ServerAuth] Action blocked: animation in progress');
+      return;
+    }
+    
     if (!gameState.canRoll || gameState.isRolling || !user || !gameState.roomId) {
       return;
     }
@@ -420,6 +506,19 @@ export const useServerAuthLudoGame = () => {
       toast({ title: 'Failed to roll', description: 'Please try again', variant: 'destructive' });
       return;
     }
+    
+    // Handle rate limit / animation lock errors specifically
+    if (response.type === 'ERROR') {
+      const error = (response as any).error;
+      setGameState(prev => ({ ...prev, isRolling: false, canRoll: true }));
+      
+      if (error === 'ANIMATION_LOCK' || error === 'ANIMATION_IN_PROGRESS') {
+        toast({ title: 'Please wait', description: 'Animation in progress', variant: 'default' });
+      } else if (error === 'ACTION_TOO_FAST' || error?.includes('RATE_LIMIT')) {
+        toast({ title: 'Too fast!', description: 'Please slow down', variant: 'destructive' });
+      }
+      return;
+    }
 
     // Server response handled via broadcast
   }, [gameState, user, sendServerAction, toast]);
@@ -428,6 +527,12 @@ export const useServerAuthLudoGame = () => {
    * Move token - sends to server for validation
    */
   const handleTokenClick = useCallback(async (color: string, tokenId: number) => {
+    // Check animation lock first
+    if (gameState.animationLock.isLocked) {
+      console.log('[ServerAuth] Action blocked: animation in progress');
+      return;
+    }
+    
     if (!gameState.canMove || !user || !gameState.roomId) {
       return;
     }
@@ -447,8 +552,20 @@ export const useServerAuthLudoGame = () => {
     if (!response || response.type === 'ERROR') {
       // Revert on failure
       setGameState(prev => ({ ...prev, canMove: true }));
+      const error = (response as any)?.error;
       const errorMsg = (response?.payload as any)?.message || 'Invalid move';
-      toast({ title: 'Move rejected', description: errorMsg, variant: 'destructive' });
+      
+      // Handle specific errors
+      if (error === 'ANIMATION_LOCK' || error === 'ANIMATION_IN_PROGRESS') {
+        toast({ title: 'Please wait', description: 'Animation in progress', variant: 'default' });
+      } else if (error === 'ACTION_TOO_FAST' || error?.includes('RATE_LIMIT')) {
+        toast({ title: 'Too fast!', description: 'Please slow down', variant: 'destructive' });
+      } else if (error === 'DUPLICATE_ACTION') {
+        // Silently ignore duplicates
+        console.log('[ServerAuth] Duplicate action ignored');
+      } else {
+        toast({ title: 'Move rejected', description: errorMsg, variant: 'destructive' });
+      }
       return;
     }
 
@@ -492,27 +609,84 @@ export const useServerAuthLudoGame = () => {
 
   // ===== RECONNECT-RESYNC =====
   
+  /**
+   * Clean up stale WebSocket connections
+   */
+  const cleanupStaleConnections = useCallback(() => {
+    console.log('[ServerAuth] Cleaning up stale connections...');
+    
+    // Remove existing channels before creating new ones
+    if (serverChannelRef.current) {
+      try {
+        supabase.removeChannel(serverChannelRef.current);
+      } catch (e) {
+        console.warn('[ServerAuth] Error removing server channel:', e);
+      }
+      serverChannelRef.current = null;
+    }
+    
+    if (presenceChannelRef.current) {
+      try {
+        supabase.removeChannel(presenceChannelRef.current);
+      } catch (e) {
+        console.warn('[ServerAuth] Error removing presence channel:', e);
+      }
+      presenceChannelRef.current = null;
+    }
+    
+    if (chatChannelRef.current) {
+      try {
+        supabase.removeChannel(chatChannelRef.current);
+      } catch (e) {
+        console.warn('[ServerAuth] Error removing chat channel:', e);
+      }
+      chatChannelRef.current = null;
+    }
+  }, []);
+  
   const attemptReconnection = useCallback(async () => {
     if (isReconnectingRef.current || !lastRoomIdRef.current) return;
     
+    // Check max reconnection attempts
+    if (reconnectAttemptsRef.current >= maxReconnectAttempts) {
+      console.error('[ServerAuth] Max reconnection attempts reached');
+      sonnerToast.error('Connection lost. Please rejoin the game.');
+      setConnectionStatus('disconnected');
+      return;
+    }
+    
     isReconnectingRef.current = true;
+    reconnectAttemptsRef.current += 1;
     setConnectionStatus('reconnecting');
     
-    console.log('[ServerAuth] Attempting reconnection...');
+    console.log(`[ServerAuth] Reconnection attempt ${reconnectAttemptsRef.current}/${maxReconnectAttempts}...`);
+    
+    // Clean up stale connections first
+    cleanupStaleConnections();
+    
+    // Exponential backoff delay
+    const backoffDelay = Math.min(
+      SERVER_SYNC_CONFIG.RECONNECT_SYNC_DELAY_MS * Math.pow(2, reconnectAttemptsRef.current - 1),
+      5000
+    );
+    await new Promise(resolve => setTimeout(resolve, backoffDelay));
     
     // Resubscribe to channels
-    subscribeToServerEvents(lastRoomIdRef.current);
-    subscribeToPresence(lastRoomIdRef.current);
+    subscribeToServerEvents(lastRoomIdRef.current!);
+    subscribeToPresence(lastRoomIdRef.current!);
     
-    // Wait for connection
-    await new Promise(resolve => setTimeout(resolve, SERVER_SYNC_CONFIG.RECONNECT_SYNC_DELAY_MS));
+    // Wait for connection to stabilize
+    await new Promise(resolve => setTimeout(resolve, 500));
     
-    // Request authoritative state from server
+    // Request authoritative state from server (this also validates the room exists)
     await requestSync();
     
+    // Reset attempts on successful reconnection
+    reconnectAttemptsRef.current = 0;
     isReconnectingRef.current = false;
+    setConnectionStatus('connected');
     sonnerToast.success('Reconnected!');
-  }, [subscribeToServerEvents, subscribeToPresence, requestSync]);
+  }, [subscribeToServerEvents, subscribeToPresence, requestSync, cleanupStaleConnections]);
 
   // Online/offline detection
   useEffect(() => {
@@ -528,14 +702,58 @@ export const useServerAuthLudoGame = () => {
       }
     };
     
+    // Handle visibility change (mobile background/foreground)
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && gameState.phase === 'playing') {
+        // App came back to foreground
+        console.log('[ServerAuth] App returned to foreground, syncing...');
+        
+        // Request sync to ensure state is current
+        if (gameState.roomId) {
+          requestSync();
+        }
+      }
+    };
+    
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
     
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [gameState.phase, connectionStatus, attemptReconnection]);
+  }, [gameState.phase, gameState.roomId, connectionStatus, attemptReconnection, requestSync]);
+  
+  // Periodic stale connection cleanup (every 30s during active game)
+  useEffect(() => {
+    if (gameState.phase !== 'playing') {
+      if (staleChannelCleanupRef.current) {
+        clearInterval(staleChannelCleanupRef.current);
+        staleChannelCleanupRef.current = null;
+      }
+      return;
+    }
+    
+    staleChannelCleanupRef.current = setInterval(() => {
+      // Check if channels are still active
+      if (serverChannelRef.current) {
+        const state = serverChannelRef.current.state;
+        if (state !== 'joined') {
+          console.warn('[ServerAuth] Server channel in bad state:', state);
+          attemptReconnection();
+        }
+      }
+    }, 30000);
+    
+    return () => {
+      if (staleChannelCleanupRef.current) {
+        clearInterval(staleChannelCleanupRef.current);
+        staleChannelCleanupRef.current = null;
+      }
+    };
+  }, [gameState.phase, attemptReconnection]);
 
   // ===== ROOM MANAGEMENT =====
   
@@ -609,7 +827,12 @@ export const useServerAuthLudoGame = () => {
       rematchRequester: null,
       serverVersion: 0,
       lastServerSync: Date.now(),
-      pendingAction: null
+      pendingAction: null,
+      animationLock: {
+        isLocked: false,
+        lockUntil: 0,
+        lockType: null
+      }
     });
     setOpponentOnline(false);
   }, []);
