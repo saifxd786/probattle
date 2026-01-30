@@ -1,20 +1,21 @@
 import { motion } from 'framer-motion';
 import MinesGrid from './MinesGrid';
 import MinesGamePanel from './MinesGamePanel';
-import { useMinesGame } from '@/hooks/useMinesGame';
+import { useSecureMinesGame } from '@/hooks/useSecureMinesGame';
 
 const MinesGame = () => {
   const {
     settings,
     gameState,
     walletBalance,
+    isLoading,
     startGame,
     revealTile,
     cashOut,
     resetGame,
     setEntryAmount,
     setMinesCount
-  } = useMinesGame();
+  } = useSecureMinesGame();
 
   const isGameOver = gameState.phase === 'result';
   const isPlaying = gameState.phase === 'playing';

@@ -33,3 +33,12 @@ verify_jwt = false
 
 [functions.tdm-match-scheduler]
 verify_jwt = false
+
+[functions.mines-game-server]
+verify_jwt = false
+
+[functions.thimble-game-server]
+verify_jwt = false
+
+[functions.validate-redeem-code]
+verify_jwt = false
