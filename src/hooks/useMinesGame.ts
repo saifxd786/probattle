@@ -94,7 +94,7 @@ export const useMinesGame = () => {
         .from('mines_settings')
         .select('*')
         .limit(1)
-        .single();
+        .maybeSingle();
       
       if (data) {
         setSettings({
@@ -127,10 +127,10 @@ export const useMinesGame = () => {
         .from('profiles')
         .select('wallet_balance')
         .eq('id', user.id)
-        .single();
+        .maybeSingle();
       
       if (data) {
-        setWalletBalance(Number(data.wallet_balance));
+        setWalletBalance(Number(data.wallet_balance) || 0);
       }
     };
     
@@ -272,57 +272,66 @@ export const useMinesGame = () => {
       return;
     }
 
-    // Deduct entry from wallet
-    const { error: deductError } = await supabase
-      .from('profiles')
-      .update({ wallet_balance: walletBalance - gameState.entryAmount })
-      .eq('id', user.id);
+    try {
+      // Deduct entry from wallet
+      const { error: deductError } = await supabase
+        .from('profiles')
+        .update({ wallet_balance: walletBalance - gameState.entryAmount })
+        .eq('id', user.id);
 
-    if (deductError) {
-      toast({ title: 'Failed to deduct entry fee', variant: 'destructive' });
-      return;
-    }
+      if (deductError) {
+        console.error('[Mines] Deduct error:', deductError);
+        toast({ title: 'Failed to deduct entry fee', variant: 'destructive' });
+        return;
+      }
 
-    setWalletBalance(prev => prev - gameState.entryAmount);
+      setWalletBalance(prev => prev - gameState.entryAmount);
 
-    // Generate mine positions
-    const minePositions = generateMinePositions(gameState.minesCount);
+      // Generate mine positions
+      const minePositions = generateMinePositions(gameState.minesCount);
 
-    // Create game record
-    const { data: game, error: gameError } = await supabase
-      .from('mines_games')
-      .insert({
-        user_id: user.id,
-        entry_amount: gameState.entryAmount,
-        mines_count: gameState.minesCount,
-        mine_positions: minePositions,
-        revealed_positions: [],
-        current_multiplier: 1,
-        potential_win: gameState.entryAmount,
-        status: 'in_progress'
-      })
-      .select()
-      .single();
+      // Create game record
+      const { data: game, error: gameError } = await supabase
+        .from('mines_games')
+        .insert({
+          user_id: user.id,
+          entry_amount: gameState.entryAmount,
+          mines_count: gameState.minesCount,
+          mine_positions: minePositions,
+          revealed_positions: [],
+          current_multiplier: 1,
+          potential_win: gameState.entryAmount,
+          status: 'in_progress'
+        })
+        .select()
+        .maybeSingle();
 
-    if (gameError || !game) {
+      if (gameError || !game) {
+        console.error('[Mines] Game create error:', gameError);
+        toast({ title: 'Failed to start game', variant: 'destructive' });
+        // Refund
+        await supabase.from('profiles').update({ wallet_balance: walletBalance }).eq('id', user.id);
+        setWalletBalance(walletBalance);
+        return;
+      }
+
+      setGameState(prev => ({
+        ...prev,
+        phase: 'playing',
+        gameId: game.id,
+        minePositions,
+        revealedPositions: [],
+        currentMultiplier: 1,
+        potentialWin: prev.entryAmount,
+        isWin: null,
+        finalAmount: 0
+      }));
+
+      hapticManager.tokenEnter();
+    } catch (error) {
+      console.error('[Mines] Start game error:', error);
       toast({ title: 'Failed to start game', variant: 'destructive' });
-      await supabase.from('profiles').update({ wallet_balance: walletBalance }).eq('id', user.id);
-      return;
     }
-
-    setGameState(prev => ({
-      ...prev,
-      phase: 'playing',
-      gameId: game.id,
-      minePositions,
-      revealedPositions: [],
-      currentMultiplier: 1,
-      potentialWin: prev.entryAmount,
-      isWin: null,
-      finalAmount: 0
-    }));
-
-    hapticManager.tokenEnter();
   }, [user, walletBalance, gameState.entryAmount, gameState.minesCount, settings, generateMinePositions, toast]);
 
   const revealTile = useCallback(async (position: number) => {
