@@ -101,6 +101,7 @@ const ThimbleGame = () => {
     if (gameState.phase !== 'result') return null;
 
     const isWin = gameState.isWin;
+    const isTimeoutLoss = !isWin && gameState.selectedCup === -1;
     const ballCupNumber = (() => {
       const idx = gameState.cupPositions?.indexOf(gameState.ballPosition) ?? -1;
       return idx >= 0 ? idx + 1 : gameState.ballPosition + 1;
@@ -144,7 +145,7 @@ const ThimbleGame = () => {
             <h2 className={`font-display text-3xl font-bold mb-2 ${
               isWin ? 'text-green-400' : 'text-red-400'
             }`}>
-              {isWin ? 'YOU WON!' : 'WRONG CUP!'}
+              {isWin ? 'YOU WON!' : isTimeoutLoss ? "TIME'S UP!" : 'WRONG CUP!'}
             </h2>
 
             {isWin ? (
@@ -158,7 +159,9 @@ const ThimbleGame = () => {
               </motion.p>
             ) : (
               <p className="text-muted-foreground mb-6">
-                The ball was under cup {ballCupNumber}
+                {isTimeoutLoss
+                  ? `You didn't select in time. The ball was under cup ${ballCupNumber}.`
+                  : `The ball was under cup ${ballCupNumber}`}
               </p>
             )}
 
@@ -342,7 +345,7 @@ const ThimbleGame = () => {
                     : 'bg-red-500/20 text-red-400 border border-red-500/30'
                 }`}>
                   <div className={`w-2 h-2 rounded-full ${gameState.isWin ? 'bg-green-400' : 'bg-red-400'} animate-pulse`} />
-                  {gameState.isWin ? 'Correct' : 'Wrong Cup'}
+                  {gameState.isWin ? 'Correct' : gameState.selectedCup === -1 ? "Time's Up" : 'Wrong Cup'}
                 </div>
               </motion.div>
             )}
