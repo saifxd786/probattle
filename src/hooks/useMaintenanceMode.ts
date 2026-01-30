@@ -17,13 +17,16 @@ export const useMaintenanceMode = () => {
         .from('app_settings')
         .select('value')
         .eq('key', 'maintenance_mode')
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
-      return data?.value as unknown as MaintenanceSettings;
+      return data?.value as unknown as MaintenanceSettings | null;
     },
-    staleTime: 30 * 1000,
-    refetchInterval: 30 * 1000,
+    staleTime: 60 * 1000, // 1 minute
+    gcTime: 5 * 60 * 1000, // 5 minutes cache
+    refetchInterval: 60 * 1000, // Check every minute
+    refetchOnMount: false, // Don't refetch on every component mount
+    refetchOnWindowFocus: false,
   });
 
   const updateMutation = useMutation({
