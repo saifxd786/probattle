@@ -17,8 +17,6 @@ import tdmBanner from '@/assets/bgmi-tdm-banner.jpg';
 // Map-specific banners
 import erangelBanner from '@/assets/map-erangel.jpg';
 import miramarBanner from '@/assets/map-miramar.jpg';
-import sanhokBanner from '@/assets/map-sanhok.jpg';
-import vikendiBanner from '@/assets/map-vikendi.jpg';
 import livikBanner from '@/assets/map-livik.jpg';
 
 type Match = Database['public']['Tables']['matches']['Row'];
@@ -32,8 +30,6 @@ const CLASSIC_MAPS = [
   { id: 'all', name: 'All Maps', banner: erangelBanner, color: 'from-emerald-500/20' },
   { id: 'Erangel', name: 'Erangel', banner: erangelBanner, color: 'from-green-500/20' },
   { id: 'Miramar', name: 'Miramar', banner: miramarBanner, color: 'from-amber-500/20' },
-  { id: 'Sanhok', name: 'Sanhok', banner: sanhokBanner, color: 'from-lime-500/20' },
-  { id: 'Vikendi', name: 'Vikendi', banner: vikendiBanner, color: 'from-cyan-500/20' },
   { id: 'Livik', name: 'Livik', banner: livikBanner, color: 'from-purple-500/20' },
 ] as const;
 
