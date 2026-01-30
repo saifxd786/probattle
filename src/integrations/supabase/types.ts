@@ -692,6 +692,13 @@ export type Database = {
             referencedRelation: "matches"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "match_registrations_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "todays_scheduled_matches"
+            referencedColumns: ["id"]
+          },
         ]
       }
       match_results: {
@@ -740,6 +747,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "match_results_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "todays_scheduled_matches"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "match_results_registration_id_fkey"
             columns: ["registration_id"]
             isOneToOne: false
@@ -750,6 +764,7 @@ export type Database = {
       }
       matches: {
         Row: {
+          auto_cancel_at: string | null
           banner_url: string | null
           created_at: string | null
           created_by: string | null
@@ -759,6 +774,7 @@ export type Database = {
           game: Database["public"]["Enums"]["game_type"]
           gun_category: string | null
           id: string
+          is_auto_scheduled: boolean | null
           is_free: boolean
           map_name: string | null
           match_time: string
@@ -776,6 +792,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          auto_cancel_at?: string | null
           banner_url?: string | null
           created_at?: string | null
           created_by?: string | null
@@ -785,6 +802,7 @@ export type Database = {
           game?: Database["public"]["Enums"]["game_type"]
           gun_category?: string | null
           id?: string
+          is_auto_scheduled?: boolean | null
           is_free?: boolean
           map_name?: string | null
           match_time: string
@@ -802,6 +820,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          auto_cancel_at?: string | null
           banner_url?: string | null
           created_at?: string | null
           created_by?: string | null
@@ -811,6 +830,7 @@ export type Database = {
           game?: Database["public"]["Enums"]["game_type"]
           gun_category?: string | null
           id?: string
+          is_auto_scheduled?: boolean | null
           is_free?: boolean
           map_name?: string | null
           match_time?: string
@@ -1319,6 +1339,48 @@ export type Database = {
         }
         Relationships: []
       }
+      tdm_schedule_settings: {
+        Row: {
+          auto_cancel_seconds: number
+          created_at: string
+          entry_fee: number
+          gun_category: string | null
+          id: string
+          is_enabled: boolean
+          match_type: string
+          max_slots: number
+          prize_pool: number
+          schedule_times: string[]
+          updated_at: string
+        }
+        Insert: {
+          auto_cancel_seconds?: number
+          created_at?: string
+          entry_fee?: number
+          gun_category?: string | null
+          id?: string
+          is_enabled?: boolean
+          match_type?: string
+          max_slots?: number
+          prize_pool?: number
+          schedule_times?: string[]
+          updated_at?: string
+        }
+        Update: {
+          auto_cancel_seconds?: number
+          created_at?: string
+          entry_fee?: number
+          gun_category?: string | null
+          id?: string
+          is_enabled?: boolean
+          match_type?: string
+          max_slots?: number
+          prize_pool?: number
+          schedule_times?: string[]
+          updated_at?: string
+        }
+        Relationships: []
+      }
       thimble_games: {
         Row: {
           ball_position: number
@@ -1603,13 +1665,106 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      todays_scheduled_matches: {
+        Row: {
+          auto_cancel_at: string | null
+          banner_url: string | null
+          created_at: string | null
+          created_by: string | null
+          entry_fee: number | null
+          fill_status: string | null
+          filled_slots: number | null
+          first_place_prize: number | null
+          game: Database["public"]["Enums"]["game_type"] | null
+          gun_category: string | null
+          id: string | null
+          is_auto_scheduled: boolean | null
+          is_free: boolean | null
+          map_name: string | null
+          match_time: string | null
+          match_type: Database["public"]["Enums"]["match_type"] | null
+          max_slots: number | null
+          prize_per_kill: number | null
+          prize_pool: number | null
+          room_id: string | null
+          room_password: string | null
+          rules: string | null
+          second_place_prize: number | null
+          status: Database["public"]["Enums"]["match_status"] | null
+          third_place_prize: number | null
+          title: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          auto_cancel_at?: string | null
+          banner_url?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          entry_fee?: number | null
+          fill_status?: never
+          filled_slots?: number | null
+          first_place_prize?: number | null
+          game?: Database["public"]["Enums"]["game_type"] | null
+          gun_category?: string | null
+          id?: string | null
+          is_auto_scheduled?: boolean | null
+          is_free?: boolean | null
+          map_name?: string | null
+          match_time?: string | null
+          match_type?: Database["public"]["Enums"]["match_type"] | null
+          max_slots?: number | null
+          prize_per_kill?: number | null
+          prize_pool?: number | null
+          room_id?: string | null
+          room_password?: string | null
+          rules?: string | null
+          second_place_prize?: number | null
+          status?: Database["public"]["Enums"]["match_status"] | null
+          third_place_prize?: number | null
+          title?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          auto_cancel_at?: string | null
+          banner_url?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          entry_fee?: number | null
+          fill_status?: never
+          filled_slots?: number | null
+          first_place_prize?: number | null
+          game?: Database["public"]["Enums"]["game_type"] | null
+          gun_category?: string | null
+          id?: string | null
+          is_auto_scheduled?: boolean | null
+          is_free?: boolean | null
+          map_name?: string | null
+          match_time?: string | null
+          match_type?: Database["public"]["Enums"]["match_type"] | null
+          max_slots?: number | null
+          prize_per_kill?: number | null
+          prize_pool?: number | null
+          room_id?: string | null
+          room_password?: string | null
+          rules?: string | null
+          second_place_prize?: number | null
+          status?: Database["public"]["Enums"]["match_status"] | null
+          third_place_prize?: number | null
+          title?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       accept_friend_request: { Args: { request_id: string }; Returns: Json }
       are_friends: {
         Args: { user_a: string; user_b: string }
         Returns: boolean
+      }
+      auto_cancel_unfilled_match: {
+        Args: { p_match_id: string }
+        Returns: Json
       }
       cancel_ludo_room: { Args: { p_room_id: string }; Returns: Json }
       check_referral_eligibility: { Args: { p_user_id: string }; Returns: Json }
