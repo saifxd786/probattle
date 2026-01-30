@@ -136,80 +136,7 @@ export const useSecureMinesGame = () => {
     fetchBalance();
   }, [user]);
 
-  const startGame = useCallback(async () => {
-    if (!user || !session) {
-      toast({ title: 'Please login to play', variant: 'destructive' });
-      return;
-    }
-
-    if (gameState.entryAmount < settings.minEntryAmount) {
-      toast({ title: `Minimum entry is ₹${settings.minEntryAmount}`, variant: 'destructive' });
-      return;
-    }
-
-    if (walletBalance < gameState.entryAmount) {
-      toast({ title: 'Insufficient balance', description: 'Please add funds to your wallet', variant: 'destructive' });
-      return;
-    }
-
-    // INSTANT: Update UI immediately before server call
-    const entryAmount = gameState.entryAmount;
-    const minesCount = gameState.minesCount;
-    
-    setWalletBalance(prev => prev - entryAmount);
-    setGameState(prev => ({
-      ...prev,
-      phase: 'playing',
-      gameId: 'pending',
-      minePositions: [],
-      revealedPositions: [],
-      pendingPositions: [],
-      currentMultiplier: 1,
-      potentialWin: entryAmount,
-      isWin: null,
-      finalAmount: 0
-    }));
-    
-    hapticManager.tokenEnter();
-
-    // Server call in background
-    try {
-      const { data, error } = await supabase.functions.invoke('mines-game-server', {
-        body: {
-          action: 'start',
-          entryAmount,
-          minesCount
-        }
-      });
-
-      if (error) throw error;
-
-      if (!data.success) {
-        throw new Error(data.error || 'Failed to start game');
-      }
-
-      // Update with real game ID
-      setGameState(prev => ({
-        ...prev,
-        gameId: data.game.id,
-        revealedPositions: data.game.revealedPositions || [],
-        currentMultiplier: data.game.currentMultiplier || 1,
-        potentialWin: data.game.potentialWin || entryAmount
-      }));
-    } catch (error: unknown) {
-      // Rollback on error
-      setWalletBalance(prev => prev + entryAmount);
-      setGameState(prev => ({
-        ...prev,
-        phase: 'idle',
-        gameId: null
-      }));
-      const message = error instanceof Error ? error.message : 'Failed to start game';
-      toast({ title: message, variant: 'destructive' });
-    }
-  }, [user, session, walletBalance, gameState.entryAmount, gameState.minesCount, settings, toast]);
-
-  // Process reveal queue
+  // Process reveal queue - defined first so it can be used by startGame
   const processRevealQueue = useCallback(async () => {
     if (processingRef.current) return;
     if (pendingRevealsRef.current.size === 0) return;
@@ -304,21 +231,99 @@ export const useSecureMinesGame = () => {
     }
   }, [gameState.gameId, gameState.phase, toast]);
 
+  const startGame = useCallback(async () => {
+    if (!user || !session) {
+      toast({ title: 'Please login to play', variant: 'destructive' });
+      return;
+    }
+
+    if (gameState.entryAmount < settings.minEntryAmount) {
+      toast({ title: `Minimum entry is ₹${settings.minEntryAmount}`, variant: 'destructive' });
+      return;
+    }
+
+    if (walletBalance < gameState.entryAmount) {
+      toast({ title: 'Insufficient balance', description: 'Please add funds to your wallet', variant: 'destructive' });
+      return;
+    }
+
+    // INSTANT: Update UI immediately before server call
+    const entryAmount = gameState.entryAmount;
+    const minesCount = gameState.minesCount;
+    
+    setWalletBalance(prev => prev - entryAmount);
+    setGameState(prev => ({
+      ...prev,
+      phase: 'playing',
+      gameId: 'pending',
+      minePositions: [],
+      revealedPositions: [],
+      pendingPositions: [],
+      currentMultiplier: 1,
+      potentialWin: entryAmount,
+      isWin: null,
+      finalAmount: 0
+    }));
+    
+    hapticManager.tokenEnter();
+
+    // Server call in background
+    try {
+      const { data, error } = await supabase.functions.invoke('mines-game-server', {
+        body: {
+          action: 'start',
+          entryAmount,
+          minesCount
+        }
+      });
+
+      if (error) throw error;
+
+      if (!data.success) {
+        throw new Error(data.error || 'Failed to start game');
+      }
+
+      // Update with real game ID and process any queued clicks
+      setGameState(prev => ({
+        ...prev,
+        gameId: data.game.id,
+        revealedPositions: data.game.revealedPositions || [],
+        currentMultiplier: data.game.currentMultiplier || 1,
+        potentialWin: data.game.potentialWin || entryAmount
+      }));
+      
+      // Process any pending reveals that were queued during 'pending' state
+      setTimeout(() => {
+        if (pendingRevealsRef.current.size > 0) {
+          processRevealQueue();
+        }
+      }, 0);
+    } catch (error: unknown) {
+      // Rollback on error
+      setWalletBalance(prev => prev + entryAmount);
+      setGameState(prev => ({
+        ...prev,
+        phase: 'idle',
+        gameId: null,
+        pendingPositions: []
+      }));
+      pendingRevealsRef.current.clear();
+      const message = error instanceof Error ? error.message : 'Failed to start game';
+      toast({ title: message, variant: 'destructive' });
+    }
+  }, [user, session, walletBalance, gameState.entryAmount, gameState.minesCount, settings, toast, processRevealQueue]);
+
   const revealTile = useCallback((position: number) => {
     if (gameState.phase !== 'playing') return;
-    // Wait for real gameId (not 'pending')
-    if (!gameState.gameId || gameState.gameId === 'pending') return;
-    // Limit max pending tiles to prevent overwhelming server
-    if (pendingRevealsRef.current.size >= 3) return;
     // Check both confirmed AND pending positions
     if (gameState.revealedPositions.includes(position)) return;
     if (gameState.pendingPositions.includes(position)) return;
     if (pendingRevealsRef.current.has(position)) return;
+    // Limit max pending tiles
+    if (pendingRevealsRef.current.size >= 5) return;
     
-    // Add to pending queue and visual pending state
+    // INSTANT: Add to pending queue and show gem immediately
     pendingRevealsRef.current.add(position);
-    
-    // Optimistically show as pending (not confirmed)
     setGameState(prev => ({
       ...prev,
       pendingPositions: [...prev.pendingPositions, position]
@@ -327,8 +332,10 @@ export const useSecureMinesGame = () => {
     // Instant haptic feedback
     hapticManager.tokenMove();
     
-    // Process queue
-    processRevealQueue();
+    // Process queue only if we have real gameId
+    if (gameState.gameId && gameState.gameId !== 'pending') {
+      processRevealQueue();
+    }
   }, [gameState.phase, gameState.gameId, gameState.revealedPositions, gameState.pendingPositions, processRevealQueue]);
 
   const cashOut = useCallback(async () => {
