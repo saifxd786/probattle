@@ -183,20 +183,27 @@ const DepositPaymentGateway = ({ isOpen, onClose, onSubmit, isSubmitting }: Depo
         )}
       </AnimatePresence>
 
-      {/* Full Screen Processing Overlay */}
+      {/* Full Screen Processing Overlay - Dark Theme Background */}
       <AnimatePresence>
         {showProcessing && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-white"
+            className="fixed inset-0 z-[9999] flex flex-col items-center justify-center"
+            style={{ backgroundColor: 'hsl(220, 30%, 5%)' }}
           >
-            <img 
-              src={paymentProcessingGif} 
-              alt="Payment Processing" 
-              className="w-full h-full object-contain"
-            />
+            <div className="w-full h-full flex items-center justify-center p-8">
+              <img 
+                src={paymentProcessingGif} 
+                alt="Payment Processing" 
+                className="max-w-full max-h-full object-contain rounded-2xl"
+                style={{ 
+                  filter: 'invert(1) hue-rotate(180deg)',
+                  mixBlendMode: 'screen'
+                }}
+              />
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
