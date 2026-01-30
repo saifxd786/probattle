@@ -1,9 +1,9 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { Timer, Eye, Shuffle, Target, Trophy, X, RotateCcw, ArrowLeft, Play, Clock, Zap, Flame } from 'lucide-react';
+import { Timer, Eye, Shuffle, Target, Trophy, X, RotateCcw, ArrowLeft, Play, Clock, Zap, Flame, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import ThimbleCups from './ThimbleCups';
 import ThimbleEntrySelector from './ThimbleEntrySelector';
-import { useThimbleGame, ThimbleDifficulty } from '@/hooks/useThimbleGame';
+import { useSecureThimbleGame, ThimbleDifficulty } from '@/hooks/useSecureThimbleGame';
 import { cn } from '@/lib/utils';
 import ConfettiCelebration from '@/components/ConfettiCelebration';
 import { createPortal } from 'react-dom';
@@ -14,6 +14,7 @@ const ThimbleGame = () => {
     gameState,
     walletBalance,
     selectedDifficulty,
+    isLoading,
     setSelectedDifficulty,
     proceedToModeSelect,
     startGame,
@@ -23,7 +24,7 @@ const ThimbleGame = () => {
     setCupPositions,
     rewardAmount,
     getDifficultySettings
-  } = useThimbleGame();
+  } = useSecureThimbleGame();
 
   const diffSettings = getDifficultySettings(selectedDifficulty);
 
@@ -283,9 +284,14 @@ const ThimbleGame = () => {
               onClick={startGame}
               size="lg"
               className="w-full gap-2 text-lg py-6"
+              disabled={isLoading}
             >
-              <Play className="w-5 h-5" />
-              Start Game
+              {isLoading ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              ) : (
+                <Play className="w-5 h-5" />
+              )}
+              {isLoading ? 'Starting...' : 'Start Game'}
             </Button>
           </motion.div>
         )}

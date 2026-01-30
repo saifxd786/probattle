@@ -1665,6 +1665,30 @@ export type Database = {
       }
     }
     Views: {
+      app_settings_public: {
+        Row: {
+          created_at: string | null
+          id: string | null
+          key: string | null
+          updated_at: string | null
+          value: Json | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string | null
+          key?: string | null
+          updated_at?: string | null
+          value?: never
+        }
+        Update: {
+          created_at?: string | null
+          id?: string | null
+          key?: string | null
+          updated_at?: string | null
+          value?: never
+        }
+        Relationships: []
+      }
       todays_scheduled_matches: {
         Row: {
           auto_cancel_at: string | null
