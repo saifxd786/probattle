@@ -42,3 +42,6 @@ verify_jwt = false
 
 [functions.validate-redeem-code]
 verify_jwt = false
+
+[functions.secure-admin-login]
+verify_jwt = false

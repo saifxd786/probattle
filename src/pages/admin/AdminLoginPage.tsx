@@ -6,8 +6,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from '@/hooks/use-toast';
-import { Shield, Eye, EyeOff, Lock, Phone, ArrowLeft } from 'lucide-react';
+import { Shield, Eye, EyeOff, Lock, Phone, ArrowLeft, AlertTriangle } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { generateDeviceFingerprint } from '@/utils/deviceFingerprint';
+import { useRateLimit } from '@/hooks/useRateLimit';
+import { safeError } from '@/utils/safeLogger';
 
 const AdminLoginPage = () => {
   const navigate = useNavigate();
@@ -15,64 +18,105 @@ const AdminLoginPage = () => {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [serverLockout, setServerLockout] = useState<number | null>(null);
 
-  const phoneToEmail = (phone: string) => {
-    const cleanPhone = phone.replace(/\D/g, '');
-    return cleanPhone; // Return just the phone number, we'll try both domains
-  };
-
-  const tryLogin = async (email: string, password: string) => {
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-    return { data, error };
-  };
+  // Client-side rate limiting as first layer of defense
+  const loginRateLimit = useRateLimit('admin-login', {
+    maxAttempts: 3,
+    windowMs: 60000,
+    lockoutMs: 600000, // 10 min client-side lockout
+  });
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Check client-side rate limit first
+    if (loginRateLimit.isLocked) {
+      toast({
+        title: 'Too Many Attempts',
+        description: `Please wait ${loginRateLimit.remainingLockoutTime} seconds before trying again.`,
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Check server-side lockout
+    if (serverLockout && serverLockout > 0) {
+      toast({
+        title: 'Account Locked',
+        description: `Please wait ${serverLockout} seconds before trying again.`,
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setIsLoading(true);
 
     try {
-      const cleanPhone = phoneToEmail(phone);
+      // Record client-side attempt
+      if (!loginRateLimit.recordAttempt()) {
+        toast({
+          title: 'Too Many Attempts',
+          description: 'You\'ve been locked out. Please wait 10 minutes.',
+          variant: 'destructive',
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      const cleanPhone = phone.replace(/\D/g, '');
       
-      // Try probattle.app first, then proscims.app for legacy users
-      let authData, authError;
-      
-      const result1 = await tryLogin(`${cleanPhone}@probattle.app`, password);
-      if (!result1.error) {
-        authData = result1.data;
-      } else {
-        // Try legacy domain
-        const result2 = await tryLogin(`${cleanPhone}@proscims.app`, password);
-        if (!result2.error) {
-          authData = result2.data;
-        } else {
-          authError = result1.error; // Show first error
+      if (cleanPhone.length < 10) {
+        toast({
+          title: 'Invalid Phone',
+          description: 'Please enter a valid 10-digit phone number',
+          variant: 'destructive',
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      // Get device fingerprint for additional security
+      const deviceFingerprint = await generateDeviceFingerprint();
+
+      // Call secure admin login edge function
+      const { data, error } = await supabase.functions.invoke('secure-admin-login', {
+        body: {
+          phone: cleanPhone,
+          password,
+          deviceFingerprint,
         }
+      });
+
+      if (error) {
+        throw new Error(error.message || 'Login failed');
       }
 
-      if (authError) throw authError;
-
-      if (!authData.user) {
-        throw new Error('Authentication failed');
+      if (data?.code === 'RATE_LIMITED') {
+        setServerLockout(data.lockedFor);
+        toast({
+          title: 'Too Many Attempts',
+          description: `Your IP has been temporarily locked. Please wait ${data.lockedFor} seconds.`,
+          variant: 'destructive',
+        });
+        return;
       }
 
-      // Check if user is admin
-      const { data: roleData, error: roleError } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', authData.user.id)
-        .eq('role', 'admin')
-        .maybeSingle();
-
-      if (roleError) throw roleError;
-
-      if (!roleData) {
-        // Sign out non-admin users
-        await supabase.auth.signOut();
-        throw new Error('Access denied. Admin privileges required.');
+      if (!data?.success) {
+        throw new Error(data?.error || 'Authentication failed');
       }
+
+      // Set the session from the edge function response
+      if (data.session) {
+        await supabase.auth.setSession({
+          access_token: data.session.access_token,
+          refresh_token: data.session.refresh_token,
+        });
+      }
+
+      // Reset rate limits on success
+      loginRateLimit.resetAttempts();
+      setServerLockout(null);
 
       toast({
         title: '✅ Welcome Admin!',
@@ -81,6 +125,7 @@ const AdminLoginPage = () => {
 
       navigate('/admin');
     } catch (error: any) {
+      safeError('AdminLogin', error);
       toast({
         title: 'Login Failed',
         description: error.message || 'Invalid credentials',
@@ -90,6 +135,8 @@ const AdminLoginPage = () => {
       setIsLoading(false);
     }
   };
+
+  const isLocked = loginRateLimit.isLocked || (serverLockout !== null && serverLockout > 0);
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
@@ -163,12 +210,17 @@ const AdminLoginPage = () => {
                 variant="neon"
                 className="w-full"
                 size="lg"
-                disabled={isLoading}
+                disabled={isLoading || isLocked}
               >
                 {isLoading ? (
                   <span className="flex items-center gap-2">
                     <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                     Verifying...
+                  </span>
+                ) : isLocked ? (
+                  <span className="flex items-center gap-2">
+                    <AlertTriangle className="w-5 h-5" />
+                    Locked ({loginRateLimit.remainingLockoutTime || serverLockout}s)
                   </span>
                 ) : (
                   <span className="flex items-center gap-2">

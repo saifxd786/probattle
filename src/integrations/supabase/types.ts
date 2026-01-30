@@ -1095,6 +1095,42 @@ export type Database = {
         }
         Relationships: []
       }
+      rate_limit_attempts: {
+        Row: {
+          attempts: number | null
+          created_at: string | null
+          first_attempt_at: string | null
+          id: string
+          ip_address: string | null
+          key: string
+          locked_until: string | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          attempts?: number | null
+          created_at?: string | null
+          first_attempt_at?: string | null
+          id?: string
+          ip_address?: string | null
+          key: string
+          locked_until?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          attempts?: number | null
+          created_at?: string | null
+          first_attempt_at?: string | null
+          id?: string
+          ip_address?: string | null
+          key?: string
+          locked_until?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       redeem_code_uses: {
         Row: {
           amount: number
@@ -1786,6 +1822,27 @@ export type Database = {
         Args: { user_a: string; user_b: string }
         Returns: boolean
       }
+      atomic_referral_reward: {
+        Args: {
+          p_referred_id: string
+          p_referrer_id: string
+          p_reward_amount: number
+        }
+        Returns: boolean
+      }
+      atomic_wallet_update: {
+        Args: {
+          p_admin_id?: string
+          p_amount: number
+          p_reason: string
+          p_user_id: string
+        }
+        Returns: {
+          error_message: string
+          new_balance: number
+          success: boolean
+        }[]
+      }
       auto_cancel_unfilled_match: {
         Args: { p_match_id: string }
         Returns: Json
@@ -1796,6 +1853,7 @@ export type Database = {
       claim_daily_bonus: { Args: never; Returns: Json }
       claim_referral_rewards: { Args: never; Returns: Json }
       claim_weekly_login_reward: { Args: never; Returns: Json }
+      cleanup_rate_limits: { Args: never; Returns: undefined }
       cleanup_stale_processing_deposits: { Args: never; Returns: Json }
       convert_coins_to_wallet: {
         Args: { coins_to_convert: number }
