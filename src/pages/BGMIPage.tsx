@@ -132,10 +132,11 @@ const BGMIPage = () => {
     fetchUserRegistrations();
   };
 
-  // Filter matches by map for Classic mode and by user registration for My Matches
+  // Filter matches by map for Classic mode and by user registration for My Matches & Results
   let filteredMatches = matches;
   
-  if (activeFilter === 'My Matches') {
+  // For "My Matches" and "Results", only show matches where user is registered
+  if (activeFilter === 'My Matches' || activeFilter === 'Results') {
     filteredMatches = matches.filter(m => userRegistrations.includes(m.id));
   }
   
