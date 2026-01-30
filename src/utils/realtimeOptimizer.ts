@@ -12,34 +12,36 @@
 
 import { RealtimeChannel } from '@supabase/supabase-js';
 
-// ===== CONFIGURATION =====
+// ===== ESPORTS-GRADE CONFIGURATION (20ms TARGET) =====
 export const REALTIME_CONFIG = {
-  // Connection Management
-  MAX_CHANNELS_PER_USER: 5,
-  CHANNEL_IDLE_TIMEOUT_MS: 60000, // Close idle channels after 1 minute
-  RECONNECT_BASE_DELAY_MS: 500,
-  RECONNECT_MAX_DELAY_MS: 10000,
-  RECONNECT_MAX_ATTEMPTS: 8,
+  // Connection Management - Ultra responsive
+  MAX_CHANNELS_PER_USER: 6,
+  CHANNEL_IDLE_TIMEOUT_MS: 120000, // 2 min - don't close active game channels
+  RECONNECT_BASE_DELAY_MS: 100, // Faster reconnect
+  RECONNECT_MAX_DELAY_MS: 5000,
+  RECONNECT_MAX_ATTEMPTS: 12,
   
-  // Message Batching
-  BATCH_INTERVAL_MS: 16, // ~60fps batch rate
-  MAX_BATCH_SIZE: 10,
-  PRIORITY_MESSAGE_TYPES: ['dice_roll', 'token_move', 'game_end'],
+  // Message Batching - Minimal batching for speed
+  BATCH_INTERVAL_MS: 4, // ~240fps batch rate for near-instant delivery
+  MAX_BATCH_SIZE: 5, // Smaller batches = faster delivery
+  PRIORITY_MESSAGE_TYPES: ['dice_roll', 'dice_rolling', 'token_move', 'token_select', 'game_end', 'turn_complete', 'checksum'],
   
-  // Quality of Service
-  PING_INTERVAL_EXCELLENT: 300, // ms between pings when connection is excellent
-  PING_INTERVAL_POOR: 1000, // ms between pings when connection is poor
-  LATENCY_EXCELLENT_THRESHOLD: 50,
-  LATENCY_GOOD_THRESHOLD: 100,
-  LATENCY_FAIR_THRESHOLD: 200,
+  // Quality of Service - Esports thresholds
+  PING_INTERVAL_EXCELLENT: 100, // 100ms pings for excellent connection
+  PING_INTERVAL_GOOD: 150, // 150ms for good
+  PING_INTERVAL_POOR: 500, // 500ms when struggling
+  LATENCY_EXCELLENT_THRESHOLD: 30, // <30ms = excellent (esports grade)
+  LATENCY_GOOD_THRESHOLD: 60, // <60ms = good
+  LATENCY_FAIR_THRESHOLD: 120, // <120ms = fair
+  LATENCY_POOR_THRESHOLD: 200, // >200ms = poor
   
-  // Load Management
-  MAX_MESSAGES_PER_SECOND: 30,
-  THROTTLE_COOLDOWN_MS: 100,
+  // Load Management - Higher throughput
+  MAX_MESSAGES_PER_SECOND: 60, // 60 msgs/sec for responsive gameplay
+  THROTTLE_COOLDOWN_MS: 50, // Faster cooldown
   
   // Memory Management
-  MAX_MESSAGE_HISTORY: 50,
-  STATE_SNAPSHOT_INTERVAL_MS: 5000,
+  MAX_MESSAGE_HISTORY: 30, // Less history = faster
+  STATE_SNAPSHOT_INTERVAL_MS: 3000, // More frequent snapshots
 } as const;
 
 // ===== TYPES =====
@@ -112,12 +114,15 @@ export class LatencyTracker {
     
     const { median, jitter } = stats;
     
-    if (median < REALTIME_CONFIG.LATENCY_EXCELLENT_THRESHOLD && jitter < 20) {
-      return 'excellent';
-    } else if (median < REALTIME_CONFIG.LATENCY_GOOD_THRESHOLD && jitter < 40) {
-      return 'good';
-    } else if (median < REALTIME_CONFIG.LATENCY_FAIR_THRESHOLD) {
-      return 'fair';
+    // Esports-grade thresholds (20ms target)
+    if (median < REALTIME_CONFIG.LATENCY_EXCELLENT_THRESHOLD && jitter < 15) {
+      return 'excellent'; // <30ms, jitter <15
+    } else if (median < REALTIME_CONFIG.LATENCY_GOOD_THRESHOLD && jitter < 30) {
+      return 'good'; // <60ms, jitter <30
+    } else if (median < REALTIME_CONFIG.LATENCY_FAIR_THRESHOLD && jitter < 50) {
+      return 'fair'; // <120ms
+    } else if (median < REALTIME_CONFIG.LATENCY_POOR_THRESHOLD) {
+      return 'poor'; // <200ms
     }
     return 'poor';
   }
@@ -468,9 +473,18 @@ export class QualityOfServiceManager {
   }
   
   getPingInterval(): number {
-    return this.quality === 'excellent' || this.quality === 'good'
-      ? REALTIME_CONFIG.PING_INTERVAL_EXCELLENT
-      : REALTIME_CONFIG.PING_INTERVAL_POOR;
+    switch (this.quality) {
+      case 'excellent':
+        return REALTIME_CONFIG.PING_INTERVAL_EXCELLENT; // 100ms
+      case 'good':
+        return REALTIME_CONFIG.PING_INTERVAL_GOOD; // 150ms
+      case 'fair':
+        return 250; // 250ms for fair
+      case 'poor':
+      case 'disconnected':
+      default:
+        return REALTIME_CONFIG.PING_INTERVAL_POOR; // 500ms
+    }
   }
 }
 
