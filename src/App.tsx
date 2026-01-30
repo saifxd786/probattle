@@ -113,18 +113,15 @@ const ForceUpdateWrapper = ({ children }: { children: React.ReactNode }) => {
   );
 };
 
-// Maintenance mode wrapper
+// Maintenance mode wrapper - no blocking loader for smoother navigation
 const MaintenanceWrapper = ({ children }: { children: React.ReactNode }) => {
-  const { isMaintenanceMode, isLoading } = useMaintenanceMode();
+  const { isMaintenanceMode } = useMaintenanceMode();
   const pathname = window.location.pathname;
   
   // Allow admin and agent routes even during maintenance
   const isAdminOrAgentRoute = pathname.startsWith('/admin') || pathname.startsWith('/agent');
   
-  if (isLoading) {
-    return <PageLoader />;
-  }
-  
+  // Don't block navigation with a loader - just check maintenance status
   if (isMaintenanceMode && !isAdminOrAgentRoute) {
     return (
       <Suspense fallback={<PageLoader />}>
