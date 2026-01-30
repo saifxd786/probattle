@@ -2,22 +2,7 @@ import React, { createContext, useContext, useEffect, useState, ReactNode, useRe
 import { User, Session, AuthChangeEvent } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
-import { generateDeviceFingerprint } from '@/utils/deviceFingerprint';
-
-// Helper to detect device name
-const getDeviceName = (): string => {
-  const ua = navigator.userAgent;
-  if (/iPhone/.test(ua)) return 'iPhone';
-  if (/iPad/.test(ua)) return 'iPad';
-  if (/Android/.test(ua)) {
-    const match = ua.match(/Android.*?;\s*([^;)]+)/);
-    return match ? match[1].trim() : 'Android Device';
-  }
-  if (/Windows/.test(ua)) return 'Windows PC';
-  if (/Mac/.test(ua)) return 'Mac';
-  if (/Linux/.test(ua)) return 'Linux PC';
-  return 'Unknown Device';
-};
+import { logDeviceToServer } from '@/utils/deviceInfo';
 
 interface AuthContextType {
   user: User | null;
@@ -165,23 +150,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     await supabase.auth.signOut();
   };
 
-  // Log user session via edge function (captures real IP)
+  // Log user session via edge function (captures real IP and geolocation)
   const logUserSession = async () => {
     try {
-      const fingerprint = await generateDeviceFingerprint();
-      const deviceName = getDeviceName();
+      // Use the comprehensive device logging (for login sessions, not registration)
+      const result = await logDeviceToServer(supabase, false);
       
-      // Use edge function to capture real IP address
-      const { error } = await supabase.functions.invoke('log-session', {
-        body: {
-          device_fingerprint: fingerprint,
-          user_agent: navigator.userAgent,
-          device_name: deviceName
-        }
-      });
-      
-      if (error) {
-        console.error('[Auth] Edge function error:', error);
+      if (result.success) {
+        console.log('[Auth] Login session logged', result.location ? `from ${result.location}` : '');
       }
     } catch (error) {
       console.error('[Auth] Failed to log session:', error);

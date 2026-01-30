@@ -12,6 +12,9 @@ verify_jwt = false
 [functions.log-session]
 verify_jwt = false
 
+[functions.log-registration-device]
+verify_jwt = false
+
 [functions.daily-multi-account-scan]
 verify_jwt = false
 

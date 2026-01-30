@@ -1596,31 +1596,82 @@ export type Database = {
       }
       user_login_sessions: {
         Row: {
+          city: string | null
+          color_depth: number | null
+          country: string | null
+          country_code: string | null
           created_at: string
           device_fingerprint: string | null
+          device_memory: number | null
           device_name: string | null
+          hardware_concurrency: number | null
           id: string
           ip_address: string | null
+          is_registration: boolean | null
+          isp: string | null
+          language: string | null
+          latitude: number | null
+          longitude: number | null
+          platform: string | null
+          region: string | null
+          screen_resolution: string | null
+          timezone: string | null
+          touch_support: boolean | null
           user_agent: string | null
           user_id: string
+          webgl_renderer: string | null
         }
         Insert: {
+          city?: string | null
+          color_depth?: number | null
+          country?: string | null
+          country_code?: string | null
           created_at?: string
           device_fingerprint?: string | null
+          device_memory?: number | null
           device_name?: string | null
+          hardware_concurrency?: number | null
           id?: string
           ip_address?: string | null
+          is_registration?: boolean | null
+          isp?: string | null
+          language?: string | null
+          latitude?: number | null
+          longitude?: number | null
+          platform?: string | null
+          region?: string | null
+          screen_resolution?: string | null
+          timezone?: string | null
+          touch_support?: boolean | null
           user_agent?: string | null
           user_id: string
+          webgl_renderer?: string | null
         }
         Update: {
+          city?: string | null
+          color_depth?: number | null
+          country?: string | null
+          country_code?: string | null
           created_at?: string
           device_fingerprint?: string | null
+          device_memory?: number | null
           device_name?: string | null
+          hardware_concurrency?: number | null
           id?: string
           ip_address?: string | null
+          is_registration?: boolean | null
+          isp?: string | null
+          language?: string | null
+          latitude?: number | null
+          longitude?: number | null
+          platform?: string | null
+          region?: string | null
+          screen_resolution?: string | null
+          timezone?: string | null
+          touch_support?: boolean | null
           user_agent?: string | null
           user_id?: string
+          webgl_renderer?: string | null
         }
         Relationships: []
       }
