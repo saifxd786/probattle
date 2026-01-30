@@ -210,6 +210,8 @@ export const useSecureThimbleGame = () => {
 
       setWalletBalance(prev => prev - gameState.entryAmount);
 
+      const startedGameId = data.game.id as string;
+
       // Show a random "fake" ball position for animation purposes
       // The real position is only known to the server
       const fakeBallPosition = Math.floor(Math.random() * 3);
@@ -217,7 +219,7 @@ export const useSecureThimbleGame = () => {
       setGameState(prev => ({
         ...prev,
         phase: 'showing',
-        gameId: data.game.id,
+        gameId: startedGameId,
         ballPosition: fakeBallPosition, // Fake position for visual animation
         selectedCup: null,
         isWin: null,
@@ -244,7 +246,7 @@ export const useSecureThimbleGame = () => {
               timerRef.current = null;
               // Time's up - trigger timeout loss
               setGameState(prev => ({ ...prev, timeLeft: 0 }));
-              handleTimeoutLoss();
+                handleTimeoutLoss(startedGameId);
               return;
             }
             
@@ -261,9 +263,8 @@ export const useSecureThimbleGame = () => {
   }, [user, session, selectedDifficulty, gameState.entryAmount, getDifficultySettings, toast]);
 
   // Handle timeout - player didn't select in time
-  const handleTimeoutLoss = useCallback(async () => {
-    const currentGameId = gameState.gameId;
-    if (!currentGameId) return;
+  const handleTimeoutLoss = useCallback(async (gameId: string) => {
+    if (!gameId) return;
 
     setIsLoading(true);
 
@@ -271,7 +272,7 @@ export const useSecureThimbleGame = () => {
       const { data, error } = await supabase.functions.invoke('thimble-game-server', {
         body: {
           action: 'select',
-          gameId: currentGameId,
+          gameId,
           selectedPosition: -1 // Timeout indicator
         }
       });
@@ -320,7 +321,7 @@ export const useSecureThimbleGame = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [gameState.gameId, toast]);
+  }, [toast]);
 
   const handleSelection = useCallback(async (cupIndex: number) => {
     if (gameState.phase !== 'selecting' || !gameState.gameId || isLoading) return;
