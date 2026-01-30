@@ -210,15 +210,11 @@ export const useSecureThimbleGame = () => {
 
       setWalletBalance(prev => prev - gameState.entryAmount);
 
-      // Show a random "fake" ball position for animation purposes
-      // The real position is only known to the server
-      const fakeBallPosition = Math.floor(Math.random() * 3);
-
       setGameState(prev => ({
         ...prev,
         phase: 'showing',
         gameId: data.game.id,
-        ballPosition: fakeBallPosition, // Show fake ball during showing phase
+        ballPosition: -1, // NEVER set from server during game - this is the security fix
         selectedCup: null,
         isWin: null,
         rewardAmount: data.game.rewardAmount,
@@ -226,9 +222,13 @@ export const useSecureThimbleGame = () => {
         timeLeft: diffSettings.selectionTime
       }));
 
+      // Show a random "fake" ball position for animation purposes
+      // The real position is only known to the server
+      const fakeBallPosition = Math.floor(Math.random() * 3);
+
       // After showing phase, shuffle
       setTimeout(() => {
-        setGameState(prev => ({ ...prev, phase: 'shuffling' }));
+        setGameState(prev => ({ ...prev, phase: 'shuffling', ballPosition: fakeBallPosition }));
         
         // After shuffle, start selection
         setTimeout(() => {
