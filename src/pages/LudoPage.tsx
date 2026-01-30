@@ -265,6 +265,7 @@ const LudoPage = () => {
     connectionQuality,
     reconnectAttempts,
     pingLatency,
+    turnTimeLeft: friendTurnTimeLeft,
     startRoom,
     rollDice: friendRollDice,
     handleTokenClick: friendHandleTokenClick,
@@ -866,7 +867,7 @@ const LudoPage = () => {
                       fallbackText={selfPlayer.name.slice(0, 2).toUpperCase()}
                       borderColor={colorMap[selfPlayer.color]}
                       isActive={isSelfTurn}
-                      timeLeft={15}
+                      timeLeft={friendTurnTimeLeft}
                       badgeSide="left"
                     />
                     <div className="text-left">
@@ -915,7 +916,7 @@ const LudoPage = () => {
                       fallbackText={opponentPlayer.name.slice(0, 2).toUpperCase()}
                       borderColor={colorMap[opponentPlayer.color]}
                       isActive={isOpponentTurn}
-                      timeLeft={15}
+                      timeLeft={friendTurnTimeLeft}
                       badgeSide="right"
                     />
                     <div className="text-right">
