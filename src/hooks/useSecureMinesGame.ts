@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
@@ -59,6 +59,10 @@ export const useSecureMinesGame = () => {
   
   const [walletBalance, setWalletBalance] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
+  
+  // Queue for rapid taps - process in order
+  const pendingRevealsRef = useRef<Set<number>>(new Set());
+  const processingRef = useRef(false);
 
   // Calculate multiplier for display purposes
   const calculateMultiplier = useCallback((minesCount: number, revealedCount: number) => {
@@ -186,17 +190,32 @@ export const useSecureMinesGame = () => {
     }
   }, [user, session, walletBalance, gameState.entryAmount, gameState.minesCount, settings, toast]);
 
-  const revealTile = useCallback(async (position: number) => {
-    if (gameState.phase !== 'playing' || !gameState.gameId || isLoading) return;
-    if (gameState.revealedPositions.includes(position)) return;
-
-    setIsLoading(true);
-
+  // Process reveal queue
+  const processRevealQueue = useCallback(async () => {
+    if (processingRef.current) return;
+    if (pendingRevealsRef.current.size === 0) return;
+    
+    processingRef.current = true;
+    
+    // Get next position from queue
+    const position = pendingRevealsRef.current.values().next().value;
+    if (position === undefined) {
+      processingRef.current = false;
+      return;
+    }
+    pendingRevealsRef.current.delete(position);
+    
     try {
+      const currentGameId = gameState.gameId;
+      if (!currentGameId || gameState.phase !== 'playing') {
+        processingRef.current = false;
+        return;
+      }
+
       const { data, error } = await supabase.functions.invoke('mines-game-server', {
         body: {
           action: 'reveal',
-          gameId: gameState.gameId,
+          gameId: currentGameId,
           position
         }
       });
@@ -208,7 +227,8 @@ export const useSecureMinesGame = () => {
       }
 
       if (data.isMine) {
-        // Hit a mine - game over
+        // Hit a mine - game over, clear queue
+        pendingRevealsRef.current.clear();
         soundManager.playBombExplosion();
         hapticManager.tokenHome();
         
@@ -216,7 +236,7 @@ export const useSecureMinesGame = () => {
           ...prev,
           phase: 'result',
           revealedPositions: data.revealedPositions,
-          minePositions: data.minePositions, // Now we can see mines
+          minePositions: data.minePositions,
           isWin: false,
           finalAmount: 0
         }));
@@ -239,7 +259,7 @@ export const useSecureMinesGame = () => {
         }));
 
         if (data.allSafeRevealed) {
-          // Auto-cashout
+          pendingRevealsRef.current.clear();
           setGameState(prev => ({
             ...prev,
             phase: 'result',
@@ -253,9 +273,34 @@ export const useSecureMinesGame = () => {
       const message = error instanceof Error ? error.message : 'Failed to reveal tile';
       toast({ title: message, variant: 'destructive' });
     } finally {
-      setIsLoading(false);
+      processingRef.current = false;
+      // Process next in queue
+      if (pendingRevealsRef.current.size > 0 && gameState.phase === 'playing') {
+        processRevealQueue();
+      }
     }
-  }, [gameState, isLoading, toast]);
+  }, [gameState.gameId, gameState.phase, toast]);
+
+  const revealTile = useCallback((position: number) => {
+    if (gameState.phase !== 'playing' || !gameState.gameId) return;
+    if (gameState.revealedPositions.includes(position)) return;
+    if (pendingRevealsRef.current.has(position)) return;
+    
+    // Instant optimistic UI - show as "pending" visually
+    pendingRevealsRef.current.add(position);
+    
+    // Optimistically add to revealed for instant visual feedback
+    setGameState(prev => ({
+      ...prev,
+      revealedPositions: [...prev.revealedPositions, position]
+    }));
+    
+    // Instant sound & haptic
+    hapticManager.tokenMove();
+    
+    // Process queue
+    processRevealQueue();
+  }, [gameState.phase, gameState.gameId, gameState.revealedPositions, processRevealQueue]);
 
   const cashOut = useCallback(async () => {
     if (gameState.phase !== 'playing' || !gameState.gameId || gameState.revealedPositions.length === 0) {
