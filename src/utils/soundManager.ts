@@ -103,9 +103,10 @@ class SoundManager {
     setTimeout(() => this.playTone(650, 0.04, 'sine', 0.15), 50);
   }
 
-  // Token step - each step on the board
+  // Token step - each step on the board - DISABLED to reduce noise
   playTokenStep() {
-    this.playTone(400 + Math.random() * 100, 0.04, 'sine', 0.15);
+    // Disabled - was causing repetitive tap sounds
+    // this.playTone(400 + Math.random() * 100, 0.04, 'sine', 0.15);
   }
 
   // Token enters board (got a 6)
@@ -199,9 +200,10 @@ class SoundManager {
     this.playTone(800, 0.05, 'sine', 0.15);
   }
 
-  // Turn change notification
+  // Turn change notification - DISABLED to reduce annoying sounds
   playTurnChange() {
-    this.playTone(440, 0.1, 'sine', 0.15);
+    // Disabled - was causing annoying tap sounds on every turn
+    // this.playTone(440, 0.1, 'sine', 0.15);
   }
 
   // Error/invalid move
