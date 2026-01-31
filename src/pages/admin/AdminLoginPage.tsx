@@ -51,27 +51,59 @@ const AdminLoginPage = () => {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const form = e.currentTarget as HTMLFormElement;
-    const fd = new FormData(form);
-    // Read from actual DOM values (supports browser autofill that doesn't trigger onChange)
-    const rawPhone = String(fd.get('phone') ?? phone ?? '');
-    const rawPassword = String(fd.get('password') ?? password ?? '');
-    
-    // Check client-side rate limit first
+    // Always ensure we exit loading state
+    const exitLoading = () => setIsLoading(false);
+
+    // Check lockouts first
     if (loginRateLimit.isLocked) {
       toast({
         title: 'Too Many Attempts',
-        description: `Please wait ${loginRateLimit.remainingLockoutTime} seconds before trying again.`,
+        description: `Please wait ${loginRateLimit.remainingLockoutTime} seconds`,
         variant: 'destructive',
       });
       return;
     }
 
-    // Check server-side lockout
     if (serverLockout && serverLockout > 0) {
       toast({
         title: 'Account Locked',
-        description: `Please wait ${serverLockout} seconds before trying again.`,
+        description: `Please wait ${serverLockout} seconds`,
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Get form values
+    const form = e.currentTarget as HTMLFormElement;
+    const fd = new FormData(form);
+    const rawPhone = String(fd.get('phone') ?? phone ?? '').trim();
+    const rawPassword = String(fd.get('password') ?? password ?? '').trim();
+
+    const cleanPhone = normalizePhone(rawPhone);
+
+    if (cleanPhone.length < 10) {
+      toast({
+        title: 'Invalid Phone',
+        description: 'Please enter a valid 10-digit phone number',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (!rawPassword || rawPassword.length < 4) {
+      toast({
+        title: 'Invalid Password',
+        description: 'Please enter your password',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Record attempt
+    if (!loginRateLimit.recordAttempt()) {
+      toast({
+        title: 'Too Many Attempts',
+        description: 'Please wait 10 minutes',
         variant: 'destructive',
       });
       return;
@@ -79,175 +111,83 @@ const AdminLoginPage = () => {
 
     setIsLoading(true);
 
-    // Record client-side attempt
-    if (!loginRateLimit.recordAttempt()) {
-      toast({
-        title: 'Too Many Attempts',
-        description: 'You\'ve been locked out. Please wait 10 minutes.',
-        variant: 'destructive',
-      });
-      setIsLoading(false);
-      return;
-    }
-
-    const cleanPhone = normalizePhone(rawPhone);
-    const cleanPassword = rawPassword;
-    
-    if (cleanPhone.length < 10) {
-      toast({
-        title: 'Invalid Phone',
-        description: 'Please enter a valid 10-digit phone number',
-        variant: 'destructive',
-      });
-      setIsLoading(false);
-      return;
-    }
-
     try {
-      // Get device fingerprint for additional security (with timeout)
-      let deviceFingerprint = 'unknown';
+      // Simple device fingerprint with short timeout
+      let deviceFingerprint = 'web-' + Date.now();
       try {
-        const fpPromise = generateDeviceFingerprint();
-        const timeoutPromise = new Promise<string>((_, reject) => 
-          setTimeout(() => reject(new Error('timeout')), 3000)
-        );
-        deviceFingerprint = await Promise.race([fpPromise, timeoutPromise]);
+        const fp = await Promise.race([
+          generateDeviceFingerprint(),
+          new Promise<string>((_, rej) => setTimeout(() => rej('timeout'), 2000))
+        ]);
+        deviceFingerprint = fp;
       } catch {
-        console.log('[AdminLogin] Device fingerprint failed, using fallback');
+        // Use fallback - don't block login
       }
 
-      console.log('[AdminLogin] Calling secure-admin-login...');
+      // Call edge function with timeout
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Request timeout - please try again')), 12000)
+      );
 
-      // Call secure admin login edge function with explicit timeout
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 15000);
-
-      const response = await supabase.functions.invoke('secure-admin-login', {
-        body: {
-          phone: cleanPhone,
-          password: cleanPassword,
-          deviceFingerprint,
-        }
+      const loginPromise = supabase.functions.invoke('secure-admin-login', {
+        body: { phone: cleanPhone, password: rawPassword, deviceFingerprint }
       });
-      
-      clearTimeout(timeoutId);
-      console.log('[AdminLogin] Response received:', response);
 
+      const response = await Promise.race([loginPromise, timeoutPromise]) as any;
       const { data, error } = response;
 
-      // Handle network/invocation errors (non-2xx responses also land here)
+      // Handle function invocation error
       if (error) {
-        console.error('[AdminLogin] Function error:', error);
-
-        // Try to extract the JSON body returned by the function (e.g. { error, code, lockedFor })
-        let serverPayload: any = null;
-        try {
-          // Most common shape in supabase-js FunctionsHttpError
-          const ctx = (error as any)?.context;
-          if (ctx?.body) {
-            if (typeof ctx.body === 'string') {
-              try {
-                serverPayload = JSON.parse(ctx.body);
-              } catch {
-                serverPayload = { error: ctx.body };
-              }
-            } else {
-              serverPayload = ctx.body;
-            }
-          }
-
-          const res = (error as any)?.context?.response as Response | undefined;
-          if (res) {
-            const text = await res.text();
-            try {
-              serverPayload = JSON.parse(text);
-            } catch {
-              serverPayload = { error: text };
-            }
-          }
-        } catch {
-          // ignore parsing errors
-        }
-
-        if (serverPayload?.code === 'RATE_LIMITED') {
-          setServerLockout(serverPayload.lockedFor);
-          toast({
-            title: 'Too Many Attempts',
-            description: `Your IP has been temporarily locked. Please wait ${serverPayload.lockedFor} seconds.`,
-            variant: 'destructive',
-          });
-          setIsLoading(false);
-          return;
-        }
-
-        if (serverPayload?.code === 'EMAIL_NOT_CONFIRMED') {
-          throw new Error(serverPayload?.error || 'Account verification pending.');
-        }
-
-        if (serverPayload?.code === 'ACCOUNT_NOT_FOUND') {
-          throw new Error(serverPayload?.error || 'Account not found for this phone number.');
-        }
-
-        const message = serverPayload?.error || error.message || 'Login failed. Please try again.';
-        throw new Error(message);
+        console.error('[AdminLogin] Error:', error);
+        throw new Error(error.message || 'Connection failed');
       }
 
-      console.log('[AdminLogin] Parsed data:', data);
-
-      // Handle error responses from the edge function
+      // Handle rate limit from server
       if (data?.code === 'RATE_LIMITED') {
-        setServerLockout(data.lockedFor);
+        setServerLockout(data.lockedFor || 60);
         toast({
           title: 'Too Many Attempts',
-          description: `Your IP has been temporarily locked. Please wait ${data.lockedFor} seconds.`,
+          description: `Locked for ${data.lockedFor || 60} seconds`,
           variant: 'destructive',
         });
-        setIsLoading(false);
+        exitLoading();
         return;
       }
 
-      if (data?.code === 'AUTH_FAILED' || data?.code === 'UNAUTHORIZED' || data?.code === 'DEVICE_BANNED') {
-        throw new Error(data?.error || 'Invalid credentials');
+      // Handle auth errors
+      if (data?.code && data.code !== 'SUCCESS') {
+        throw new Error(data.error || 'Login failed');
       }
 
-      if (data?.error || !data?.success) {
+      // Handle missing session
+      if (!data?.success || !data?.session) {
         throw new Error(data?.error || 'Authentication failed');
       }
 
-      // Set the session from the edge function response
-      if (data.session) {
-        await supabase.auth.setSession({
-          access_token: data.session.access_token,
-          refresh_token: data.session.refresh_token,
-        });
+      // SUCCESS - Set session
+      await supabase.auth.setSession({
+        access_token: data.session.access_token,
+        refresh_token: data.session.refresh_token,
+      });
 
-        // Ensure session is fully hydrated before routing (prevents redirect back to login)
-        await supabase.auth.getUser();
-        
-        // Wait a moment for AuthContext to pick up the new session
-        // This prevents race condition where AdminLayout checks role before session is ready
-        await new Promise(resolve => setTimeout(resolve, 300));
-      }
+      // Brief wait for auth context
+      await new Promise(r => setTimeout(r, 200));
 
-      // Reset rate limits on success
       loginRateLimit.resetAttempts();
       setServerLockout(null);
 
-      toast({
-        title: '✅ Welcome Admin!',
-        description: 'Redirecting to dashboard...',
-      });
-
+      toast({ title: '✅ Welcome Admin!', description: 'Redirecting...' });
       navigate('/admin');
-    } catch (error: any) {
-      safeError('AdminLogin', error);
+
+    } catch (err: any) {
+      console.error('[AdminLogin] Catch:', err);
       toast({
         title: 'Login Failed',
-        description: error.message || 'Invalid credentials',
+        description: err.message || 'Invalid credentials',
         variant: 'destructive',
       });
     } finally {
-      setIsLoading(false);
+      exitLoading();
     }
   };
 
