@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Users, Clock, Trophy, Zap, Lock, Copy, Check, AlertCircle, Wallet, Radio, Ban, Hash, XCircle, RefreshCw } from 'lucide-react';
+import { Users, Clock, Trophy, Zap, Lock, Copy, Check, AlertCircle, Wallet, Radio, Ban, Hash, XCircle, RefreshCw, Shield, Target, Crosshair, Video, Smartphone } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
@@ -110,6 +110,7 @@ const MatchCard = ({
   const navigate = useNavigate();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isRoomDialogOpen, setIsRoomDialogOpen] = useState(false);
+  const [isRulesDialogOpen, setIsRulesDialogOpen] = useState(false);
   const [isParticipantsOpen, setIsParticipantsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingCredentials, setIsLoadingCredentials] = useState(false);
@@ -399,11 +400,10 @@ const MatchCard = ({
         }
       }
     } else {
-      toast({ title: 'Joined Successfully!', description: 'Room details will be available before match starts.' });
+      toast({ title: 'Joined Successfully!', description: 'Please read the match rules carefully.' });
       setIsDialogOpen(false);
-      setBgmiIngameName('');
-      setBgmiPlayerId('');
-      setBgmiPlayerLevel('');
+      // Show rules popup after successful registration
+      setIsRulesDialogOpen(true);
       onRegister?.();
     }
     
@@ -852,6 +852,133 @@ const MatchCard = ({
         isOpen={isParticipantsOpen}
         onClose={() => setIsParticipantsOpen(false)}
       />
+
+      {/* BGMI Match Rules Dialog */}
+      <Dialog open={isRulesDialogOpen} onOpenChange={setIsRulesDialogOpen}>
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+          <DialogHeader className="text-center pb-2">
+            <div className="mx-auto w-16 h-16 rounded-full bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center mb-3 border border-primary/30">
+              <Shield className="w-8 h-8 text-primary" />
+            </div>
+            <DialogTitle className="text-xl font-display">Match Rules</DialogTitle>
+            <DialogDescription className="text-muted-foreground">
+              Please follow these rules strictly to avoid disqualification
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-3 mt-4">
+            {/* Weapon Rules */}
+            <div className="p-3 rounded-lg bg-gradient-to-r from-green-500/10 to-green-500/5 border border-green-500/20">
+              <div className="flex items-start gap-3">
+                <div className="p-2 rounded-lg bg-green-500/20 shrink-0">
+                  <Crosshair className="w-4 h-4 text-green-400" />
+                </div>
+                <div>
+                  <h4 className="font-semibold text-green-400 text-sm">ONLY M416 ALLOWED</h4>
+                  <p className="text-xs text-muted-foreground mt-0.5">Use M416 as your primary weapon only</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Pistol Not Allowed */}
+            <div className="p-3 rounded-lg bg-gradient-to-r from-red-500/10 to-red-500/5 border border-red-500/20">
+              <div className="flex items-start gap-3">
+                <div className="p-2 rounded-lg bg-red-500/20 shrink-0">
+                  <Ban className="w-4 h-4 text-red-400" />
+                </div>
+                <div>
+                  <h4 className="font-semibold text-red-400 text-sm">PISTOL NOT ALLOWED</h4>
+                  <p className="text-xs text-muted-foreground mt-0.5">Using pistol will result in disqualification</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Armor Rules */}
+            <div className="p-3 rounded-lg bg-gradient-to-r from-blue-500/10 to-blue-500/5 border border-blue-500/20">
+              <div className="flex items-start gap-3">
+                <div className="p-2 rounded-lg bg-blue-500/20 shrink-0">
+                  <Shield className="w-4 h-4 text-blue-400" />
+                </div>
+                <div>
+                  <h4 className="font-semibold text-blue-400 text-sm">LEVEL 3 HELMET & VEST ALLOWED</h4>
+                  <p className="text-xs text-muted-foreground mt-0.5">You can use Level 3 armor during the match</p>
+                </div>
+              </div>
+            </div>
+
+            {/* No Camping */}
+            <div className="p-3 rounded-lg bg-gradient-to-r from-orange-500/10 to-orange-500/5 border border-orange-500/20">
+              <div className="flex items-start gap-3">
+                <div className="p-2 rounded-lg bg-orange-500/20 shrink-0">
+                  <Target className="w-4 h-4 text-orange-400" />
+                </div>
+                <div>
+                  <h4 className="font-semibold text-orange-400 text-sm">CAMPING NOT ALLOWED</h4>
+                  <p className="text-xs text-muted-foreground mt-0.5">Keep moving, no camping or hiding allowed</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Tap Fire */}
+            <div className="p-3 rounded-lg bg-gradient-to-r from-purple-500/10 to-purple-500/5 border border-purple-500/20">
+              <div className="flex items-start gap-3">
+                <div className="p-2 rounded-lg bg-purple-500/20 shrink-0">
+                  <Crosshair className="w-4 h-4 text-purple-400" />
+                </div>
+                <div>
+                  <h4 className="font-semibold text-purple-400 text-sm">GIVE TAP FIRE</h4>
+                  <p className="text-xs text-muted-foreground mt-0.5">Use tap fire technique during combat</p>
+                </div>
+              </div>
+            </div>
+
+            {/* POV Recording - Critical */}
+            <div className="p-3 rounded-lg bg-gradient-to-r from-yellow-500/10 to-yellow-500/5 border border-yellow-500/30">
+              <div className="flex items-start gap-3">
+                <div className="p-2 rounded-lg bg-yellow-500/20 shrink-0">
+                  <Video className="w-4 h-4 text-yellow-400" />
+                </div>
+                <div>
+                  <h4 className="font-semibold text-yellow-400 text-sm">POV RECORDING MANDATORY</h4>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Record your screen from <span className="text-yellow-400 font-medium">Play Store / App Store app only</span>. 
+                    Without POV, winnings will NOT be credited!
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Handcam */}
+            <div className="p-3 rounded-lg bg-gradient-to-r from-cyan-500/10 to-cyan-500/5 border border-cyan-500/20">
+              <div className="flex items-start gap-3">
+                <div className="p-2 rounded-lg bg-cyan-500/20 shrink-0">
+                  <Smartphone className="w-4 h-4 text-cyan-400" />
+                </div>
+                <div>
+                  <h4 className="font-semibold text-cyan-400 text-sm">HANDCAM MAY BE REQUIRED</h4>
+                  <p className="text-xs text-muted-foreground mt-0.5">Admin may request handcam footage if needed</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Warning Footer */}
+          <div className="mt-4 p-3 rounded-lg bg-destructive/10 border border-destructive/30">
+            <p className="text-xs text-destructive text-center font-medium">
+              ⚠️ Violation of any rule will result in immediate disqualification and no refund
+            </p>
+          </div>
+
+          <Button 
+            variant="neon" 
+            className="w-full mt-4" 
+            onClick={() => setIsRulesDialogOpen(false)}
+          >
+            <Check className="w-4 h-4 mr-2" />
+            I Understand & Accept
+          </Button>
+        </DialogContent>
+      </Dialog>
     </>
   );
 };
