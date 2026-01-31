@@ -1006,6 +1006,10 @@ export const useLudoGame = () => {
         
         // Check if new position is a safe spot
         if (isSafePosition(newBoardCoords)) {
+          console.log('[LudoGame] Capture check: Safe position - no capture', {
+            newBoardCoords,
+            newPosition
+          });
           return player;
         }
 
@@ -1016,6 +1020,18 @@ export const useLudoGame = () => {
           const opponentCoords = getBoardCoords(token.position, player.color);
           if (!opponentCoords) return token;
           
+          // Debug: Log capture check
+          console.log('[LudoGame] Capture check:', {
+            movingColor: color,
+            movingNewPos: newPosition,
+            movingCoords: newBoardCoords,
+            opponentColor: player.color,
+            opponentTokenId: token.id,
+            opponentPos: token.position,
+            opponentCoords,
+            willCapture: opponentCoords.x === newBoardCoords!.x && opponentCoords.y === newBoardCoords!.y
+          });
+          
           // Compare BOARD coordinates
           if (opponentCoords.x === newBoardCoords!.x && opponentCoords.y === newBoardCoords!.y) {
             capturedOpponent = true;
@@ -1024,6 +1040,12 @@ export const useLudoGame = () => {
               position: newPosition,
               capturingColor: color
             };
+            console.log('[LudoGame] 🎯 CAPTURE DETECTED!', {
+              capturer: color,
+              captured: player.color,
+              tokenId: token.id,
+              atCoords: newBoardCoords
+            });
             return { ...token, position: 0 };
           }
           return token;
