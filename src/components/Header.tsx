@@ -273,12 +273,11 @@ const Header = () => {
         </div>
       </div>
 
-      {/* Update Popup */}
+      {/* Update Popup - Force update, no close option */}
       <UpdatePopup 
         isOpen={showUpdatePopup} 
-        onClose={() => setShowUpdatePopup(false)} 
         onUpdate={applyUpdate}
-        isChecking={isChecking}
+        isUpdating={isChecking}
       />
     </header>
   );

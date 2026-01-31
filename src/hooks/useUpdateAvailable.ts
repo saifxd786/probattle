@@ -208,6 +208,18 @@ export const useUpdateAvailable = () => {
           return;
         }
 
+        // Force check for updates on every app load/revisit
+        try {
+          await reg.update();
+          // Check again after update call
+          if (reg.waiting) {
+            setUpdateAvailable(true);
+            return;
+          }
+        } catch (e) {
+          console.log('Update check on load:', e);
+        }
+
         // Listen for new updates
         reg.addEventListener('updatefound', () => {
           const newWorker = reg.installing;
@@ -226,6 +238,14 @@ export const useUpdateAvailable = () => {
 
     // Check immediately on mount
     setupUpdateListener();
+    
+    // Also check on visibility change (when user returns to app)
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        setupUpdateListener();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     // Listen for controller change (after update)
     const onControllerChange = () => {
@@ -234,6 +254,7 @@ export const useUpdateAvailable = () => {
     navigator.serviceWorker.addEventListener('controllerchange', onControllerChange);
     
     return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
       navigator.serviceWorker.removeEventListener('controllerchange', onControllerChange);
     };
   }, []);
