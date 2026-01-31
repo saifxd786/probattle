@@ -5,7 +5,6 @@ import OfflineIndicator from './components/OfflineIndicator';
 import NotificationPermissionGate from './components/NotificationPermissionGate';
 import ErrorBoundary from './components/ErrorBoundary';
 import PageLoader from './components/PageLoader';
-import SingleSessionEnforcer from './components/SingleSessionEnforcer';
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -168,8 +167,6 @@ const App = () => {
                 <Sonner />
                 <OfflineIndicator />
               <BrowserRouter>
-                {/* Single session enforcer - only one device/tab can be logged in */}
-                <SingleSessionEnforcer />
                 <MaintenanceWrapper>
                   <NotificationPermissionGate>
                     <Suspense fallback={<PageLoader />}>
