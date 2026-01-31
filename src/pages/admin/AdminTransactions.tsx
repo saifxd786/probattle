@@ -185,19 +185,39 @@ const AdminTransactions = () => {
     fetchTransactions();
   };
 
-  // Process referral reward when user makes first deposit
+  // Process referral reward when user makes first deposit AND has bank card linked
   const processReferralReward = async (userId: string, username: string) => {
     const REFERRAL_REWARD = 10;
 
     // Check if there's an unrewarded referral for this user
     const { data: referral } = await supabase
       .from('referrals')
-      .select('id, referrer_id, is_rewarded')
+      .select('id, referrer_id, is_rewarded, status')
       .eq('referred_id', userId)
       .eq('is_rewarded', false)
       .maybeSingle();
 
     if (!referral) return; // No pending referral or already rewarded
+
+    // STEP 1: Check if user has linked a bank card (required for reward)
+    const { data: bankCard } = await supabase
+      .from('user_bank_cards')
+      .select('id')
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    if (!bankCard) {
+      console.log('[Referral] User has not linked bank card yet - reward pending');
+      // Update referral status to show it's waiting for bank card
+      await supabase
+        .from('referrals')
+        .update({ status: 'pending' })
+        .eq('id', referral.id);
+      return;
+    }
+
+    // STEP 2: User has bank card AND is making first deposit - process reward!
+    console.log('[Referral] Processing reward - user has bank card and made deposit');
 
     // Get referrer's current balance
     const { data: referrerProfile } = await supabase
@@ -219,10 +239,10 @@ const AdminTransactions = () => {
       return;
     }
 
-    // Mark referral as rewarded
+    // Mark referral as rewarded with status 'rewarded'
     await supabase
       .from('referrals')
-      .update({ is_rewarded: true })
+      .update({ is_rewarded: true, status: 'rewarded' })
       .eq('id', referral.id);
 
     // Create transaction record for referrer
@@ -231,14 +251,14 @@ const AdminTransactions = () => {
       type: 'admin_credit',
       amount: REFERRAL_REWARD,
       status: 'completed',
-      description: `Referral bonus - ${username} made their first deposit`,
+      description: `Referral bonus - ${username} completed verification (bank + deposit)`,
     });
 
     // Send notification to referrer
     await createNotification(
       referral.referrer_id,
       '🎉 Referral Reward!',
-      `${username} made their first deposit! ₹${REFERRAL_REWARD} has been added to your wallet.`,
+      `${username} completed verification! ₹${REFERRAL_REWARD} has been added to your wallet.`,
       'success'
     );
   };

@@ -68,7 +68,11 @@ const ReferralSection = () => {
           })
         );
         setReferrals(referralsWithProfiles);
-        setTotalEarnings(refData.reduce((sum, r) => sum + (r.reward_amount || 0), 0));
+        // Only count REWARDED referrals in total earnings
+        const rewardedTotal = refData
+          .filter(r => r.is_rewarded && r.status === 'rewarded')
+          .reduce((sum, r) => sum + (r.reward_amount || 0), 0);
+        setTotalEarnings(rewardedTotal);
       }
     } catch (error) {
       console.error('Error fetching referral data:', error);
