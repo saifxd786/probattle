@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { toast } from '@/hooks/use-toast';
+import { APP_VERSION } from '@/constants/appVersion';
 
 export const useUpdateAvailable = () => {
   const [updateAvailable, setUpdateAvailable] = useState(false);
@@ -61,7 +62,7 @@ export const useUpdateAvailable = () => {
       // No update available
       toast({
         title: "You're Up to Date ✓",
-        description: `Running the latest version (v1.2.1)`,
+        description: `Running the latest version (v${APP_VERSION})`,
       });
       return false;
     } catch (err) {
