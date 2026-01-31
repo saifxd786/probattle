@@ -2467,15 +2467,19 @@ export const useFriendLudoGame = () => {
     }
   }, [gameState.phase, gameState.roomId, subscribeToSyncChannel, broadcastChecksum]);
 
-  // Subscribe to rematch channel
+  // Subscribe to rematch channel - with proper subscription confirmation
   const subscribeToRematchChannel = useCallback((roomId: string) => {
     if (rematchChannelRef.current) {
       supabase.removeChannel(rematchChannelRef.current);
+      rematchChannelRef.current = null;
     }
+
+    console.log('[Rematch] Subscribing to rematch channel:', roomId);
 
     const channel = supabase
       .channel(`ludo-rematch-${roomId}`)
       .on('broadcast', { event: 'rematch_request' }, (payload) => {
+        console.log('[Rematch] Received rematch_request:', payload.payload);
         if (payload.payload.requesterId !== user?.id) {
           setGameState(prev => ({
             ...prev,
@@ -2485,6 +2489,7 @@ export const useFriendLudoGame = () => {
         }
       })
       .on('broadcast', { event: 'rematch_response' }, async (payload) => {
+        console.log('[Rematch] Received rematch_response:', payload.payload);
         const { accepted } = payload.payload;
         setGameState(prev => ({
           ...prev,
@@ -2508,7 +2513,12 @@ export const useFriendLudoGame = () => {
           }, 1500);
         }
       })
-      .subscribe();
+      .subscribe((status) => {
+        console.log('[Rematch] Channel subscription status:', status);
+        if (status === 'SUBSCRIBED') {
+          console.log('[Rematch] Channel ready for rematch requests');
+        }
+      });
 
     rematchChannelRef.current = channel;
   }, [user]);
@@ -2597,21 +2607,48 @@ export const useFriendLudoGame = () => {
     toast({ title: '🎮 Rematch Started!', description: 'New game begins!' });
   };
 
-  // Request rematch
+  // Request rematch - with channel subscription check
   const requestRematch = useCallback(async () => {
-    if (!gameState.roomId || !rematchChannelRef.current || !user) return;
+    if (!gameState.roomId || !user) {
+      console.log('[Rematch] Cannot request: missing roomId or user');
+      return;
+    }
 
+    // Ensure channel is subscribed - if not, subscribe now
+    if (!rematchChannelRef.current) {
+      console.log('[Rematch] Channel not ready, subscribing first...');
+      subscribeToRematchChannel(gameState.roomId);
+      // Wait a bit for subscription
+      await new Promise(resolve => setTimeout(resolve, 500));
+    }
+
+    if (!rematchChannelRef.current) {
+      console.log('[Rematch] Still no channel after subscribe attempt');
+      toast({ title: 'Error', description: 'Connection issue, please try again', variant: 'destructive' });
+      return;
+    }
+
+    console.log('[Rematch] Sending rematch request...');
+    
     setGameState(prev => ({
       ...prev,
       rematchStatus: 'pending',
       rematchRequester: user.id
     }));
 
-    await rematchChannelRef.current.send({
-      type: 'broadcast',
-      event: 'rematch_request',
-      payload: { requesterId: user.id }
-    });
+    try {
+      await rematchChannelRef.current.send({
+        type: 'broadcast',
+        event: 'rematch_request',
+        payload: { requesterId: user.id }
+      });
+      console.log('[Rematch] Request sent successfully');
+    } catch (err) {
+      console.error('[Rematch] Failed to send request:', err);
+      toast({ title: 'Error', description: 'Failed to send rematch request', variant: 'destructive' });
+      setGameState(prev => ({ ...prev, rematchStatus: 'idle', rematchRequester: null }));
+      return;
+    }
 
     // Timeout after 30 seconds
     setTimeout(() => {
@@ -2622,17 +2659,27 @@ export const useFriendLudoGame = () => {
         return prev;
       });
     }, 30000);
-  }, [gameState.roomId, user]);
+  }, [gameState.roomId, user, subscribeToRematchChannel]);
 
   // Respond to rematch
   const respondToRematch = useCallback(async (accepted: boolean) => {
-    if (!rematchChannelRef.current) return;
+    console.log('[Rematch] Responding to rematch:', accepted);
+    
+    if (!rematchChannelRef.current) {
+      console.log('[Rematch] No channel for response');
+      return;
+    }
 
-    await rematchChannelRef.current.send({
-      type: 'broadcast',
-      event: 'rematch_response',
-      payload: { accepted }
-    });
+    try {
+      await rematchChannelRef.current.send({
+        type: 'broadcast',
+        event: 'rematch_response',
+        payload: { accepted }
+      });
+      console.log('[Rematch] Response sent successfully');
+    } catch (err) {
+      console.error('[Rematch] Failed to send response:', err);
+    }
 
     setGameState(prev => ({
       ...prev,
