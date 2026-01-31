@@ -41,23 +41,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   useEffect(() => {
-    // Prevent double initialization
+    // Prevent double initialization in strict mode
     if (isInitialized.current) return;
     isInitialized.current = true;
 
-    // Get existing session FIRST (synchronous with local storage)
-    supabase.auth.getSession().then(({ data: { session: existingSession } }) => {
-      // Only update if we have a valid session
-      if (existingSession?.user) {
-        console.log('[Auth] Initial session found:', existingSession.user.id);
-        setSession(existingSession);
-        setUser(existingSession.user);
-        updateLastUserId(existingSession.user.id);
-      }
-      setIsLoading(false);
-    });
-
-    // THEN set up auth state listener for future changes
+    // Set up auth state listener FIRST (critical for catching all auth events)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event: AuthChangeEvent, newSession) => {
         console.log('[Auth] Auth state changed:', event, newSession?.user?.id);
@@ -101,6 +89,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           setUser(null);
           lastUserIdRef.current = null;
           setIsRefreshing(false);
+          setIsLoading(false);
           return;
         }
         
@@ -136,6 +125,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setIsLoading(false);
       }
     );
+
+    // THEN get existing session (this will trigger INITIAL_SESSION event)
+    supabase.auth.getSession().then(({ data: { session: existingSession } }) => {
+      // Only update if we have a valid session AND state wasn't already set by listener
+      if (existingSession?.user && !user) {
+        console.log('[Auth] Initial session found:', existingSession.user.id);
+        setSession(existingSession);
+        setUser(existingSession.user);
+        updateLastUserId(existingSession.user.id);
+      }
+      setIsLoading(false);
+    });
 
     return () => {
       subscription.unsubscribe();
