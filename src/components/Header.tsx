@@ -28,7 +28,7 @@ const Header = () => {
   const [isMobile, setIsMobile] = useState(false);
   const [showUpdatePopup, setShowUpdatePopup] = useState(false);
   const { user, signOut } = useAuth();
-  const { updateAvailable, applyUpdate, checkForUpdate, isChecking } = useUpdateAvailable();
+  const { updateAvailable, applyUpdate, checkForUpdate, isChecking, isUpdating } = useUpdateAvailable();
 
   // Show update popup when update is available
   useEffect(() => {
@@ -277,7 +277,7 @@ const Header = () => {
       <UpdatePopup 
         isOpen={showUpdatePopup} 
         onUpdate={applyUpdate}
-        isUpdating={isChecking}
+        isUpdating={isUpdating}
       />
     </header>
   );

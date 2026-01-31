@@ -72,18 +72,26 @@ const UpdatePopup = ({ isOpen, onUpdate, isUpdating }: UpdatePopupProps) => {
         </AlertDialogHeader>
 
         <div className="py-4 space-y-4">
-          {/* Progress Bar */}
-          <div className="space-y-2">
-            <Progress 
-              value={isUpdating ? progress : 0} 
-              className="h-3 bg-muted"
-            />
-            {isUpdating && (
+          {/* Progress Bar (only while updating to avoid looking "stuck" at 0%) */}
+          {isUpdating && (
+            <div className="space-y-2">
+              <Progress 
+                value={progress}
+                className="h-3 bg-muted"
+              />
               <p className="text-xs text-center text-muted-foreground">
                 {Math.round(progress)}% Complete
               </p>
-            )}
-          </div>
+            </div>
+          )}
+
+          {!isUpdating && (
+            <div className="p-3 rounded-lg bg-muted/30 border border-border/40">
+              <p className="text-xs text-muted-foreground text-center">
+                Tap <span className="font-medium text-foreground">Update Now</span> to download & install the latest version.
+              </p>
+            </div>
+          )}
 
           {/* Warning Section */}
           {!isUpdating && (

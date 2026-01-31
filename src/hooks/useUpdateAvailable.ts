@@ -259,30 +259,113 @@ export const useUpdateAvailable = () => {
     };
   }, []);
 
-  const applyUpdate = useCallback(() => {
-    if (registration?.waiting) {
-      setIsUpdating(true);
-      
+  const applyUpdate = useCallback(async () => {
+    if (!('serviceWorker' in navigator)) {
       toast({
-        title: "🚀 Updating...",
-        description: "Installing new version, please wait.",
+        title: 'Not Supported',
+        description: 'Service workers are not supported in this browser.',
+        variant: 'destructive',
       });
-      
-      // Immediately trigger the update
-      registration.waiting.postMessage({ type: 'SKIP_WAITING' });
-    } else {
-      // Fallback: try to get registration again
-      navigator.serviceWorker.getRegistration().then((reg) => {
-        if (reg?.waiting) {
-          setIsUpdating(true);
-          reg.waiting.postMessage({ type: 'SKIP_WAITING' });
-        } else {
-          toast({
-            title: "No Update Ready",
-            description: "Please try checking for updates again.",
-            variant: "destructive",
-          });
+      return;
+    }
+
+    setIsUpdating(true);
+
+    const waitForWaitingWorker = (reg: ServiceWorkerRegistration, timeoutMs = 12000) => {
+      return new Promise<ServiceWorker | null>((resolve) => {
+        if (reg.waiting) {
+          resolve(reg.waiting);
+          return;
         }
+
+        let resolved = false;
+        let timeoutId: number | undefined;
+
+        const cleanup = () => {
+          if (timeoutId) window.clearTimeout(timeoutId);
+          reg.removeEventListener('updatefound', onUpdateFound);
+        };
+
+        const finish = (worker: ServiceWorker | null) => {
+          if (resolved) return;
+          resolved = true;
+          cleanup();
+          resolve(worker);
+        };
+
+        const onInstalled = () => {
+          // If install completes, the worker should be in reg.waiting
+          finish(reg.waiting ?? null);
+        };
+
+        const attachInstalling = (worker: ServiceWorker | null) => {
+          if (!worker) return;
+          const onStateChange = () => {
+            if (worker.state === 'installed') {
+              worker.removeEventListener('statechange', onStateChange);
+              onInstalled();
+            } else if (worker.state === 'redundant') {
+              worker.removeEventListener('statechange', onStateChange);
+              finish(null);
+            }
+          };
+          worker.addEventListener('statechange', onStateChange);
+          // immediate check
+          if (worker.state === 'installed') {
+            worker.removeEventListener('statechange', onStateChange);
+            onInstalled();
+          }
+        };
+
+        const onUpdateFound = () => {
+          attachInstalling(reg.installing ?? null);
+        };
+
+        reg.addEventListener('updatefound', onUpdateFound);
+        attachInstalling(reg.installing ?? null);
+
+        timeoutId = window.setTimeout(() => finish(reg.waiting ?? null), timeoutMs);
+      });
+    };
+
+    try {
+      const reg = registration ?? (await navigator.serviceWorker.getRegistration());
+
+      if (!reg) {
+        throw new Error('Service worker is not registered yet.');
+      }
+
+      // If the update is not downloaded yet, trigger download first.
+      if (!reg.waiting) {
+        try {
+          await reg.update();
+        } catch (e) {
+          console.log('[Update] reg.update() failed:', e);
+        }
+
+        const waitingWorker = await waitForWaitingWorker(reg);
+        if (!waitingWorker) {
+          throw new Error('Update is not ready yet. Please try again in a moment.');
+        }
+      }
+
+      if (!reg.waiting) {
+        throw new Error('Update is not ready yet. Please try again.');
+      }
+
+      toast({
+        title: '🚀 Updating...',
+        description: 'Installing new version, please wait.',
+      });
+
+      reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+    } catch (e: any) {
+      console.log('[Update] Apply update failed:', e);
+      setIsUpdating(false);
+      toast({
+        title: 'Update failed',
+        description: e?.message || 'Please try again.',
+        variant: 'destructive',
       });
     }
   }, [registration]);
