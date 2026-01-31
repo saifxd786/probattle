@@ -191,53 +191,75 @@ Deno.serve(async (req) => {
     }
 
     if (action === 'cleanup_empty_matches') {
-      // Cancel ALL BGMI matches with 0 registrations that are past their start time or close to it
+      // Cancel BGMI TDM matches at EXACT match time if less than 2 players registered
       const now = new Date();
       
-      // 5 minutes buffer - cancel matches with 0 slots that are within 5 mins of start or past start
-      const bufferTime = new Date(now.getTime() + 5 * 60 * 1000);
+      // Find all upcoming BGMI matches where match_time has passed and filled_slots < 2
+      // This runs every minute, so we check matches within the last 2 minutes to avoid missing any
+      const twoMinutesAgo = new Date(now.getTime() - 2 * 60 * 1000);
       
-      // Find all upcoming BGMI matches with 0 filled slots that are about to start or past start
-      const { data: emptyMatches, error: fetchError } = await supabase
+      const { data: unfullMatches, error: fetchError } = await supabase
         .from('matches')
         .select('*')
         .eq('game', 'bgmi')
         .eq('status', 'upcoming')
-        .eq('filled_slots', 0)
-        .lt('match_time', bufferTime.toISOString());
+        .lt('filled_slots', 2) // Less than 2 players = cancel (0 or 1 player)
+        .lte('match_time', now.toISOString()) // Match time has passed
+        .gte('match_time', twoMinutesAgo.toISOString()); // Within last 2 minutes
 
       if (fetchError) {
-        console.error('[CLEANUP] Error fetching empty matches:', fetchError);
+        console.error('[CLEANUP] Error fetching unfull matches:', fetchError);
         return new Response(
           JSON.stringify({ success: false, message: fetchError.message }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
 
-      console.log(`[CLEANUP] Found ${emptyMatches?.length || 0} empty matches to remove`);
+      console.log(`[CLEANUP] Found ${unfullMatches?.length || 0} matches with < 2 players at match time`);
 
-      const removedMatches: string[] = [];
+      const cancelledMatches: { code: string; title: string; slots: number; refunded: boolean }[] = [];
 
-      for (const match of emptyMatches || []) {
-        // Update status to cancelled
-        const { error: updateError } = await supabase
-          .from('matches')
-          .update({ status: 'cancelled' })
-          .eq('id', match.id);
+      for (const match of unfullMatches || []) {
+        console.log(`[CLEANUP] Processing match ${match.match_code}: ${match.title} (${match.filled_slots} slots filled)`);
+        
+        // Use the auto_cancel function which handles refunds
+        const { data: result, error: cancelError } = await supabase
+          .rpc('auto_cancel_unfilled_match', { p_match_id: match.id });
 
-        if (updateError) {
-          console.error(`[CLEANUP] Error cancelling match ${match.id}:`, updateError);
+        if (cancelError) {
+          console.error(`[CLEANUP] Error cancelling match ${match.match_code}:`, cancelError);
+          
+          // Fallback: just update status if RPC fails
+          const { error: updateError } = await supabase
+            .from('matches')
+            .update({ status: 'cancelled' })
+            .eq('id', match.id);
+            
+          if (!updateError) {
+            cancelledMatches.push({
+              code: match.match_code || 'N/A',
+              title: match.title,
+              slots: match.filled_slots,
+              refunded: false
+            });
+          }
         } else {
-          removedMatches.push(match.title);
-          console.log(`[CLEANUP] Cancelled empty match: ${match.title}`);
+          cancelledMatches.push({
+            code: match.match_code || 'N/A',
+            title: match.title,
+            slots: match.filled_slots,
+            refunded: true
+          });
+          console.log(`[CLEANUP] Cancelled match ${match.match_code}: ${match.title}`, result);
         }
       }
 
       return new Response(
         JSON.stringify({
           success: true,
-          message: `Removed ${removedMatches.length} empty matches`,
-          removed: removedMatches,
+          message: `Cancelled ${cancelledMatches.length} matches with insufficient players`,
+          cancelled: cancelledMatches,
+          checked_at: now.toISOString(),
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );

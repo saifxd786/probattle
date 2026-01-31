@@ -843,6 +843,7 @@ export type Database = {
           is_auto_scheduled: boolean | null
           is_free: boolean
           map_name: string | null
+          match_code: string | null
           match_time: string
           match_type: Database["public"]["Enums"]["match_type"]
           max_slots: number
@@ -871,6 +872,7 @@ export type Database = {
           is_auto_scheduled?: boolean | null
           is_free?: boolean
           map_name?: string | null
+          match_code?: string | null
           match_time: string
           match_type: Database["public"]["Enums"]["match_type"]
           max_slots?: number
@@ -899,6 +901,7 @@ export type Database = {
           is_auto_scheduled?: boolean | null
           is_free?: boolean
           map_name?: string | null
+          match_code?: string | null
           match_time?: string
           match_type?: Database["public"]["Enums"]["match_type"]
           max_slots?: number
@@ -2037,6 +2040,7 @@ export type Database = {
       create_ludo_room: { Args: { p_entry_amount: number }; Returns: Json }
       detect_multi_accounts: { Args: never; Returns: Json }
       generate_5digit_user_code: { Args: never; Returns: string }
+      generate_match_code: { Args: never; Returns: string }
       generate_room_code: { Args: never; Returns: string }
       get_match_room_credentials: {
         Args: { _match_id: string }
