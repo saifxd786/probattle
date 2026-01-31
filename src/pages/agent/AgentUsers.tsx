@@ -143,7 +143,7 @@ const AgentUsers = () => {
 
   const maskEmail = (email: string | null) => {
     if (!email) return 'N/A';
-    if (email.includes('@probattle.app') || email.includes('@proscims.app')) {
+    if (email.includes('@probattle.app')) {
       return '***@probattle.app';
     }
     const [local, domain] = email.split('@');
