@@ -45,9 +45,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (isInitialized.current) return;
     isInitialized.current = true;
 
+    let mounted = true;
+
     // Set up auth state listener FIRST (critical for catching all auth events)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event: AuthChangeEvent, newSession) => {
+        if (!mounted) return;
+        
         console.log('[Auth] Auth state changed:', event, newSession?.user?.id);
         
         // Handle token refresh specifically
@@ -62,7 +66,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           
           // Mark refresh as complete after a short delay
           refreshTimeoutRef.current = setTimeout(() => {
-            setIsRefreshing(false);
+            if (mounted) setIsRefreshing(false);
             console.log('[Auth] Token refresh complete');
           }, 500);
           
@@ -111,6 +115,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             if (event === 'SIGNED_IN') {
               logUserSession();
             }
+          } else {
+            // INITIAL_SESSION with null session means no user is logged in
+            setSession(null);
+            setUser(null);
           }
           setIsLoading(false);
           return;
@@ -127,18 +135,28 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     );
 
     // THEN get existing session (this will trigger INITIAL_SESSION event)
+    // But also set state directly as a fallback for race conditions
     supabase.auth.getSession().then(({ data: { session: existingSession } }) => {
-      // Only update if we have a valid session AND state wasn't already set by listener
-      if (existingSession?.user && !user) {
+      if (!mounted) return;
+      
+      // Set the session state regardless - this ensures we don't stay in loading state
+      // The onAuthStateChange callback may have already set this, but setting again is safe
+      if (existingSession?.user) {
         console.log('[Auth] Initial session found:', existingSession.user.id);
         setSession(existingSession);
         setUser(existingSession.user);
         updateLastUserId(existingSession.user.id);
       }
+      
+      // Always mark loading as complete after getSession returns
       setIsLoading(false);
+    }).catch((error) => {
+      console.error('[Auth] Failed to get session:', error);
+      if (mounted) setIsLoading(false);
     });
 
     return () => {
+      mounted = false;
       subscription.unsubscribe();
       if (refreshTimeoutRef.current) {
         clearTimeout(refreshTimeoutRef.current);
