@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { ChevronRight, Clock, WifiOff, Wifi } from 'lucide-react';
+import { ChevronRight, Clock } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 
@@ -51,33 +51,33 @@ const GameCard = ({ title, image, status, path, delay = 0, isOnline = true }: Ga
             {/* Overlay */}
             <div className="absolute inset-0 bg-gradient-to-t from-background via-background/50 to-transparent" />
             
-            {/* Status Badge */}
-            <div className="absolute top-3 right-3">
+            {/* Status Badge - Compact & Elegant */}
+            <div className="absolute top-2 right-2">
               {!isActive ? (
-                // Coming Soon badge
-                <div className="px-3 py-1.5 rounded-full text-xs font-display font-bold uppercase tracking-wider backdrop-blur-sm bg-muted/90 text-muted-foreground border border-border">
-                  <span className="flex items-center gap-1.5">
-                    <Clock className="w-3 h-3" />
-                    Coming Soon
+                // Coming Soon badge - minimal
+                <div className="px-2 py-0.5 rounded-md text-[10px] font-medium backdrop-blur-md bg-black/60 text-white/80 border border-white/10">
+                  <span className="flex items-center gap-1">
+                    <Clock className="w-2.5 h-2.5" />
+                    Soon
                   </span>
                 </div>
               ) : isOnline ? (
-                // Online badge
-                <div className="px-3 py-1.5 rounded-full text-xs font-display font-bold uppercase tracking-wider backdrop-blur-sm bg-gradient-to-r from-green-500/90 to-emerald-500/90 text-white shadow-lg shadow-green-500/25">
-                  <span className="flex items-center gap-1.5">
-                    <span className="relative flex h-2 w-2">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75" />
-                      <span className="relative inline-flex rounded-full h-2 w-2 bg-white" />
+                // Online badge - small dot indicator
+                <div className="px-2 py-0.5 rounded-md text-[10px] font-semibold backdrop-blur-md bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                  <span className="flex items-center gap-1">
+                    <span className="relative flex h-1.5 w-1.5">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                      <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-400" />
                     </span>
-                    Online
+                    Live
                   </span>
                 </div>
               ) : (
-                // Offline badge
-                <div className="px-3 py-1.5 rounded-full text-xs font-display font-bold uppercase tracking-wider backdrop-blur-sm bg-red-500/90 text-white border border-red-400/50 shadow-lg shadow-red-500/25">
-                  <span className="flex items-center gap-1.5">
-                    <WifiOff className="w-3 h-3" />
-                    Offline
+                // Offline badge - subtle red
+                <div className="px-2 py-0.5 rounded-md text-[10px] font-semibold backdrop-blur-md bg-red-500/20 text-red-400 border border-red-500/30">
+                  <span className="flex items-center gap-1">
+                    <span className="h-1.5 w-1.5 rounded-full bg-red-400" />
+                    Off
                   </span>
                 </div>
               )}
