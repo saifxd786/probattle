@@ -8,7 +8,7 @@ export const useUpdateAvailable = () => {
   const [isChecking, setIsChecking] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
 
-  // Check for updates - FIXED: Wait for download to complete
+  // Check for updates - FIXED: Force bypass cache for immediate detection
   const checkForUpdate = useCallback(async (): Promise<boolean> => {
     if (!('serviceWorker' in navigator)) {
       toast({
@@ -22,6 +22,31 @@ export const useUpdateAvailable = () => {
     setIsChecking(true);
     
     try {
+      // Show checking toast immediately
+      toast({
+        title: "🔄 Checking for updates...",
+        description: "Please wait while we check for new versions.",
+      });
+
+      // STEP 1: Force fetch version.json with cache bypass to get server version
+      let serverVersion: string | null = null;
+      try {
+        const versionResponse = await fetch(`/version.json?_=${Date.now()}`, {
+          cache: 'no-store',
+          headers: { 'Cache-Control': 'no-cache, no-store, must-revalidate' }
+        });
+        if (versionResponse.ok) {
+          const versionData = await versionResponse.json();
+          serverVersion = versionData.version;
+          console.log('[UpdateCheck] Server version:', serverVersion, 'Current:', APP_VERSION);
+        }
+      } catch (e) {
+        console.log('[UpdateCheck] Version fetch failed:', e);
+      }
+
+      // If server version is different, we definitely have an update
+      const hasServerUpdate = serverVersion && serverVersion !== APP_VERSION;
+      
       // Get registration with 3-second timeout
       const regPromise = navigator.serviceWorker.getRegistration();
       const timeoutPromise = new Promise<undefined>((_, reject) => 
@@ -31,6 +56,15 @@ export const useUpdateAvailable = () => {
       const reg = await Promise.race([regPromise, timeoutPromise]);
       
       if (!reg) {
+        if (hasServerUpdate) {
+          // No service worker but server has new version - hard reload needed
+          toast({
+            title: "Update Available! 🎉",
+            description: "A new version is available. Refreshing...",
+          });
+          setTimeout(() => window.location.reload(), 1000);
+          return true;
+        }
         toast({
           title: "You're Up to Date ✓",
           description: `Running version v${APP_VERSION}`,
@@ -51,13 +85,7 @@ export const useUpdateAvailable = () => {
         return true;
       }
 
-      // Show checking toast
-      toast({
-        title: "🔄 Checking for updates...",
-        description: "Please wait while we check for new versions.",
-      });
-
-      // Force update check - this triggers download
+      // Force update check - this triggers download with cache bypass
       await reg.update();
       
       // Check if update is already waiting after update() call
