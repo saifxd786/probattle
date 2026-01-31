@@ -1121,6 +1121,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          active_session_id: string | null
           avatar_url: string | null
           ban_reason: string | null
           banned_at: string | null
@@ -1131,6 +1132,7 @@ export type Database = {
           email: string | null
           id: string
           is_banned: boolean | null
+          last_login_at: string | null
           notification_permission_granted: boolean | null
           phone: string | null
           push_token: string | null
@@ -1145,6 +1147,7 @@ export type Database = {
           wallet_balance: number | null
         }
         Insert: {
+          active_session_id?: string | null
           avatar_url?: string | null
           ban_reason?: string | null
           banned_at?: string | null
@@ -1155,6 +1158,7 @@ export type Database = {
           email?: string | null
           id: string
           is_banned?: boolean | null
+          last_login_at?: string | null
           notification_permission_granted?: boolean | null
           phone?: string | null
           push_token?: string | null
@@ -1169,6 +1173,7 @@ export type Database = {
           wallet_balance?: number | null
         }
         Update: {
+          active_session_id?: string | null
           avatar_url?: string | null
           ban_reason?: string | null
           banned_at?: string | null
@@ -1179,6 +1184,7 @@ export type Database = {
           email?: string | null
           id?: string
           is_banned?: boolean | null
+          last_login_at?: string | null
           notification_permission_granted?: boolean | null
           phone?: string | null
           push_token?: string | null
@@ -2092,6 +2098,10 @@ export type Database = {
         Args: { _match_id: string; _user_id: string }
         Returns: boolean
       }
+      is_session_valid: {
+        Args: { _session_id: string; _user_id: string }
+        Returns: boolean
+      }
       join_ludo_room: { Args: { p_room_code: string }; Returns: Json }
       link_user_to_device: {
         Args: { p_device_id: string; p_user_id: string }
@@ -2130,6 +2140,10 @@ export type Database = {
           device_banned: boolean
           success: boolean
         }[]
+      }
+      set_active_session: {
+        Args: { _session_id: string; _user_id: string }
+        Returns: boolean
       }
       spin_wheel: { Args: never; Returns: Json }
       unban_device: { Args: { p_device_id: string }; Returns: boolean }
