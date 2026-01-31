@@ -26,9 +26,6 @@ export const useUpdateAvailable = () => {
       // Force update check
       await reg.update();
       
-      // Small delay to allow state change events to fire
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
       // Check for waiting worker (update available)
       if (reg.waiting) {
         setRegistration(reg);
@@ -127,10 +124,8 @@ export const useUpdateAvailable = () => {
         description: "Installing new version, please wait.",
       });
       
-      // Give a slight delay to show the progress animation
-      setTimeout(() => {
-        registration.waiting?.postMessage({ type: 'SKIP_WAITING' });
-      }, 1500);
+      // Immediately trigger the update
+      registration.waiting.postMessage({ type: 'SKIP_WAITING' });
     }
   }, [registration]);
 
