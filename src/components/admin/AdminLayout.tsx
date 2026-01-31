@@ -46,13 +46,20 @@ const AdminLayout = () => {
       // Use a backend function that validates the session and checks roles securely.
       try {
         const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
-        const maxAttempts = 5;
+        const maxAttempts = 8; // Increased attempts for mobile/slow connections
         let lastError: any = null;
 
         for (let attempt = 1; attempt <= maxAttempts; attempt++) {
           // Explicitly attach Authorization header (mobile browsers can lag in propagating the session)
           const { data: sessionData } = await supabase.auth.getSession();
           const accessToken = sessionData.session?.access_token || session?.access_token;
+
+          // If no token yet, wait and retry
+          if (!accessToken && attempt < maxAttempts) {
+            console.log(`[AdminLayout] No access token yet, waiting... (attempt ${attempt})`);
+            await sleep(300 * attempt);
+            continue;
+          }
 
           const { data, error } = await supabase.functions.invoke('admin-check-access', {
             body: {},
@@ -75,7 +82,7 @@ const AdminLayout = () => {
 
           // If we keep getting 401 right after login, the token/header isn't ready yet.
           if (status === 401 && attempt < maxAttempts) {
-            await sleep(250 * attempt);
+            await sleep(400 * attempt);
             continue;
           }
 
@@ -166,7 +173,7 @@ const AdminLayout = () => {
         <div className="flex flex-col items-center gap-3 text-center px-6">
           <Loader2 className="w-7 h-7 animate-spin text-primary" />
           <p className="text-muted-foreground">
-            {forceLoginRedirect ? 'Session expired, opening login…' : 'Access denied, returning…'}
+            {forceLoginRedirect ? 'Session expired, please login again…' : 'Verifying admin access…'}
           </p>
         </div>
       </div>
