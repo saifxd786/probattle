@@ -88,11 +88,14 @@ const BGMIPage = () => {
       .in('match_type', matchTypes);
     
     if (activeFilter === 'Upcoming') {
+      // For Upcoming, show only matches that are not full (for TDM 1v1, filled_slots < 2)
       query = query.in('status', ['upcoming', 'live']);
     } else if (activeFilter === 'Results') {
       query = query.eq('status', 'completed');
+    } else if (activeFilter === 'My Matches') {
+      // For My Matches, we need matches that are either upcoming or live (for room details)
+      query = query.in('status', ['upcoming', 'live']);
     }
-    // For 'My Matches', we'll filter client-side based on registrations
     
     const { data, error } = await query.order('match_time', { ascending: activeFilter !== 'Results' });
 
@@ -133,6 +136,21 @@ const BGMIPage = () => {
 
   // Filter matches by map for Classic mode and by user registration for My Matches & Results
   let filteredMatches = matches;
+  
+  // For "Upcoming" TDM matches, hide matches that are full (2+ players for 1v1)
+  if (activeFilter === 'Upcoming') {
+    filteredMatches = matches.filter(m => {
+      // For TDM 1v1, hide matches with 2 registrations (full)
+      if (m.match_type === 'tdm_1v1' && m.filled_slots >= 2) {
+        return false;
+      }
+      // For other match types, hide if slots are full
+      if (m.filled_slots >= m.max_slots) {
+        return false;
+      }
+      return true;
+    });
+  }
   
   // For "My Matches" and "Results", only show matches where user is registered
   if (activeFilter === 'My Matches' || activeFilter === 'Results') {
