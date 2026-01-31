@@ -95,6 +95,38 @@ Deno.serve(async (req) => {
       case 'start': {
         console.log(`[mines-game-server] START: User ${userId}, Entry: ${entryAmount}, Mines: ${minesCount}`)
         
+        // === ACTIVE GAME LOCK ===
+        // Check if user has ANY active game (Mines or Thimble)
+        const { data: activeMinesGame } = await supabaseAdmin
+          .from('mines_games')
+          .select('id')
+          .eq('user_id', userId)
+          .eq('status', 'in_progress')
+          .limit(1)
+          .maybeSingle()
+
+        const { data: activeThimbleGame } = await supabaseAdmin
+          .from('thimble_games')
+          .select('id')
+          .eq('user_id', userId)
+          .eq('status', 'in_progress')
+          .limit(1)
+          .maybeSingle()
+
+        if (activeMinesGame || activeThimbleGame) {
+          const activeGame = activeMinesGame ? 'Mines' : 'Thimble'
+          console.log(`[mines-game-server] START BLOCKED: User has active ${activeGame} game`)
+          return new Response(JSON.stringify({ 
+            success: false, 
+            error: `You already have an active ${activeGame} game. Please complete it first.`,
+            activeGameType: activeGame
+          }), { 
+            status: 200, 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          })
+        }
+        // === END ACTIVE GAME LOCK ===
+        
         // Validate inputs
         if (!entryAmount || entryAmount < 10) {
           console.log(`[mines-game-server] START FAILED: Minimum entry not met`)
