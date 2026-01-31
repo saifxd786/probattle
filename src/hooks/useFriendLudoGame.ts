@@ -342,10 +342,17 @@ export const useFriendLudoGame = () => {
   const disconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const countdownRunningRef = useRef(false); // Track countdown state to avoid duplicate intervals
+  const opponentDisconnectCountRef = useRef(0); // Mirror of state (avoid stale closures)
+  const opponentEverOnlineRef = useRef(false); // Only count disconnects after opponent was seen online
   
   // Track opponent disconnect count - more than 3 = instant forfeit
   const [opponentDisconnectCount, setOpponentDisconnectCount] = useState(0);
   const MAX_DISCONNECT_COUNT = 3;
+
+  // Keep refs in sync with state
+  useEffect(() => {
+    opponentDisconnectCountRef.current = opponentDisconnectCount;
+  }, [opponentDisconnectCount]);
 
   // Active room detection for auto-resume
   const [hasActiveFriendRoom, setHasActiveFriendRoom] = useState(false);
@@ -546,6 +553,10 @@ export const useFriendLudoGame = () => {
         const state = channel.presenceState();
         const onlineCount = Object.keys(state).length;
         setOpponentOnline(onlineCount >= 2);
+
+        if (onlineCount >= 2) {
+          opponentEverOnlineRef.current = true;
+        }
         
         // Update last heartbeat time when we get presence sync
         lastHeartbeatRef.current = Date.now();
@@ -554,6 +565,10 @@ export const useFriendLudoGame = () => {
       .on('presence', { event: 'join' }, ({ key }) => {
         console.log('[LudoPresence] Player joined:', key);
         setOpponentOnline(true);
+        // If someone else joined, we have seen opponent online at least once.
+        if (key !== user?.id) {
+          opponentEverOnlineRef.current = true;
+        }
         lastHeartbeatRef.current = Date.now();
         heartbeatMissedRef.current = 0;
         
@@ -1451,6 +1466,29 @@ export const useFriendLudoGame = () => {
       if (!countdownRunningRef.current) {
         console.log('[LudoSync] Opponent offline - starting 60s countdown');
         soundManager.playDisconnectAlert();
+
+        // Track repeated disconnects (penalty) - only after we have seen opponent online at least once
+        if (opponentEverOnlineRef.current) {
+          const nextCount = opponentDisconnectCountRef.current + 1;
+          opponentDisconnectCountRef.current = nextCount;
+          setOpponentDisconnectCount(nextCount);
+          console.log('[LudoSync] Opponent disconnect count:', nextCount);
+
+          // More than 3 disconnects => instant forfeit (no 60s wait)
+          if (nextCount > MAX_DISCONNECT_COUNT) {
+            console.log('[LudoSync] Opponent exceeded disconnect limit - instant win');
+            countdownRunningRef.current = true; // prevent double-trigger until phase changes
+            setOpponentDisconnectCountdown(null);
+
+            sonnerToast.error('Opponent forfeited!', {
+              description: 'Disconnected too many times. You win.',
+              duration: 3000,
+            });
+
+            claimWinByDisconnect();
+            return;
+          }
+        }
         
         countdownRunningRef.current = true;
         setOpponentDisconnectCountdown(60);
@@ -2242,6 +2280,9 @@ export const useFriendLudoGame = () => {
     });
     setOpponentOnline(false);
     setOpponentDisconnectCount(0); // Reset disconnect count on game reset
+    opponentDisconnectCountRef.current = 0;
+    opponentEverOnlineRef.current = false;
+    countdownRunningRef.current = false;
   }, []);
 
   // Trigger capture animation
