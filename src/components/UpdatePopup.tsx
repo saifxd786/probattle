@@ -1,70 +1,124 @@
+import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { RefreshCw, Sparkles } from 'lucide-react';
+import { RefreshCw, Sparkles, Download, AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+} from '@/components/ui/alert-dialog';
+import { Progress } from '@/components/ui/progress';
 
 interface UpdatePopupProps {
   isOpen: boolean;
-  onClose: () => void;
   onUpdate: () => void;
-  isChecking?: boolean;
+  isUpdating?: boolean;
 }
 
-const UpdatePopup = ({ isOpen, onClose, onUpdate, isChecking }: UpdatePopupProps) => {
-  return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-sm bg-gradient-to-br from-background via-background to-primary/5 border-primary/20">
-        <DialogHeader>
-          <DialogTitle className="flex items-center justify-center gap-3">
-            <motion.div
-              initial={{ rotate: 0 }}
-              animate={{ rotate: isChecking ? 360 : 0 }}
-              transition={{ duration: 1, repeat: isChecking ? Infinity : 0, ease: 'linear' }}
-              className="p-3 rounded-full bg-gradient-to-br from-primary/20 to-primary/10"
-            >
-              <Sparkles className="w-6 h-6 text-primary" />
-            </motion.div>
-          </DialogTitle>
-        </DialogHeader>
+const UpdatePopup = ({ isOpen, onUpdate, isUpdating }: UpdatePopupProps) => {
+  const [progress, setProgress] = useState(0);
 
-        <div className="text-center py-4">
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="space-y-3"
-          >
-            <h3 className="text-lg font-bold text-foreground">
-              New Update Available!
-            </h3>
-            <p className="text-sm text-muted-foreground">
-              A new version of ProBattle is available. Update now for the best experience.
-            </p>
-          </motion.div>
+  // Simulate download progress when updating
+  useEffect(() => {
+    if (isUpdating) {
+      setProgress(0);
+      const interval = setInterval(() => {
+        setProgress((prev) => {
+          if (prev >= 95) {
+            clearInterval(interval);
+            return 95;
+          }
+          return prev + Math.random() * 15;
+        });
+      }, 200);
+      return () => clearInterval(interval);
+    }
+  }, [isUpdating]);
+
+  return (
+    <AlertDialog open={isOpen}>
+      <AlertDialogContent className="max-w-sm bg-gradient-to-br from-background via-background to-primary/5 border-primary/20 [&>button]:hidden">
+        <AlertDialogHeader className="text-center">
+          <div className="flex justify-center mb-4">
+            <motion.div
+              initial={{ scale: 0.8 }}
+              animate={{ scale: 1, rotate: isUpdating ? 360 : 0 }}
+              transition={{ 
+                scale: { duration: 0.3 },
+                rotate: { duration: 1, repeat: isUpdating ? Infinity : 0, ease: 'linear' }
+              }}
+              className="p-4 rounded-full bg-gradient-to-br from-primary/20 to-primary/10"
+            >
+              {isUpdating ? (
+                <Download className="w-8 h-8 text-primary" />
+              ) : (
+                <Sparkles className="w-8 h-8 text-primary" />
+              )}
+            </motion.div>
+          </div>
+          
+          <AlertDialogTitle className="text-xl font-bold text-center">
+            {isUpdating ? 'Downloading Update...' : 'Update Required!'}
+          </AlertDialogTitle>
+          
+          <AlertDialogDescription className="text-center text-muted-foreground">
+            {isUpdating 
+              ? 'Please wait while we install the latest version.'
+              : 'A new version of ProBattle is available. Update now to continue using the app.'
+            }
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+
+        <div className="py-4 space-y-4">
+          {/* Progress Bar */}
+          <div className="space-y-2">
+            <Progress 
+              value={isUpdating ? progress : 0} 
+              className="h-3 bg-muted"
+            />
+            {isUpdating && (
+              <p className="text-xs text-center text-muted-foreground">
+                {Math.round(progress)}% Complete
+              </p>
+            )}
+          </div>
+
+          {/* Warning Section */}
+          {!isUpdating && (
+            <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20">
+              <div className="flex items-center gap-2 text-destructive">
+                <AlertTriangle className="w-4 h-4 shrink-0" />
+                <p className="text-xs font-medium">
+                  You must update to continue using ProBattle
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* What's New Section */}
+          {!isUpdating && (
+            <div className="p-3 rounded-lg bg-primary/5 border border-primary/10">
+              <p className="text-xs text-muted-foreground text-center">
+                ✨ Bug fixes & performance improvements
+              </p>
+            </div>
+          )}
         </div>
 
-        <div className="flex gap-3">
-          <Button 
-            variant="outline"
-            onClick={onClose} 
-            className="flex-1"
-          >
-            Later
-          </Button>
+        {!isUpdating && (
           <Button 
             onClick={onUpdate} 
-            className="flex-1 bg-gradient-to-r from-primary to-primary/80"
-            disabled={isChecking}
+            className="w-full bg-gradient-to-r from-primary to-primary/80 font-bold"
+            size="lg"
           >
-            {isChecking ? (
-              <RefreshCw className="w-4 h-4 animate-spin mr-2" />
-            ) : (
-              <RefreshCw className="w-4 h-4 mr-2" />
-            )}
+            <RefreshCw className="w-4 h-4 mr-2" />
             Update Now
           </Button>
-        </div>
-      </DialogContent>
-    </Dialog>
+        )}
+      </AlertDialogContent>
+    </AlertDialog>
   );
 };
 
