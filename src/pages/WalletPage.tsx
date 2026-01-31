@@ -17,6 +17,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
+import { useWalletServer } from '@/hooks/useWalletServer';
 
 const MIN_WITHDRAWAL = 110;
 
@@ -50,6 +51,7 @@ const TELEGRAM_SUPPORT = 'https://t.me/ProBattleSupport';
 
 const WalletPage = () => {
   const { user } = useAuth();
+  const { requestDeposit, requestWithdrawal, redeemCode: serverRedeemCode, saveBankCard } = useWalletServer();
   const navigate = useNavigate();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -135,8 +137,9 @@ const WalletPage = () => {
     setIsSubmitting(true);
 
     try {
-      let screenshotUrl = null;
+      let screenshotPath = null;
       
+      // Upload screenshot first if provided
       if (screenshot) {
         const fileExt = screenshot.name.split('.').pop();
         const fileName = `${user.id}/${Date.now()}.${fileExt}`;
@@ -146,26 +149,19 @@ const WalletPage = () => {
           .upload(fileName, screenshot);
 
         if (uploadError) throw uploadError;
-        screenshotUrl = fileName;
+        screenshotPath = fileName;
       }
 
-      const { error } = await supabase.from('transactions').insert({
-        user_id: user.id,
-        type: 'deposit',
+      // Call server-based deposit
+      const response = await requestDeposit({
         amount,
-        status: 'pending',
-        description: `Deposit request of ₹${amount}`,
-        screenshot_url: screenshotUrl,
-        utr_id: utrId.trim(),
+        utrId: utrId.trim(),
+        screenshotPath: screenshotPath || undefined,
       });
 
-      if (error) throw error;
-
-      toast({ 
-        title: 'Deposit Request Submitted', 
-        description: 'Your payment is being verified. Wait for admin approval.' 
-      });
-      fetchData();
+      if (response.success) {
+        fetchData();
+      }
     } catch (error: any) {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
     }
@@ -174,106 +170,18 @@ const WalletPage = () => {
   };
 
   const handleWithdraw = async () => {
-    if (!user || !profile) return;
+    if (!user || !profile || !savedBankCard) return;
 
     const amount = Number(withdrawAmount);
 
-    if (amount < MIN_WITHDRAWAL) {
-      toast({ title: 'Error', description: `Minimum withdrawal is ₹${MIN_WITHDRAWAL}`, variant: 'destructive' });
-      return;
-    }
-
-    if (amount > profile.wallet_balance) {
-      toast({ title: 'Error', description: 'Insufficient balance', variant: 'destructive' });
-      return;
-    }
-
-    if (profile.wager_requirement > 0) {
-      toast({ 
-        title: 'Wager Requirement Not Met', 
-        description: `You need to use ₹${profile.wager_requirement.toFixed(2)} more on matches before withdrawing.`, 
-        variant: 'destructive' 
-      });
-      return;
-    }
-
-    // Check if bank card exists or new details are provided
-    if (!savedBankCard) {
-      if (!accountHolderName.trim() || !cardNumber.trim() || !ifscCode.trim() || !bankName.trim()) {
-        toast({ title: 'Error', description: 'Please fill all bank card details', variant: 'destructive' });
-        return;
-      }
-    }
-
     setIsSubmitting(true);
 
-
     try {
-      // If no saved bank card, save the new one first
-      if (!savedBankCard) {
-        const { data: newCard, error: cardError } = await supabase
-          .from('user_bank_cards')
-          .insert({
-            user_id: user.id,
-            account_holder_name: accountHolderName.trim(),
-            card_number: cardNumber.trim(),
-            ifsc_code: ifscCode.trim().toUpperCase(),
-            bank_name: bankName.trim(),
-          })
-          .select()
-          .single();
+      // Call server-based withdrawal
+      const response = await requestWithdrawal({ amount });
 
-        if (cardError) {
-          toast({ title: 'Error', description: 'Failed to save bank details', variant: 'destructive' });
-          setIsSubmitting(false);
-          return;
-        }
-
-        setSavedBankCard(newCard as BankCard);
-      }
-
-      // Get the card details to use
-      const cardToUse = savedBankCard || {
-        account_holder_name: accountHolderName.trim(),
-        card_number: cardNumber.trim(),
-        ifsc_code: ifscCode.trim().toUpperCase(),
-        bank_name: bankName.trim(),
-      };
-
-      // Deduct from wallet
-      const newBalance = profile.wallet_balance - amount;
-      const { error: deductError } = await supabase
-        .from('profiles')
-        .update({ wallet_balance: newBalance })
-        .eq('id', user.id);
-
-      if (deductError) {
-        toast({ title: 'Error', description: 'Failed to process withdrawal', variant: 'destructive' });
-        setIsSubmitting(false);
-        return;
-      }
-
-      setProfile({ ...profile, wallet_balance: newBalance });
-
-      // Create withdrawal transaction with bank details in description
-      const { error } = await supabase.from('transactions').insert({
-        user_id: user.id,
-        type: 'withdrawal',
-        amount,
-        status: 'pending',
-        description: `Withdrawal of ₹${amount} | ${cardToUse.account_holder_name} | A/C: ****${cardToUse.card_number.slice(-4)} | ${cardToUse.bank_name} | IFSC: ${cardToUse.ifsc_code}`,
-      });
-
-      if (error) {
-        // Rollback wallet balance
-        await supabase
-          .from('profiles')
-          .update({ wallet_balance: profile.wallet_balance })
-          .eq('id', user.id);
-        setProfile({ ...profile });
-        toast({ title: 'Error', description: error.message, variant: 'destructive' });
-      } else {
-        toast({ title: 'Withdrawal Request Submitted', description: 'Amount deducted. Your request is being processed.' });
+      if (response.success) {
+        setProfile({ ...profile, wallet_balance: response.newBalance || 0 });
         setIsWithdrawOpen(false);
         setWithdrawAmount('');
         fetchData();
@@ -285,7 +193,7 @@ const WalletPage = () => {
     setIsSubmitting(false);
   };
 
-  // Save bank card details only (without withdrawal)
+  // Save bank card details only (without withdrawal) - Server-based
   const handleSaveBankCard = async () => {
     if (!user) return;
 
@@ -297,29 +205,23 @@ const WalletPage = () => {
     setIsSubmitting(true);
 
     try {
-      const { data: newCard, error: cardError } = await supabase
-        .from('user_bank_cards')
-        .insert({
-          user_id: user.id,
-          account_holder_name: accountHolderName.trim(),
-          card_number: cardNumber.trim(),
-          ifsc_code: ifscCode.trim().toUpperCase(),
-          bank_name: bankName.trim(),
-        })
-        .select()
-        .single();
-
-      if (cardError) {
-        toast({ title: 'Error', description: 'Failed to save bank details', variant: 'destructive' });
-        setIsSubmitting(false);
-        return;
-      }
-
-      setSavedBankCard(newCard as BankCard);
-      toast({ 
-        title: '✅ Bank Details Saved', 
-        description: 'You can now request withdrawals' 
+      const response = await saveBankCard({
+        accountHolderName: accountHolderName.trim(),
+        cardNumber: cardNumber.trim(),
+        ifscCode: ifscCode.trim().toUpperCase(),
+        bankName: bankName.trim(),
       });
+
+      if (response.success && response.bankCard) {
+        setSavedBankCard({
+          id: response.bankCard.id,
+          account_holder_name: response.bankCard.account_holder_name,
+          card_number: response.bankCard.card_number,
+          ifsc_code: response.bankCard.ifsc_code,
+          bank_name: response.bankCard.bank_name,
+          created_at: new Date().toISOString(),
+        });
+      }
     } catch (error: any) {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
     }
@@ -330,93 +232,24 @@ const WalletPage = () => {
   const handleRedeem = async () => {
     if (!user || !redeemCode.trim()) return;
 
-    // Check if user has bank card bound
-    if (!savedBankCard) {
-      toast({ 
-        title: 'Bank Details Required', 
-        description: 'कृपया पहले Withdrawal section में अपना Bank Account bind करें।', 
-        variant: 'destructive' 
-      });
-      setIsRedeemOpen(false);
-      setIsWithdrawOpen(true);
-      return;
-    }
-
     setIsRedeeming(true);
 
     try {
-      const { data: codeData, error: codeError } = await supabase
-        .from('redeem_codes')
-        .select('*')
-        .eq('code', redeemCode.trim().toUpperCase())
-        .eq('is_active', true)
-        .single();
+      // Server-based redeem code
+      const response = await serverRedeemCode({ code: redeemCode.trim() });
 
-      if (codeError || !codeData) {
-        toast({ title: 'Invalid Code', description: 'This code does not exist or is inactive', variant: 'destructive' });
-        setIsRedeeming(false);
-        return;
+      if (response.success) {
+        if (response.newBalance !== undefined && profile) {
+          setProfile({ ...profile, wallet_balance: response.newBalance });
+        }
+        setIsRedeemOpen(false);
+        setRedeemCode('');
+        fetchData();
+      } else if (response.error?.includes('Bank card required')) {
+        // Redirect to withdrawal dialog to add bank card
+        setIsRedeemOpen(false);
+        setIsWithdrawOpen(true);
       }
-
-      if (codeData.expires_at && new Date(codeData.expires_at) < new Date()) {
-        toast({ title: 'Code Expired', description: 'This code has expired', variant: 'destructive' });
-        setIsRedeeming(false);
-        return;
-      }
-
-      if (codeData.current_uses >= codeData.max_uses) {
-        toast({ title: 'Code Exhausted', description: 'This code has reached its maximum uses', variant: 'destructive' });
-        setIsRedeeming(false);
-        return;
-      }
-
-      const { data: existingUse } = await supabase
-        .from('redeem_code_uses')
-        .select('id')
-        .eq('code_id', codeData.id)
-        .eq('user_id', user.id)
-        .single();
-
-      if (existingUse) {
-        toast({ title: 'Already Redeemed', description: 'You have already used this code', variant: 'destructive' });
-        setIsRedeeming(false);
-        return;
-      }
-
-      const { error: useError } = await supabase.from('redeem_code_uses').insert({
-        code_id: codeData.id,
-        user_id: user.id,
-        amount: codeData.amount,
-      });
-
-      if (useError) throw useError;
-
-      await supabase
-        .from('redeem_codes')
-        .update({ current_uses: codeData.current_uses + 1 })
-        .eq('id', codeData.id);
-
-      await supabase
-        .from('profiles')
-        .update({ wallet_balance: (profile?.wallet_balance || 0) + codeData.amount })
-        .eq('id', user.id);
-
-      await supabase.from('transactions').insert({
-        user_id: user.id,
-        type: 'admin_credit',
-        amount: codeData.amount,
-        status: 'completed',
-        description: `Redeemed code: ${codeData.code}`,
-      });
-
-      toast({ 
-        title: '🎉 Code Redeemed!', 
-        description: `₹${codeData.amount} has been added to your wallet` 
-      });
-      
-      setIsRedeemOpen(false);
-      setRedeemCode('');
-      fetchData();
     } catch (error: any) {
       toast({ title: 'Error', description: error.message, variant: 'destructive' });
     }
