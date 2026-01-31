@@ -13,7 +13,7 @@ const AdminLayout = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [collapsed, setCollapsed] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false);
+  const [isAdmin, setIsAdmin] = useState<boolean | null>(null); // null = not checked yet
   const [checkingRole, setCheckingRole] = useState(true);
   const [mobileOpen, setMobileOpen] = useState(false);
   
@@ -32,10 +32,13 @@ const AdminLayout = () => {
 
       // Skip re-checking if we already verified this user
       if (hasVerifiedRef.current && lastCheckedUserIdRef.current === user.id) {
+        // Already verified - make sure loading is off and state is correct
+        setCheckingRole(false);
         return;
       }
 
       console.log('[AdminLayout] Checking admin role for user:', user.id);
+      setCheckingRole(true);
       
       // IMPORTANT: Role checks can be blocked by RLS on client-side.
       // Use a backend function that validates the session and checks roles securely.
@@ -107,7 +110,7 @@ const AdminLayout = () => {
         }, 300);
 
         return () => window.clearTimeout(t);
-      } else if (!isAdmin && hasVerifiedRef.current) {
+      } else if (isAdmin === false && hasVerifiedRef.current) {
         // Only redirect to home if we've actually verified and user is NOT admin
         console.log('[AdminLayout] User is not admin, redirecting to home');
         navigate('/');
@@ -115,7 +118,8 @@ const AdminLayout = () => {
     }
   }, [user, isAdmin, authLoading, checkingRole, navigate]);
 
-  if (authLoading || checkingRole) {
+  // Show loading while auth is loading OR while checking role OR while isAdmin hasn't been determined yet
+  if (authLoading || checkingRole || isAdmin === null) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
@@ -126,6 +130,7 @@ const AdminLayout = () => {
     );
   }
 
+  // Don't render if not authenticated or not admin
   if (!user || !isAdmin) {
     return null;
   }
