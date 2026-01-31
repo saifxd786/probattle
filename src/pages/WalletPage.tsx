@@ -625,10 +625,12 @@ const WalletPage = () => {
                     <div className="text-right">
                       <div className={`font-display font-bold ${
                         tx.type === 'deposit' 
-                          ? (tx.status === 'completed' ? 'text-green-500' : 'text-yellow-500')
-                          : ['prize', 'refund', 'admin_credit'].includes(tx.type) 
-                            ? 'text-green-500' 
-                            : 'text-red-500'
+                          ? (tx.status === 'completed' ? 'text-green-500' : tx.status === 'cancelled' ? 'text-red-500' : 'text-yellow-500')
+                          : tx.type === 'withdrawal'
+                            ? (tx.status === 'completed' ? 'text-green-500' : tx.status === 'cancelled' ? 'text-red-500' : 'text-yellow-500')
+                            : ['prize', 'refund', 'admin_credit'].includes(tx.type) 
+                              ? 'text-green-500' 
+                              : 'text-red-500'
                       }`}>
                         {['deposit', 'prize', 'refund', 'admin_credit'].includes(tx.type) ? '+' : '-'}₹{tx.amount}
                       </div>
