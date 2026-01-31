@@ -80,7 +80,7 @@ const AdminLoginPage = () => {
       const deviceFingerprint = await generateDeviceFingerprint();
 
       // Call secure admin login edge function
-      const { data, error } = await supabase.functions.invoke('secure-admin-login', {
+      const response = await supabase.functions.invoke('secure-admin-login', {
         body: {
           phone: cleanPhone,
           password,
@@ -88,10 +88,15 @@ const AdminLoginPage = () => {
         }
       });
 
+      const { data, error } = response;
+
+      // Handle network/invocation errors
       if (error) {
-        throw new Error(error.message || 'Login failed');
+        console.error('[AdminLogin] Function error:', error);
+        throw new Error(error.message || 'Connection failed. Please try again.');
       }
 
+      // Handle error responses from the edge function
       if (data?.code === 'RATE_LIMITED') {
         setServerLockout(data.lockedFor);
         toast({
@@ -102,7 +107,11 @@ const AdminLoginPage = () => {
         return;
       }
 
-      if (!data?.success) {
+      if (data?.code === 'AUTH_FAILED' || data?.code === 'UNAUTHORIZED' || data?.code === 'DEVICE_BANNED') {
+        throw new Error(data?.error || 'Invalid credentials');
+      }
+
+      if (data?.error || !data?.success) {
         throw new Error(data?.error || 'Authentication failed');
       }
 
