@@ -131,7 +131,7 @@ const AdminLayout = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background flex">
       {/* Mobile Header with Hamburger */}
       <div className="lg:hidden fixed top-0 left-0 right-0 h-14 bg-card border-b border-border z-50 flex items-center px-4">
         <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
@@ -159,7 +159,7 @@ const AdminLayout = () => {
 
       <main
         className={cn(
-          'min-h-screen transition-all duration-300',
+          'flex-1 min-h-screen transition-all duration-300',
           'pt-14 lg:pt-0', // Add top padding on mobile for fixed header
           collapsed ? 'lg:ml-16' : 'lg:ml-64'
         )}
