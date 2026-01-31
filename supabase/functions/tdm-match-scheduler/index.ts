@@ -143,7 +143,7 @@ Deno.serve(async (req) => {
     }
 
     if (action === 'check_cancel') {
-      // Check for matches that need to be auto-cancelled
+      // Check for TDM matches that need to be auto-cancelled (auto-scheduled)
       const now = new Date();
       
       // Find matches where auto_cancel_at has passed and not full
@@ -185,6 +185,59 @@ Deno.serve(async (req) => {
           success: true,
           message: `Cancelled ${cancelledMatches.length} matches`,
           cancelled: cancelledMatches,
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (action === 'cleanup_empty_matches') {
+      // Cancel ALL BGMI matches with 0 registrations that are past their start time or close to it
+      const now = new Date();
+      
+      // 5 minutes buffer - cancel matches with 0 slots that are within 5 mins of start or past start
+      const bufferTime = new Date(now.getTime() + 5 * 60 * 1000);
+      
+      // Find all upcoming BGMI matches with 0 filled slots that are about to start or past start
+      const { data: emptyMatches, error: fetchError } = await supabase
+        .from('matches')
+        .select('*')
+        .eq('game', 'bgmi')
+        .eq('status', 'upcoming')
+        .eq('filled_slots', 0)
+        .lt('match_time', bufferTime.toISOString());
+
+      if (fetchError) {
+        console.error('[CLEANUP] Error fetching empty matches:', fetchError);
+        return new Response(
+          JSON.stringify({ success: false, message: fetchError.message }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      console.log(`[CLEANUP] Found ${emptyMatches?.length || 0} empty matches to remove`);
+
+      const removedMatches: string[] = [];
+
+      for (const match of emptyMatches || []) {
+        // Update status to cancelled
+        const { error: updateError } = await supabase
+          .from('matches')
+          .update({ status: 'cancelled' })
+          .eq('id', match.id);
+
+        if (updateError) {
+          console.error(`[CLEANUP] Error cancelling match ${match.id}:`, updateError);
+        } else {
+          removedMatches.push(match.title);
+          console.log(`[CLEANUP] Cancelled empty match: ${match.title}`);
+        }
+      }
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          message: `Removed ${removedMatches.length} empty matches`,
+          removed: removedMatches,
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
