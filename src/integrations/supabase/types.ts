@@ -116,6 +116,36 @@ export type Database = {
         }
         Relationships: []
       }
+      bgmi_profiles: {
+        Row: {
+          created_at: string
+          id: string
+          ingame_name: string
+          player_id: string
+          player_level: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          ingame_name: string
+          player_id: string
+          player_level: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          ingame_name?: string
+          player_id?: string
+          player_level?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       daily_login_bonus: {
         Row: {
           coins: number
