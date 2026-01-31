@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -19,6 +19,21 @@ const AdminLoginPage = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [serverLockout, setServerLockout] = useState<number | null>(null);
+
+  // Auto-decrement server lockout so the UI unlocks without requiring a refresh
+  useEffect(() => {
+    if (serverLockout === null) return;
+
+    const id = window.setInterval(() => {
+      setServerLockout((s) => {
+        if (s === null) return null;
+        if (s <= 1) return null;
+        return s - 1;
+      });
+    }, 1000);
+
+    return () => window.clearInterval(id);
+  }, [serverLockout !== null]);
 
   // Client-side rate limiting as first layer of defense
   const loginRateLimit = useRateLimit('admin-login', {
@@ -195,7 +210,8 @@ const AdminLoginPage = () => {
     }
   };
 
-  const isLocked = loginRateLimit.isLocked || (serverLockout !== null && serverLockout > 0);
+  const lockedSeconds = Math.max(loginRateLimit.remainingLockoutTime, serverLockout ?? 0);
+  const isLocked = lockedSeconds > 0;
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
@@ -279,7 +295,7 @@ const AdminLoginPage = () => {
                 ) : isLocked ? (
                   <span className="flex items-center gap-2">
                     <AlertTriangle className="w-5 h-5" />
-                    Locked ({loginRateLimit.remainingLockoutTime || serverLockout}s)
+                    Locked ({lockedSeconds}s)
                   </span>
                 ) : (
                   <span className="flex items-center gap-2">
