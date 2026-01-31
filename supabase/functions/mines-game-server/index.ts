@@ -93,17 +93,21 @@ Deno.serve(async (req) => {
 
     switch (action) {
       case 'start': {
+        console.log(`[mines-game-server] START: User ${userId}, Entry: ${entryAmount}, Mines: ${minesCount}`)
+        
         // Validate inputs
         if (!entryAmount || entryAmount < 10) {
-          return new Response(JSON.stringify({ error: 'Minimum entry is ₹10' }), { 
-            status: 400, 
+          console.log(`[mines-game-server] START FAILED: Minimum entry not met`)
+          return new Response(JSON.stringify({ success: false, error: 'Minimum entry is ₹10' }), { 
+            status: 200, 
             headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
           })
         }
         
         if (!minesCount || minesCount < 1 || minesCount > 24) {
-          return new Response(JSON.stringify({ error: 'Invalid mines count' }), { 
-            status: 400, 
+          console.log(`[mines-game-server] START FAILED: Invalid mines count`)
+          return new Response(JSON.stringify({ success: false, error: 'Invalid mines count' }), { 
+            status: 200, 
             headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
           })
         }
@@ -116,15 +120,19 @@ Deno.serve(async (req) => {
           .single()
 
         if (profileError || !profile) {
-          return new Response(JSON.stringify({ error: 'Failed to get profile' }), { 
-            status: 500, 
+          console.log(`[mines-game-server] START FAILED: Profile error - ${profileError?.message}`)
+          return new Response(JSON.stringify({ success: false, error: 'Failed to get profile' }), { 
+            status: 200, 
             headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
           })
         }
 
+        console.log(`[mines-game-server] User balance: ${profile.wallet_balance}, Entry: ${entryAmount}`)
+
         if (Number(profile.wallet_balance) < entryAmount) {
-          return new Response(JSON.stringify({ error: 'Insufficient balance' }), { 
-            status: 400, 
+          console.log(`[mines-game-server] START FAILED: Insufficient balance`)
+          return new Response(JSON.stringify({ success: false, error: 'Insufficient balance' }), { 
+            status: 200, 
             headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
           })
         }
@@ -136,14 +144,16 @@ Deno.serve(async (req) => {
           .eq('id', userId)
 
         if (deductError) {
-          return new Response(JSON.stringify({ error: 'Failed to deduct entry fee' }), { 
-            status: 500, 
+          console.log(`[mines-game-server] START FAILED: Deduct error - ${deductError.message}`)
+          return new Response(JSON.stringify({ success: false, error: 'Failed to deduct entry fee' }), { 
+            status: 200, 
             headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
           })
         }
 
         // Generate mine positions SERVER-SIDE (secret, never sent to client)
         const minePositions = generateMinePositions(minesCount)
+        console.log(`[mines-game-server] Mine positions generated (count: ${minePositions.length})`)
 
         // Create game record
         const { data: game, error: gameError } = await supabaseAdmin
@@ -152,7 +162,7 @@ Deno.serve(async (req) => {
             user_id: userId,
             entry_amount: entryAmount,
             mines_count: minesCount,
-            mine_positions: minePositions, // Stored securely on server
+            mine_positions: minePositions,
             revealed_positions: [],
             current_multiplier: 1,
             potential_win: entryAmount,
@@ -162,14 +172,15 @@ Deno.serve(async (req) => {
           .single()
 
         if (gameError || !game) {
+          console.log(`[mines-game-server] START FAILED: Game insert error - ${gameError?.message}`)
           // Refund on error
           await supabaseAdmin
             .from('profiles')
             .update({ wallet_balance: Number(profile.wallet_balance) })
             .eq('id', userId)
           
-          return new Response(JSON.stringify({ error: 'Failed to start game' }), { 
-            status: 500, 
+          return new Response(JSON.stringify({ success: false, error: 'Failed to create game session' }), { 
+            status: 200, 
             headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
           })
         }

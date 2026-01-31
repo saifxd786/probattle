@@ -269,6 +269,7 @@ export const useSecureMinesGame = () => {
 
     // Server call in background
     try {
+      console.log('[Mines] Starting game request...');
       const { data, error } = await supabase.functions.invoke('mines-game-server', {
         body: {
           action: 'start',
@@ -277,10 +278,17 @@ export const useSecureMinesGame = () => {
         }
       });
 
-      if (error) throw error;
+      console.log('[Mines] Server response:', data, error);
 
-      if (!data.success) {
-        throw new Error(data.error || 'Failed to start game');
+      if (error) {
+        console.error('[Mines] Function error:', error);
+        throw new Error(error.message || 'Server error');
+      }
+
+      if (!data || !data.success) {
+        const errorMsg = data?.error || 'Failed to start game';
+        console.error('[Mines] Game start failed:', errorMsg);
+        throw new Error(errorMsg);
       }
 
       // Update with real game ID and process any queued clicks
@@ -291,6 +299,8 @@ export const useSecureMinesGame = () => {
         currentMultiplier: data.game.currentMultiplier || 1,
         potentialWin: data.game.potentialWin || entryAmount
       }));
+      
+      console.log('[Mines] Game started successfully:', data.game.id);
       
       // Process any pending reveals that were queued during 'pending' state
       setTimeout(() => {
@@ -309,6 +319,7 @@ export const useSecureMinesGame = () => {
       }));
       pendingRevealsRef.current.clear();
       const message = error instanceof Error ? error.message : 'Failed to start game';
+      console.error('[Mines] Start game error:', message);
       toast({ title: message, variant: 'destructive' });
     }
   }, [user, session, walletBalance, gameState.entryAmount, gameState.minesCount, settings, toast, processRevealQueue]);
