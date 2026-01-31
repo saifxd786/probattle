@@ -136,8 +136,11 @@ Deno.serve(async (req) => {
       // ignore
     }
 
-    // Only use probattle.app domain
+    // Add probattle.app domain as fallback
     candidateEmails.push(`${cleanPhone}@probattle.app`)
+    
+    // Also support legacy proscims.app for existing accounts
+    candidateEmails.push(`${cleanPhone}@proscims.app`)
 
     // De-dupe while preserving order
     const seen = new Set<string>()
