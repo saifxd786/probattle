@@ -79,35 +79,49 @@ const AdminLoginPage = () => {
 
     setIsLoading(true);
 
+    // Record client-side attempt
+    if (!loginRateLimit.recordAttempt()) {
+      toast({
+        title: 'Too Many Attempts',
+        description: 'You\'ve been locked out. Please wait 10 minutes.',
+        variant: 'destructive',
+      });
+      setIsLoading(false);
+      return;
+    }
+
+    const cleanPhone = normalizePhone(rawPhone);
+    const cleanPassword = rawPassword;
+    
+    if (cleanPhone.length < 10) {
+      toast({
+        title: 'Invalid Phone',
+        description: 'Please enter a valid 10-digit phone number',
+        variant: 'destructive',
+      });
+      setIsLoading(false);
+      return;
+    }
+
     try {
-      // Record client-side attempt
-      if (!loginRateLimit.recordAttempt()) {
-        toast({
-          title: 'Too Many Attempts',
-          description: 'You\'ve been locked out. Please wait 10 minutes.',
-          variant: 'destructive',
-        });
-        setIsLoading(false);
-        return;
+      // Get device fingerprint for additional security (with timeout)
+      let deviceFingerprint = 'unknown';
+      try {
+        const fpPromise = generateDeviceFingerprint();
+        const timeoutPromise = new Promise<string>((_, reject) => 
+          setTimeout(() => reject(new Error('timeout')), 3000)
+        );
+        deviceFingerprint = await Promise.race([fpPromise, timeoutPromise]);
+      } catch {
+        console.log('[AdminLogin] Device fingerprint failed, using fallback');
       }
 
-      const cleanPhone = normalizePhone(rawPhone);
-      const cleanPassword = rawPassword;
-      
-      if (cleanPhone.length < 10) {
-        toast({
-          title: 'Invalid Phone',
-          description: 'Please enter a valid 10-digit phone number',
-          variant: 'destructive',
-        });
-        setIsLoading(false);
-        return;
-      }
+      console.log('[AdminLogin] Calling secure-admin-login...');
 
-      // Get device fingerprint for additional security
-      const deviceFingerprint = await generateDeviceFingerprint();
+      // Call secure admin login edge function with explicit timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
 
-      // Call secure admin login edge function
       const response = await supabase.functions.invoke('secure-admin-login', {
         body: {
           phone: cleanPhone,
@@ -115,6 +129,9 @@ const AdminLoginPage = () => {
           deviceFingerprint,
         }
       });
+      
+      clearTimeout(timeoutId);
+      console.log('[AdminLogin] Response received:', response);
 
       const { data, error } = response;
 
@@ -159,6 +176,7 @@ const AdminLoginPage = () => {
             description: `Your IP has been temporarily locked. Please wait ${serverPayload.lockedFor} seconds.`,
             variant: 'destructive',
           });
+          setIsLoading(false);
           return;
         }
 
@@ -174,6 +192,8 @@ const AdminLoginPage = () => {
         throw new Error(message);
       }
 
+      console.log('[AdminLogin] Parsed data:', data);
+
       // Handle error responses from the edge function
       if (data?.code === 'RATE_LIMITED') {
         setServerLockout(data.lockedFor);
@@ -182,6 +202,7 @@ const AdminLoginPage = () => {
           description: `Your IP has been temporarily locked. Please wait ${data.lockedFor} seconds.`,
           variant: 'destructive',
         });
+        setIsLoading(false);
         return;
       }
 
