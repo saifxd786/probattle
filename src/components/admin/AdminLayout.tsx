@@ -19,20 +19,25 @@ const AdminLayout = () => {
   useEffect(() => {
     const checkAdminRole = async () => {
       if (!user) {
+        setIsAdmin(false);
         setCheckingRole(false);
         return;
       }
 
-      const { data, error } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', user.id)
-        .eq('role', 'admin')
-        .maybeSingle();
+      // IMPORTANT: Role checks can be blocked by RLS on client-side.
+      // Use a backend function that validates the session and checks roles securely.
+      const { data, error } = await supabase.functions.invoke('admin-check-access', {
+        body: {},
+      });
 
-      if (data) {
-        setIsAdmin(true);
+      if (error) {
+        console.error('[AdminLayout] admin-check-access failed:', error);
+        setIsAdmin(false);
+        setCheckingRole(false);
+        return;
       }
+
+      setIsAdmin(Boolean((data as any)?.isAdmin));
       setCheckingRole(false);
     };
 

@@ -49,5 +49,8 @@ verify_jwt = false
 [functions.secure-admin-login]
 verify_jwt = false
 
+[functions.admin-check-access]
+verify_jwt = false
+
 [functions.validate-device]
 verify_jwt = false
