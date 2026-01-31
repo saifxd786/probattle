@@ -16,37 +16,7 @@ const AdminLoginPage = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Warm up backend function to reduce cold-start timeouts (especially on mobile networks)
-  useEffect(() => {
-    let cancelled = false;
-
-    const warmUp = async () => {
-      try {
-        const timeout = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('warmup-timeout')), 6000),
-        );
-
-        // Intentionally invalid input -> returns fast, but wakes the function runtime.
-        const invoke = supabase.functions.invoke('secure-admin-login', {
-          body: { phone: '0', password: '0' },
-        });
-
-        await Promise.race([invoke, timeout]);
-      } catch {
-        // Ignore warmup failures (offline / slow network). Real login still works.
-      }
-    };
-
-    // small delay so it doesn't compete with initial app boot
-    const t = setTimeout(() => {
-      if (!cancelled) warmUp();
-    }, 350);
-
-    return () => {
-      cancelled = true;
-      clearTimeout(t);
-    };
-  }, []);
+  // No warmup needed - edge function is optimized for fast cold starts
 
   const normalizePhone = (raw: string) => {
     const digits = (raw ?? '').replace(/\D/g, '');
@@ -85,29 +55,22 @@ const AdminLoginPage = () => {
     setIsLoading(true);
 
     try {
-      // Call edge function with timeout
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Request timeout - please try again')), 25000)
-      );
-
-      const loginPromise = supabase.functions.invoke('secure-admin-login', {
+      // Simple direct call - let Supabase handle retries
+      const { data, error } = await supabase.functions.invoke('secure-admin-login', {
         body: { phone: cleanPhone, password: rawPassword }
       });
 
-      const response = await Promise.race([loginPromise, timeoutPromise]) as any;
-      const { data, error } = response;
-
       if (error) {
-        console.error('[AdminLogin] Error:', error);
-        throw new Error(error.message || 'Connection failed');
+        console.error('[AdminLogin] Invoke error:', error);
+        throw new Error('Connection failed. Please check your internet and try again.');
       }
 
-      // Handle auth errors
-      if (data?.code && data.code !== 'SUCCESS') {
+      // Handle response codes
+      if (data?.code && data.code !== 'SUCCESS' && !data?.success) {
         throw new Error(data.error || 'Login failed');
       }
 
-      // Handle missing session
+      // Check for session
       if (!data?.success || !data?.session) {
         throw new Error(data?.error || 'Authentication failed');
       }
@@ -118,19 +81,17 @@ const AdminLoginPage = () => {
         refresh_token: data.session.refresh_token,
       });
 
-      // Wait longer for session to propagate properly (especially on mobile)
-      await new Promise(r => setTimeout(r, 500));
+      // Wait for session propagation
+      await new Promise(r => setTimeout(r, 400));
 
       toast({ title: '✅ Welcome Admin!', description: 'Redirecting to dashboard...' });
       navigate('/admin');
 
     } catch (err: any) {
-      console.error('[AdminLogin] Catch:', err);
+      console.error('[AdminLogin] Error:', err);
       toast({
         title: 'Login Failed',
-        description: err?.message?.includes('Request timeout')
-          ? 'Network slow hai. Please 1 minute baad retry karein.'
-          : (err.message || 'Invalid credentials'),
+        description: err.message || 'Please try again',
         variant: 'destructive',
       });
     } finally {
