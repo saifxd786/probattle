@@ -45,7 +45,10 @@ const LudoLobby = ({
   userAvatar,
 }: LudoLobbyProps) => {
   const navigate = useNavigate();
-  const rewardAmount = entryAmount * settings.rewardMultiplier;
+  // 4v4 mode gets 2x multiplier, 1v1 uses settings multiplier
+  const rewardAmount = playerMode === 4 
+    ? entryAmount * 2 
+    : entryAmount * settings.rewardMultiplier;
 
   return (
     <div className="h-screen bg-[#0A0A0F] relative overflow-hidden flex flex-col">
