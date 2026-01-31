@@ -39,7 +39,7 @@ const ForceUpdatePopup = ({ isOpen, onUpdate, isUpdating }: ForceUpdatePopupProp
 
   return (
     <AlertDialog open={isOpen}>
-      <AlertDialogContent className="max-w-sm bg-gradient-to-br from-background via-background to-primary/5 border-primary/20">
+      <AlertDialogContent className="max-w-sm bg-gradient-to-br from-background via-background to-primary/5 border-primary/20 !flex !flex-col max-h-[85vh] overflow-hidden">
         <AlertDialogHeader className="text-center">
           <div className="flex justify-center mb-4">
             <motion.div
@@ -71,7 +71,8 @@ const ForceUpdatePopup = ({ isOpen, onUpdate, isUpdating }: ForceUpdatePopupProp
           </AlertDialogDescription>
         </AlertDialogHeader>
 
-        <div className="py-4 space-y-4">
+        {/* Scrollable body (keeps CTA visible on small screens) */}
+        <div className="flex-1 overflow-y-auto py-4 pr-1 space-y-4">
           {/* Horizontal Progress Bar (only while updating) */}
           {isUpdating && (
             <div className="space-y-2">
@@ -103,15 +104,18 @@ const ForceUpdatePopup = ({ isOpen, onUpdate, isUpdating }: ForceUpdatePopupProp
           )}
         </div>
 
+        {/* Sticky footer CTA */}
         {!isUpdating && (
-          <Button 
-            onClick={onUpdate} 
-            className="w-full bg-gradient-to-r from-primary to-primary/80 font-bold"
-            size="lg"
-          >
-            <RefreshCw className="w-4 h-4 mr-2" />
-            Update Now
-          </Button>
+          <div className="pt-2">
+            <Button 
+              onClick={onUpdate} 
+              className="w-full bg-gradient-to-r from-primary to-primary/80 font-bold"
+              size="lg"
+            >
+              <RefreshCw className="w-4 h-4 mr-2" />
+              Update Now
+            </Button>
+          </div>
         )}
       </AlertDialogContent>
     </AlertDialog>
