@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Users, Clock, Trophy, Zap, Lock, Copy, Check, AlertCircle, Wallet, Radio, Ban, Hash, XCircle, RefreshCw, Shield, Target, Crosshair, Video, Smartphone } from 'lucide-react';
+import { Users, Clock, Trophy, Zap, Lock, Copy, Check, AlertCircle, Wallet, Radio, Ban, Hash, XCircle, RefreshCw, Shield, Target, Crosshair, Video, Smartphone, ExternalLink } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
@@ -969,9 +969,21 @@ const MatchCard = ({
             </p>
           </div>
 
+          {/* More Details Link */}
+          <button 
+            onClick={() => {
+              setIsRulesDialogOpen(false);
+              navigate('/rules');
+            }}
+            className="w-full mt-3 flex items-center justify-center gap-2 text-xs text-primary hover:text-primary/80 transition-colors py-2"
+          >
+            <ExternalLink className="w-3.5 h-3.5" />
+            View Complete Rules & Regulations
+          </button>
+
           <Button 
             variant="neon" 
-            className="w-full mt-4" 
+            className="w-full mt-2" 
             onClick={() => setIsRulesDialogOpen(false)}
           >
             <Check className="w-4 h-4 mr-2" />
