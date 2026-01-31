@@ -82,28 +82,29 @@ const ForgotPasswordForm = ({ onBack }: { onBack: () => void }) => {
       return;
     }
     
+    // Validate phone before setting loading
+    if (phone.length < 10) {
+      toast({
+        title: 'Invalid Phone',
+        description: 'Please enter a valid 10-digit phone number',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Record attempt before setting loading
+    if (!forgotPasswordRateLimit.recordAttempt()) {
+      toast({
+        title: 'Too Many Attempts',
+        description: `You've exceeded the maximum attempts. Please wait 5 minutes.`,
+        variant: 'destructive',
+      });
+      return;
+    }
+    
     setIsLoading(true);
 
     try {
-      if (phone.length < 10) {
-        toast({
-          title: 'Invalid Phone',
-          description: 'Please enter a valid 10-digit phone number',
-          variant: 'destructive',
-        });
-        return;
-      }
-
-      // Record attempt
-      if (!forgotPasswordRateLimit.recordAttempt()) {
-        toast({
-          title: 'Too Many Attempts',
-          description: `You've exceeded the maximum attempts. Please wait 5 minutes.`,
-          variant: 'destructive',
-        });
-        return;
-      }
-
       // Fetch user profile with security question
       const { data: profile, error } = await supabase
         .from('profiles')
@@ -117,6 +118,7 @@ const ForgotPasswordForm = ({ onBack }: { onBack: () => void }) => {
           description: 'इस नंबर से कोई अकाउंट नहीं मिला। कृपया सही नंबर डालें।',
           variant: 'destructive',
         });
+        setIsLoading(false);
         return;
       }
 
@@ -128,6 +130,7 @@ const ForgotPasswordForm = ({ onBack }: { onBack: () => void }) => {
           variant: 'destructive',
         });
         window.open('https://t.me/ProBattleTournament', '_blank');
+        setIsLoading(false);
         return;
       }
 
