@@ -341,6 +341,7 @@ export const useFriendLudoGame = () => {
   const [opponentDisconnectCountdown, setOpponentDisconnectCountdown] = useState<number | null>(null);
   const disconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const countdownRunningRef = useRef(false); // Track countdown state to avoid duplicate intervals
   
   // Track opponent disconnect count - more than 3 = instant forfeit
   const [opponentDisconnectCount, setOpponentDisconnectCount] = useState(0);
@@ -1425,6 +1426,8 @@ export const useFriendLudoGame = () => {
     claimWinByDisconnect();
   }, [opponentDisconnectCountdown, gameState.phase, claimWinByDisconnect]);
   // 60-second countdown when opponent disconnects
+  // countdownRunningRef tracks if countdown is running to avoid duplicate intervals
+  
   useEffect(() => {
     // Only run during active games
     if (gameState.phase !== 'playing') {
@@ -1437,17 +1440,19 @@ export const useFriendLudoGame = () => {
         clearInterval(countdownIntervalRef.current);
         countdownIntervalRef.current = null;
       }
+      countdownRunningRef.current = false;
       setOpponentDisconnectCountdown(null);
       return;
     }
 
     if (!opponentOnline) {
       // Opponent went offline - start 60 second countdown
-      console.log('[LudoSync] Opponent offline - starting 60s countdown');
-      soundManager.playDisconnectAlert();
-      
-      // Only start countdown if not already running
-      if (opponentDisconnectCountdown === null) {
+      // Only start if not already running (check ref, not state to avoid re-trigger)
+      if (!countdownRunningRef.current) {
+        console.log('[LudoSync] Opponent offline - starting 60s countdown');
+        soundManager.playDisconnectAlert();
+        
+        countdownRunningRef.current = true;
         setOpponentDisconnectCountdown(60);
         
         // Show notification
@@ -1456,29 +1461,39 @@ export const useFriendLudoGame = () => {
           duration: 4000
         });
         
-        // Start countdown interval
+        // Clear any existing interval first
+        if (countdownIntervalRef.current) {
+          clearInterval(countdownIntervalRef.current);
+        }
+        
+        // Start countdown interval - decrements every second
         countdownIntervalRef.current = setInterval(() => {
           setOpponentDisconnectCountdown(prev => {
             if (prev === null || prev <= 1) {
               // Time's up - claim win
-              clearInterval(countdownIntervalRef.current!);
-              countdownIntervalRef.current = null;
+              if (countdownIntervalRef.current) {
+                clearInterval(countdownIntervalRef.current);
+                countdownIntervalRef.current = null;
+              }
+              countdownRunningRef.current = false;
               console.log('[LudoSync] Countdown finished - claiming win');
               claimWinByDisconnect();
               return null;
             }
+            console.log('[LudoSync] Countdown:', prev - 1);
             return prev - 1;
           });
         }, 1000);
       }
     } else {
       // Opponent came back online - clear countdown
-      if (opponentDisconnectCountdown !== null) {
+      if (countdownRunningRef.current) {
         console.log('[LudoSync] Opponent reconnected - clearing countdown');
         if (countdownIntervalRef.current) {
           clearInterval(countdownIntervalRef.current);
           countdownIntervalRef.current = null;
         }
+        countdownRunningRef.current = false;
         setOpponentDisconnectCountdown(null);
         
         sonnerToast.success('Opponent reconnected!', {
@@ -1494,7 +1509,7 @@ export const useFriendLudoGame = () => {
         countdownIntervalRef.current = null;
       }
     };
-  }, [opponentOnline, gameState.phase, claimWinByDisconnect, opponentDisconnectCountdown]);
+  }, [opponentOnline, gameState.phase, claimWinByDisconnect]);
 
   // NOTE: 60-second countdown timer for disconnect - only Exit Match gives instant win
 
