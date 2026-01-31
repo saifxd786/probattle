@@ -90,10 +90,38 @@ const AdminLoginPage = () => {
 
       const { data, error } = response;
 
-      // Handle network/invocation errors
+      // Handle network/invocation errors (non-2xx responses also land here)
       if (error) {
         console.error('[AdminLogin] Function error:', error);
-        throw new Error(error.message || 'Connection failed. Please try again.');
+
+        // Try to extract the JSON body returned by the function (e.g. { error, code, lockedFor })
+        let serverPayload: any = null;
+        try {
+          const res = (error as any)?.context?.response as Response | undefined;
+          if (res) {
+            const text = await res.text();
+            try {
+              serverPayload = JSON.parse(text);
+            } catch {
+              serverPayload = { error: text };
+            }
+          }
+        } catch {
+          // ignore parsing errors
+        }
+
+        if (serverPayload?.code === 'RATE_LIMITED') {
+          setServerLockout(serverPayload.lockedFor);
+          toast({
+            title: 'Too Many Attempts',
+            description: `Your IP has been temporarily locked. Please wait ${serverPayload.lockedFor} seconds.`,
+            variant: 'destructive',
+          });
+          return;
+        }
+
+        const message = serverPayload?.error || error.message || 'Login failed. Please try again.';
+        throw new Error(message);
       }
 
       // Handle error responses from the edge function
