@@ -97,6 +97,20 @@ const AdminLoginPage = () => {
         // Try to extract the JSON body returned by the function (e.g. { error, code, lockedFor })
         let serverPayload: any = null;
         try {
+          // Most common shape in supabase-js FunctionsHttpError
+          const ctx = (error as any)?.context;
+          if (ctx?.body) {
+            if (typeof ctx.body === 'string') {
+              try {
+                serverPayload = JSON.parse(ctx.body);
+              } catch {
+                serverPayload = { error: ctx.body };
+              }
+            } else {
+              serverPayload = ctx.body;
+            }
+          }
+
           const res = (error as any)?.context?.response as Response | undefined;
           if (res) {
             const text = await res.text();
@@ -118,6 +132,14 @@ const AdminLoginPage = () => {
             variant: 'destructive',
           });
           return;
+        }
+
+        if (serverPayload?.code === 'EMAIL_NOT_CONFIRMED') {
+          throw new Error(serverPayload?.error || 'Account verification pending.');
+        }
+
+        if (serverPayload?.code === 'ACCOUNT_NOT_FOUND') {
+          throw new Error(serverPayload?.error || 'Account not found for this phone number.');
         }
 
         const message = serverPayload?.error || error.message || 'Login failed. Please try again.';

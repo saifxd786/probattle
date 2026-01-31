@@ -142,10 +142,44 @@ Deno.serve(async (req) => {
     }
 
     if (authError || !authData?.user) {
-      console.log(`[secure-admin-login] Auth failed for phone ending ${cleanPhone.slice(-4)}`)
+      const rawMsg = (authError as any)?.message ? String((authError as any).message) : 'unknown'
+      const rawStatus = (authError as any)?.status ? Number((authError as any).status) : undefined
+      console.log(
+        `[secure-admin-login] Auth failed for phone ending ${cleanPhone.slice(-4)} | status=${rawStatus ?? 'n/a'} | msg=${rawMsg}`,
+      )
+
+      // Heuristic mapping (keeps client UX clear without leaking sensitive details)
+      const msg = rawMsg.toLowerCase()
+      let code = 'AUTH_FAILED'
+      let clientError = 'Invalid credentials'
+      let httpStatus = 401
+
+      if (msg.includes('email not confirmed') || msg.includes('confirm') && msg.includes('email')) {
+        code = 'EMAIL_NOT_CONFIRMED'
+        clientError = 'Account verification pending. Please verify your account first.'
+        httpStatus = 403
+      }
+
+      // Helpful hint: check if profile exists for this phone (admin-only flow)
+      try {
+        const { data: profile } = await supabaseAdmin
+          .from('profiles')
+          .select('id')
+          .eq('phone', cleanPhone)
+          .maybeSingle()
+
+        if (!profile) {
+          code = 'ACCOUNT_NOT_FOUND'
+          clientError = 'Account not found for this phone number.'
+          httpStatus = 404
+        }
+      } catch {
+        // ignore
+      }
+
       return new Response(
-        JSON.stringify({ error: 'Invalid credentials', code: 'AUTH_FAILED' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ error: clientError, code }),
+        { status: httpStatus, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       )
     }
 
