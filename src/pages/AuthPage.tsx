@@ -560,9 +560,7 @@ const AuthPage = () => {
   }, [user, navigate]);
 
   // Generate email from phone number for Supabase auth
-  // Support both old domain (proscims.app) and new domain (probattle.app)
   const phoneToEmail = (phone: string) => `${phone}@probattle.app`;
-  const phoneToOldEmail = (phone: string) => `${phone}@proscims.app`;
 
   const normalizePhone = (raw: string) => {
     const digits = (raw ?? '').replace(/\D/g, '');
@@ -941,38 +939,15 @@ const AuthPage = () => {
           return;
         }
 
-        // Login - try new domain first, then old domain for backwards compatibility
-        let loginData;
-        let loginError;
-        
-        // Try new domain first
-        const { data: newDomainData, error: newDomainError } = await withTimeout(
+        // Login
+        const { data: loginData, error: loginError } = await withTimeout(
           supabase.auth.signInWithPassword({
             email,
             password: passwordForAuth,
           }),
           15000,
-          'login-new-domain'
+          'login'
         );
-        
-        if (newDomainError && newDomainError.message.includes('Invalid login credentials')) {
-          // Try old domain (proscims.app) for backwards compatibility
-          const oldEmail = phoneToOldEmail(phoneForAuth);
-          const { data: oldDomainData, error: oldDomainError } = await withTimeout(
-            supabase.auth.signInWithPassword({
-              email: oldEmail,
-              password: passwordForAuth,
-            }),
-            15000,
-            'login-old-domain'
-          );
-          
-          loginData = oldDomainData;
-          loginError = oldDomainError;
-        } else {
-          loginData = newDomainData;
-          loginError = newDomainError;
-        }
 
         if (loginError) {
           const correlationId = generateCorrelationId();

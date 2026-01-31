@@ -136,9 +136,8 @@ Deno.serve(async (req) => {
       // ignore
     }
 
-    for (const domain of ['probattle.app', 'proscims.app']) {
-      candidateEmails.push(`${cleanPhone}@${domain}`)
-    }
+    // Only use probattle.app domain
+    candidateEmails.push(`${cleanPhone}@probattle.app`)
 
     // De-dupe while preserving order
     const seen = new Set<string>()

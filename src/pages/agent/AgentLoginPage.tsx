@@ -34,21 +34,9 @@ const AgentLoginPage = () => {
     setIsLoading(true);
 
     try {
-      const cleanPhone = phoneToEmail(phone);
+      const email = `${phoneToEmail(phone)}@probattle.app`;
       
-      let authData, authError;
-      
-      const result1 = await tryLogin(`${cleanPhone}@probattle.app`, password);
-      if (!result1.error) {
-        authData = result1.data;
-      } else {
-        const result2 = await tryLogin(`${cleanPhone}@proscims.app`, password);
-        if (!result2.error) {
-          authData = result2.data;
-        } else {
-          authError = result1.error;
-        }
-      }
+      const { data: authData, error: authError } = await tryLogin(email, password);
 
       if (authError) throw authError;
 
