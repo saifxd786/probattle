@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Outlet, useNavigate } from 'react-router-dom';
+import { useState, useEffect, useRef } from 'react';
+import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import AdminSidebar from './AdminSidebar';
@@ -9,42 +9,93 @@ import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 
 const AdminLayout = () => {
-  const { user, isLoading: authLoading } = useAuth();
+  const { user, isLoading: authLoading, session } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [collapsed, setCollapsed] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [checkingRole, setCheckingRole] = useState(true);
   const [mobileOpen, setMobileOpen] = useState(false);
+  
+  // Track if we've already verified admin status to prevent re-checking on every render
+  const hasVerifiedRef = useRef(false);
+  const lastCheckedUserIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     const checkAdminRole = async () => {
-      if (!user) {
+      // Skip if no user or still loading auth
+      if (!user || !session) {
         setIsAdmin(false);
         setCheckingRole(false);
         return;
       }
 
+      // Skip re-checking if we already verified this user
+      if (hasVerifiedRef.current && lastCheckedUserIdRef.current === user.id) {
+        return;
+      }
+
+      console.log('[AdminLayout] Checking admin role for user:', user.id);
+      
       // IMPORTANT: Role checks can be blocked by RLS on client-side.
       // Use a backend function that validates the session and checks roles securely.
-      const { data, error } = await supabase.functions.invoke('admin-check-access', {
-        body: {},
-      });
+      try {
+        const { data, error } = await supabase.functions.invoke('admin-check-access', {
+          body: {},
+        });
 
-      if (error) {
-        console.error('[AdminLayout] admin-check-access failed:', error);
+        if (error) {
+          console.error('[AdminLayout] admin-check-access failed:', error);
+          
+          // If it's an auth error, the session might not be ready yet
+          // Wait a bit and retry once
+          if (!hasVerifiedRef.current) {
+            console.log('[AdminLayout] Retrying admin check after delay...');
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            const retryResult = await supabase.functions.invoke('admin-check-access', {
+              body: {},
+            });
+            
+            if (!retryResult.error && (retryResult.data as any)?.isAdmin) {
+              console.log('[AdminLayout] Retry successful - user is admin');
+              setIsAdmin(true);
+              hasVerifiedRef.current = true;
+              lastCheckedUserIdRef.current = user.id;
+              setCheckingRole(false);
+              return;
+            }
+          }
+          
+          setIsAdmin(false);
+          setCheckingRole(false);
+          return;
+        }
+
+        const adminStatus = Boolean((data as any)?.isAdmin);
+        console.log('[AdminLayout] Admin status:', adminStatus);
+        setIsAdmin(adminStatus);
+        hasVerifiedRef.current = true;
+        lastCheckedUserIdRef.current = user.id;
+      } catch (err) {
+        console.error('[AdminLayout] Unexpected error:', err);
         setIsAdmin(false);
-        setCheckingRole(false);
-        return;
       }
-
-      setIsAdmin(Boolean((data as any)?.isAdmin));
+      
       setCheckingRole(false);
     };
 
     if (!authLoading) {
       checkAdminRole();
     }
-  }, [user, authLoading]);
+  }, [user, session, authLoading]);
+
+  // Reset verification when user changes
+  useEffect(() => {
+    if (user?.id !== lastCheckedUserIdRef.current) {
+      hasVerifiedRef.current = false;
+    }
+  }, [user?.id]);
 
   useEffect(() => {
     if (!authLoading && !checkingRole) {
@@ -56,7 +107,9 @@ const AdminLayout = () => {
         }, 300);
 
         return () => window.clearTimeout(t);
-      } else if (!isAdmin) {
+      } else if (!isAdmin && hasVerifiedRef.current) {
+        // Only redirect to home if we've actually verified and user is NOT admin
+        console.log('[AdminLayout] User is not admin, redirecting to home');
         navigate('/');
       }
     }

@@ -202,6 +202,10 @@ const AdminLoginPage = () => {
 
         // Ensure session is fully hydrated before routing (prevents redirect back to login)
         await supabase.auth.getUser();
+        
+        // Wait a moment for AuthContext to pick up the new session
+        // This prevents race condition where AdminLayout checks role before session is ready
+        await new Promise(resolve => setTimeout(resolve, 300));
       }
 
       // Reset rate limits on success
