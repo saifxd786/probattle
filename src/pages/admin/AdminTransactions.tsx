@@ -367,7 +367,6 @@ const AdminTransactions = () => {
               <thead>
                 <tr className="border-b border-border">
                   <th className="text-left p-4 font-medium text-muted-foreground">User</th>
-                  <th className="text-left p-4 font-medium text-muted-foreground">User</th>
                   <th className="text-left p-4 font-medium text-muted-foreground">Type</th>
                   <th className="text-left p-4 font-medium text-muted-foreground">Amount</th>
                   <th className="text-left p-4 font-medium text-muted-foreground">Screenshot</th>
