@@ -60,23 +60,6 @@ const ISSUE_CATEGORIES = [
   { id: 'other', name: 'Other', icon: <MessageCircle className="w-5 h-5" />, color: 'from-gray-500 to-slate-500' },
 ];
 
-// Sub-categories for Deposit
-const DEPOSIT_SUBCATEGORIES = [
-  { id: 'payment_deducted', name: 'Payment Deducted, Not Credited', icon: '💸' },
-  { id: 'upi_failed', name: 'UPI Transaction Failed', icon: '❌' },
-  { id: 'minimum_amount', name: 'Minimum Deposit Query', icon: '💰' },
-  { id: 'qr_not_working', name: 'QR Code Not Working', icon: '📱' },
-  { id: 'deposit_other', name: 'Other Deposit Issue', icon: '❓' },
-];
-
-// Sub-categories for Withdrawal
-const WITHDRAWAL_SUBCATEGORIES = [
-  { id: 'withdrawal_pending', name: 'Withdrawal Pending Too Long', icon: '⏳' },
-  { id: 'withdrawal_rejected', name: 'Withdrawal Rejected', icon: '🚫' },
-  { id: 'bank_details', name: 'Bank Details Issue', icon: '🏦' },
-  { id: 'minimum_withdrawal', name: 'Minimum Withdrawal Query', icon: '💵' },
-  { id: 'withdrawal_other', name: 'Other Withdrawal Issue', icon: '❓' },
-];
 
 
 const MAX_IMAGES = 5;
@@ -87,10 +70,11 @@ const INACTIVITY_TIMEOUT = 60 * 60 * 1000; // 1 hour in milliseconds
 const SupportChat = () => {
   const { user } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
-  const [step, setStep] = useState<'category' | 'subcategory' | 'game' | 'chat'>('category');
+  const [step, setStep] = useState<'category' | 'transactions' | 'game' | 'chat'>('category');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const [selectedSubCategory, setSelectedSubCategory] = useState<string | null>(null);
-  const [selectedGame, setSelectedGame] = useState<string | null>(null);
+  const [selectedTransaction, setSelectedTransaction] = useState<any | null>(null);
+  const [transactions, setTransactions] = useState<any[]>([]);
+  const [loadingTransactions, setLoadingTransactions] = useState(false);
   
   // AI Chat state
   const [aiMessages, setAiMessages] = useState<AIMessage[]>([]);
@@ -230,31 +214,55 @@ const SupportChat = () => {
     if (imageInputRef.current) imageInputRef.current.value = '';
   };
 
-  const selectCategory = (categoryId: string) => {
+  const selectCategory = async (categoryId: string) => {
     setSelectedCategory(categoryId);
     if (categoryId === 'game') {
       setStep('game');
     } else if (categoryId === 'deposit' || categoryId === 'withdrawal') {
-      setStep('subcategory');
+      // Fetch user's transactions of this type
+      setStep('transactions');
+      setLoadingTransactions(true);
+      try {
+        const { data, error } = await supabase
+          .from('transactions')
+          .select('*')
+          .eq('user_id', user?.id)
+          .eq('type', categoryId)
+          .order('created_at', { ascending: false })
+          .limit(10);
+        
+        if (error) throw error;
+        setTransactions(data || []);
+      } catch (err) {
+        console.error('Failed to fetch transactions:', err);
+        setTransactions([]);
+      } finally {
+        setLoadingTransactions(false);
+      }
     } else {
       setStep('chat');
       addAiGreeting(categoryId);
     }
   };
 
-  const selectSubCategory = (subCategoryId: string) => {
-    setSelectedSubCategory(subCategoryId);
+  const selectTransaction = (transaction: any) => {
+    setSelectedTransaction(transaction);
     setStep('chat');
-    addAiGreeting(selectedCategory!, undefined, subCategoryId);
+    addAiGreetingWithTransaction(selectedCategory!, transaction);
+  };
+
+  const skipTransactionSelection = () => {
+    setSelectedTransaction(null);
+    setStep('chat');
+    addAiGreeting(selectedCategory!);
   };
 
   const selectGame = (gameId: string) => {
-    setSelectedGame(gameId);
     setStep('chat');
     addAiGreeting('game', gameId);
   };
 
-  const addAiGreeting = (category: string, game?: string, subCategory?: string) => {
+  const addAiGreeting = (category: string, game?: string) => {
     const greetings: Record<string, string> = {
       deposit: "🙏 Namaste! Main ProBattle AI Support hoon.\n\nAapko deposit mein koi problem aa rahi hai? Please apni issue batao ya screenshot share karo - main turant help karunga!",
       withdrawal: "🙏 Namaste! Withdrawal mein help ke liye main yahan hoon.\n\nAapki withdrawal request mein kya issue hai? Details share karein!",
@@ -262,34 +270,7 @@ const SupportChat = () => {
       other: "🙏 Namaste! Main aapki kisi bhi query mein help kar sakta hoon.\n\nBatao kya help chahiye? Screenshots bhi share kar sakte ho agar koi error aa raha ho!",
     };
 
-    // Sub-category specific greetings for Deposit
-    const depositSubGreetings: Record<string, string> = {
-      payment_deducted: "💸 **Payment Deducted But Not Credited**\n\nYeh common issue hai, don't worry! Please mujhe ye details do:\n\n1. **Transaction Amount** - Kitne rupees deduct hue?\n2. **UTR Number** - Bank message mein milega\n3. **Screenshot** - Payment ka proof\n\nMain turant check karke update karunga! 🔍",
-      upi_failed: "❌ **UPI Transaction Failed**\n\nTransaction fail hone ke kai reasons ho sakte hain:\n\n- Incorrect UPI ID\n- Bank server down\n- Daily limit exceeded\n\n**Try these:**\n1. 5 minutes baad retry karein\n2. Different UPI app use karein\n3. QR code scan karein\n\nAbhi bhi issue hai? Details share karo!",
-      minimum_amount: "💰 **Minimum Deposit Information**\n\n📌 **Minimum Deposit: ₹50**\n\n**Payment Methods:**\n- UPI (GPay, PhonePe, Paytm)\n- QR Code Scan\n\n**Processing Time:** Instant (1-2 minutes)\n\nKoi aur sawal hai deposit ke baare mein?",
-      qr_not_working: "📱 **QR Code Issue**\n\nQR code scan nahi ho raha? Try these:\n\n1. **Zoom In** - QR clearly dikhna chahiye\n2. **Good Lighting** - Proper light mein scan karo\n3. **UPI ID Copy** - Direct UPI ID use karo\n\nAbhi bhi problem hai? Screenshot bhejo main help karunga!",
-      deposit_other: "💵 **Other Deposit Issue**\n\nKoi bhi deposit related problem batao:\n- Amount\n- Payment method\n- Error message (agar koi)\n- Screenshot\n\nMain full details ke saath help karunga! 🤝",
-    };
-
-    // Sub-category specific greetings for Withdrawal
-    const withdrawalSubGreetings: Record<string, string> = {
-      withdrawal_pending: "⏳ **Withdrawal Pending**\n\n**Normal Processing Time:** 24-48 hours (business days)\n\nAgar 48 hours se zyada ho gaye:\n1. Withdrawal amount batao\n2. Request date batao\n3. Screenshot share karo\n\nMain admin team se check karwaunga! 📞",
-      withdrawal_rejected: "🚫 **Withdrawal Rejected**\n\nRejection reasons ho sakte hain:\n\n1. **Wager requirement** not met\n2. **Bank details** mismatch\n3. **Insufficient balance**\n4. **Suspicious activity**\n\n**Check karein:**\n- Profile > Wallet mein wager status\n- Bank details correct hain?\n\nRejection message share karo, main exact reason bataunga!",
-      bank_details: "🏦 **Bank Details Issue**\n\n**Important:** Bank details sirf ek baar add hote hain aur change nahi ho sakte.\n\n**Required Details:**\n- Account Holder Name (exactly as in bank)\n- Account Number\n- IFSC Code\n- Bank Name\n\n**Issue hai kya?**\n- Details galat add ho gaye?\n- Verification fail ho raha?\n\nBatao main guide karunga!",
-      minimum_withdrawal: "💵 **Minimum Withdrawal Information**\n\n📌 **Minimum Withdrawal: ₹100**\n\n**Requirements:**\n1. Bank details linked hona chahiye\n2. Wager requirement complete\n\n**Processing Time:** 24-48 hours\n\n**Note:** First withdrawal mein verification ho sakti hai.\n\nKoi aur sawal?",
-      withdrawal_other: "💳 **Other Withdrawal Issue**\n\nWithdrawal related koi bhi problem batao:\n- Amount\n- Request date\n- Error message\n- Screenshot\n\nMain full support dunga! 🤝",
-    };
-
     let greeting = greetings[category] || greetings.other;
-    
-    // Use sub-category greeting if available
-    if (subCategory) {
-      if (category === 'deposit' && depositSubGreetings[subCategory]) {
-        greeting = depositSubGreetings[subCategory];
-      } else if (category === 'withdrawal' && withdrawalSubGreetings[subCategory]) {
-        greeting = withdrawalSubGreetings[subCategory];
-      }
-    }
     
     if (game) {
       const gameGreetings: Record<string, string> = {
@@ -300,6 +281,25 @@ const SupportChat = () => {
       };
       greeting = gameGreetings[game] || greeting;
     }
+
+    setAiMessages([{
+      id: Date.now().toString(),
+      role: 'assistant',
+      content: greeting,
+      timestamp: new Date(),
+    }]);
+    setLastActivityTime(Date.now());
+  };
+
+  const addAiGreetingWithTransaction = (category: string, transaction: any) => {
+    const txDate = format(new Date(transaction.created_at), 'dd MMM yyyy, hh:mm a');
+    const statusEmoji = transaction.status === 'completed' ? '✅' : 
+                        transaction.status === 'pending' ? '⏳' : 
+                        transaction.status === 'processing' ? '🔄' : '❌';
+    
+    const greeting = category === 'deposit' 
+      ? `💵 **Deposit Issue - Selected Transaction**\n\n${statusEmoji} **Status:** ${transaction.status.toUpperCase()}\n💰 **Amount:** ₹${transaction.amount}\n📅 **Date:** ${txDate}\n${transaction.utr_id ? `🔢 **UTR:** ${transaction.utr_id}` : ''}\n\n---\n\nIs transaction mein kya problem hai? Batao main help karunga! 🤝`
+      : `💳 **Withdrawal Issue - Selected Transaction**\n\n${statusEmoji} **Status:** ${transaction.status.toUpperCase()}\n💰 **Amount:** ₹${transaction.amount}\n📅 **Date:** ${txDate}\n${transaction.upi_id ? `📱 **UPI ID:** ${transaction.upi_id}` : ''}\n\n---\n\nIs withdrawal mein kya issue hai? Details batao! 🤝`;
 
     setAiMessages([{
       id: Date.now().toString(),
@@ -345,10 +345,11 @@ const SupportChat = () => {
         body: {
           messages: messagesForApi,
           category: selectedCategory || 'other',
-          subCategory: selectedGame || selectedCategory || 'general',
-          language: 'auto', // Auto-detect
+          subCategory: selectedTransaction ? `Transaction: ₹${selectedTransaction.amount} - ${selectedTransaction.status}` : selectedCategory || 'general',
+          language: 'auto',
           hasImage: !!userMessage.image,
-          userId: user?.id, // Pass user ID for ticket creation
+          userId: user?.id,
+          transactionId: selectedTransaction?.id,
         },
       });
 
@@ -393,8 +394,8 @@ const SupportChat = () => {
   const resetChat = () => {
     setStep('category');
     setSelectedCategory(null);
-    setSelectedSubCategory(null);
-    setSelectedGame(null);
+    setSelectedTransaction(null);
+    setTransactions([]);
     setAiMessages([]);
     setNewMessage('');
     setPendingImage(null);
@@ -468,7 +469,7 @@ const SupportChat = () => {
                   </h3>
                   <p className="text-xs text-muted-foreground">
                     {step === 'category' ? 'Select your issue type' : 
-                     step === 'subcategory' ? 'Select specific issue' :
+                     step === 'transactions' ? 'Select transaction' :
                      step === 'game' ? 'Select game' : 
                      'Online • Instant replies'}
                   </p>
@@ -511,8 +512,8 @@ const SupportChat = () => {
                 </motion.div>
               )}
 
-              {/* Sub-Category Selection for Deposit/Withdrawal */}
-              {step === 'subcategory' && (
+              {/* Transaction Selection for Deposit/Withdrawal */}
+              {step === 'transactions' && (
                 <motion.div
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
@@ -532,27 +533,71 @@ const SupportChat = () => {
                   
                   <p className="text-sm text-muted-foreground mb-4 text-center">
                     {selectedCategory === 'deposit' 
-                      ? '💵 Kaunsi deposit problem hai?' 
-                      : '💳 Kaunsi withdrawal problem hai?'}
+                      ? '💵 Konsi deposit mein problem hai?' 
+                      : '💳 Konsi withdrawal mein problem hai?'}
                   </p>
                   
-                  <div className="space-y-2">
-                    {(selectedCategory === 'deposit' ? DEPOSIT_SUBCATEGORIES : WITHDRAWAL_SUBCATEGORIES).map((subCat) => (
+                  {loadingTransactions ? (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                    </div>
+                  ) : transactions.length === 0 ? (
+                    <div className="text-center py-6">
+                      <p className="text-sm text-muted-foreground mb-4">
+                        Koi {selectedCategory} transaction nahi mili
+                      </p>
+                      <Button onClick={skipTransactionSelection} variant="outline" className="w-full">
+                        Phir bhi chat karo →
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {transactions.map((tx) => {
+                        const statusColor = tx.status === 'completed' ? 'text-green-500' : 
+                                           tx.status === 'pending' ? 'text-yellow-500' : 
+                                           tx.status === 'processing' ? 'text-blue-500' : 'text-red-500';
+                        const statusEmoji = tx.status === 'completed' ? '✅' : 
+                                           tx.status === 'pending' ? '⏳' : 
+                                           tx.status === 'processing' ? '🔄' : '❌';
+                        return (
+                          <motion.button
+                            key={tx.id}
+                            whileHover={{ scale: 1.02 }}
+                            whileTap={{ scale: 0.98 }}
+                            onClick={() => selectTransaction(tx)}
+                            className="w-full p-3 rounded-xl bg-secondary hover:bg-secondary/80 text-foreground flex items-center justify-between shadow-sm hover:shadow-md transition-all border border-border"
+                          >
+                            <div className="flex items-center gap-3 text-left">
+                              <span className="text-xl">{statusEmoji}</span>
+                              <div>
+                                <div className="font-bold text-sm">₹{tx.amount}</div>
+                                <div className="text-xs text-muted-foreground">
+                                  {format(new Date(tx.created_at), 'dd MMM, hh:mm a')}
+                                </div>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className={`text-xs font-medium ${statusColor}`}>
+                                {tx.status.toUpperCase()}
+                              </span>
+                              <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                            </div>
+                          </motion.button>
+                        );
+                      })}
+                      
+                      {/* Skip option */}
                       <motion.button
-                        key={subCat.id}
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
-                        onClick={() => selectSubCategory(subCat.id)}
-                        className="w-full p-3 rounded-xl bg-secondary hover:bg-secondary/80 text-foreground flex items-center justify-between shadow-sm hover:shadow-md transition-all border border-border"
+                        onClick={skipTransactionSelection}
+                        className="w-full p-3 rounded-xl bg-muted/50 hover:bg-muted text-muted-foreground flex items-center justify-center gap-2 mt-4"
                       >
-                        <div className="flex items-center gap-3">
-                          <span className="text-xl">{subCat.icon}</span>
-                          <span className="font-medium text-sm text-left">{subCat.name}</span>
-                        </div>
-                        <ChevronRight className="w-5 h-5 flex-shrink-0 text-muted-foreground" />
+                        <span className="text-sm">Naya issue hai (transaction nahi dikhi)</span>
+                        <ChevronRight className="w-4 h-4" />
                       </motion.button>
-                    ))}
-                  </div>
+                    </div>
+                  )}
                 </motion.div>
               )}
 
