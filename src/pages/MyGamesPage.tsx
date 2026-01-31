@@ -32,7 +32,7 @@ interface MatchHistory {
 }
 
 const MyGamesPage = () => {
-  const { user } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
 
   const { data: matchHistory, isLoading } = useQuery({
     queryKey: ['match-history', user?.id],
@@ -167,6 +167,21 @@ const MyGamesPage = () => {
       default: return type;
     }
   };
+
+  // Show loading while auth is still initializing
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-background pb-20">
+        <Header />
+        <main className="container mx-auto px-4 pt-20">
+          <div className="flex justify-center py-20">
+            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          </div>
+        </main>
+        <BottomNav />
+      </div>
+    );
+  }
 
   if (!user) {
     return (

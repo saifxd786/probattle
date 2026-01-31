@@ -50,7 +50,7 @@ type BankCard = {
 const TELEGRAM_SUPPORT = 'https://t.me/ProBattleSupport';
 
 const WalletPage = () => {
-  const { user } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
   const { requestDeposit, requestWithdrawal, redeemCode: serverRedeemCode, saveBankCard } = useWalletServer();
   const navigate = useNavigate();
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -81,55 +81,60 @@ const WalletPage = () => {
     setIsLoading(true);
     setIsFetchingCard(true);
 
-    // Fetch profile
-    const { data: profileData } = await supabase
-      .from('profiles')
-      .select('wallet_balance, user_code, wager_requirement')
-      .eq('id', user.id)
-      .single();
+    try {
+      // Fetch profile
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('wallet_balance, user_code, wager_requirement')
+        .eq('id', user.id)
+        .single();
 
-    if (profileData) {
-      setProfile({
-        wallet_balance: profileData.wallet_balance || 0,
-        user_code: profileData.user_code,
-        wager_requirement: (profileData.wager_requirement as number) || 0
-      });
+      if (profileData) {
+        setProfile({
+          wallet_balance: profileData.wallet_balance || 0,
+          user_code: profileData.user_code,
+          wager_requirement: (profileData.wager_requirement as number) || 0
+        });
+      }
+
+      // Fetch saved bank card
+      const { data: bankCardData } = await supabase
+        .from('user_bank_cards')
+        .select('*')
+        .eq('user_id', user.id)
+        .single();
+
+      if (bankCardData) {
+        setSavedBankCard(bankCardData as BankCard);
+      }
+
+      // Fetch transactions
+      const { data: txData } = await supabase
+        .from('transactions')
+        .select('id, type, amount, status, description, created_at, screenshot_url, utr_id')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(50);
+
+      if (txData) {
+        setTransactions(txData);
+      }
+    } finally {
+      setIsLoading(false);
+      setIsFetchingCard(false);
     }
-
-    // Fetch saved bank card
-    const { data: bankCardData } = await supabase
-      .from('user_bank_cards')
-      .select('*')
-      .eq('user_id', user.id)
-      .single();
-
-    if (bankCardData) {
-      setSavedBankCard(bankCardData as BankCard);
-    }
-
-    // Fetch transactions
-    const { data: txData } = await supabase
-      .from('transactions')
-      .select('id, type, amount, status, description, created_at, screenshot_url, utr_id')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false })
-      .limit(50);
-
-    if (txData) {
-      setTransactions(txData);
-    }
-
-    setIsLoading(false);
-    setIsFetchingCard(false);
   };
 
   useEffect(() => {
+    // Wait for auth to finish loading before making any decisions
+    if (authLoading) return;
+    
     if (!user) {
       navigate('/auth');
       return;
     }
     fetchData();
-  }, [user, navigate]);
+  }, [user, authLoading, navigate]);
 
   const handleDeposit = async (amount: number, utrId: string, screenshot: File | null) => {
     if (!user) return;
@@ -287,6 +292,21 @@ const WalletPage = () => {
     );
     window.open(`${TELEGRAM_SUPPORT}?text=${message}`, '_blank');
   };
+
+  // Show loading while auth is initializing
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-background pb-20">
+        <Header />
+        <main className="container mx-auto px-4 pt-20">
+          <div className="flex justify-center py-20">
+            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          </div>
+        </main>
+        <BottomNav />
+      </div>
+    );
+  }
 
   if (!user) return null;
 

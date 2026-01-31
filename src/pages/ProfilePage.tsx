@@ -47,7 +47,7 @@ type MatchRegistration = {
 };
 
 const ProfilePage = () => {
-  const { user } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -64,54 +64,60 @@ const ProfilePage = () => {
 
     setIsLoading(true);
 
-    // Fetch profile
-    const { data: profileData } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', user.id)
-      .single();
+    try {
+      // Fetch profile
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
 
-    if (profileData) {
-      setProfile(profileData);
-      setNewUsername(profileData.username || '');
+      if (profileData) {
+        setProfile(profileData);
+        setNewUsername(profileData.username || '');
+      }
+
+      // Fetch match history
+      const { data: registrations } = await supabase
+        .from('match_registrations')
+        .select(`
+          id,
+          match_id,
+          is_approved,
+          payment_status,
+          registered_at,
+          matches (
+            title,
+            game,
+            match_type,
+            entry_fee,
+            prize_pool,
+            status,
+            match_time
+          )
+        `)
+        .eq('user_id', user.id)
+        .order('registered_at', { ascending: false });
+
+      if (registrations) {
+        setMatchHistory(registrations as MatchRegistration[]);
+      }
+    } finally {
+      setIsLoading(false);
     }
-
-    // Fetch match history
-    const { data: registrations } = await supabase
-      .from('match_registrations')
-      .select(`
-        id,
-        match_id,
-        is_approved,
-        payment_status,
-        registered_at,
-        matches (
-          title,
-          game,
-          match_type,
-          entry_fee,
-          prize_pool,
-          status,
-          match_time
-        )
-      `)
-      .eq('user_id', user.id)
-      .order('registered_at', { ascending: false });
-
-    if (registrations) {
-      setMatchHistory(registrations as MatchRegistration[]);
-    }
-
-    setIsLoading(false);
   };
 
   useEffect(() => {
+    // Wait for auth to finish loading before making any decisions
+    if (authLoading) return;
+    
     if (!user) {
       navigate('/auth');
       return;
     }
+    
     fetchData();
-  }, [user, navigate]);
+  }, [user, authLoading, navigate]);
 
   const handleSaveUsername = async () => {
     if (!user || !newUsername.trim()) return;
@@ -227,7 +233,20 @@ const ProfilePage = () => {
     return { text: 'Pending', color: 'text-yellow-500' };
   };
 
-  if (!user) return null;
+  // Show loading while auth is loading OR while we're fetching profile data
+  if (authLoading || !user) {
+    return (
+      <div className="min-h-screen bg-background pb-20">
+        <Header />
+        <main className="container mx-auto px-4 pt-20">
+          <div className="flex justify-center py-20">
+            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+          </div>
+        </main>
+        <BottomNav />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background pb-20">
