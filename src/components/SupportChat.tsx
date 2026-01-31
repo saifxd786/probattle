@@ -18,10 +18,6 @@ import { uploadResumableToBucket } from '@/utils/resumableUpload';
 import { SUPPORT_ATTACHMENTS_BUCKET } from '@/utils/supportAttachments';
 import ReactMarkdown from 'react-markdown';
 import heroBanner from '@/assets/hero-banner.jpg';
-import ludoCard from '@/assets/ludo-card.jpg';
-import minesCard from '@/assets/mines-card.jpg';
-import thimbleCard from '@/assets/thimble-card.jpg';
-import bgmiCard from '@/assets/bgmi-card.jpg';
 
 interface Attachment {
   url: string;
@@ -585,61 +581,18 @@ const SupportChat = () => {
                     🎮 Konse game mein problem hai?
                   </p>
                   <div className="grid grid-cols-2 gap-3">
-                    {/* Ludo */}
-                    <motion.button
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                      onClick={() => selectGame('ludo')}
-                      className="relative rounded-xl overflow-hidden shadow-md hover:shadow-lg transition-shadow aspect-[4/3]"
-                    >
-                      <img src={ludoCard} alt="Ludo" className="absolute inset-0 w-full h-full object-cover" />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
-                      <div className="absolute bottom-0 left-0 right-0 p-3 text-white">
-                        <span className="font-bold text-base drop-shadow-lg">🎲 Ludo</span>
-                      </div>
-                    </motion.button>
-
-                    {/* Mines */}
-                    <motion.button
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                      onClick={() => selectGame('mines')}
-                      className="relative rounded-xl overflow-hidden shadow-md hover:shadow-lg transition-shadow aspect-[4/3]"
-                    >
-                      <img src={minesCard} alt="Mines" className="absolute inset-0 w-full h-full object-cover" />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
-                      <div className="absolute bottom-0 left-0 right-0 p-3 text-white">
-                        <span className="font-bold text-base drop-shadow-lg">💣 Mines</span>
-                      </div>
-                    </motion.button>
-
-                    {/* Thimble */}
-                    <motion.button
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                      onClick={() => selectGame('thimble')}
-                      className="relative rounded-xl overflow-hidden shadow-md hover:shadow-lg transition-shadow aspect-[4/3]"
-                    >
-                      <img src={thimbleCard} alt="Thimble" className="absolute inset-0 w-full h-full object-cover" />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
-                      <div className="absolute bottom-0 left-0 right-0 p-3 text-white">
-                        <span className="font-bold text-base drop-shadow-lg">🎯 Thimble</span>
-                      </div>
-                    </motion.button>
-
-                    {/* BGMI */}
-                    <motion.button
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                      onClick={() => selectGame('bgmi')}
-                      className="relative rounded-xl overflow-hidden shadow-md hover:shadow-lg transition-shadow aspect-[4/3]"
-                    >
-                      <img src={bgmiCard} alt="BGMI" className="absolute inset-0 w-full h-full object-cover" />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
-                      <div className="absolute bottom-0 left-0 right-0 p-3 text-white">
-                        <span className="font-bold text-base drop-shadow-lg">🔫 BGMI</span>
-                      </div>
-                    </motion.button>
+                    {GAME_CATEGORIES.map((game) => (
+                      <motion.button
+                        key={game.id}
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={() => selectGame(game.id)}
+                        className={`p-4 rounded-xl bg-gradient-to-br ${game.color} text-white flex flex-col items-center gap-2 shadow-md hover:shadow-lg transition-shadow`}
+                      >
+                        <span className="text-3xl">{game.icon}</span>
+                        <span className="font-medium text-sm">{game.name}</span>
+                      </motion.button>
+                    ))}
                   </div>
                 </motion.div>
               )}
