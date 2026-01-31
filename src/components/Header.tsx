@@ -14,9 +14,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useUpdateAvailable } from '@/hooks/useUpdateAvailable';
-
-// App version constant
-export const APP_VERSION = '1.2.1';
+import { APP_VERSION } from '@/constants/appVersion';
 // Telegram SVG Icon
 const TelegramIcon = () => (
   <svg viewBox="0 0 24 24" className="w-5 h-5" fill="currentColor">
