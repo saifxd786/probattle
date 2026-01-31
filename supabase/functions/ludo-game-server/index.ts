@@ -23,8 +23,66 @@ const corsHeaders = {
 
 // ===== GAME CONSTANTS =====
 const TRACK_LENGTH = 57; // Position 57 = HOME
-const SAFE_POSITIONS = new Set([1, 9, 14, 22, 27, 35, 40, 48]); // Safe squares
 const STARTING_POSITION = 1;
+
+// ===== TRACK DEFINITIONS FOR COORDINATE-BASED CAPTURE =====
+// LEFT_TRACK: RED uses this
+const LEFT_TRACK: { x: number; y: number }[] = [
+  { x: 1.5, y: 6.5 }, { x: 2.5, y: 6.5 }, { x: 3.5, y: 6.5 }, { x: 4.5, y: 6.5 }, { x: 5.5, y: 6.5 },
+  { x: 6.5, y: 5.5 }, { x: 6.5, y: 4.5 }, { x: 6.5, y: 3.5 }, { x: 6.5, y: 2.5 }, { x: 6.5, y: 1.5 }, { x: 6.5, y: 0.5 },
+  { x: 7.5, y: 0.5 },
+  { x: 8.5, y: 0.5 }, { x: 8.5, y: 1.5 }, { x: 8.5, y: 2.5 }, { x: 8.5, y: 3.5 }, { x: 8.5, y: 4.5 }, { x: 8.5, y: 5.5 },
+  { x: 9.5, y: 6.5 }, { x: 10.5, y: 6.5 }, { x: 11.5, y: 6.5 }, { x: 12.5, y: 6.5 }, { x: 13.5, y: 6.5 }, { x: 14.5, y: 6.5 },
+  { x: 14.5, y: 7.5 },
+  { x: 14.5, y: 8.5 }, { x: 13.5, y: 8.5 }, { x: 12.5, y: 8.5 }, { x: 11.5, y: 8.5 }, { x: 10.5, y: 8.5 }, { x: 9.5, y: 8.5 },
+  { x: 8.5, y: 9.5 }, { x: 8.5, y: 10.5 }, { x: 8.5, y: 11.5 }, { x: 8.5, y: 12.5 }, { x: 8.5, y: 13.5 }, { x: 8.5, y: 14.5 },
+  { x: 7.5, y: 14.5 },
+  { x: 6.5, y: 14.5 }, { x: 6.5, y: 13.5 }, { x: 6.5, y: 12.5 }, { x: 6.5, y: 11.5 }, { x: 6.5, y: 10.5 }, { x: 6.5, y: 9.5 },
+  { x: 5.5, y: 8.5 }, { x: 4.5, y: 8.5 }, { x: 3.5, y: 8.5 }, { x: 2.5, y: 8.5 }, { x: 1.5, y: 8.5 }, { x: 0.5, y: 8.5 },
+  { x: 0.5, y: 7.5 },
+];
+
+// TOP_TRACK: GREEN uses this
+const TOP_TRACK: { x: number; y: number }[] = [
+  { x: 8.5, y: 1.5 }, { x: 8.5, y: 2.5 }, { x: 8.5, y: 3.5 }, { x: 8.5, y: 4.5 }, { x: 8.5, y: 5.5 },
+  { x: 9.5, y: 6.5 }, { x: 10.5, y: 6.5 }, { x: 11.5, y: 6.5 }, { x: 12.5, y: 6.5 }, { x: 13.5, y: 6.5 }, { x: 14.5, y: 6.5 },
+  { x: 14.5, y: 7.5 },
+  { x: 14.5, y: 8.5 }, { x: 13.5, y: 8.5 }, { x: 12.5, y: 8.5 }, { x: 11.5, y: 8.5 }, { x: 10.5, y: 8.5 }, { x: 9.5, y: 8.5 },
+  { x: 8.5, y: 9.5 }, { x: 8.5, y: 10.5 }, { x: 8.5, y: 11.5 }, { x: 8.5, y: 12.5 }, { x: 8.5, y: 13.5 }, { x: 8.5, y: 14.5 },
+  { x: 7.5, y: 14.5 },
+  { x: 6.5, y: 14.5 }, { x: 6.5, y: 13.5 }, { x: 6.5, y: 12.5 }, { x: 6.5, y: 11.5 }, { x: 6.5, y: 10.5 }, { x: 6.5, y: 9.5 },
+  { x: 5.5, y: 8.5 }, { x: 4.5, y: 8.5 }, { x: 3.5, y: 8.5 }, { x: 2.5, y: 8.5 }, { x: 1.5, y: 8.5 }, { x: 0.5, y: 8.5 },
+  { x: 0.5, y: 7.5 },
+  { x: 0.5, y: 6.5 }, { x: 1.5, y: 6.5 }, { x: 2.5, y: 6.5 }, { x: 3.5, y: 6.5 }, { x: 4.5, y: 6.5 }, { x: 5.5, y: 6.5 },
+  { x: 6.5, y: 5.5 }, { x: 6.5, y: 4.5 }, { x: 6.5, y: 3.5 }, { x: 6.5, y: 2.5 }, { x: 6.5, y: 1.5 }, { x: 6.5, y: 0.5 },
+  { x: 7.5, y: 0.5 },
+];
+
+const COLOR_TRACK_COORDS: { [color: string]: { x: number; y: number }[] } = {
+  red: LEFT_TRACK,
+  green: TOP_TRACK,
+};
+
+// Safe positions (board coordinates)
+const SAFE_BOARD_POSITIONS = [
+  { x: 1.5, y: 6.5 },  // Red start
+  { x: 8.5, y: 1.5 },  // Green start
+  { x: 2.5, y: 6.5 },  // Near red start (safe spot)
+  { x: 8.5, y: 2.5 },  // Near green start (safe spot)
+];
+
+// Get board coordinates for a token position
+function getBoardCoords(position: number, color: string): { x: number; y: number } | null {
+  if (position <= 0 || position >= 52) return null;
+  const track = COLOR_TRACK_COORDS[color];
+  if (!track || position - 1 >= track.length) return null;
+  return track[position - 1];
+}
+
+// Check if position is a safe spot
+function isSafeBoardPosition(coords: { x: number; y: number }): boolean {
+  return SAFE_BOARD_POSITIONS.some(safe => safe.x === coords.x && safe.y === coords.y);
+}
 
 // ===== RATE LIMITING CONFIG =====
 const RATE_LIMIT_CONFIG = {
@@ -262,23 +320,50 @@ function validateMove(
   return { valid: true, newPosition };
 }
 
-// ===== CHECK FOR CAPTURES =====
+// ===== CHECK FOR CAPTURES - FIXED: Uses BOARD COORDINATES =====
 function checkCapture(
   gameState: GameState,
   movingColor: string,
   newPosition: number
 ): { captured: boolean; capturedPlayer?: Player; capturedTokenId?: number } {
-  // Can't capture on safe positions or HOME track (position >= 52)
-  if (SAFE_POSITIONS.has(newPosition) || newPosition >= 52 || newPosition === 0) {
+  // Can't capture on HOME track (position >= 52) or base (position 0)
+  if (newPosition >= 52 || newPosition === 0) {
     return { captured: false };
   }
   
-  // Check all other players for tokens at this position
+  // Get board coordinates for the moving token's new position
+  const newCoords = getBoardCoords(newPosition, movingColor);
+  if (!newCoords) {
+    return { captured: false };
+  }
+  
+  // Check if new position is a safe spot
+  if (isSafeBoardPosition(newCoords)) {
+    return { captured: false };
+  }
+  
+  // Check all other players for tokens at the SAME BOARD COORDINATES
   for (const player of gameState.players) {
     if (player.color === movingColor) continue;
     
     for (const token of player.tokens) {
-      if (token.position === newPosition && token.position > 0 && token.position < 52) {
+      if (token.position <= 0 || token.position >= 52) continue;
+      
+      // Get opponent token's board coordinates
+      const opponentCoords = getBoardCoords(token.position, player.color);
+      if (!opponentCoords) continue;
+      
+      // Compare BOARD coordinates - if they match, it's a capture!
+      if (opponentCoords.x === newCoords.x && opponentCoords.y === newCoords.y) {
+        console.log('[LudoServer] CAPTURE detected!', {
+          capturerColor: movingColor,
+          capturerPosition: newPosition,
+          capturerCoords: newCoords,
+          capturedColor: player.color,
+          capturedTokenId: token.id,
+          capturedPosition: token.position,
+          capturedCoords: opponentCoords
+        });
         return { 
           captured: true, 
           capturedPlayer: player,

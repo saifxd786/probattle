@@ -112,6 +112,69 @@ interface FriendGameState {
 
 const COLORS = ['red', 'green'];
 
+// ===== TRACK DEFINITIONS FOR COORDINATE-BASED CAPTURE =====
+// Each player has their own track starting position
+// CRITICAL: These must match LudoBoard.tsx exactly!
+
+// LEFT_TRACK: Starts from LEFT side (1.5, 6.5) going right - RED uses this
+const LEFT_TRACK: { x: number; y: number }[] = [
+  { x: 1.5, y: 6.5 }, { x: 2.5, y: 6.5 }, { x: 3.5, y: 6.5 }, { x: 4.5, y: 6.5 }, { x: 5.5, y: 6.5 },
+  { x: 6.5, y: 5.5 }, { x: 6.5, y: 4.5 }, { x: 6.5, y: 3.5 }, { x: 6.5, y: 2.5 }, { x: 6.5, y: 1.5 }, { x: 6.5, y: 0.5 },
+  { x: 7.5, y: 0.5 },
+  { x: 8.5, y: 0.5 }, { x: 8.5, y: 1.5 }, { x: 8.5, y: 2.5 }, { x: 8.5, y: 3.5 }, { x: 8.5, y: 4.5 }, { x: 8.5, y: 5.5 },
+  { x: 9.5, y: 6.5 }, { x: 10.5, y: 6.5 }, { x: 11.5, y: 6.5 }, { x: 12.5, y: 6.5 }, { x: 13.5, y: 6.5 }, { x: 14.5, y: 6.5 },
+  { x: 14.5, y: 7.5 },
+  { x: 14.5, y: 8.5 }, { x: 13.5, y: 8.5 }, { x: 12.5, y: 8.5 }, { x: 11.5, y: 8.5 }, { x: 10.5, y: 8.5 }, { x: 9.5, y: 8.5 },
+  { x: 8.5, y: 9.5 }, { x: 8.5, y: 10.5 }, { x: 8.5, y: 11.5 }, { x: 8.5, y: 12.5 }, { x: 8.5, y: 13.5 }, { x: 8.5, y: 14.5 },
+  { x: 7.5, y: 14.5 },
+  { x: 6.5, y: 14.5 }, { x: 6.5, y: 13.5 }, { x: 6.5, y: 12.5 }, { x: 6.5, y: 11.5 }, { x: 6.5, y: 10.5 }, { x: 6.5, y: 9.5 },
+  { x: 5.5, y: 8.5 }, { x: 4.5, y: 8.5 }, { x: 3.5, y: 8.5 }, { x: 2.5, y: 8.5 }, { x: 1.5, y: 8.5 }, { x: 0.5, y: 8.5 },
+  { x: 0.5, y: 7.5 },
+];
+
+// TOP_TRACK: Starts from TOP (8.5, 1.5) going down - GREEN uses this
+const TOP_TRACK: { x: number; y: number }[] = [
+  { x: 8.5, y: 1.5 }, { x: 8.5, y: 2.5 }, { x: 8.5, y: 3.5 }, { x: 8.5, y: 4.5 }, { x: 8.5, y: 5.5 },
+  { x: 9.5, y: 6.5 }, { x: 10.5, y: 6.5 }, { x: 11.5, y: 6.5 }, { x: 12.5, y: 6.5 }, { x: 13.5, y: 6.5 }, { x: 14.5, y: 6.5 },
+  { x: 14.5, y: 7.5 },
+  { x: 14.5, y: 8.5 }, { x: 13.5, y: 8.5 }, { x: 12.5, y: 8.5 }, { x: 11.5, y: 8.5 }, { x: 10.5, y: 8.5 }, { x: 9.5, y: 8.5 },
+  { x: 8.5, y: 9.5 }, { x: 8.5, y: 10.5 }, { x: 8.5, y: 11.5 }, { x: 8.5, y: 12.5 }, { x: 8.5, y: 13.5 }, { x: 8.5, y: 14.5 },
+  { x: 7.5, y: 14.5 },
+  { x: 6.5, y: 14.5 }, { x: 6.5, y: 13.5 }, { x: 6.5, y: 12.5 }, { x: 6.5, y: 11.5 }, { x: 6.5, y: 10.5 }, { x: 6.5, y: 9.5 },
+  { x: 5.5, y: 8.5 }, { x: 4.5, y: 8.5 }, { x: 3.5, y: 8.5 }, { x: 2.5, y: 8.5 }, { x: 1.5, y: 8.5 }, { x: 0.5, y: 8.5 },
+  { x: 0.5, y: 7.5 },
+  { x: 0.5, y: 6.5 }, { x: 1.5, y: 6.5 }, { x: 2.5, y: 6.5 }, { x: 3.5, y: 6.5 }, { x: 4.5, y: 6.5 }, { x: 5.5, y: 6.5 },
+  { x: 6.5, y: 5.5 }, { x: 6.5, y: 4.5 }, { x: 6.5, y: 3.5 }, { x: 6.5, y: 2.5 }, { x: 6.5, y: 1.5 }, { x: 6.5, y: 0.5 },
+  { x: 7.5, y: 0.5 },
+];
+
+// Map colors to their correct tracks
+const COLOR_TRACK_COORDS: { [color: string]: { x: number; y: number }[] } = {
+  red: LEFT_TRACK,
+  green: TOP_TRACK,
+};
+
+// Safe positions (board coordinates) - starting positions and safe spots
+const SAFE_BOARD_POSITIONS = [
+  { x: 1.5, y: 6.5 },   // Red start
+  { x: 8.5, y: 1.5 },   // Green start
+  { x: 2.5, y: 6.5 },   // Near red start (safe spot)
+  { x: 8.5, y: 2.5 },   // Near green start (safe spot)
+];
+
+// Get board coordinates for a token position
+const getBoardCoords = (position: number, color: string): { x: number; y: number } | null => {
+  if (position <= 0 || position >= 52) return null; // Home or home stretch
+  const track = COLOR_TRACK_COORDS[color];
+  if (!track || position - 1 >= track.length) return null;
+  return track[position - 1];
+};
+
+// Check if position is a safe spot
+const isSafeBoardPosition = (coords: { x: number; y: number }): boolean => {
+  return SAFE_BOARD_POSITIONS.some(safe => safe.x === coords.x && safe.y === coords.y);
+};
+
 // === LUDO KING-LEVEL SYNC CONFIGURATION ===
 // Ultra-fast checksum for state comparison (uses FNV-1a from sync engine)
 const generateChecksum = (players: Player[], currentTurn: number, diceValue?: number): string => {
@@ -1736,13 +1799,14 @@ export const useFriendLudoGame = () => {
     return Math.floor(Math.random() * 6) + 1;
   }, []);
 
-  // Move token function
+  // Move token function - FIXED: Uses BOARD COORDINATES for accurate capture detection
   const moveToken = useCallback((color: string, tokenId: number, diceValue: number, players: Player[]): { updatedPlayers: Player[]; winner: Player | null; gotSix: boolean; capturedOpponent: boolean } => {
     soundManager.playTokenMove();
 
     let winner: Player | null = null;
     let capturedOpponent = false;
     let newTokenPosition = 0;
+    let newBoardCoords: { x: number; y: number } | null = null;
 
     const movingPlayer = players.find(p => p.color === color);
     const movingToken = movingPlayer?.tokens.find(t => t.id === tokenId);
@@ -1753,6 +1817,17 @@ export const useFriendLudoGame = () => {
       } else if (movingToken.position > 0) {
         newTokenPosition = Math.min(movingToken.position + diceValue, 57);
       }
+      // Get ABSOLUTE board coordinates for capture checking
+      newBoardCoords = getBoardCoords(newTokenPosition, color);
+      
+      console.log('[FriendLudo] Token Move:', {
+        color,
+        tokenId,
+        diceValue,
+        oldPosition: movingToken.position,
+        newTokenPosition,
+        newBoardCoords
+      });
     }
 
     const updatedPlayers = players.map(player => {
@@ -1783,21 +1858,42 @@ export const useFriendLudoGame = () => {
 
         return updatedPlayer;
       } else {
-        // Check for capture
-        const isSafePosition = newTokenPosition >= 52 || newTokenPosition === 0;
-
-        if (!isSafePosition && newTokenPosition > 0) {
-          const updatedTokens = player.tokens.map(token => {
-            if (token.position === newTokenPosition && token.position > 0 && token.position < 52) {
-              capturedOpponent = true;
-              return { ...token, position: 0 };
-            }
-            return token;
-          });
-          return { ...player, tokens: updatedTokens };
+        // FIXED: Check capture using BOARD COORDINATES, not position numbers
+        // Position numbers are relative to each player's track - they can't be compared directly!
+        if (!newBoardCoords || newTokenPosition >= 52 || newTokenPosition === 0) {
+          return player;
+        }
+        
+        // Check if new position is a safe spot
+        if (isSafeBoardPosition(newBoardCoords)) {
+          return player;
         }
 
-        return player;
+        // Check each opponent token by comparing BOARD coordinates
+        const updatedTokens = player.tokens.map(token => {
+          if (token.position <= 0 || token.position >= 52) return token;
+          
+          // Get opponent token's ABSOLUTE board coordinates
+          const opponentCoords = getBoardCoords(token.position, player.color);
+          if (!opponentCoords) return token;
+          
+          // Compare BOARD coordinates - if they match, it's a capture!
+          if (opponentCoords.x === newBoardCoords!.x && opponentCoords.y === newBoardCoords!.y) {
+            capturedOpponent = true;
+            console.log('[FriendLudo] CAPTURE! Opponent token reset to base:', {
+              capturedColor: player.color,
+              capturedTokenId: token.id,
+              capturedPosition: token.position,
+              capturedCoords: opponentCoords,
+              capturerColor: color,
+              capturerPosition: newTokenPosition,
+              capturerCoords: newBoardCoords
+            });
+            return { ...token, position: 0 };
+          }
+          return token;
+        });
+        return { ...player, tokens: updatedTokens };
       }
     });
 
