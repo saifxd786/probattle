@@ -564,6 +564,12 @@ const AuthPage = () => {
   const phoneToEmail = (phone: string) => `${phone}@probattle.app`;
   const phoneToOldEmail = (phone: string) => `${phone}@proscims.app`;
 
+  const normalizePhone = (raw: string) => {
+    const digits = (raw ?? '').replace(/\D/g, '');
+    if (digits.length <= 10) return digits;
+    return digits.slice(-10); // handle +91/0 prefixes etc.
+  };
+
   // Check device ban (non-blocking with timeout)
   const checkDeviceBan = async () => {
     try {
@@ -606,6 +612,15 @@ const AuthPage = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isLoading) return;
+
+    const form = e.currentTarget as HTMLFormElement;
+    const fd = new FormData(form);
+    // Read from DOM too (supports browser autofill that doesn't trigger onChange)
+    const rawPhone = String(fd.get('phone') ?? formData.phone ?? '');
+    const rawPassword = String(fd.get('password') ?? formData.password ?? '');
+    const phoneForAuth = normalizePhone(rawPhone);
+    const passwordForAuth = rawPassword;
+
     setIsLoading(true);
 
     try {
@@ -647,7 +662,7 @@ const AuthPage = () => {
       }
 
       // Validate phone
-      const phoneResult = phoneSchema.safeParse(formData.phone);
+      const phoneResult = phoneSchema.safeParse(phoneForAuth);
       if (!phoneResult.success) {
         toast({
           title: 'Validation Error',
@@ -658,7 +673,7 @@ const AuthPage = () => {
       }
 
       // Validate password (basic check)
-      const passwordResult = passwordSchema.safeParse(formData.password);
+      const passwordResult = passwordSchema.safeParse(passwordForAuth);
       if (!passwordResult.success) {
         toast({
           title: 'Validation Error',
@@ -670,7 +685,7 @@ const AuthPage = () => {
 
       // For signup: just log password strength but don't block (indicator shows user feedback)
 
-      const email = phoneToEmail(formData.phone);
+      const email = phoneToEmail(phoneForAuth);
 
       if (mode === 'signup') {
         // Validate username - now compulsory
@@ -732,7 +747,7 @@ const AuthPage = () => {
               emailRedirectTo: redirectUrl,
               data: {
                 username: formData.username,
-                phone: formData.phone,
+                phone: phoneForAuth,
               },
             },
           }),
@@ -752,7 +767,7 @@ const AuthPage = () => {
             correlationId,
             errorType: 'signup_error',
             errorMessage: error.message,
-            errorDetails: { code: error.name, phone: formData.phone },
+            errorDetails: { code: error.name, phone: phoneForAuth },
           });
           
           toast({
@@ -768,7 +783,7 @@ const AuthPage = () => {
           const { error: signInAfterSignupError } = await withTimeout(
             supabase.auth.signInWithPassword({
               email,
-              password: formData.password,
+                  password: passwordForAuth,
             }),
             15000,
             'signin-after-signup'
@@ -795,7 +810,7 @@ const AuthPage = () => {
             const profileResult = await withTimeout(
               supabase.from('profiles').update({
                 username: formData.username,
-                phone: formData.phone,
+                phone: phoneForAuth,
                 email,
                 date_of_birth: formData.dateOfBirth,
                 security_question: formData.securityQuestion,
@@ -811,7 +826,7 @@ const AuthPage = () => {
                 supabase.from('profiles').insert({
                   id: userId,
                   username: formData.username,
-                  phone: formData.phone,
+                  phone: phoneForAuth,
                   email,
                   date_of_birth: formData.dateOfBirth,
                   security_question: formData.securityQuestion,
@@ -934,7 +949,7 @@ const AuthPage = () => {
         const { data: newDomainData, error: newDomainError } = await withTimeout(
           supabase.auth.signInWithPassword({
             email,
-            password: formData.password,
+            password: passwordForAuth,
           }),
           15000,
           'login-new-domain'
@@ -942,11 +957,11 @@ const AuthPage = () => {
         
         if (newDomainError && newDomainError.message.includes('Invalid login credentials')) {
           // Try old domain (proscims.app) for backwards compatibility
-          const oldEmail = phoneToOldEmail(formData.phone);
+          const oldEmail = phoneToOldEmail(phoneForAuth);
           const { data: oldDomainData, error: oldDomainError } = await withTimeout(
             supabase.auth.signInWithPassword({
               email: oldEmail,
-              password: formData.password,
+              password: passwordForAuth,
             }),
             15000,
             'login-old-domain'
@@ -971,7 +986,7 @@ const AuthPage = () => {
             correlationId,
             errorType: 'login_error',
             errorMessage: loginError.message,
-            errorDetails: { code: loginError.name, phone: formData.phone },
+            errorDetails: { code: loginError.name, phone: phoneForAuth },
           });
           
           toast({
@@ -1042,7 +1057,7 @@ const AuthPage = () => {
         correlationId,
         errorType: 'general_auth_error',
         errorMessage: message || 'Unknown error',
-        errorDetails: { mode, phone: formData.phone },
+        errorDetails: { mode, phone: phoneForAuth },
       });
       
       if (message.startsWith('TIMEOUT:')) {
@@ -1166,6 +1181,7 @@ const AuthPage = () => {
                 <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
                   type="text"
+                  name="username"
                   placeholder="Your Name *"
                   value={formData.username}
                   onChange={(e) => setFormData({ ...formData, username: e.target.value })}
@@ -1180,6 +1196,7 @@ const AuthPage = () => {
               <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
                 type="tel"
+                name="phone"
                 placeholder="Phone Number"
                 value={formData.phone}
                 onChange={(e) => setFormData({ ...formData, phone: e.target.value.replace(/\D/g, '') })}
@@ -1211,6 +1228,7 @@ const AuthPage = () => {
               <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
                 type={showPassword ? 'text' : 'password'}
+                name="password"
                 placeholder="Password"
                 value={formData.password}
                 onChange={(e) => setFormData({ ...formData, password: e.target.value })}
