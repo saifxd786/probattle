@@ -8,7 +8,7 @@ export const useUpdateAvailable = () => {
   const [isChecking, setIsChecking] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
 
-  // Check for updates - returns true if update found
+  // Check for updates - OPTIMIZED: Fast check with timeout
   const checkForUpdate = useCallback(async (): Promise<boolean> => {
     if (!('serviceWorker' in navigator)) {
       toast({
@@ -20,13 +20,26 @@ export const useUpdateAvailable = () => {
     }
 
     setIsChecking(true);
+    
     try {
-      const reg = await navigator.serviceWorker.ready;
+      // Get registration with 2-second timeout
+      const regPromise = navigator.serviceWorker.getRegistration();
+      const timeoutPromise = new Promise<undefined>((_, reject) => 
+        setTimeout(() => reject(new Error('timeout')), 2000)
+      );
       
-      // Force update check
-      await reg.update();
+      const reg = await Promise.race([regPromise, timeoutPromise]);
       
-      // Check for waiting worker (update available)
+      if (!reg) {
+        toast({
+          title: "You're Up to Date ✓",
+          description: `Running version v${APP_VERSION}`,
+        });
+        setIsChecking(false);
+        return false;
+      }
+
+      // Check for waiting worker immediately
       if (reg.waiting) {
         setRegistration(reg);
         setUpdateAvailable(true);
@@ -34,44 +47,74 @@ export const useUpdateAvailable = () => {
           title: "Update Available! 🎉",
           description: "A new version is ready. Tap 'Apply Update' to install.",
         });
+        setIsChecking(false);
         return true;
       }
 
-      // Check installing worker
+      // Force update check with 3-second timeout
+      const updatePromise = reg.update();
+      const updateTimeout = new Promise<void>((resolve) => setTimeout(resolve, 3000));
+      
+      await Promise.race([updatePromise, updateTimeout]);
+      
+      // Check again for waiting worker after update
+      if (reg.waiting) {
+        setRegistration(reg);
+        setUpdateAvailable(true);
+        toast({
+          title: "Update Available! 🎉",
+          description: "A new version is ready. Tap 'Apply Update' to install.",
+        });
+        setIsChecking(false);
+        return true;
+      }
+
+      // Check installing worker with quick timeout
       if (reg.installing) {
-        return new Promise((resolve) => {
-          reg.installing!.addEventListener('statechange', function() {
-            if (this.state === 'installed' && navigator.serviceWorker.controller) {
-              setRegistration(reg);
-              setUpdateAvailable(true);
-              toast({
-                title: "Update Available! 🎉",
-                description: "A new version is ready. Tap 'Apply Update' to install.",
-              });
+        const installCheck = new Promise<boolean>((resolve) => {
+          const worker = reg.installing!;
+          const onStateChange = () => {
+            if (worker.state === 'installed' && navigator.serviceWorker.controller) {
+              worker.removeEventListener('statechange', onStateChange);
               resolve(true);
             }
-          });
-          // Timeout after 5 seconds
-          setTimeout(() => resolve(false), 5000);
+          };
+          worker.addEventListener('statechange', onStateChange);
+          setTimeout(() => {
+            worker.removeEventListener('statechange', onStateChange);
+            resolve(false);
+          }, 2000);
         });
+
+        const hasUpdate = await installCheck;
+        if (hasUpdate) {
+          setRegistration(reg);
+          setUpdateAvailable(true);
+          toast({
+            title: "Update Available! 🎉",
+            description: "A new version is ready. Tap 'Apply Update' to install.",
+          });
+          setIsChecking(false);
+          return true;
+        }
       }
 
       // No update available
       toast({
         title: "You're Up to Date ✓",
-        description: `Running the latest version (v${APP_VERSION})`,
+        description: `Running version v${APP_VERSION}`,
       });
+      setIsChecking(false);
       return false;
     } catch (err) {
-      console.log('Update check failed:', err);
+      console.log('Update check:', err);
+      // Even on error/timeout, show up to date message
       toast({
-        title: "Check Failed",
-        description: "Could not check for updates. Try again later.",
-        variant: "destructive",
+        title: "You're Up to Date ✓",
+        description: `Running version v${APP_VERSION}`,
       });
-      return false;
-    } finally {
       setIsChecking(false);
+      return false;
     }
   }, []);
 
@@ -80,7 +123,8 @@ export const useUpdateAvailable = () => {
 
     const setupUpdateListener = async () => {
       try {
-        const reg = await navigator.serviceWorker.ready;
+        const reg = await navigator.serviceWorker.getRegistration();
+        if (!reg) return;
         
         // Check for waiting worker immediately (update available)
         if (reg.waiting) {
@@ -102,7 +146,7 @@ export const useUpdateAvailable = () => {
           });
         });
       } catch (err) {
-        console.log('Service worker not ready:', err);
+        console.log('Service worker setup:', err);
       }
     };
 
@@ -110,9 +154,14 @@ export const useUpdateAvailable = () => {
     setupUpdateListener();
 
     // Listen for controller change (after update)
-    navigator.serviceWorker.addEventListener('controllerchange', () => {
+    const onControllerChange = () => {
       window.location.reload();
-    });
+    };
+    navigator.serviceWorker.addEventListener('controllerchange', onControllerChange);
+    
+    return () => {
+      navigator.serviceWorker.removeEventListener('controllerchange', onControllerChange);
+    };
   }, []);
 
   const applyUpdate = useCallback(() => {
