@@ -46,6 +46,9 @@ const NotificationBell = () => {
   useEffect(() => {
     fetchNotifications();
 
+    // Only subscribe if user exists
+    if (!user?.id) return;
+
     // Subscribe to realtime updates
     const channel = supabase
       .channel('notifications')
@@ -55,7 +58,7 @@ const NotificationBell = () => {
           event: 'INSERT',
           schema: 'public',
           table: 'notifications',
-          filter: `user_id=eq.${user?.id}`,
+          filter: `user_id=eq.${user.id}`,
         },
         (payload) => {
           setNotifications(prev => [payload.new as Notification, ...prev]);
@@ -67,7 +70,7 @@ const NotificationBell = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user]);
+  }, [user?.id]);
 
   const markAsRead = async (id: string) => {
     await supabase
