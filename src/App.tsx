@@ -49,6 +49,7 @@ const AdminPayments = lazy(() => import("./pages/admin/AdminPayments"));
 const AdminSettings = lazy(() => import("./pages/admin/AdminSettings"));
 const AdminTransactions = lazy(() => import("./pages/admin/AdminTransactions"));
 const AdminLoginPage = lazy(() => import("./pages/admin/AdminLoginPage"));
+const AdminPasswordReset = lazy(() => import("./pages/admin/AdminPasswordReset"));
 const AdminNotificationsPage = lazy(() => import("./pages/admin/AdminNotificationsPage"));
 const AdminLudoSettings = lazy(() => import("./pages/admin/AdminLudoSettings"));
 const AdminThimbleSettings = lazy(() => import("./pages/admin/AdminThimbleSettings"));
@@ -195,6 +196,7 @@ const App = () => {
                       <Route path="/friends" element={<FriendsPage />} />
                       {/* Admin Routes */}
                       <Route path="/admin/login" element={<AdminLoginPage />} />
+                      <Route path="/admin/reset-password" element={<AdminPasswordReset />} />
                       <Route path="/admin" element={<AdminLayout />}>
                         <Route index element={<AdminDashboard />} />
                         <Route path="matches" element={<AdminMatches />} />
