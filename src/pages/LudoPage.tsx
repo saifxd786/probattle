@@ -97,6 +97,8 @@ const SquareTurnTimerAvatar = ({
   isActive,
   timeLeft,
   badgeSide,
+  isOffline,
+  offlineTimeLeft,
 }: {
   avatarUrl?: string | null;
   fallbackText: string;
@@ -104,17 +106,25 @@ const SquareTurnTimerAvatar = ({
   isActive: boolean;
   timeLeft: number;
   badgeSide: 'left' | 'right';
+  isOffline?: boolean;
+  offlineTimeLeft?: number | null;
 }) => {
-  const maxTime = 15;
-  const safeTimeLeft = Math.max(0, Math.min(maxTime, timeLeft));
+  // Use offline timer when available, otherwise turn timer
+  const isOfflineMode = isOffline && offlineTimeLeft !== null && offlineTimeLeft !== undefined;
+  const maxTime = isOfflineMode ? 60 : 15;
+  const displayTimeLeft = isOfflineMode ? offlineTimeLeft! : timeLeft;
+  const safeTimeLeft = Math.max(0, Math.min(maxTime, displayTimeLeft));
   const progress = (safeTimeLeft / maxTime) * 100;
-  const isLowTime = safeTimeLeft <= 5;
+  const isLowTime = isOfflineMode ? safeTimeLeft <= 10 : safeTimeLeft <= 5;
 
   const size = 56; // matches w-14/h-14
   const strokeWidth = 3;
   const innerSize = size - strokeWidth;
   const perimeter = innerSize * 4;
   const strokeDashoffset = perimeter - (progress / 100) * perimeter;
+
+  // Determine border color based on state
+  const activeBorderColor = isOfflineMode ? '#EF4444' : (isLowTime ? '#E53935' : borderColor);
 
   return (
     <div className="relative" style={{ width: size, height: size + 20 }}>
@@ -133,7 +143,8 @@ const SquareTurnTimerAvatar = ({
             strokeWidth={strokeWidth}
           />
 
-          {isActive && (
+          {/* Show timer border when active turn OR when offline countdown is running */}
+          {(isActive || isOfflineMode) && (
             <motion.rect
               x={strokeWidth / 2}
               y={strokeWidth / 2}
@@ -142,25 +153,27 @@ const SquareTurnTimerAvatar = ({
               rx={10}
               ry={10}
               fill="none"
-              stroke={isLowTime ? '#E53935' : borderColor}
+              stroke={activeBorderColor}
               strokeWidth={strokeWidth}
               strokeLinecap="round"
               strokeDasharray={`${perimeter} ${perimeter}`}
               initial={false}
               animate={{
                 strokeDashoffset,
-                opacity: isLowTime ? [1, 0.55, 1] : 1,
+                opacity: isOfflineMode || isLowTime ? [1, 0.55, 1] : 1,
               }}
               transition={{
                 strokeDashoffset: { duration: 1, ease: 'linear', type: 'tween' },
-                opacity: isLowTime
+                opacity: isOfflineMode || isLowTime
                   ? { duration: 0.45, repeat: Infinity, ease: 'easeInOut', type: 'tween' }
                   : { duration: 0.2, ease: 'linear', type: 'tween' },
               }}
               style={{
-                filter: isLowTime
-                  ? 'drop-shadow(0 0 10px rgba(229,57,53,0.75))'
-                  : `drop-shadow(0 0 10px ${borderColor}80)`,
+                filter: isOfflineMode
+                  ? 'drop-shadow(0 0 10px rgba(239,68,68,0.75))'
+                  : isLowTime
+                    ? 'drop-shadow(0 0 10px rgba(229,57,53,0.75))'
+                    : `drop-shadow(0 0 10px ${borderColor}80)`,
                 transformOrigin: 'center',
               }}
             />
@@ -175,6 +188,7 @@ const SquareTurnTimerAvatar = ({
             width: size - strokeWidth * 2,
             height: size - strokeWidth * 2,
             background: `linear-gradient(135deg, ${borderColor}dd, ${borderColor}88)`,
+            opacity: isOfflineMode ? 0.6 : 1,
           }}
         >
           {avatarUrl ? (
@@ -184,29 +198,36 @@ const SquareTurnTimerAvatar = ({
               {fallbackText}
             </div>
           )}
+          
+          {/* Offline overlay */}
+          {isOfflineMode && (
+            <div className="absolute inset-0 flex items-center justify-center bg-black/50">
+              <span className="text-[8px] font-bold text-red-400 uppercase">Offline</span>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Badges below avatar - TURN + Timer */}
-      {isActive && (
+      {/* Badges below avatar - TURN + Timer (or OFFLINE + countdown) */}
+      {(isActive || isOfflineMode) && (
         <div
           className={`absolute z-30 flex items-center gap-1 ${
             badgeSide === 'left' ? 'left-0' : 'right-0'
           }`}
           style={{ top: size + 2 }}
         >
-          {/* TURN badge */}
+          {/* Status badge */}
           <div
             className="px-1.5 py-0.5 rounded text-[9px] font-bold text-white uppercase tracking-wide"
-            style={{ background: '#43A047' }}
+            style={{ background: isOfflineMode ? '#EF4444' : '#43A047' }}
           >
-            Turn
+            {isOfflineMode ? 'Offline' : 'Turn'}
           </div>
           {/* Timer badge */}
           <motion.div
             className="px-1.5 py-0.5 rounded text-[10px] font-bold text-white tabular-nums"
-            style={{ background: isLowTime ? '#E53935' : 'rgba(0,0,0,0.6)' }}
-            animate={isLowTime ? { scale: [1, 1.1, 1] } : {}}
+            style={{ background: isOfflineMode || isLowTime ? '#E53935' : 'rgba(0,0,0,0.6)' }}
+            animate={isOfflineMode || isLowTime ? { scale: [1, 1.1, 1] } : {}}
             transition={{ duration: 0.5, repeat: Infinity, type: 'tween' }}
           >
             {safeTimeLeft}s
@@ -1005,6 +1026,8 @@ const LudoPage = () => {
                       isActive={isOpponentTurn}
                       timeLeft={friendTurnTimeLeft}
                       badgeSide="right"
+                      isOffline={!opponentOnline}
+                      offlineTimeLeft={opponentDisconnectCountdown}
                     />
                     <div className="text-right">
                       <p className="text-white/80 font-medium text-xs">{opponentPlayer.name}</p>
