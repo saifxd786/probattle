@@ -91,7 +91,8 @@ const BGMIPage = () => {
       // For Upcoming, show only matches that are not full (for TDM 1v1, filled_slots < 2)
       query = query.in('status', ['upcoming', 'live']);
     } else if (activeFilter === 'Results') {
-      query = query.eq('status', 'completed');
+      // Show both completed and cancelled matches in Results
+      query = query.in('status', ['completed', 'cancelled']);
     } else if (activeFilter === 'My Matches') {
       // For My Matches, we need matches that are either upcoming or live (for room details)
       query = query.in('status', ['upcoming', 'live']);
@@ -402,6 +403,7 @@ const BGMIPage = () => {
                 time={match.match_time}
                 nowMs={nowMs}
                 status={getMatchStatus(match)}
+                matchStatus={match.status as 'upcoming' | 'live' | 'completed' | 'cancelled'}
                 roomId={match.room_id}
                 roomPassword={match.room_password}
                 isRegistered={userRegistrations.includes(match.id)}
