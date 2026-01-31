@@ -118,6 +118,8 @@ const MatchCard = ({
   const [secureRoomPassword, setSecureRoomPassword] = useState<string | null>(null);
   const [walletBalance, setWalletBalance] = useState<number>(0);
   const [isBanned, setIsBanned] = useState(false);
+  const [bgmiProfile, setBgmiProfile] = useState<{ ingame_name: string; player_id: string; player_level: number } | null>(null);
+  const [isLoadingProfile, setIsLoadingProfile] = useState(false);
   
   // Generate short match ID from UUID
   const shortMatchId = id.slice(0, 8).toUpperCase();
@@ -190,8 +192,29 @@ const MatchCard = ({
   useEffect(() => {
     if (user) {
       fetchUserProfile();
+      fetchBgmiProfile();
     }
   }, [user]);
+
+  const fetchBgmiProfile = async () => {
+    if (!user) return;
+    
+    setIsLoadingProfile(true);
+    const { data } = await supabase
+      .from('bgmi_profiles')
+      .select('ingame_name, player_id, player_level')
+      .eq('user_id', user.id)
+      .maybeSingle();
+    
+    if (data) {
+      setBgmiProfile(data);
+      // Pre-fill form with saved profile
+      setBgmiIngameName(data.ingame_name);
+      setBgmiPlayerId(data.player_id);
+      setBgmiPlayerLevel(data.player_level.toString());
+    }
+    setIsLoadingProfile(false);
+  };
 
   const fetchUserProfile = async () => {
     if (!user) return;
@@ -324,15 +347,39 @@ const MatchCard = ({
       });
     }
     
+    // Save BGMI profile permanently if first time registration
+    if (!bgmiProfile) {
+      const { error: profileError } = await supabase
+        .from('bgmi_profiles')
+        .insert({
+          user_id: user.id,
+          ingame_name: bgmiIngameName.trim(),
+          player_id: bgmiPlayerId.trim(),
+          player_level: level,
+        });
+      
+      if (profileError && profileError.code !== '23505') {
+        // Log error but don't block registration
+        safeError('saveBgmiProfile', profileError);
+      } else {
+        // Update local state with saved profile
+        setBgmiProfile({
+          ingame_name: bgmiIngameName.trim(),
+          player_id: bgmiPlayerId.trim(),
+          player_level: level,
+        });
+      }
+    }
+    
     // Register for match - directly approved since payment is done via wallet
     const { error } = await supabase
       .from('match_registrations')
       .insert({
         match_id: id,
         user_id: user.id,
-        team_name: bgmiIngameName,
-        bgmi_ingame_name: bgmiIngameName,
-        bgmi_player_id: bgmiPlayerId,
+        team_name: bgmiIngameName.trim(),
+        bgmi_ingame_name: bgmiIngameName.trim(),
+        bgmi_player_id: bgmiPlayerId.trim(),
         bgmi_player_level: level,
         payment_status: 'approved',
         is_approved: true,
@@ -619,39 +666,78 @@ const MatchCard = ({
           </DialogHeader>
           
           <div className="space-y-4 mt-4">
-            <div>
-              <Label>BGMI In-Game Name <span className="text-destructive">*</span></Label>
-              <Input
-                value={bgmiIngameName}
-                onChange={(e) => setBgmiIngameName(e.target.value)}
-                placeholder="Your BGMI username"
-              />
-            </div>
+            {/* Show saved profile or first-time form */}
+            {bgmiProfile ? (
+              // Saved Profile - Quick Join
+              <div className="p-4 bg-green-500/10 border border-green-500/30 rounded-lg">
+                <div className="flex items-center gap-2 mb-3">
+                  <Check className="w-5 h-5 text-green-400" />
+                  <span className="font-medium text-green-400">BGMI Profile Saved</span>
+                </div>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">In-Game Name</span>
+                    <span className="font-medium">{bgmiProfile.ingame_name}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Player ID</span>
+                    <span className="font-medium">{bgmiProfile.player_id}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Level</span>
+                    <span className="font-medium">{bgmiProfile.player_level}</span>
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground mt-3 flex items-center gap-1">
+                  <Lock className="w-3 h-3" />
+                  Profile details are permanently saved
+                </p>
+              </div>
+            ) : (
+              // First Time Registration Form
+              <>
+                <div className="p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
+                  <p className="text-xs text-yellow-400 flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4" />
+                    First time? Your BGMI details will be saved permanently
+                  </p>
+                </div>
+                
+                <div>
+                  <Label>BGMI In-Game Name <span className="text-destructive">*</span></Label>
+                  <Input
+                    value={bgmiIngameName}
+                    onChange={(e) => setBgmiIngameName(e.target.value)}
+                    placeholder="Your BGMI username"
+                  />
+                </div>
 
-            <div>
-              <Label>BGMI Player ID <span className="text-destructive">*</span></Label>
-              <Input
-                value={bgmiPlayerId}
-                onChange={(e) => setBgmiPlayerId(e.target.value)}
-                placeholder="e.g., 5123456789"
-              />
-            </div>
+                <div>
+                  <Label>BGMI Player ID <span className="text-destructive">*</span></Label>
+                  <Input
+                    value={bgmiPlayerId}
+                    onChange={(e) => setBgmiPlayerId(e.target.value)}
+                    placeholder="e.g., 5123456789"
+                  />
+                </div>
 
-            <div>
-              <Label>BGMI Player Level <span className="text-destructive">*</span></Label>
-              <Input
-                type="number"
-                value={bgmiPlayerLevel}
-                onChange={(e) => setBgmiPlayerLevel(e.target.value)}
-                placeholder="Minimum level 30"
-                min={1}
-                max={100}
-              />
-              <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
-                <AlertCircle className="w-3 h-3" />
-                Level 30+ required to participate
-              </p>
-            </div>
+                <div>
+                  <Label>BGMI Player Level <span className="text-destructive">*</span></Label>
+                  <Input
+                    type="number"
+                    value={bgmiPlayerLevel}
+                    onChange={(e) => setBgmiPlayerLevel(e.target.value)}
+                    placeholder="Minimum level 30"
+                    min={1}
+                    max={100}
+                  />
+                  <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+                    <AlertCircle className="w-3 h-3" />
+                    Level 30+ required to participate
+                  </p>
+                </div>
+              </>
+            )}
 
             {!isFree && (
               <div className="p-4 bg-primary/10 border border-primary/20 rounded-lg">
