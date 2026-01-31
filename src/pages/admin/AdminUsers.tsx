@@ -13,6 +13,7 @@ import AgentPermissionsDialog from '@/components/admin/AgentPermissionsDialog';
 import WalletUpdateDialog from '@/components/admin/WalletUpdateDialog';
 import { useAuth } from '@/contexts/AuthContext';
 import { safeError } from '@/utils/safeLogger';
+import { useWalletServer } from '@/hooks/useWalletServer';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -45,6 +46,7 @@ type UserRole = {
 
 const AdminUsers = () => {
   const { user: adminUser } = useAuth();
+  const { adminUpdateWallet } = useWalletServer();
   const [users, setUsers] = useState<Profile[]>([]);
   const [userRoles, setUserRoles] = useState<Record<string, string[]>>({});
   const [searchTerm, setSearchTerm] = useState('');
@@ -233,42 +235,17 @@ const AdminUsers = () => {
     }
   };
 
-  // Secure wallet update using atomic database function
+  // Secure wallet update using server-based Edge Function
   const updateWallet = async (userId: string, amount: number, reason: string) => {
-    if (!adminUser?.id) {
-      toast({ title: 'Error', description: 'Admin session not found', variant: 'destructive' });
-      return;
-    }
-
-    // Call atomic wallet update function
-    const { data, error } = await supabase.rpc('atomic_wallet_update', {
-      p_user_id: userId,
-      p_amount: amount,
-      p_reason: reason,
-      p_admin_id: adminUser.id
+    const response = await adminUpdateWallet({
+      targetUserId: userId,
+      amount,
+      reason,
     });
 
-    if (error) {
-      safeError('updateWallet', error);
-      toast({ title: 'Error', description: 'Failed to update wallet', variant: 'destructive' });
-      return;
+    if (response.success) {
+      fetchUsers();
     }
-
-    const result = data?.[0];
-    if (!result?.success) {
-      toast({ 
-        title: 'Error', 
-        description: result?.error_message || 'Failed to update wallet', 
-        variant: 'destructive' 
-      });
-      return;
-    }
-
-    toast({ 
-      title: 'Success', 
-      description: `Wallet ${amount > 0 ? 'credited' : 'debited'} successfully. New balance: ₹${result.new_balance}` 
-    });
-    fetchUsers();
   };
 
   const openWalletDialog = (user: Profile) => {
