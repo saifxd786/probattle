@@ -290,7 +290,14 @@ const AdminLoginPage = () => {
               </Button>
             </form>
 
-            <div className="mt-6 pt-4 border-t border-border">
+            <div className="mt-6 pt-4 border-t border-border space-y-2">
+              <Button
+                variant="ghost"
+                className="w-full text-orange-400 hover:text-orange-300"
+                onClick={() => navigate('/admin/reset-password')}
+              >
+                Forgot Password?
+              </Button>
               <Button
                 variant="ghost"
                 className="w-full text-muted-foreground"
