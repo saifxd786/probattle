@@ -916,18 +916,18 @@ export const useFriendLudoGame = () => {
           heartbeatMissedRef.current = 0;
           setConnectionStatus('connected');
           
-          // Show warning only for persistent high latency
-          const now = Date.now();
-          if (latency > HIGH_PING_WARNING_THRESHOLD && 
-              stats.median > HIGH_PING_WARNING_THRESHOLD && // Only if median is also high
-              now - lastHighPingWarningRef.current > HIGH_PING_WARNING_COOLDOWN) {
-            lastHighPingWarningRef.current = now;
-            sonnerToast.warning(`High latency: ${latency}ms`, {
-              id: TOAST_ID_HIGH_LATENCY,
-              description: `Average: ${stats.average}ms. Consider switching to WiFi.`,
-              duration: 2000,
-            });
-          }
+          // High latency warning popup DISABLED - only header ms indicator shown
+          // const now = Date.now();
+          // if (latency > HIGH_PING_WARNING_THRESHOLD && 
+          //     stats.median > HIGH_PING_WARNING_THRESHOLD &&
+          //     now - lastHighPingWarningRef.current > HIGH_PING_WARNING_COOLDOWN) {
+          //   lastHighPingWarningRef.current = now;
+          //   sonnerToast.warning(`High latency: ${latency}ms`, {
+          //     id: TOAST_ID_HIGH_LATENCY,
+          //     description: `Average: ${stats.average}ms. Consider switching to WiFi.`,
+          //     duration: 2000,
+          //   });
+          // }
         }
       })
       // Action confirmation for optimistic updates
