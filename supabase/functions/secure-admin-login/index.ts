@@ -60,7 +60,7 @@ Deno.serve(async (req) => {
             code: 'RATE_LIMITED'
           }),
           { 
-            status: 429, 
+            status: 200, 
             headers: { 
               ...corsHeaders, 
               'Content-Type': 'application/json',
@@ -85,14 +85,14 @@ Deno.serve(async (req) => {
     if (!phone || typeof phone !== 'string' || phone.length < 10 || phone.length > 15) {
       return new Response(
         JSON.stringify({ error: 'Invalid phone number format', code: 'INVALID_INPUT' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
     if (!password || typeof password !== 'string' || password.length < 6 || password.length > 128) {
       return new Response(
         JSON.stringify({ error: 'Invalid password format', code: 'INVALID_INPUT' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
@@ -103,7 +103,7 @@ Deno.serve(async (req) => {
     if (cleanPhone.length !== 10) {
       return new Response(
         JSON.stringify({ error: 'Invalid phone number format', code: 'INVALID_INPUT' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       )
     }
 
@@ -115,14 +115,43 @@ Deno.serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseAnonKey)
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey)
 
-    // Try login with both email domains
+    // Try login with profile email (legacy) and both email domains (current)
     let authData = null
     let authError = null
 
+    const candidateEmails: string[] = []
+
+    try {
+      const { data: profileRow } = await supabaseAdmin
+        .from('profiles')
+        .select('email')
+        .eq('phone', cleanPhone)
+        .maybeSingle()
+
+      const profileEmail = (profileRow as any)?.email
+      if (profileEmail && typeof profileEmail === 'string' && profileEmail.includes('@')) {
+        candidateEmails.push(profileEmail)
+      }
+    } catch {
+      // ignore
+    }
+
     for (const domain of ['probattle.app', 'proscims.app']) {
-      const email = `${cleanPhone}@${domain}`
+      candidateEmails.push(`${cleanPhone}@${domain}`)
+    }
+
+    // De-dupe while preserving order
+    const seen = new Set<string>()
+    const uniqueEmails = candidateEmails.filter((e) => {
+      const key = e.trim().toLowerCase()
+      if (!key || seen.has(key)) return false
+      seen.add(key)
+      return true
+    })
+
+    for (const email of uniqueEmails) {
       const result = await supabase.auth.signInWithPassword({ email, password })
-      
+
       if (!result.error && result.data.user) {
         authData = result.data
         break
@@ -194,7 +223,7 @@ Deno.serve(async (req) => {
 
       return new Response(
         JSON.stringify({ error: clientError, code }),
-        { status: httpStatus, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       )
     }
 
@@ -225,7 +254,7 @@ Deno.serve(async (req) => {
       
       return new Response(
         JSON.stringify({ error: 'Access denied. Admin privileges required.', code: 'UNAUTHORIZED' }),
-        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
@@ -242,7 +271,7 @@ Deno.serve(async (req) => {
         console.log(`[secure-admin-login] Banned device attempted admin login: ${deviceFingerprint}`)
         return new Response(
           JSON.stringify({ error: 'Device is banned from admin access', code: 'DEVICE_BANNED' }),
-          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         )
       }
     }
@@ -280,7 +309,7 @@ Deno.serve(async (req) => {
     console.error('[secure-admin-login] Error:', errorMessage)
     return new Response(
       JSON.stringify({ error: 'An unexpected error occurred', code: 'SERVER_ERROR' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   }
 })
