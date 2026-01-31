@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Users, Clock, Trophy, Zap, Lock, Copy, Check, AlertCircle, Wallet, Radio, Ban, Hash } from 'lucide-react';
+import { Users, Clock, Trophy, Zap, Lock, Copy, Check, AlertCircle, Wallet, Radio, Ban, Hash, XCircle, RefreshCw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
@@ -68,6 +68,7 @@ interface MatchCardProps {
   time: string;
   nowMs: number;
   status: 'open' | 'filling' | 'full';
+  matchStatus?: 'upcoming' | 'live' | 'completed' | 'cancelled'; // Added for result display
   roomId?: string | null;
   roomPassword?: string | null;
   isRegistered?: boolean;
@@ -93,6 +94,7 @@ const MatchCard = ({
   time,
   nowMs,
   status,
+  matchStatus,
   roomId,
   roomPassword,
   isRegistered = false,
@@ -102,6 +104,8 @@ const MatchCard = ({
   onRegister,
   delay = 0 
 }: MatchCardProps) => {
+  const isCancelled = matchStatus === 'cancelled';
+  const isCompleted = matchStatus === 'completed';
   const { user } = useAuth();
   const navigate = useNavigate();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -410,35 +414,57 @@ const MatchCard = ({
         <div className="relative p-4 pb-3 border-b border-border/50">
           <div className="flex items-start justify-between">
             <div>
-              <div className="flex items-center gap-2 mb-1">
-                <span className={cn(
-                  'px-2 py-0.5 rounded text-[10px] font-display font-bold uppercase tracking-wider',
-                  isFree 
-                    ? 'bg-green-500/20 text-green-400 border border-green-500/30'
-                    : 'bg-primary/20 text-primary border border-primary/30'
-                )}>
-                  {isFree ? 'Free' : `₹${entryFee}`}
-                </span>
-                
-                {isMatchLive && (
-                  <span className="flex items-center gap-1 text-[10px] text-red-500 animate-pulse">
-                    <Radio className="w-3 h-3" />
-                    LIVE
-                  </span>
-                )}
+              <div className="flex items-center gap-2 mb-1 flex-wrap">
+                {/* Cancelled Badge - Priority Display */}
+                {isCancelled ? (
+                  <>
+                    <span className="px-2 py-0.5 rounded text-[10px] font-display font-bold uppercase tracking-wider bg-red-500/20 text-red-400 border border-red-500/30">
+                      Cancelled
+                    </span>
+                    <span className="flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-green-500/20 text-green-400 border border-green-500/30">
+                      <RefreshCw className="w-3 h-3" />
+                      Refunded ₹{entryFee}
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <span className={cn(
+                      'px-2 py-0.5 rounded text-[10px] font-display font-bold uppercase tracking-wider',
+                      isFree 
+                        ? 'bg-green-500/20 text-green-400 border border-green-500/30'
+                        : 'bg-primary/20 text-primary border border-primary/30'
+                    )}>
+                      {isFree ? 'Free' : `₹${entryFee}`}
+                    </span>
+                    
+                    {isMatchLive && !isCompleted && (
+                      <span className="flex items-center gap-1 text-[10px] text-red-500 animate-pulse">
+                        <Radio className="w-3 h-3" />
+                        LIVE
+                      </span>
+                    )}
 
-                {!isMatchLive && status === 'filling' && (
-                  <span className="flex items-center gap-1 text-[10px] text-yellow-400">
-                    <Zap className="w-3 h-3" />
-                    Filling Fast
-                  </span>
-                )}
+                    {!isMatchLive && !isCompleted && status === 'filling' && (
+                      <span className="flex items-center gap-1 text-[10px] text-yellow-400">
+                        <Zap className="w-3 h-3" />
+                        Filling Fast
+                      </span>
+                    )}
 
-                {isRegistered && (
-                  <span className="flex items-center gap-1 text-[10px] text-green-400">
-                    <Check className="w-3 h-3" />
-                    Joined
-                  </span>
+                    {isRegistered && !isCompleted && !isCancelled && (
+                      <span className="flex items-center gap-1 text-[10px] text-green-400">
+                        <Check className="w-3 h-3" />
+                        Joined
+                      </span>
+                    )}
+                    
+                    {isCompleted && (
+                      <span className="flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-blue-500/20 text-blue-400 border border-blue-500/30">
+                        <Trophy className="w-3 h-3" />
+                        Completed
+                      </span>
+                    )}
+                  </>
                 )}
               </div>
               
@@ -556,15 +582,28 @@ const MatchCard = ({
               {formatDisplayTime(time)}
             </span>
             
-            <Button 
-              variant={status === 'full' && !isRegistered ? 'secondary' : isRegistered ? 'outline' : 'neon'} 
-              size="sm"
-              disabled={status === 'full' && !isRegistered}
-              onClick={handleJoinClick}
-              className="text-xs h-8"
-            >
-              {status === 'full' && !isRegistered ? 'Full' : isRegistered ? 'View Room' : 'Join Match'}
-            </Button>
+            {/* Show different button states based on match status */}
+            {isCancelled ? (
+              <span className="flex items-center gap-1.5 text-xs text-red-400 bg-red-500/10 px-3 py-1.5 rounded-lg border border-red-500/30">
+                <XCircle className="w-4 h-4" />
+                Match Cancelled
+              </span>
+            ) : isCompleted ? (
+              <span className="flex items-center gap-1.5 text-xs text-blue-400 bg-blue-500/10 px-3 py-1.5 rounded-lg border border-blue-500/30">
+                <Trophy className="w-4 h-4" />
+                Result Out
+              </span>
+            ) : (
+              <Button 
+                variant={status === 'full' && !isRegistered ? 'secondary' : isRegistered ? 'outline' : 'neon'} 
+                size="sm"
+                disabled={status === 'full' && !isRegistered}
+                onClick={handleJoinClick}
+                className="text-xs h-8"
+              >
+                {status === 'full' && !isRegistered ? 'Full' : isRegistered ? 'View Room' : 'Join Match'}
+              </Button>
+            )}
           </div>
         </div>
       </motion.div>
