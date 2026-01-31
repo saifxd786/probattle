@@ -86,9 +86,10 @@ const AdminLoginPage = () => {
         refresh_token: data.session.refresh_token,
       });
 
-      await new Promise(r => setTimeout(r, 200));
+      // Wait longer for session to propagate properly (especially on mobile)
+      await new Promise(r => setTimeout(r, 500));
 
-      toast({ title: '✅ Welcome Admin!', description: 'Redirecting...' });
+      toast({ title: '✅ Welcome Admin!', description: 'Redirecting to dashboard...' });
       navigate('/admin');
 
     } catch (err: any) {
