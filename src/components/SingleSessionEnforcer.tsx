@@ -82,6 +82,12 @@ const SingleSessionEnforcer = () => {
       checkIntervalRef.current = null;
     }
     
+    // Clear session storage to prevent auto re-login
+    sessionStorage.removeItem('probattle_session_id');
+    
+    // Mark session as forcefully expired (AuthPage will use this to clear form)
+    sessionStorage.setItem('session_force_expired', 'true');
+    
     toast({
       title: '🔐 Session Expired',
       description: 'You have been logged in from another device/tab. Please login again.',
@@ -92,8 +98,8 @@ const SingleSessionEnforcer = () => {
     // Sign out locally
     await signOut();
     
-    // Redirect to auth page
-    navigate('/auth');
+    // Redirect to auth page with session_expired flag
+    navigate('/auth?session_expired=true');
   }, [isValidSession, signOut, navigate]);
 
   // Register session on mount and when user changes

@@ -513,6 +513,31 @@ const AuthPage = () => {
       setReferralCode(ref);
       setMode('signup');
     }
+    
+    // Check if session was forcefully expired (single-session enforcement)
+    // This clears the form to prevent instant re-login loops
+    const sessionExpired = searchParams.get('session_expired') === 'true' || 
+                           sessionStorage.getItem('session_force_expired') === 'true';
+    
+    if (sessionExpired) {
+      // Clear any autofilled/stored credentials
+      setFormData({
+        phone: '',
+        password: '',
+        confirmPassword: '',
+        username: '',
+        dateOfBirth: '',
+        securityQuestion: '',
+        securityAnswer: '',
+      });
+      
+      // Clear the flag
+      sessionStorage.removeItem('session_force_expired');
+      
+      // Remove query param from URL without reload
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, '', newUrl);
+    }
   }, [searchParams]);
 
   // Redirect if already logged in
