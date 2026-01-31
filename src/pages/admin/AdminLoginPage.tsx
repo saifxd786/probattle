@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -6,11 +6,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from '@/hooks/use-toast';
-import { Shield, Eye, EyeOff, Lock, Phone, ArrowLeft, AlertTriangle } from 'lucide-react';
+import { Shield, Eye, EyeOff, Lock, Phone, ArrowLeft } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { generateDeviceFingerprint } from '@/utils/deviceFingerprint';
-import { useRateLimit } from '@/hooks/useRateLimit';
-import { safeError } from '@/utils/safeLogger';
 
 const AdminLoginPage = () => {
   const navigate = useNavigate();
@@ -18,62 +15,16 @@ const AdminLoginPage = () => {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [serverLockout, setServerLockout] = useState<number | null>(null);
-
-  // Auto-decrement server lockout so the UI unlocks without requiring a refresh
-  useEffect(() => {
-    if (serverLockout === null) return;
-
-    const id = window.setInterval(() => {
-      setServerLockout((s) => {
-        if (s === null) return null;
-        if (s <= 1) return null;
-        return s - 1;
-      });
-    }, 1000);
-
-    return () => window.clearInterval(id);
-  }, [serverLockout !== null]);
-
-  // Client-side rate limiting as first layer of defense
-  const loginRateLimit = useRateLimit('admin-login', {
-    maxAttempts: 3,
-    windowMs: 60000,
-    lockoutMs: 600000, // 10 min client-side lockout
-  });
 
   const normalizePhone = (raw: string) => {
     const digits = (raw ?? '').replace(/\D/g, '');
     if (digits.length <= 10) return digits;
-    return digits.slice(-10); // handle +91 / 0 prefix etc.
+    return digits.slice(-10);
   };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Always ensure we exit loading state
-    const exitLoading = () => setIsLoading(false);
-
-    // Check lockouts first
-    if (loginRateLimit.isLocked) {
-      toast({
-        title: 'Too Many Attempts',
-        description: `Please wait ${loginRateLimit.remainingLockoutTime} seconds`,
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    if (serverLockout && serverLockout > 0) {
-      toast({
-        title: 'Account Locked',
-        description: `Please wait ${serverLockout} seconds`,
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    // Get form values
     const form = e.currentTarget as HTMLFormElement;
     const fd = new FormData(form);
     const rawPhone = String(fd.get('phone') ?? phone ?? '').trim();
@@ -99,59 +50,24 @@ const AdminLoginPage = () => {
       return;
     }
 
-    // Record attempt
-    if (!loginRateLimit.recordAttempt()) {
-      toast({
-        title: 'Too Many Attempts',
-        description: 'Please wait 10 minutes',
-        variant: 'destructive',
-      });
-      return;
-    }
-
     setIsLoading(true);
 
     try {
-      // Simple device fingerprint with short timeout
-      let deviceFingerprint = 'web-' + Date.now();
-      try {
-        const fp = await Promise.race([
-          generateDeviceFingerprint(),
-          new Promise<string>((_, rej) => setTimeout(() => rej('timeout'), 2000))
-        ]);
-        deviceFingerprint = fp;
-      } catch {
-        // Use fallback - don't block login
-      }
-
       // Call edge function with timeout
       const timeoutPromise = new Promise((_, reject) => 
         setTimeout(() => reject(new Error('Request timeout - please try again')), 12000)
       );
 
       const loginPromise = supabase.functions.invoke('secure-admin-login', {
-        body: { phone: cleanPhone, password: rawPassword, deviceFingerprint }
+        body: { phone: cleanPhone, password: rawPassword }
       });
 
       const response = await Promise.race([loginPromise, timeoutPromise]) as any;
       const { data, error } = response;
 
-      // Handle function invocation error
       if (error) {
         console.error('[AdminLogin] Error:', error);
         throw new Error(error.message || 'Connection failed');
-      }
-
-      // Handle rate limit from server
-      if (data?.code === 'RATE_LIMITED') {
-        setServerLockout(data.lockedFor || 60);
-        toast({
-          title: 'Too Many Attempts',
-          description: `Locked for ${data.lockedFor || 60} seconds`,
-          variant: 'destructive',
-        });
-        exitLoading();
-        return;
       }
 
       // Handle auth errors
@@ -170,11 +86,7 @@ const AdminLoginPage = () => {
         refresh_token: data.session.refresh_token,
       });
 
-      // Brief wait for auth context
       await new Promise(r => setTimeout(r, 200));
-
-      loginRateLimit.resetAttempts();
-      setServerLockout(null);
 
       toast({ title: '✅ Welcome Admin!', description: 'Redirecting...' });
       navigate('/admin');
@@ -187,12 +99,9 @@ const AdminLoginPage = () => {
         variant: 'destructive',
       });
     } finally {
-      exitLoading();
+      setIsLoading(false);
     }
   };
-
-  const lockedSeconds = Math.max(loginRateLimit.remainingLockoutTime, serverLockout ?? 0);
-  const isLocked = lockedSeconds > 0;
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
@@ -271,17 +180,12 @@ const AdminLoginPage = () => {
                 variant="neon"
                 className="w-full"
                 size="lg"
-                disabled={isLoading || isLocked}
+                disabled={isLoading}
               >
                 {isLoading ? (
                   <span className="flex items-center gap-2">
                     <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                     Verifying...
-                  </span>
-                ) : isLocked ? (
-                  <span className="flex items-center gap-2">
-                    <AlertTriangle className="w-5 h-5" />
-                    Locked ({lockedSeconds}s)
                   </span>
                 ) : (
                   <span className="flex items-center gap-2">
