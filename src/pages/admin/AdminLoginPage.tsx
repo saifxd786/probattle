@@ -42,8 +42,20 @@ const AdminLoginPage = () => {
     lockoutMs: 600000, // 10 min client-side lockout
   });
 
+  const normalizePhone = (raw: string) => {
+    const digits = (raw ?? '').replace(/\D/g, '');
+    if (digits.length <= 10) return digits;
+    return digits.slice(-10); // handle +91 / 0 prefix etc.
+  };
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    const form = e.currentTarget as HTMLFormElement;
+    const fd = new FormData(form);
+    // Read from actual DOM values (supports browser autofill that doesn't trigger onChange)
+    const rawPhone = String(fd.get('phone') ?? phone ?? '');
+    const rawPassword = String(fd.get('password') ?? password ?? '');
     
     // Check client-side rate limit first
     if (loginRateLimit.isLocked) {
@@ -79,7 +91,8 @@ const AdminLoginPage = () => {
         return;
       }
 
-      const cleanPhone = phone.replace(/\D/g, '');
+      const cleanPhone = normalizePhone(rawPhone);
+      const cleanPassword = rawPassword;
       
       if (cleanPhone.length < 10) {
         toast({
@@ -98,7 +111,7 @@ const AdminLoginPage = () => {
       const response = await supabase.functions.invoke('secure-admin-login', {
         body: {
           phone: cleanPhone,
-          password,
+          password: cleanPassword,
           deviceFingerprint,
         }
       });
@@ -186,6 +199,9 @@ const AdminLoginPage = () => {
           access_token: data.session.access_token,
           refresh_token: data.session.refresh_token,
         });
+
+        // Ensure session is fully hydrated before routing (prevents redirect back to login)
+        await supabase.auth.getUser();
       }
 
       // Reset rate limits on success
@@ -247,10 +263,13 @@ const AdminLoginPage = () => {
                   <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                   <Input
                     id="phone"
+                    name="phone"
                     type="tel"
                     placeholder="Enter your phone number"
                     value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
+                    onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))}
+                    autoComplete="tel"
+                    inputMode="numeric"
                     className="pl-11"
                     required
                   />
@@ -263,10 +282,12 @@ const AdminLoginPage = () => {
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                   <Input
                     id="password"
+                    name="password"
                     type={showPassword ? 'text' : 'password'}
                     placeholder="Enter your password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
+                    autoComplete="current-password"
                     className="pl-11 pr-11"
                     required
                   />

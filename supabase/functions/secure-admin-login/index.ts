@@ -22,6 +22,13 @@ interface LoginRequest {
   deviceFingerprint?: string
 }
 
+const normalizePhone = (raw: string) => {
+  const digits = (raw ?? '').replace(/\D/g, '')
+  if (digits.length <= 10) return digits
+  // Handle common India prefixes like +91 / 0 by taking last 10 digits
+  return digits.slice(-10)
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
@@ -89,8 +96,16 @@ Deno.serve(async (req) => {
       )
     }
 
-    // Sanitize phone
-    const cleanPhone = phone.replace(/\D/g, '')
+    // Sanitize + normalize phone
+    const cleanPhone = normalizePhone(phone)
+
+    // Final validation after normalization
+    if (cleanPhone.length !== 10) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid phone number format', code: 'INVALID_INPUT' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      )
+    }
 
     // Create Supabase clients
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!
