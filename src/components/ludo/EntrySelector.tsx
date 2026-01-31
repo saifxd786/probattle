@@ -22,7 +22,9 @@ const EntrySelector = ({
   playerMode,
   onPlayerModeChange
 }: EntrySelectorProps) => {
-  const rewardAmount = selectedAmount * rewardMultiplier;
+  // 4v4 mode gets 2x multiplier, 1v1 uses settings multiplier
+  const actualMultiplier = playerMode === 4 ? 2 : rewardMultiplier;
+  const rewardAmount = selectedAmount * actualMultiplier;
   const isHighStake = selectedAmount > 100;
 
   return (
@@ -195,7 +197,7 @@ const EntrySelector = ({
           
           <div className="text-right">
             <p className="text-[9px] text-gray-500">Multiplier</p>
-            <p className="font-bold text-sm text-white">{rewardMultiplier}x</p>
+            <p className="font-bold text-sm text-white">{actualMultiplier}x</p>
           </div>
         </div>
       </motion.div>

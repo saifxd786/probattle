@@ -654,8 +654,10 @@ export const useLudoGame = () => {
 
     setWalletBalance(prev => prev - entryAmount);
 
-    // Create match
-    const rewardAmount = entryAmount * settings.rewardMultiplier;
+    // 4v4 mode gets 2x multiplier, 1v1 uses settings multiplier
+    const rewardAmount = playerMode === 4 
+      ? entryAmount * 2 
+      : entryAmount * settings.rewardMultiplier;
     const { data: match, error: matchError } = await supabase
       .from('ludo_matches')
       .insert({
