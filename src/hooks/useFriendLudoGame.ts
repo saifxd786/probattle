@@ -1432,6 +1432,7 @@ export const useFriendLudoGame = () => {
     // Trigger claim win
     claimWinByDisconnect();
   }, [opponentDisconnectCountdown, gameState.phase, claimWinByDisconnect]);
+  // 60-second countdown when opponent disconnects
   useEffect(() => {
     // Only run during active games
     if (gameState.phase !== 'playing') {
@@ -1449,18 +1450,50 @@ export const useFriendLudoGame = () => {
     }
 
     if (!opponentOnline) {
-      // Opponent went offline - INSTANT WIN (no countdown, no rejoin allowed)
-      console.log('[LudoSync] Opponent offline - claiming instant win (no rejoin allowed)');
+      // Opponent went offline - start 60 second countdown
+      console.log('[LudoSync] Opponent offline - starting 60s countdown');
       soundManager.playDisconnectAlert();
       
-      // Show notification
-      sonnerToast.success('Opponent disconnected!', {
-        description: 'You win! Disconnected players cannot rejoin.',
-        duration: 4000
-      });
-      
-      // Claim win immediately - no countdown needed
-      claimWinByDisconnect();
+      // Only start countdown if not already running
+      if (opponentDisconnectCountdown === null) {
+        setOpponentDisconnectCountdown(60);
+        
+        // Show notification
+        sonnerToast.warning('Opponent disconnected!', {
+          description: 'Waiting 60 seconds for them to reconnect...',
+          duration: 4000
+        });
+        
+        // Start countdown interval
+        countdownIntervalRef.current = setInterval(() => {
+          setOpponentDisconnectCountdown(prev => {
+            if (prev === null || prev <= 1) {
+              // Time's up - claim win
+              clearInterval(countdownIntervalRef.current!);
+              countdownIntervalRef.current = null;
+              console.log('[LudoSync] Countdown finished - claiming win');
+              claimWinByDisconnect();
+              return null;
+            }
+            return prev - 1;
+          });
+        }, 1000);
+      }
+    } else {
+      // Opponent came back online - clear countdown
+      if (opponentDisconnectCountdown !== null) {
+        console.log('[LudoSync] Opponent reconnected - clearing countdown');
+        if (countdownIntervalRef.current) {
+          clearInterval(countdownIntervalRef.current);
+          countdownIntervalRef.current = null;
+        }
+        setOpponentDisconnectCountdown(null);
+        
+        sonnerToast.success('Opponent reconnected!', {
+          description: 'Game continues...',
+          duration: 2000
+        });
+      }
     }
 
     return () => {
@@ -1469,9 +1502,9 @@ export const useFriendLudoGame = () => {
         countdownIntervalRef.current = null;
       }
     };
-  }, [opponentOnline, gameState.phase, claimWinByDisconnect]);
+  }, [opponentOnline, gameState.phase, claimWinByDisconnect, opponentDisconnectCountdown]);
 
-  // NOTE: Countdown effects removed - instant win on disconnect, no rejoin allowed
+  // NOTE: 60-second countdown timer for disconnect - only Exit Match gives instant win
 
 
   // Send chat message

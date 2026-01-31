@@ -436,8 +436,8 @@ const TimerAvatar = ({
           strokeWidth={strokeWidth}
         />
         
-        {/* Timer progress border - only show when it's this player's turn */}
-        {isCurrentTurn && (
+        {/* Timer progress border - show when it's this player's turn OR when offline countdown is active */}
+        {(isCurrentTurn || isOffline) && (
           <motion.rect
             x={strokeWidth / 2}
             y={strokeWidth / 2}
@@ -453,18 +453,20 @@ const TimerAvatar = ({
             initial={false}
             animate={{
               strokeDashoffset,
-              opacity: isLowTime ? [1, 0.55, 1] : 1,
+              opacity: isOffline || isLowTime ? [1, 0.55, 1] : 1,
             }}
             transition={{
               strokeDashoffset: { duration: 1, ease: 'linear', type: 'tween' },
-              opacity: isLowTime
+              opacity: isOffline || isLowTime
                 ? { duration: 0.45, repeat: Infinity, ease: 'easeInOut', type: 'tween' }
                 : { duration: 0.2, ease: 'linear', type: 'tween' },
             }}
             style={{
-              filter: isLowTime 
-                ? 'drop-shadow(0 0 6px #F59E0B)' 
-                : `drop-shadow(0 0 6px ${colors?.main})`,
+              filter: isOffline 
+                ? 'drop-shadow(0 0 6px #EF4444)' 
+                : isLowTime 
+                  ? 'drop-shadow(0 0 6px #F59E0B)' 
+                  : `drop-shadow(0 0 6px ${colors?.main})`,
               transformOrigin: 'center',
             }}
           />
@@ -512,8 +514,8 @@ const TimerAvatar = ({
         )}
       </div>
       
-      {/* Timer text badge */}
-      {isCurrentTurn && (
+      {/* Timer text badge - show for turn timer OR offline countdown */}
+      {(isCurrentTurn || isOffline) && (
         <motion.div 
           className="absolute -bottom-2 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded text-[9px] font-bold shadow-lg"
           style={{
@@ -521,7 +523,7 @@ const TimerAvatar = ({
             color: '#fff',
             border: '1px solid rgba(255,255,255,0.3)',
           }}
-          animate={isLowTime ? { scale: [1, 1.15, 1] } : {}}
+          animate={isOffline || isLowTime ? { scale: [1, 1.15, 1] } : {}}
           transition={{ duration: 0.4, repeat: Infinity }}
         >
           {timeLeft}s
