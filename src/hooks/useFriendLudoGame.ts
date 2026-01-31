@@ -377,8 +377,8 @@ export const useFriendLudoGame = () => {
     fetchBalance();
   }, [user]);
 
-  // Check for active friend rooms on mount - DISABLED: No rejoin allowed in PvP
-  // If player disconnects, opponent wins immediately
+  // Check for active friend rooms on mount - ALLOW REJOIN within 60 seconds
+  // Player can reconnect to active games - only opponent's 60s timer awards win
   useEffect(() => {
     if (!user) {
       setIsCheckingActiveRoom(false);
@@ -392,7 +392,7 @@ export const useFriendLudoGame = () => {
           .from('ludo_rooms')
           .select('*')
           .or(`host_id.eq.${user.id},guest_id.eq.${user.id}`)
-          .in('status', ['playing', 'ready'])
+          .in('status', ['playing', 'ready', 'waiting'])
           .order('created_at', { ascending: false })
           .limit(1)
           .maybeSingle();
@@ -404,30 +404,24 @@ export const useFriendLudoGame = () => {
         }
 
         if (activeRoom && activeRoom.status === 'playing') {
-          // Player disconnected from an active game - mark as forfeit
-          console.log('[FriendLudo] Found abandoned room - forfeiting:', activeRoom.id);
+          // ALLOW REJOIN to active games - opponent's 60s countdown handles forfeits
+          console.log('[FriendLudo] Found active room - allowing rejoin:', activeRoom.id);
           
-          // Determine opponent
-          const opponentId = activeRoom.host_id === user.id ? activeRoom.guest_id : activeRoom.host_id;
+          const isHost = activeRoom.host_id === user.id;
           
-          if (opponentId) {
-            // Mark room as completed with opponent as winner
-            await supabase
-              .from('ludo_rooms')
-              .update({ 
-                status: 'completed',
-                winner_id: opponentId,
-                ended_at: new Date().toISOString()
-              })
-              .eq('id', activeRoom.id);
-            
-            console.log('[FriendLudo] Forfeited room - opponent wins');
-          }
+          setHasActiveFriendRoom(true);
+          setActiveFriendRoomData({
+            roomId: activeRoom.id,
+            roomCode: activeRoom.room_code,
+            entryAmount: Number(activeRoom.entry_amount),
+            rewardAmount: Number(activeRoom.reward_amount),
+            isHost
+          });
           
-          // Clear any local storage
-          localStorage.removeItem(`ludo_friend_active_${activeRoom.id}`);
-        } else if (activeRoom && activeRoom.status === 'waiting') {
-          // Only allow resume for waiting rooms (before game started)
+          // Auto-resume the game
+          setShouldAutoResumeFriend(true);
+        } else if (activeRoom && (activeRoom.status === 'waiting' || activeRoom.status === 'ready')) {
+          // Allow resume for waiting/ready rooms (before game started)
           const isHost = activeRoom.host_id === user.id;
           
           setHasActiveFriendRoom(true);
