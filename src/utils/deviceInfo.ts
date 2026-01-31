@@ -101,11 +101,23 @@ export const collectExtendedDeviceInfo = async (): Promise<ExtendedDeviceInfo> =
 };
 
 // Log device info to backend (for registration or login)
+// This is a non-critical operation - failures should not break the app
 export const logDeviceToServer = async (
   supabase: any, 
-  isRegistration: boolean = false
+  isRegistration: boolean = false,
+  retryCount: number = 0
 ): Promise<{ success: boolean; location?: string }> => {
+  const MAX_RETRIES = 2;
+  const RETRY_DELAY = 1000; // 1 second
+
   try {
+    // First check if we have a valid session
+    const { data: sessionData } = await supabase.auth.getSession();
+    if (!sessionData?.session?.access_token) {
+      console.log('[deviceInfo] No valid session, skipping device log');
+      return { success: false };
+    }
+
     const deviceInfo = await collectExtendedDeviceInfo();
     
     const { data, error } = await supabase.functions.invoke('log-registration-device', {
@@ -116,6 +128,21 @@ export const logDeviceToServer = async (
     });
     
     if (error) {
+      // Handle 401 errors specifically - these are auth timing issues
+      const is401 = error.message?.includes('401') || error.status === 401;
+      
+      if (is401 && retryCount < MAX_RETRIES) {
+        console.log(`[deviceInfo] Auth not ready, retrying in ${RETRY_DELAY}ms (attempt ${retryCount + 1}/${MAX_RETRIES})`);
+        await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
+        return logDeviceToServer(supabase, isRegistration, retryCount + 1);
+      }
+      
+      // Don't log 401s as errors - they're expected during auth transitions
+      if (is401) {
+        console.log('[deviceInfo] Skipping device log - auth session not ready');
+        return { success: false };
+      }
+      
       console.error('[deviceInfo] Failed to log device:', error);
       return { success: false };
     }
@@ -126,7 +153,8 @@ export const logDeviceToServer = async (
       location: data?.location || undefined 
     };
   } catch (error) {
-    console.error('[deviceInfo] Error logging device:', error);
+    // Silently fail - this is a non-critical feature
+    console.log('[deviceInfo] Device logging skipped:', error instanceof Error ? error.message : 'Unknown error');
     return { success: false };
   }
 };
