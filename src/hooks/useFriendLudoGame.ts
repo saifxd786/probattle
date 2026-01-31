@@ -872,10 +872,10 @@ export const useFriendLudoGame = () => {
         const originalTimestamp = payload.payload.originalTimestamp || payload.payload.o;
         
         if (senderId !== user?.id && pendingPingsRef.current.has(pingId)) {
-          // Use high-precision timing for sub-20ms accuracy
-          const receiveTime = HighPrecisionTimer.now();
+          // Calculate RTT from local timestamps (not cross-device timestamps)
           const sendTime = pendingPingsRef.current.get(pingId)!;
-          const latency = Date.now() - originalTimestamp;
+          const receiveTime = Date.now();
+          const latency = Math.round((receiveTime - sendTime) / 2); // Half RTT = one-way latency
           pendingPingsRef.current.delete(pingId);
           
           // Feed into Kalman filter for professional prediction
@@ -899,8 +899,8 @@ export const useFriendLudoGame = () => {
           const smoothedLatency = ultraLatencyPredictor.getSmoothedLatency();
           setPingLatency(prev => {
             if (prev === null) return Math.round(smoothedLatency);
-            // Ultra-smooth EMA with 0.9 weight for 20ms target responsiveness
-            return Math.round(prev * 0.1 + smoothedLatency * 0.9);
+            // Ultra-smooth EMA for stable display
+            return Math.round(prev * 0.3 + smoothedLatency * 0.7);
           });
           
           // Update QoS manager with quality
