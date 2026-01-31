@@ -341,6 +341,10 @@ export const useFriendLudoGame = () => {
   const [opponentDisconnectCountdown, setOpponentDisconnectCountdown] = useState<number | null>(null);
   const disconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // Track opponent disconnect count - more than 3 = instant forfeit
+  const [opponentDisconnectCount, setOpponentDisconnectCount] = useState(0);
+  const MAX_DISCONNECT_COUNT = 3;
 
   // Active room detection for auto-resume
   const [hasActiveFriendRoom, setHasActiveFriendRoom] = useState(false);
@@ -1441,7 +1445,14 @@ export const useFriendLudoGame = () => {
     }
 
     if (!opponentOnline) {
-      // Opponent went offline - start 60 second countdown
+      // Opponent went offline - increment disconnect count
+      setOpponentDisconnectCount(prev => {
+        const newCount = prev + 1;
+        console.log('[LudoSync] Opponent disconnect count:', newCount);
+        return newCount;
+      });
+      
+      // Start 60 second countdown
       console.log('[LudoSync] Opponent offline - starting disconnect countdown');
       soundManager.playDisconnectAlert();
       setOpponentDisconnectCountdown(60);
@@ -1462,7 +1473,7 @@ export const useFriendLudoGame = () => {
       }, 1000);
       
     } else {
-      // Opponent is back online - clear countdown
+      // Opponent is back online - clear countdown (but keep the disconnect count)
       console.log('[LudoSync] Opponent back online - clearing countdown');
       if (countdownIntervalRef.current) {
         clearInterval(countdownIntervalRef.current);
@@ -1485,6 +1496,29 @@ export const useFriendLudoGame = () => {
       claimWinByDisconnect();
     }
   }, [opponentDisconnectCountdown, gameState.phase, claimWinByDisconnect]);
+
+  // Auto-forfeit opponent if they disconnect more than 3 times
+  useEffect(() => {
+    if (opponentDisconnectCount > MAX_DISCONNECT_COUNT && gameState.phase === 'playing') {
+      console.log('[LudoSync] Opponent exceeded max disconnect limit:', opponentDisconnectCount);
+      
+      // Clear any existing countdown
+      if (countdownIntervalRef.current) {
+        clearInterval(countdownIntervalRef.current);
+        countdownIntervalRef.current = null;
+      }
+      setOpponentDisconnectCountdown(null);
+      
+      // Show notification
+      sonnerToast.error('Opponent disconnected too many times!', {
+        description: 'Auto-forfeit triggered after 3+ disconnects',
+        duration: 4000
+      });
+      
+      // Claim win immediately
+      claimWinByDisconnect();
+    }
+  }, [opponentDisconnectCount, gameState.phase, claimWinByDisconnect]);
 
 
   // Send chat message
@@ -2214,6 +2248,7 @@ export const useFriendLudoGame = () => {
       lastSyncTime: Date.now()
     });
     setOpponentOnline(false);
+    setOpponentDisconnectCount(0); // Reset disconnect count on game reset
   }, []);
 
   // Trigger capture animation
@@ -2747,6 +2782,7 @@ export const useFriendLudoGame = () => {
     walletBalance,
     opponentOnline,
     opponentDisconnectCountdown,
+    opponentDisconnectCount,
     syncStatus,
     connectionStatus,
     connectionQuality,
