@@ -57,6 +57,7 @@ const WalletPage = () => {
   const [isDepositOpen, setIsDepositOpen] = useState(false);
   const [isWithdrawOpen, setIsWithdrawOpen] = useState(false);
   const [withdrawAmount, setWithdrawAmount] = useState('');
+  const [historyFilter, setHistoryFilter] = useState<'all' | 'deposit' | 'withdrawal'>('all');
   
   // Bank card details
   const [savedBankCard, setSavedBankCard] = useState<BankCard | null>(null);
@@ -533,28 +534,66 @@ const WalletPage = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
         >
-          <div className="flex items-center gap-2 mb-4">
-            <History className="w-4 h-4 text-primary" />
-            <h2 className="font-display text-lg font-bold">Transaction History</h2>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <History className="w-4 h-4 text-primary" />
+              <h2 className="font-display text-lg font-bold">Transaction History</h2>
+            </div>
+          </div>
+          
+          {/* Filter Buttons */}
+          <div className="flex gap-2 mb-4">
+            <Button
+              size="sm"
+              variant={historyFilter === 'all' ? 'default' : 'outline'}
+              onClick={() => setHistoryFilter('all')}
+              className="text-xs"
+            >
+              All
+            </Button>
+            <Button
+              size="sm"
+              variant={historyFilter === 'deposit' ? 'default' : 'outline'}
+              onClick={() => setHistoryFilter('deposit')}
+              className="text-xs gap-1"
+            >
+              <ArrowDownLeft className="w-3 h-3" />
+              Deposits
+            </Button>
+            <Button
+              size="sm"
+              variant={historyFilter === 'withdrawal' ? 'default' : 'outline'}
+              onClick={() => setHistoryFilter('withdrawal')}
+              className="text-xs gap-1"
+            >
+              <ArrowUpRight className="w-3 h-3" />
+              Withdrawals
+            </Button>
           </div>
 
           {isLoading ? (
             <div className="flex justify-center py-12">
               <Loader2 className="w-6 h-6 animate-spin text-primary" />
             </div>
-          ) : transactions.length === 0 ? (
+          ) : transactions.filter(tx => historyFilter === 'all' || tx.type === historyFilter).length === 0 ? (
             <div className="glass-card p-8 text-center">
               <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-primary/10 flex items-center justify-center">
                 <History className="w-8 h-8 text-primary/50" />
               </div>
-              <h3 className="font-display text-lg font-bold mb-2">No Transactions</h3>
+              <h3 className="font-display text-lg font-bold mb-2">
+                {historyFilter === 'all' ? 'No Transactions' : 
+                 historyFilter === 'deposit' ? 'No Deposits' : 'No Withdrawals'}
+              </h3>
               <p className="text-sm text-muted-foreground">
-                Your transaction history will appear here
+                {historyFilter === 'all' ? 'Your transaction history will appear here' :
+                 historyFilter === 'deposit' ? 'Your deposit history will appear here' : 'Your withdrawal history will appear here'}
               </p>
             </div>
           ) : (
             <div className="space-y-3">
-              {transactions.map((tx, index) => (
+              {transactions
+                .filter(tx => historyFilter === 'all' || tx.type === historyFilter)
+                .map((tx, index) => (
                 <motion.div
                   key={tx.id}
                   initial={{ opacity: 0, x: -20 }}
