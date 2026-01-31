@@ -34,13 +34,23 @@ const AdminPasswordReset = () => {
 
     setIsLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('security_question')
-        .eq('phone', cleanPhone)
-        .maybeSingle();
+      const { data, error } = await supabase.functions.invoke('reset-password', {
+        body: {
+          action: 'get_question',
+          phone: cleanPhone,
+        },
+      });
 
-      if (error || !data) {
+      if (error || data?.error) {
+        toast({
+          title: 'Error',
+          description: 'Failed to fetch security question',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      if (!data?.exists) {
         toast({
           title: 'Account Not Found',
           description: 'No account found with this phone number',
@@ -49,7 +59,7 @@ const AdminPasswordReset = () => {
         return;
       }
 
-      if (!data.security_question) {
+      if (!data?.hasSecurityQuestion || !data?.securityQuestion) {
         toast({
           title: 'Security Question Not Set',
           description: 'This account does not have a security question configured. Contact support.',
@@ -58,7 +68,7 @@ const AdminPasswordReset = () => {
         return;
       }
 
-      setSecurityQuestion(data.security_question);
+      setSecurityQuestion(data.securityQuestion);
       setStep('answer');
     } catch (error) {
       console.error('Error fetching security question:', error);
@@ -85,27 +95,19 @@ const AdminPasswordReset = () => {
     setIsLoading(true);
     try {
       const cleanPhone = phone.replace(/\D/g, '');
-      
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('security_answer')
-        .eq('phone', cleanPhone)
-        .maybeSingle();
 
-      if (error || !data) {
-        toast({
-          title: 'Error',
-          description: 'Failed to verify answer',
-          variant: 'destructive',
-        });
-        return;
-      }
+      const { data, error } = await supabase.functions.invoke('reset-password', {
+        body: {
+          action: 'verify',
+          phone: cleanPhone,
+          securityAnswer: securityAnswer.toLowerCase().trim(),
+        },
+      });
 
-      if (!data.security_answer || 
-          data.security_answer.toLowerCase().trim() !== securityAnswer.toLowerCase().trim()) {
+      if (error || data?.error) {
         toast({
           title: 'Incorrect Answer',
-          description: 'Security answer does not match',
+          description: data?.error || 'Security answer does not match',
           variant: 'destructive',
         });
         return;
@@ -151,7 +153,7 @@ const AdminPasswordReset = () => {
         body: {
           phone: cleanPhone,
           newPassword,
-          securityAnswer,
+          securityAnswer: securityAnswer.toLowerCase().trim(),
         },
       });
 

@@ -54,12 +54,10 @@ const ForgotPasswordForm = ({ onBack }: { onBack: () => void }) => {
   const [phone, setPhone] = useState('');
   const [securityAnswer, setSecurityAnswer] = useState('');
   const [securityQuestion, setSecurityQuestion] = useState('');
-  const [storedAnswer, setStoredAnswer] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [userEmail, setUserEmail] = useState('');
   
   // Rate limiting for forgot password
   const forgotPasswordRateLimit = useRateLimit('forgot-password', {
@@ -105,14 +103,26 @@ const ForgotPasswordForm = ({ onBack }: { onBack: () => void }) => {
     setIsLoading(true);
 
     try {
-      // Fetch user profile with security question
-      const { data: profile, error } = await supabase
-        .from('profiles')
-        .select('id, email, security_question, security_answer')
-        .eq('phone', phone)
-        .maybeSingle();
+      const cleanPhone = phone.replace(/\D/g, '');
 
-      if (error || !profile) {
+      // Fetch security question via backend function (works even when DB is locked down)
+      const { data, error } = await supabase.functions.invoke('reset-password', {
+        body: {
+          action: 'get_question',
+          phone: cleanPhone,
+        },
+      });
+
+      if (error || data?.error) {
+        toast({
+          title: 'Error',
+          description: 'Unable to fetch security question. Please try again.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      if (!data?.exists) {
         toast({
           title: 'Account Not Found',
           description: 'इस नंबर से कोई अकाउंट नहीं मिला। कृपया सही नंबर डालें।',
@@ -123,7 +133,7 @@ const ForgotPasswordForm = ({ onBack }: { onBack: () => void }) => {
       }
 
       // Check if user has set up security question
-      if (!profile.security_question || !profile.security_answer) {
+      if (!data?.hasSecurityQuestion || !data?.securityQuestion) {
         toast({
           title: 'Security Question Not Set',
           description: 'आपने Security Question सेट नहीं किया है। कृपया Telegram पर Support से संपर्क करें।',
@@ -135,9 +145,7 @@ const ForgotPasswordForm = ({ onBack }: { onBack: () => void }) => {
       }
 
       // Store data and move to security question step
-      setSecurityQuestion(profile.security_question);
-      setStoredAnswer(profile.security_answer);
-      setUserEmail(profile.email || `${phone}@probattle.app`);
+      setSecurityQuestion(data.securityQuestion);
       setStep('security');
       
     } catch (error) {
@@ -157,11 +165,21 @@ const ForgotPasswordForm = ({ onBack }: { onBack: () => void }) => {
     setIsLoading(true);
 
     try {
-      // Verify security answer (case insensitive)
-      if (storedAnswer.toLowerCase().trim() !== securityAnswer.toLowerCase().trim()) {
+      const cleanPhone = phone.replace(/\D/g, '');
+      const normalizedAnswer = securityAnswer.toLowerCase().trim();
+
+      const { data, error } = await supabase.functions.invoke('reset-password', {
+        body: {
+          action: 'verify',
+          phone: cleanPhone,
+          securityAnswer: normalizedAnswer,
+        },
+      });
+
+      if (error || data?.error) {
         toast({
           title: 'Incorrect Answer',
-          description: 'The answer you provided is incorrect. Please try again.',
+          description: data?.error || 'The answer you provided is incorrect. Please try again.',
           variant: 'destructive',
         });
         return;
@@ -210,9 +228,10 @@ const ForgotPasswordForm = ({ onBack }: { onBack: () => void }) => {
       }
 
       // Reset password using Supabase admin API via edge function
+      const cleanPhone = phone.replace(/\D/g, '');
       const { data, error } = await supabase.functions.invoke('reset-password', {
         body: { 
-          phone,
+          phone: cleanPhone,
           newPassword,
           securityAnswer: securityAnswer.toLowerCase().trim()
         }
@@ -261,6 +280,7 @@ const ForgotPasswordForm = ({ onBack }: { onBack: () => void }) => {
             placeholder="Registered Phone Number"
             value={phone}
             onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))}
+            autoComplete="tel"
             className="pl-10 bg-secondary/50 border-border/50 focus:border-primary"
             required
             maxLength={10}
@@ -523,17 +543,6 @@ const AuthPage = () => {
                            sessionStorage.getItem('session_force_expired') === 'true';
     
     if (sessionExpired) {
-      // Clear any autofilled/stored credentials
-      setFormData({
-        phone: '',
-        password: '',
-        confirmPassword: '',
-        username: '',
-        dateOfBirth: '',
-        securityQuestion: '',
-        securityAnswer: '',
-      });
-      
       // Clear the flag
       sessionStorage.removeItem('session_force_expired');
       
@@ -1174,6 +1183,7 @@ const AuthPage = () => {
                 placeholder="Phone Number"
                 value={formData.phone}
                 onChange={(e) => setFormData({ ...formData, phone: e.target.value.replace(/\D/g, '') })}
+                autoComplete="tel"
                 className="pl-10 bg-secondary/50 border-border/50 focus:border-primary"
                 required
               />
@@ -1204,6 +1214,7 @@ const AuthPage = () => {
                 placeholder="Password"
                 value={formData.password}
                 onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
                 className="pl-10 pr-10 bg-secondary/50 border-border/50 focus:border-primary"
                 required
               />
@@ -1242,6 +1253,7 @@ const AuthPage = () => {
                   placeholder="Confirm password"
                   value={formData.confirmPassword}
                   onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+                  autoComplete="new-password"
                   className="pl-10 bg-secondary/50 border-border/50 focus:border-primary"
                   required
                 />

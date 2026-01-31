@@ -20,7 +20,7 @@ export const useMaintenanceMode = () => {
         .maybeSingle();
 
       if (error) throw error;
-      return data?.value as unknown as MaintenanceSettings | null;
+      return (data?.value ?? null) as unknown as MaintenanceSettings | null;
     },
     staleTime: 60 * 1000, // 1 minute
     gcTime: 5 * 60 * 1000, // 5 minutes cache
