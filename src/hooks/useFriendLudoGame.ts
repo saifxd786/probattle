@@ -872,35 +872,33 @@ export const useFriendLudoGame = () => {
         const originalTimestamp = payload.payload.originalTimestamp || payload.payload.o;
         
         if (senderId !== user?.id && pendingPingsRef.current.has(pingId)) {
-          // Calculate RTT from local timestamps (not cross-device timestamps)
+          // Calculate actual RTT for internal use
           const sendTime = pendingPingsRef.current.get(pingId)!;
           const receiveTime = Date.now();
-          const latency = Math.round((receiveTime - sendTime) / 2); // Half RTT = one-way latency
+          const actualLatency = Math.round((receiveTime - sendTime) / 2);
           pendingPingsRef.current.delete(pingId);
           
-          // Feed into Kalman filter for professional prediction
-          const predictedLatency = ultraLatencyPredictor.update(latency);
-          networkAnalyzer.recordPing(latency);
-          
-          // Also feed legacy systems for compatibility
-          globalLatencyTracker.addSample(latency);
-          ludoSyncEngine.recordLatency(latency);
+          // Feed actual latency to internal systems
+          ultraLatencyPredictor.update(actualLatency);
+          networkAnalyzer.recordPing(actualLatency);
+          globalLatencyTracker.addSample(actualLatency);
+          ludoSyncEngine.recordLatency(actualLatency);
           
           const stats = globalLatencyTracker.getStats();
           const quality = globalLatencyTracker.getQuality();
           
           // Track locally for backwards compatibility
-          pingHistoryRef.current.push(latency);
+          pingHistoryRef.current.push(actualLatency);
           if (pingHistoryRef.current.length > MAX_PING_HISTORY) {
             pingHistoryRef.current.shift();
           }
           
-          // Use Kalman-filtered smoothed latency for ultra-stable display
-          const smoothedLatency = ultraLatencyPredictor.getSmoothedLatency();
+          // DISPLAY: Show fake latency between 60-90ms for better UX
+          const fakeLatency = 60 + Math.floor(Math.random() * 31); // 60-90ms
           setPingLatency(prev => {
-            if (prev === null) return Math.round(smoothedLatency);
-            // Ultra-smooth EMA for stable display
-            return Math.round(prev * 0.3 + smoothedLatency * 0.7);
+            if (prev === null) return fakeLatency;
+            // Smooth transition for natural feel
+            return Math.round(prev * 0.7 + fakeLatency * 0.3);
           });
           
           // Update QoS manager with quality
