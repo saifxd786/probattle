@@ -377,7 +377,8 @@ export const useFriendLudoGame = () => {
     fetchBalance();
   }, [user]);
 
-  // Check for active friend rooms on mount
+  // Check for active friend rooms on mount - DISABLED: No rejoin allowed in PvP
+  // If player disconnects, opponent wins immediately
   useEffect(() => {
     if (!user) {
       setIsCheckingActiveRoom(false);
@@ -386,12 +387,12 @@ export const useFriendLudoGame = () => {
 
     const checkActiveRoom = async () => {
       try {
-        // Find any in-progress or waiting rooms where user is host or guest
+        // Find any in-progress rooms where user is host or guest
         const { data: activeRoom, error } = await supabase
           .from('ludo_rooms')
           .select('*')
           .or(`host_id.eq.${user.id},guest_id.eq.${user.id}`)
-          .in('status', ['playing', 'ready', 'waiting'])
+          .in('status', ['playing', 'ready'])
           .order('created_at', { ascending: false })
           .limit(1)
           .maybeSingle();
@@ -402,21 +403,31 @@ export const useFriendLudoGame = () => {
           return;
         }
 
-        if (activeRoom) {
-          console.log('[FriendLudo] Found active room:', activeRoom.id);
+        if (activeRoom && activeRoom.status === 'playing') {
+          // Player disconnected from an active game - mark as forfeit
+          console.log('[FriendLudo] Found abandoned room - forfeiting:', activeRoom.id);
           
-          // Check if room was left within 60 seconds (auto-resume window)
-          const lastActiveTime = localStorage.getItem(`ludo_friend_active_${activeRoom.id}`);
-          const now = Date.now();
-          const AUTO_RESUME_WINDOW = 60 * 1000; // 60 seconds
+          // Determine opponent
+          const opponentId = activeRoom.host_id === user.id ? activeRoom.guest_id : activeRoom.host_id;
           
-          let canAutoResume = false;
-          if (lastActiveTime) {
-            const timeSinceLeave = now - parseInt(lastActiveTime, 10);
-            canAutoResume = timeSinceLeave <= AUTO_RESUME_WINDOW;
-            console.log('[FriendLudo] Time since leave:', timeSinceLeave, 'ms, auto-resume:', canAutoResume);
+          if (opponentId) {
+            // Mark room as completed with opponent as winner
+            await supabase
+              .from('ludo_rooms')
+              .update({ 
+                status: 'completed',
+                winner_id: opponentId,
+                ended_at: new Date().toISOString()
+              })
+              .eq('id', activeRoom.id);
+            
+            console.log('[FriendLudo] Forfeited room - opponent wins');
           }
           
+          // Clear any local storage
+          localStorage.removeItem(`ludo_friend_active_${activeRoom.id}`);
+        } else if (activeRoom && activeRoom.status === 'waiting') {
+          // Only allow resume for waiting rooms (before game started)
           const isHost = activeRoom.host_id === user.id;
           
           setHasActiveFriendRoom(true);
@@ -427,13 +438,6 @@ export const useFriendLudoGame = () => {
             rewardAmount: Number(activeRoom.reward_amount),
             isHost
           });
-          
-          if (canAutoResume) {
-            setShouldAutoResumeFriend(true);
-          } else {
-            // Play alert sound for manual resume
-            soundManager.playDisconnectAlert();
-          }
         }
       } catch (err) {
         console.error('[FriendLudo] Error checking active room:', err);
@@ -1445,41 +1449,18 @@ export const useFriendLudoGame = () => {
     }
 
     if (!opponentOnline) {
-      // Opponent went offline - increment disconnect count
-      setOpponentDisconnectCount(prev => {
-        const newCount = prev + 1;
-        console.log('[LudoSync] Opponent disconnect count:', newCount);
-        return newCount;
+      // Opponent went offline - INSTANT WIN (no countdown, no rejoin allowed)
+      console.log('[LudoSync] Opponent offline - claiming instant win (no rejoin allowed)');
+      soundManager.playDisconnectAlert();
+      
+      // Show notification
+      sonnerToast.success('Opponent disconnected!', {
+        description: 'You win! Disconnected players cannot rejoin.',
+        duration: 4000
       });
       
-      // Start 60 second countdown
-      console.log('[LudoSync] Opponent offline - starting disconnect countdown');
-      soundManager.playDisconnectAlert();
-      setOpponentDisconnectCountdown(60);
-      
-      // Start countdown interval
-      countdownIntervalRef.current = setInterval(() => {
-        setOpponentDisconnectCountdown(prev => {
-          if (prev === null || prev <= 1) {
-            // Time's up - clear interval, claim win will be triggered separately
-            if (countdownIntervalRef.current) {
-              clearInterval(countdownIntervalRef.current);
-              countdownIntervalRef.current = null;
-            }
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
-      
-    } else {
-      // Opponent is back online - clear countdown (but keep the disconnect count)
-      console.log('[LudoSync] Opponent back online - clearing countdown');
-      if (countdownIntervalRef.current) {
-        clearInterval(countdownIntervalRef.current);
-        countdownIntervalRef.current = null;
-      }
-      setOpponentDisconnectCountdown(null);
+      // Claim win immediately - no countdown needed
+      claimWinByDisconnect();
     }
 
     return () => {
@@ -1488,37 +1469,9 @@ export const useFriendLudoGame = () => {
         countdownIntervalRef.current = null;
       }
     };
-  }, [opponentOnline, gameState.phase]);
+  }, [opponentOnline, gameState.phase, claimWinByDisconnect]);
 
-  // Auto-claim win when countdown reaches 0
-  useEffect(() => {
-    if (opponentDisconnectCountdown === 0 && gameState.phase === 'playing') {
-      claimWinByDisconnect();
-    }
-  }, [opponentDisconnectCountdown, gameState.phase, claimWinByDisconnect]);
-
-  // Auto-forfeit opponent if they disconnect more than 3 times
-  useEffect(() => {
-    if (opponentDisconnectCount > MAX_DISCONNECT_COUNT && gameState.phase === 'playing') {
-      console.log('[LudoSync] Opponent exceeded max disconnect limit:', opponentDisconnectCount);
-      
-      // Clear any existing countdown
-      if (countdownIntervalRef.current) {
-        clearInterval(countdownIntervalRef.current);
-        countdownIntervalRef.current = null;
-      }
-      setOpponentDisconnectCountdown(null);
-      
-      // Show notification
-      sonnerToast.error('Opponent disconnected too many times!', {
-        description: 'Auto-forfeit triggered after 3+ disconnects',
-        duration: 4000
-      });
-      
-      // Claim win immediately
-      claimWinByDisconnect();
-    }
-  }, [opponentDisconnectCount, gameState.phase, claimWinByDisconnect]);
+  // NOTE: Countdown effects removed - instant win on disconnect, no rejoin allowed
 
 
   // Send chat message
