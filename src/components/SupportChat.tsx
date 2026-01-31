@@ -18,6 +18,10 @@ import { uploadResumableToBucket } from '@/utils/resumableUpload';
 import { SUPPORT_ATTACHMENTS_BUCKET } from '@/utils/supportAttachments';
 import ReactMarkdown from 'react-markdown';
 import heroBanner from '@/assets/hero-banner.jpg';
+import ludoCard from '@/assets/ludo-card.jpg';
+import minesCard from '@/assets/mines-card.jpg';
+import thimbleCard from '@/assets/thimble-card.jpg';
+import bgmiCard from '@/assets/bgmi-card.jpg';
 
 interface Attachment {
   url: string;
@@ -56,6 +60,24 @@ const ISSUE_CATEGORIES = [
   { id: 'other', name: 'Other', icon: <MessageCircle className="w-5 h-5" />, color: 'from-gray-500 to-slate-500' },
 ];
 
+// Sub-categories for Deposit
+const DEPOSIT_SUBCATEGORIES = [
+  { id: 'payment_deducted', name: 'Payment Deducted, Not Credited', icon: '💸', color: 'from-red-500 to-orange-500' },
+  { id: 'upi_failed', name: 'UPI Transaction Failed', icon: '❌', color: 'from-yellow-500 to-amber-500' },
+  { id: 'minimum_amount', name: 'Minimum Deposit Query', icon: '💰', color: 'from-green-500 to-teal-500' },
+  { id: 'qr_not_working', name: 'QR Code Not Working', icon: '📱', color: 'from-blue-500 to-cyan-500' },
+  { id: 'deposit_other', name: 'Other Deposit Issue', icon: '❓', color: 'from-gray-500 to-slate-500' },
+];
+
+// Sub-categories for Withdrawal
+const WITHDRAWAL_SUBCATEGORIES = [
+  { id: 'withdrawal_pending', name: 'Withdrawal Pending Too Long', icon: '⏳', color: 'from-yellow-500 to-orange-500' },
+  { id: 'withdrawal_rejected', name: 'Withdrawal Rejected', icon: '🚫', color: 'from-red-500 to-pink-500' },
+  { id: 'bank_details', name: 'Bank Details Issue', icon: '🏦', color: 'from-blue-500 to-indigo-500' },
+  { id: 'minimum_withdrawal', name: 'Minimum Withdrawal Query', icon: '💵', color: 'from-green-500 to-emerald-500' },
+  { id: 'withdrawal_other', name: 'Other Withdrawal Issue', icon: '❓', color: 'from-gray-500 to-slate-500' },
+];
+
 const MAX_IMAGES = 5;
 const MAX_VIDEO_SIZE = 3 * 1024 * 1024 * 1024; // 3GB
 
@@ -64,8 +86,9 @@ const INACTIVITY_TIMEOUT = 60 * 60 * 1000; // 1 hour in milliseconds
 const SupportChat = () => {
   const { user } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
-  const [step, setStep] = useState<'category' | 'game' | 'chat'>('category');
+  const [step, setStep] = useState<'category' | 'subcategory' | 'game' | 'chat'>('category');
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [selectedSubCategory, setSelectedSubCategory] = useState<string | null>(null);
   const [selectedGame, setSelectedGame] = useState<string | null>(null);
   
   // AI Chat state
@@ -210,11 +233,20 @@ const SupportChat = () => {
     setSelectedCategory(categoryId);
     if (categoryId === 'game') {
       setStep('game');
+    } else if (categoryId === 'deposit' || categoryId === 'withdrawal') {
+      // Show sub-category selection for deposit/withdrawal
+      setStep('subcategory');
     } else {
       setStep('chat');
       // Add initial AI greeting
       addAiGreeting(categoryId);
     }
+  };
+
+  const selectSubCategory = (subCategoryId: string) => {
+    setSelectedSubCategory(subCategoryId);
+    setStep('chat');
+    addAiGreeting(selectedCategory!, undefined, subCategoryId);
   };
 
   const selectGame = (gameId: string) => {
@@ -223,7 +255,7 @@ const SupportChat = () => {
     addAiGreeting('game', gameId);
   };
 
-  const addAiGreeting = (category: string, game?: string) => {
+  const addAiGreeting = (category: string, game?: string, subCategory?: string) => {
     const greetings: Record<string, string> = {
       deposit: "🙏 Namaste! Main ProBattle AI Support hoon.\n\nAapko deposit mein koi problem aa rahi hai? Please apni issue batao ya screenshot share karo - main turant help karunga!\n\n**Common deposit issues:**\n- Payment deducted but not credited\n- UPI transaction failed\n- Minimum deposit amount query",
       withdrawal: "🙏 Namaste! Withdrawal mein help ke liye main yahan hoon.\n\nAapki withdrawal request mein kya issue hai? UTR number ya transaction screenshot share karein toh jaldi solve ho jayega!\n\n**Note:** Withdrawals 24-48 hours mein process hote hain.",
@@ -231,7 +263,34 @@ const SupportChat = () => {
       other: "🙏 Namaste! Main aapki kisi bhi query mein help kar sakta hoon.\n\nBatao kya help chahiye? Screenshots bhi share kar sakte ho agar koi error aa raha ho!",
     };
 
+    // Sub-category specific greetings for Deposit
+    const depositSubGreetings: Record<string, string> = {
+      payment_deducted: "💸 **Payment Deducted But Not Credited**\n\nYeh common issue hai, don't worry! Please mujhe ye details do:\n\n1. **Transaction Amount** - Kitne rupees deduct hue?\n2. **UTR Number** - Bank message mein milega\n3. **Screenshot** - Payment ka proof\n\nMain turant check karke update karunga! 🔍",
+      upi_failed: "❌ **UPI Transaction Failed**\n\nTransaction fail hone ke kai reasons ho sakte hain:\n\n- Incorrect UPI ID\n- Bank server down\n- Daily limit exceeded\n\n**Try these:**\n1. 5 minutes baad retry karein\n2. Different UPI app use karein\n3. QR code scan karein\n\nAbhi bhi issue hai? Details share karo!",
+      minimum_amount: "💰 **Minimum Deposit Information**\n\n📌 **Minimum Deposit: ₹50**\n\n**Payment Methods:**\n- UPI (GPay, PhonePe, Paytm)\n- QR Code Scan\n\n**Processing Time:** Instant (1-2 minutes)\n\nKoi aur sawal hai deposit ke baare mein?",
+      qr_not_working: "📱 **QR Code Issue**\n\nQR code scan nahi ho raha? Try these:\n\n1. **Zoom In** - QR clearly dikhna chahiye\n2. **Good Lighting** - Proper light mein scan karo\n3. **UPI ID Copy** - Direct UPI ID use karo\n\nAbhi bhi problem hai? Screenshot bhejo main help karunga!",
+      deposit_other: "💵 **Other Deposit Issue**\n\nKoi bhi deposit related problem batao:\n- Amount\n- Payment method\n- Error message (agar koi)\n- Screenshot\n\nMain full details ke saath help karunga! 🤝",
+    };
+
+    // Sub-category specific greetings for Withdrawal
+    const withdrawalSubGreetings: Record<string, string> = {
+      withdrawal_pending: "⏳ **Withdrawal Pending**\n\n**Normal Processing Time:** 24-48 hours (business days)\n\nAgar 48 hours se zyada ho gaye:\n1. Withdrawal amount batao\n2. Request date batao\n3. Screenshot share karo\n\nMain admin team se check karwaunga! 📞",
+      withdrawal_rejected: "🚫 **Withdrawal Rejected**\n\nRejection reasons ho sakte hain:\n\n1. **Wager requirement** not met\n2. **Bank details** mismatch\n3. **Insufficient balance**\n4. **Suspicious activity**\n\n**Check karein:**\n- Profile > Wallet mein wager status\n- Bank details correct hain?\n\nRejection message share karo, main exact reason bataunga!",
+      bank_details: "🏦 **Bank Details Issue**\n\n**Important:** Bank details sirf ek baar add hote hain aur change nahi ho sakte.\n\n**Required Details:**\n- Account Holder Name (exactly as in bank)\n- Account Number\n- IFSC Code\n- Bank Name\n\n**Issue hai kya?**\n- Details galat add ho gaye?\n- Verification fail ho raha?\n\nBatao main guide karunga!",
+      minimum_withdrawal: "💵 **Minimum Withdrawal Information**\n\n📌 **Minimum Withdrawal: ₹100**\n\n**Requirements:**\n1. Bank details linked hona chahiye\n2. Wager requirement complete\n\n**Processing Time:** 24-48 hours\n\n**Note:** First withdrawal mein verification ho sakti hai.\n\nKoi aur sawal?",
+      withdrawal_other: "💳 **Other Withdrawal Issue**\n\nWithdrawal related koi bhi problem batao:\n- Amount\n- Request date\n- Error message\n- Screenshot\n\nMain full support dunga! 🤝",
+    };
+
     let greeting = greetings[category] || greetings.other;
+    
+    // Use sub-category greeting if available
+    if (subCategory) {
+      if (category === 'deposit' && depositSubGreetings[subCategory]) {
+        greeting = depositSubGreetings[subCategory];
+      } else if (category === 'withdrawal' && withdrawalSubGreetings[subCategory]) {
+        greeting = withdrawalSubGreetings[subCategory];
+      }
+    }
     
     if (game) {
       const gameGreetings: Record<string, string> = {
@@ -335,6 +394,7 @@ const SupportChat = () => {
   const resetChat = () => {
     setStep('category');
     setSelectedCategory(null);
+    setSelectedSubCategory(null);
     setSelectedGame(null);
     setAiMessages([]);
     setNewMessage('');
@@ -409,6 +469,7 @@ const SupportChat = () => {
                   </h3>
                   <p className="text-xs text-muted-foreground">
                     {step === 'category' ? 'Select your issue type' : 
+                     step === 'subcategory' ? `Select ${selectedCategory === 'deposit' ? 'deposit' : 'withdrawal'} issue` :
                      step === 'game' ? 'Select game' : 
                      'Online • Instant replies'}
                   </p>
@@ -451,6 +512,51 @@ const SupportChat = () => {
                 </motion.div>
               )}
 
+              {/* Sub-Category Selection for Deposit/Withdrawal */}
+              {step === 'subcategory' && (
+                <motion.div
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 20 }}
+                  className="flex-1 p-4 overflow-auto"
+                >
+                  <div className="mb-4">
+                    <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium text-white ${
+                      selectedCategory === 'deposit' 
+                        ? 'bg-gradient-to-r from-green-500 to-emerald-500' 
+                        : 'bg-gradient-to-r from-blue-500 to-cyan-500'
+                    }`}>
+                      <Wallet className="w-4 h-4" />
+                      {selectedCategory === 'deposit' ? 'Deposit Issue' : 'Withdrawal Issue'}
+                    </div>
+                  </div>
+                  
+                  <p className="text-sm text-muted-foreground mb-4 text-center">
+                    {selectedCategory === 'deposit' 
+                      ? '💵 Kaunsi deposit problem hai?' 
+                      : '💳 Kaunsi withdrawal problem hai?'}
+                  </p>
+                  
+                  <div className="space-y-2">
+                    {(selectedCategory === 'deposit' ? DEPOSIT_SUBCATEGORIES : WITHDRAWAL_SUBCATEGORIES).map((subCat) => (
+                      <motion.button
+                        key={subCat.id}
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={() => selectSubCategory(subCat.id)}
+                        className={`w-full p-3 rounded-xl bg-gradient-to-r ${subCat.color} text-white flex items-center justify-between shadow-md hover:shadow-lg transition-shadow`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <span className="text-xl">{subCat.icon}</span>
+                          <span className="font-medium text-sm text-left">{subCat.name}</span>
+                        </div>
+                        <ChevronRight className="w-5 h-5 flex-shrink-0" />
+                      </motion.button>
+                    ))}
+                  </div>
+                </motion.div>
+              )}
+
               {/* Game Selection */}
               {step === 'game' && (
                 <motion.div
@@ -479,18 +585,61 @@ const SupportChat = () => {
                     🎮 Konse game mein problem hai?
                   </p>
                   <div className="grid grid-cols-2 gap-3">
-                    {GAME_CATEGORIES.map((game) => (
-                      <motion.button
-                        key={game.id}
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                        onClick={() => selectGame(game.id)}
-                        className={`p-4 rounded-xl bg-gradient-to-br ${game.color} text-white flex flex-col items-center gap-2 shadow-md hover:shadow-lg transition-shadow`}
-                      >
-                        <span className="text-3xl">{game.icon}</span>
-                        <span className="font-medium text-sm">{game.name}</span>
-                      </motion.button>
-                    ))}
+                    {/* Ludo */}
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => selectGame('ludo')}
+                      className="relative rounded-xl overflow-hidden shadow-md hover:shadow-lg transition-shadow aspect-[4/3]"
+                    >
+                      <img src={ludoCard} alt="Ludo" className="absolute inset-0 w-full h-full object-cover" />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
+                      <div className="absolute bottom-0 left-0 right-0 p-3 text-white">
+                        <span className="font-bold text-base drop-shadow-lg">🎲 Ludo</span>
+                      </div>
+                    </motion.button>
+
+                    {/* Mines */}
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => selectGame('mines')}
+                      className="relative rounded-xl overflow-hidden shadow-md hover:shadow-lg transition-shadow aspect-[4/3]"
+                    >
+                      <img src={minesCard} alt="Mines" className="absolute inset-0 w-full h-full object-cover" />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
+                      <div className="absolute bottom-0 left-0 right-0 p-3 text-white">
+                        <span className="font-bold text-base drop-shadow-lg">💣 Mines</span>
+                      </div>
+                    </motion.button>
+
+                    {/* Thimble */}
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => selectGame('thimble')}
+                      className="relative rounded-xl overflow-hidden shadow-md hover:shadow-lg transition-shadow aspect-[4/3]"
+                    >
+                      <img src={thimbleCard} alt="Thimble" className="absolute inset-0 w-full h-full object-cover" />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
+                      <div className="absolute bottom-0 left-0 right-0 p-3 text-white">
+                        <span className="font-bold text-base drop-shadow-lg">🎯 Thimble</span>
+                      </div>
+                    </motion.button>
+
+                    {/* BGMI */}
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => selectGame('bgmi')}
+                      className="relative rounded-xl overflow-hidden shadow-md hover:shadow-lg transition-shadow aspect-[4/3]"
+                    >
+                      <img src={bgmiCard} alt="BGMI" className="absolute inset-0 w-full h-full object-cover" />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
+                      <div className="absolute bottom-0 left-0 right-0 p-3 text-white">
+                        <span className="font-bold text-base drop-shadow-lg">🔫 BGMI</span>
+                      </div>
+                    </motion.button>
                   </div>
                 </motion.div>
               )}
