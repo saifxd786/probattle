@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -15,6 +15,38 @@ const AdminLoginPage = () => {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+
+  // Warm up backend function to reduce cold-start timeouts (especially on mobile networks)
+  useEffect(() => {
+    let cancelled = false;
+
+    const warmUp = async () => {
+      try {
+        const timeout = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('warmup-timeout')), 6000),
+        );
+
+        // Intentionally invalid input -> returns fast, but wakes the function runtime.
+        const invoke = supabase.functions.invoke('secure-admin-login', {
+          body: { phone: '0', password: '0' },
+        });
+
+        await Promise.race([invoke, timeout]);
+      } catch {
+        // Ignore warmup failures (offline / slow network). Real login still works.
+      }
+    };
+
+    // small delay so it doesn't compete with initial app boot
+    const t = setTimeout(() => {
+      if (!cancelled) warmUp();
+    }, 350);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(t);
+    };
+  }, []);
 
   const normalizePhone = (raw: string) => {
     const digits = (raw ?? '').replace(/\D/g, '');
@@ -55,7 +87,7 @@ const AdminLoginPage = () => {
     try {
       // Call edge function with timeout
       const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Request timeout - please try again')), 12000)
+        setTimeout(() => reject(new Error('Request timeout - please try again')), 25000)
       );
 
       const loginPromise = supabase.functions.invoke('secure-admin-login', {
@@ -96,7 +128,9 @@ const AdminLoginPage = () => {
       console.error('[AdminLogin] Catch:', err);
       toast({
         title: 'Login Failed',
-        description: err.message || 'Invalid credentials',
+        description: err?.message?.includes('Request timeout')
+          ? 'Network slow hai. Please 1 minute baad retry karein.'
+          : (err.message || 'Invalid credentials'),
         variant: 'destructive',
       });
     } finally {
