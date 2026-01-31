@@ -49,7 +49,13 @@ const AdminLayout = () => {
   useEffect(() => {
     if (!authLoading && !checkingRole) {
       if (!user) {
-        navigate('/admin/login');
+        // Small grace period: after setting a session, AuthContext may take a moment
+        // to reflect the new user. Avoid redirect loops.
+        const t = window.setTimeout(() => {
+          navigate('/admin/login');
+        }, 300);
+
+        return () => window.clearTimeout(t);
       } else if (!isAdmin) {
         navigate('/');
       }

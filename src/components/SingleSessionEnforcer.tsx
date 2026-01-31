@@ -120,10 +120,8 @@ const SingleSessionEnforcer = () => {
       sessionId.current = generateSessionId();
     }
     
-    // Small delay to ensure login is complete
-    const registerTimeout = setTimeout(() => {
-      registerSession();
-    }, 1000);
+    // Register immediately (avoids refresh/visibility race conditions on some browsers)
+    registerSession();
     
     // Set up periodic validation (every 10 seconds)
     checkIntervalRef.current = setInterval(async () => {
@@ -135,7 +133,6 @@ const SingleSessionEnforcer = () => {
     }, 10000);
     
     return () => {
-      clearTimeout(registerTimeout);
       if (checkIntervalRef.current) {
         clearInterval(checkIntervalRef.current);
         checkIntervalRef.current = null;
@@ -149,6 +146,8 @@ const SingleSessionEnforcer = () => {
     
     const handleVisibilityChange = async () => {
       if (document.visibilityState === 'visible' && !hasLoggedOut.current) {
+        // Ensure our session is registered before validating (prevents false logout on refresh)
+        await registerSession();
         const isValid = await validateSession();
         if (!isValid) {
           handleInvalidSession();
@@ -161,7 +160,7 @@ const SingleSessionEnforcer = () => {
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [user?.id, validateSession, handleInvalidSession]);
+  }, [user?.id, registerSession, validateSession, handleInvalidSession]);
 
   // Listen for realtime changes to the profile's active_session_id
   useEffect(() => {
