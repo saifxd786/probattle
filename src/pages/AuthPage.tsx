@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Phone, Lock, User, ArrowRight, Eye, EyeOff, Gift, ArrowLeft, Calendar, ShieldQuestion, AlertTriangle, Info, Smartphone } from 'lucide-react';
+import { Phone, Lock, User, ArrowRight, Eye, EyeOff, Gift, ArrowLeft, Calendar, ShieldQuestion, AlertTriangle, Info } from 'lucide-react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,8 +12,6 @@ import { z } from 'zod';
 import { generateDeviceFingerprint } from '@/utils/deviceFingerprint';
 import { logDeviceToServer } from '@/utils/deviceInfo';
 import PasswordStrengthMeter from '@/components/PasswordStrengthMeter';
-import { useRateLimit } from '@/hooks/useRateLimit';
-import { useDeviceValidation } from '@/hooks/useDeviceValidation';
 import { 
   generateCorrelationId, 
   logError, 
@@ -58,43 +56,16 @@ const ForgotPasswordForm = ({ onBack }: { onBack: () => void }) => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  
-  // Rate limiting for forgot password
-  const forgotPasswordRateLimit = useRateLimit('forgot-password', {
-    maxAttempts: 5,
-    windowMs: 60000,
-    lockoutMs: 300000, // 5 min lockout
-  });
 
   // Step 1: Verify phone and fetch user data
   const handlePhoneSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    // Check rate limit
-    if (forgotPasswordRateLimit.isLocked) {
-      toast({
-        title: 'Too Many Attempts',
-        description: `Please wait ${forgotPasswordRateLimit.remainingLockoutTime} seconds before trying again.`,
-        variant: 'destructive',
-      });
-      return;
-    }
     
     // Validate phone before setting loading
     if (phone.length < 10) {
       toast({
         title: 'Invalid Phone',
         description: 'Please enter a valid 10-digit phone number',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    // Record attempt before setting loading
-    if (!forgotPasswordRateLimit.recordAttempt()) {
-      toast({
-        title: 'Too Many Attempts',
-        description: `You've exceeded the maximum attempts. Please wait 5 minutes.`,
         variant: 'destructive',
       });
       return;
@@ -494,17 +465,6 @@ const AuthPage = () => {
   const [referralCode, setReferralCode] = useState('');
   const [deviceBanned, setDeviceBanned] = useState(false);
   const [banReason, setBanReason] = useState('');
-  const [maxAccountsReached, setMaxAccountsReached] = useState(false);
-
-  // NEW: Secure device validation (pre-auth check)
-  const deviceValidation = useDeviceValidation();
-
-  // Rate limiting for login
-  const loginRateLimit = useRateLimit('login', {
-    maxAttempts: 5,
-    windowMs: 60000,
-    lockoutMs: 300000, // 5 min lockout
-  });
 
   const [formData, setFormData] = useState({
     phone: '',
@@ -515,19 +475,6 @@ const AuthPage = () => {
     securityQuestion: '',
     securityAnswer: '',
   });
-
-  // NEW: Handle device validation results
-  useEffect(() => {
-    if (!deviceValidation.isLoading) {
-      if (deviceValidation.isBanned) {
-        setDeviceBanned(true);
-        setBanReason('ACCESS_DENIED');
-      }
-      if (!deviceValidation.canCreateAccount && !deviceValidation.isBanned) {
-        setMaxAccountsReached(true);
-      }
-    }
-  }, [deviceValidation.isLoading, deviceValidation.isBanned, deviceValidation.canCreateAccount]);
 
   // Check for referral code in URL
   useEffect(() => {
@@ -622,31 +569,7 @@ const AuthPage = () => {
     setIsLoading(true);
 
     try {
-      // NEW: Check device ban using secure device validation (blocking)
-      if (deviceValidation.isBanned) {
-        setDeviceBanned(true);
-        setBanReason('ACCESS_DENIED');
-        toast({
-          title: '🚫 Access Denied',
-          description: 'This device cannot access ProBattle.',
-          variant: 'destructive',
-        });
-        setIsLoading(false);
-        return;
-      }
-
-      // NEW: For signup - check if max accounts reached
-      if (mode === 'signup' && !deviceValidation.canCreateAccount) {
-        toast({
-          title: '🚫 Account Limit Reached',
-          description: 'Maximum accounts reached for this device.',
-          variant: 'destructive',
-        });
-        setIsLoading(false);
-        return;
-      }
-
-      // Legacy device ban check (fallback)
+      // Legacy device ban check
       const deviceBan = await checkDeviceBan();
       if (deviceBan) {
         setDeviceBanned(true);
@@ -900,18 +823,6 @@ const AuthPage = () => {
           console.error('[Auth] Failed to log registration device:', err);
         });
 
-        // NEW: Link user to device for tracking
-        if (userId) {
-          deviceValidation.linkUserToDevice(userId).then(result => {
-            if (!result.success) {
-              console.warn('[Auth] Device linking warning:', result.error);
-            } else {
-              console.log('[Auth] User linked to device successfully');
-            }
-          }).catch(err => {
-            console.error('[Auth] Device linking failed:', err);
-          });
-        }
 
         toast({
           title: 'Account created!',
@@ -919,26 +830,6 @@ const AuthPage = () => {
         });
         navigate('/');
       } else {
-        // Login - check rate limit
-        if (loginRateLimit.isLocked) {
-          toast({
-            title: 'Too Many Attempts',
-            description: `Please wait ${loginRateLimit.remainingLockoutTime} seconds before trying again.`,
-            variant: 'destructive',
-          });
-          return;
-        }
-
-        // Record login attempt
-        if (!loginRateLimit.recordAttempt()) {
-          toast({
-            title: 'Too Many Attempts',
-            description: `You've exceeded the maximum login attempts. Please wait 5 minutes.`,
-            variant: 'destructive',
-          });
-          return;
-        }
-
         // Login
         const { data: loginData, error: loginError } = await withTimeout(
           supabase.auth.signInWithPassword({
@@ -953,7 +844,7 @@ const AuthPage = () => {
           const correlationId = generateCorrelationId();
           let errorMessage = loginError.message;
           if (loginError.message.includes('Invalid login credentials')) {
-            errorMessage = `Invalid phone number or password. ${loginRateLimit.remainingAttempts} attempts remaining.`;
+            errorMessage = 'Invalid phone number or password.';
           }
           
           // Log login error with correlation ID
@@ -971,9 +862,6 @@ const AuthPage = () => {
           });
           return;
         }
-
-        // Login successful - reset rate limit
-        loginRateLimit.resetAttempts();
 
         // Check if user is banned
         if (loginData.user) {
@@ -1006,15 +894,6 @@ const AuthPage = () => {
         // Update device fingerprint on login (non-blocking)
         if (loginData.user) {
           saveDeviceFingerprint(loginData.user.id);
-          
-          // NEW: Link user to device on login
-          deviceValidation.linkUserToDevice(loginData.user.id).then(result => {
-            if (!result.success) {
-              console.warn('[Auth] Device linking warning:', result.error);
-            }
-          }).catch(err => {
-            console.error('[Auth] Device linking failed:', err);
-          });
         }
 
         toast({
@@ -1090,35 +969,6 @@ const AuthPage = () => {
             </div>
           )}
 
-          {/* Max Accounts Warning (NEW) */}
-          {maxAccountsReached && !deviceBanned && mode === 'signup' && (
-            <div className="mb-6 p-4 bg-warning/10 border border-warning/30 rounded-lg">
-              <div className="flex items-center gap-3">
-                <Smartphone className="w-8 h-8 text-warning shrink-0" />
-                <div>
-                  <h3 className="font-bold text-warning text-sm">Account Limit Reached</h3>
-                  <p className="text-xs text-warning/80 mt-1">
-                    Maximum accounts reached for this device. You can login to existing accounts but cannot create new ones.
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Rate Limit Warning */}
-          {loginRateLimit.isLocked && mode === 'login' && (
-            <div className="mb-6 p-4 bg-warning/10 border border-warning/30 rounded-lg">
-              <div className="flex items-center gap-3">
-                <AlertTriangle className="w-6 h-6 text-warning shrink-0" />
-                <div>
-                  <h3 className="font-bold text-warning text-sm">Too Many Attempts</h3>
-                  <p className="text-xs text-warning/80 mt-1">
-                    Please wait {loginRateLimit.remainingLockoutTime} seconds before trying again.
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
 
           {/* Toggle */}
           {mode !== 'forgot' ? (
@@ -1317,7 +1167,7 @@ const AuthPage = () => {
               variant="neon" 
               className="w-full" 
               size="lg"
-              disabled={isLoading || deviceBanned || (mode === 'login' && loginRateLimit.isLocked)}
+              disabled={isLoading || deviceBanned}
             >
               {isLoading ? (
                 <div className="w-5 h-5 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
@@ -1325,10 +1175,6 @@ const AuthPage = () => {
                 <>
                   <AlertTriangle className="w-4 h-4" />
                   Device Banned
-                </>
-              ) : (mode === 'login' && loginRateLimit.isLocked) ? (
-                <>
-                  Wait {loginRateLimit.remainingLockoutTime}s
                 </>
               ) : (
                 <>

@@ -52,8 +52,6 @@ verify_jwt = false
 [functions.admin-check-access]
 verify_jwt = false
 
-[functions.validate-device]
-verify_jwt = false
 
 [functions.wallet-server]
 verify_jwt = false
