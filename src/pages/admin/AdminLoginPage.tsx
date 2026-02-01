@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,6 +16,41 @@ const AdminLoginPage = () => {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+
+  // Switch manifest for admin PWA when on login page
+  useEffect(() => {
+    const existingManifest = document.querySelector('link[rel="manifest"]');
+    const originalHref = existingManifest?.getAttribute('href');
+    
+    if (existingManifest) {
+      existingManifest.setAttribute('href', '/admin-manifest.json');
+    } else {
+      const link = document.createElement('link');
+      link.rel = 'manifest';
+      link.href = '/admin-manifest.json';
+      document.head.appendChild(link);
+    }
+    
+    // Update apple-mobile-web-app-title for admin
+    const appleTitle = document.querySelector('meta[name="apple-mobile-web-app-title"]');
+    if (appleTitle) {
+      appleTitle.setAttribute('content', 'PB Admin');
+    } else {
+      const meta = document.createElement('meta');
+      meta.name = 'apple-mobile-web-app-title';
+      meta.content = 'PB Admin';
+      document.head.appendChild(meta);
+    }
+    
+    return () => {
+      if (existingManifest && originalHref) {
+        existingManifest.setAttribute('href', originalHref);
+      }
+      if (appleTitle) {
+        appleTitle.setAttribute('content', 'ProBattle');
+      }
+    };
+  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
