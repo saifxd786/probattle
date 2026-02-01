@@ -1,17 +1,27 @@
 import { Gamepad2, Trophy, Wallet, Gift, User } from 'lucide-react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/contexts/AuthContext';
 
 const navItems = [
-  { icon: Gamepad2, label: 'Matches', path: '/matches' },
-  { icon: Trophy, label: 'My Games', path: '/my-games' },
-  { icon: Gift, label: 'Activity', path: '/activity' },
-  { icon: Wallet, label: 'Wallet', path: '/wallet' },
-  { icon: User, label: 'Account', path: '/profile' },
+  { icon: Gamepad2, label: 'Matches', path: '/matches', requiresAuth: false },
+  { icon: Trophy, label: 'My Games', path: '/my-games', requiresAuth: true },
+  { icon: Gift, label: 'Activity', path: '/activity', requiresAuth: true },
+  { icon: Wallet, label: 'Wallet', path: '/wallet', requiresAuth: true },
+  { icon: User, label: 'Account', path: '/profile', requiresAuth: true },
 ];
 
 const BottomNav = () => {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { user } = useAuth();
+
+  const handleNavClick = (e: React.MouseEvent, path: string, requiresAuth: boolean) => {
+    if (requiresAuth && !user) {
+      e.preventDefault();
+      navigate('/auth');
+    }
+  };
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-40 md:hidden">
@@ -20,13 +30,14 @@ const BottomNav = () => {
       
       {/* Nav items */}
       <div className="relative flex items-center justify-around h-16 px-2">
-        {navItems.map(({ icon: Icon, label, path }) => {
+        {navItems.map(({ icon: Icon, label, path, requiresAuth }) => {
           const isActive = location.pathname === path;
           
           return (
             <Link
               key={path}
               to={path}
+              onClick={(e) => handleNavClick(e, path, requiresAuth)}
               className={cn(
                 'flex flex-col items-center justify-center flex-1 h-full transition-all duration-300',
                 isActive ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
