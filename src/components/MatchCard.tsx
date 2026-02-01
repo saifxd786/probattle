@@ -701,10 +701,32 @@ const MatchCard = ({
                 Match Cancelled
               </span>
             ) : isCompleted ? (
-              <span className="flex items-center gap-1.5 text-xs text-blue-400 bg-blue-500/10 px-3 py-1.5 rounded-lg border border-blue-500/30">
-                <Trophy className="w-4 h-4" />
-                Result Out
-              </span>
+              <motion.button
+                onClick={() => setIsParticipantsOpen(true)}
+                className="relative flex items-center gap-2 text-sm font-semibold text-primary bg-primary/15 px-4 py-2.5 rounded-xl border-2 border-primary/50 shadow-lg shadow-primary/20 overflow-hidden"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                animate={{
+                  boxShadow: [
+                    '0 0 20px hsl(var(--primary) / 0.3)',
+                    '0 0 35px hsl(var(--primary) / 0.5)',
+                    '0 0 20px hsl(var(--primary) / 0.3)',
+                  ],
+                }}
+                transition={{
+                  boxShadow: { repeat: Infinity, duration: 1.5 },
+                  scale: { duration: 0.2 },
+                }}
+              >
+                {/* Animated glow background */}
+                <motion.div
+                  className="absolute inset-0 bg-gradient-to-r from-primary/20 via-primary/40 to-primary/20"
+                  animate={{ x: ['-100%', '100%'] }}
+                  transition={{ repeat: Infinity, duration: 2, ease: 'linear' }}
+                />
+                <Trophy className="w-5 h-5 relative z-10" />
+                <span className="relative z-10">Click - Result</span>
+              </motion.button>
             ) : (
               <Button 
                 variant={status === 'full' && !isRegistered ? 'secondary' : isRegistered ? 'outline' : 'neon'} 
