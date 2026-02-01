@@ -353,6 +353,23 @@ Deno.serve(async (req) => {
           })
         }
 
+        // Check if this bank account (card_number + ifsc_code) is already used by another user
+        const { data: duplicateCard } = await supabaseAdmin
+          .from('user_bank_cards')
+          .select('id, user_id')
+          .eq('card_number', cardNumber.trim())
+          .eq('ifsc_code', ifscCode.trim().toUpperCase())
+          .neq('user_id', userId)
+          .maybeSingle()
+
+        if (duplicateCard) {
+          console.log(`[wallet-server] Duplicate bank card attempt: ${cardNumber.slice(-4)} by user ${userId}`)
+          return new Response(JSON.stringify({ error: 'This bank details already in use by someone else' }), { 
+            status: 400, 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+          })
+        }
+
         // Save bank card
         const { data: newCard, error: cardError } = await supabaseAdmin
           .from('user_bank_cards')
