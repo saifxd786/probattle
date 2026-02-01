@@ -138,9 +138,15 @@ const BGMIPage = () => {
   // Filter matches by map for Classic mode and by user registration for My Matches & Results
   let filteredMatches = matches;
   
-  // For "Upcoming" - Show ALL matches (full matches will be marked as "Full" but still visible)
-  // User can scroll to see all scheduled matches
-  // Only filter by map selection, not by slot availability
+  // For "Upcoming" - Only show matches whose time has NOT passed yet
+  // Once match time passes, it should ONLY appear in "My Matches" for registered users
+  if (activeFilter === 'Upcoming') {
+    filteredMatches = matches.filter(m => {
+      const matchTime = new Date(m.match_time).getTime();
+      // Hide matches whose time has already passed from Upcoming
+      return matchTime > nowMs;
+    });
+  }
   
   // For "My Matches" and "Results", only show matches where user is registered
   if (activeFilter === 'My Matches' || activeFilter === 'Results') {
