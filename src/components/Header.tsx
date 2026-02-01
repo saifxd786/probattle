@@ -7,6 +7,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import NotificationBell from '@/components/NotificationBell';
 import SupportChat from '@/components/SupportChat';
 import UpdatePopup from '@/components/UpdatePopup';
+import UpdateCheckPopup from '@/components/UpdateCheckPopup';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -27,6 +28,7 @@ const Header = () => {
   const [showInstallPrompt, setShowInstallPrompt] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [showUpdatePopup, setShowUpdatePopup] = useState(false);
+  const [showCheckPopup, setShowCheckPopup] = useState(false);
   const { user, signOut } = useAuth();
   const { updateAvailable, applyUpdate, checkForUpdate, isChecking, isUpdating } = useUpdateAvailable();
 
@@ -202,10 +204,8 @@ const Header = () => {
           {/* Check for Update Option */}
           <button 
             onClick={async () => {
+              setShowCheckPopup(true);
               await checkForUpdate();
-              if (!updateAvailable) {
-                setIsMenuOpen(false);
-              }
             }}
             disabled={isChecking}
             className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-secondary/50 transition-colors w-full text-left"
@@ -278,6 +278,15 @@ const Header = () => {
         isOpen={showUpdatePopup} 
         onUpdate={applyUpdate}
         isUpdating={isUpdating}
+      />
+
+      {/* Check for Update Popup - Instant feedback */}
+      <UpdateCheckPopup
+        isOpen={showCheckPopup}
+        onClose={() => setShowCheckPopup(false)}
+        isChecking={isChecking}
+        updateAvailable={updateAvailable}
+        onApplyUpdate={applyUpdate}
       />
     </header>
   );
