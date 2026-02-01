@@ -88,7 +88,8 @@ const BGMIPage = () => {
       .in('match_type', matchTypes);
     
     if (activeFilter === 'Upcoming') {
-      // For Upcoming, show only matches that are not full (for TDM 1v1, filled_slots < 2)
+      // For Upcoming, only show 'upcoming' status - exclude 'live' matches
+      query = query.eq('status', 'upcoming');
       query = query.in('status', ['upcoming', 'live']);
     } else if (activeFilter === 'Results') {
       // Show both completed and cancelled matches in Results
