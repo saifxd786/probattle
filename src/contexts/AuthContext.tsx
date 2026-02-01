@@ -16,13 +16,11 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Component to initialize push notifications - using forwardRef to handle ref properly
-const PushNotificationInitializer = React.forwardRef<HTMLDivElement>(
-  function PushNotificationInitializer(_props, _ref) {
-    usePushNotifications();
-    return null;
-  }
-);
+// Component to initialize push notifications
+const PushNotificationInitializer = () => {
+  usePushNotifications();
+  return null;
+};
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -143,49 +141,49 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     // But also set state directly as a fallback for race conditions
     const initSession = async () => {
       try {
-        const { data: { session: existingSession }, error: sessionError } = await supabase.auth.getSession();
+        // First attempt - get session
+        const { data: { session: existingSession } } = await supabase.auth.getSession();
         
         if (!mounted) return;
         
-        // Set the session state regardless - this ensures we don't stay in loading state
-        // The onAuthStateChange callback may have already set this, but setting again is safe
         if (existingSession?.user) {
           console.log('[Auth] Initial session found:', existingSession.user.id);
           setSession(existingSession);
           setUser(existingSession.user);
           updateLastUserId(existingSession.user.id);
           if (mounted) setIsLoading(false);
-        } else {
-          // No session found - try refresh (especially important for PWA)
-          console.log('[Auth] No session found, attempting refresh...', isPWAStandalone() ? '(PWA mode)' : '');
-          
-          try {
-            const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
-            
-            if (!mounted) return;
-            
-            if (refreshData?.session?.user) {
-              console.log('[Auth] Session recovered via refresh:', refreshData.session.user.id);
-              setSession(refreshData.session);
-              setUser(refreshData.session.user);
-              updateLastUserId(refreshData.session.user.id);
-            } else if (refreshError) {
-              console.log('[Auth] Session refresh failed:', refreshError.message);
-            }
-          } catch (refreshErr) {
-            console.log('[Auth] Session refresh exception:', refreshErr);
-          }
-          
-          if (mounted) setIsLoading(false);
+          return;
         }
+        
+        // No session found - try refresh (critical for PWA mode)
+        console.log('[Auth] No session found, attempting refresh...', isPWAStandalone() ? '(PWA mode)' : '');
+        
+        try {
+          const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+          
+          if (!mounted) return;
+          
+          if (refreshData?.session?.user) {
+            console.log('[Auth] Session recovered via refresh:', refreshData.session.user.id);
+            setSession(refreshData.session);
+            setUser(refreshData.session.user);
+            updateLastUserId(refreshData.session.user.id);
+          } else if (refreshError) {
+            console.log('[Auth] Session refresh failed:', refreshError.message);
+          }
+        } catch (refreshErr) {
+          console.log('[Auth] Session refresh exception:', refreshErr);
+        }
+        
+        if (mounted) setIsLoading(false);
       } catch (error) {
         console.error('[Auth] Failed to get session:', error);
         if (mounted) setIsLoading(false);
       }
     };
     
-    // Small delay to ensure PWA storage patching is complete
-    setTimeout(initSession, 50);
+    // Start init immediately - PWA storage is already initialized in main.tsx
+    initSession();
 
     return () => {
       mounted = false;

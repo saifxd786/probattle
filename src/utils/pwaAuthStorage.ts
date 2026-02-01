@@ -189,27 +189,30 @@ export const initPWAAuthStorage = async (): Promise<void> => {
     const localSession = localStorage.getItem(SESSION_KEY);
     
     if (!localSession) {
-      console.log('[PWA Auth] No localStorage session, checking IndexedDB...');
+      console.log('[PWA Auth] No localStorage session, checking backups...');
       
-      // Try to restore from IndexedDB
-      const indexedDBSession = await getFromIndexedDB(SESSION_KEY);
-      
-      if (indexedDBSession) {
-        console.log('[PWA Auth] Restoring session from IndexedDB');
-        localStorage.setItem(SESSION_KEY, indexedDBSession);
+      // Try sessionStorage backup first (faster)
+      const backupSession = sessionStorage.getItem(BACKUP_KEY);
+      if (backupSession) {
+        console.log('[PWA Auth] Restoring session from sessionStorage backup');
+        localStorage.setItem(SESSION_KEY, backupSession);
       } else {
-        // Try sessionStorage backup
-        const backupSession = sessionStorage.getItem(BACKUP_KEY);
-        if (backupSession) {
-          console.log('[PWA Auth] Restoring session from sessionStorage backup');
-          localStorage.setItem(SESSION_KEY, backupSession);
+        // Try to restore from IndexedDB
+        const indexedDBSession = await getFromIndexedDB(SESSION_KEY);
+        
+        if (indexedDBSession) {
+          console.log('[PWA Auth] Restoring session from IndexedDB');
+          localStorage.setItem(SESSION_KEY, indexedDBSession);
+          // Also backup to sessionStorage
+          try {
+            sessionStorage.setItem(BACKUP_KEY, indexedDBSession);
+          } catch {}
         }
       }
     } else {
-      console.log('[PWA Auth] localStorage session exists, syncing to IndexedDB');
-      // Ensure IndexedDB is synced
+      console.log('[PWA Auth] localStorage session exists, syncing backups');
+      // Ensure backups are synced
       await saveToIndexedDB(SESSION_KEY, localSession);
-      // Also backup to sessionStorage
       try {
         sessionStorage.setItem(BACKUP_KEY, localSession);
       } catch {}
