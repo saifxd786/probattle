@@ -142,7 +142,7 @@ const AdminPayments = () => {
   return (
     <div className="p-6 space-y-6">
       <div>
-        <h1 className="text-2xl font-display font-bold">Match Registrations</h1>
+        <h1 className="text-2xl font-display font-bold">Match Management</h1>
         <p className="text-muted-foreground">View all match registrations and player details</p>
       </div>
 

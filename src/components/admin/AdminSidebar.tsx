@@ -27,7 +27,7 @@ const navItems = [
   { title: 'Multi-Account', url: '/admin/multi-account', icon: UserX },
   { title: 'Devices', url: '/admin/devices', icon: Smartphone },
   { title: 'Device Bans', url: '/admin/device-bans', icon: ShieldBan },
-  { title: 'Payments', url: '/admin/payments', icon: CreditCard },
+  { title: 'Match Management', url: '/admin/payments', icon: CreditCard },
   { title: 'Transactions', url: '/admin/transactions', icon: ArrowLeftRight },
   { title: 'Notifications', url: '/admin/notifications', icon: Bell },
   { title: 'Settings', url: '/admin/settings', icon: Settings },
