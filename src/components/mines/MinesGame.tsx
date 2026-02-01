@@ -23,7 +23,7 @@ const MinesGame = () => {
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="space-y-6"
+      className="space-y-3"
     >
       {/* Game Grid - TOP */}
       <div>
@@ -36,13 +36,13 @@ const MinesGame = () => {
         />
         
         {/* Game Info */}
-        <div className="mt-4 flex items-center justify-center gap-6 text-sm text-muted-foreground">
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded bg-emerald-500" />
+        <div className="mt-2 flex items-center justify-center gap-4 text-xs text-muted-foreground">
+          <div className="flex items-center gap-1.5">
+            <div className="w-2.5 h-2.5 rounded bg-emerald-500" />
             <span>Gems: {25 - gameState.minesCount}</span>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded bg-red-500" />
+          <div className="flex items-center gap-1.5">
+            <div className="w-2.5 h-2.5 rounded bg-red-500" />
             <span>Mines: {gameState.minesCount}</span>
           </div>
         </div>
