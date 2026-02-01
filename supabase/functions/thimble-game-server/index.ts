@@ -62,36 +62,50 @@ Deno.serve(async (req) => {
     switch (action) {
       // ===== START GAME =====
       case 'start': {
-        // === ACTIVE GAME LOCK ===
-        // Check if user has ANY active game (Mines or Thimble)
-        const { data: activeMinesGame } = await supabaseAdmin
+        // === AUTO-CLOSE ORPHANED GAMES ===
+        // Close any stale in_progress games as LOST (user abandoned/disconnected)
+        const { data: orphanedMines } = await supabaseAdmin
           .from('mines_games')
           .select('id')
           .eq('user_id', userId)
           .eq('status', 'in_progress')
-          .limit(1)
-          .maybeSingle()
 
-        const { data: activeThimbleGame } = await supabaseAdmin
+        if (orphanedMines && orphanedMines.length > 0) {
+          console.log(`[thimble-game-server] Auto-closing ${orphanedMines.length} orphaned Mines games as LOST`)
+          for (const game of orphanedMines) {
+            await supabaseAdmin
+              .from('mines_games')
+              .update({
+                status: 'lost',
+                is_mine_hit: true,
+                is_cashed_out: false,
+                final_amount: 0,
+                completed_at: new Date().toISOString()
+              })
+              .eq('id', game.id)
+          }
+        }
+
+        const { data: orphanedThimble } = await supabaseAdmin
           .from('thimble_games')
           .select('id')
           .eq('user_id', userId)
           .eq('status', 'in_progress')
-          .limit(1)
-          .maybeSingle()
 
-        if (activeMinesGame || activeThimbleGame) {
-          const activeGame = activeMinesGame ? 'Mines' : 'Thimble'
-          console.log(`[thimble-game-server] START BLOCKED: User has active ${activeGame} game`)
-          return new Response(JSON.stringify({ 
-            error: `You already have an active ${activeGame} game. Please complete it first.`,
-            activeGameType: activeGame
-          }), { 
-            status: 400, 
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-          })
+        if (orphanedThimble && orphanedThimble.length > 0) {
+          console.log(`[thimble-game-server] Auto-closing ${orphanedThimble.length} orphaned Thimble games as LOST`)
+          for (const game of orphanedThimble) {
+            await supabaseAdmin
+              .from('thimble_games')
+              .update({
+                status: 'completed',
+                is_win: false,
+                completed_at: new Date().toISOString()
+              })
+              .eq('id', game.id)
+          }
         }
-        // === END ACTIVE GAME LOCK ===
+        // === END AUTO-CLOSE ===
 
         // Validate inputs
         if (!entryAmount || entryAmount < 10) {
