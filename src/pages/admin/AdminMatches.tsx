@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { Plus, Edit, Trash2, Send, Trophy, Users, Copy, Check, Pencil } from 'lucide-react';
+import { useEffect, useState, useMemo } from 'react';
+import { Plus, Edit, Trash2, Send, Trophy, Users, Copy, Check, Pencil, Clock, Play, CheckCircle, XCircle, List } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -71,6 +71,21 @@ const AdminMatches = () => {
   const [participantsMatch, setParticipantsMatch] = useState<Match | null>(null);
   const [isParticipantsOpen, setIsParticipantsOpen] = useState(false);
   const [copiedMatchId, setCopiedMatchId] = useState<string | null>(null);
+  const [activeFilter, setActiveFilter] = useState<'all' | 'upcoming' | 'live' | 'completed' | 'cancelled'>('all');
+
+  // Filter matches based on active filter
+  const filteredMatches = useMemo(() => {
+    if (activeFilter === 'all') return matches;
+    return matches.filter(match => match.status === activeFilter);
+  }, [matches, activeFilter]);
+
+  const filterTabs = [
+    { id: 'all', label: 'All', icon: List, count: matches.length },
+    { id: 'upcoming', label: 'Upcoming', icon: Clock, count: matches.filter(m => m.status === 'upcoming').length },
+    { id: 'live', label: 'Live', icon: Play, count: matches.filter(m => m.status === 'live').length },
+    { id: 'completed', label: 'Result Out', icon: CheckCircle, count: matches.filter(m => m.status === 'completed').length },
+    { id: 'cancelled', label: 'Cancelled', icon: XCircle, count: matches.filter(m => m.status === 'cancelled').length },
+  ] as const;
 
   const copyMatchId = (matchId: string) => {
     navigator.clipboard.writeText(matchId.slice(0, 8).toUpperCase());
@@ -475,6 +490,43 @@ const AdminMatches = () => {
         </Dialog>
       </div>
 
+      {/* Filter Tabs */}
+      <div className="flex items-center gap-2 overflow-x-auto pb-2">
+        {filterTabs.map((tab) => {
+          const Icon = tab.icon;
+          const isActive = activeFilter === tab.id;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setActiveFilter(tab.id)}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${
+                isActive
+                  ? tab.id === 'live' 
+                    ? 'bg-green-500/20 text-green-400 border border-green-500/30'
+                    : tab.id === 'cancelled'
+                    ? 'bg-red-500/20 text-red-400 border border-red-500/30'
+                    : tab.id === 'completed'
+                    ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
+                    : tab.id === 'upcoming'
+                    ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30'
+                    : 'bg-primary/20 text-primary border border-primary/30'
+                  : 'bg-secondary/50 text-muted-foreground hover:bg-secondary hover:text-foreground border border-transparent'
+              }`}
+            >
+              <Icon className="w-4 h-4" />
+              {tab.label}
+              <span className={`text-xs px-1.5 py-0.5 rounded-full ${
+                isActive 
+                  ? 'bg-background/50' 
+                  : 'bg-muted/50'
+              }`}>
+                {tab.count}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
       {/* Matches Table */}
       <Card className="glass-card">
         <CardContent className="p-0">
@@ -498,12 +550,14 @@ const AdminMatches = () => {
                   <tr>
                     <td colSpan={9} className="p-4 text-center text-muted-foreground">Loading...</td>
                   </tr>
-                ) : matches.length === 0 ? (
+                ) : filteredMatches.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="p-4 text-center text-muted-foreground">No matches found</td>
+                    <td colSpan={9} className="p-4 text-center text-muted-foreground">
+                      {activeFilter === 'all' ? 'No matches found' : `No ${activeFilter} matches found`}
+                    </td>
                   </tr>
                 ) : (
-                  matches.map((match) => (
+                  filteredMatches.map((match) => (
                     <tr key={match.id} className="border-b border-border/50 hover:bg-secondary/20">
                       <td className="p-4">
                         <button
