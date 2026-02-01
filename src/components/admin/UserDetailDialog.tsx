@@ -14,7 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
-import { Loader2, User, Wallet, Phone, Mail, Calendar, Shield, ArrowUpCircle, ArrowDownCircle, Clock, CheckCircle, XCircle, AlertCircle, Globe, Smartphone, MapPin, Plus, Minus, Target } from 'lucide-react';
+import { Loader2, User, Wallet, Phone, Mail, Calendar, Shield, ArrowUpCircle, ArrowDownCircle, Clock, CheckCircle, XCircle, AlertCircle, Globe, Smartphone, MapPin, Plus, Minus, Target, CreditCard, Building2, Hash } from 'lucide-react';
 
 interface UserDetailDialogProps {
   isOpen: boolean;
@@ -58,6 +58,15 @@ interface LoginSession {
   created_at: string;
 }
 
+interface BankCard {
+  id: string;
+  account_holder_name: string;
+  card_number: string;
+  ifsc_code: string;
+  bank_name: string;
+  created_at: string;
+}
+
 interface GeoLocation {
   ip: string;
   country: string;
@@ -71,6 +80,7 @@ const UserDetailDialog = ({ isOpen, onClose, userId }: UserDetailDialogProps) =>
   const [profile, setProfile] = useState<Profile | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loginSessions, setLoginSessions] = useState<LoginSession[]>([]);
+  const [bankCard, setBankCard] = useState<BankCard | null>(null);
   const [geoLocations, setGeoLocations] = useState<Record<string, GeoLocation | null>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingGeo, setIsLoadingGeo] = useState(false);
@@ -151,13 +161,16 @@ const UserDetailDialog = ({ isOpen, onClose, userId }: UserDetailDialogProps) =>
     const pendingWithdrawals = withdrawals.filter(t => t.status === 'pending' || t.status === 'processing');
     const cancelledWithdrawals = withdrawals.filter(t => t.status === 'cancelled');
 
-    // Fetch game stats and login sessions in parallel
-    const [minesRes, thimbleRes, ludoRes, sessionsRes] = await Promise.all([
+    // Fetch game stats, login sessions, and bank card in parallel
+    const [minesRes, thimbleRes, ludoRes, sessionsRes, bankCardRes] = await Promise.all([
       supabase.from('mines_games').select('id', { count: 'exact', head: true }).eq('user_id', userId),
       supabase.from('thimble_games').select('id', { count: 'exact', head: true }).eq('user_id', userId),
       supabase.from('ludo_match_players').select('id', { count: 'exact', head: true }).eq('user_id', userId),
       supabase.from('user_login_sessions').select('*').eq('user_id', userId).order('created_at', { ascending: false }).limit(10),
+      supabase.from('user_bank_cards').select('*').eq('user_id', userId).maybeSingle(),
     ]);
+
+    setBankCard(bankCardRes.data);
 
     setLoginSessions(sessionsRes.data || []);
     
@@ -338,6 +351,51 @@ const UserDetailDialog = ({ isOpen, onClose, userId }: UserDetailDialogProps) =>
                       )}
                     </div>
                   </div>
+                </CardContent>
+              </Card>
+
+              {/* Bank Card Details */}
+              <Card className="glass-card border-blue-500/30">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <CreditCard className="w-5 h-5 text-blue-500" />
+                    Bank Account Details
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {bankCard ? (
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-1">
+                        <p className="text-xs text-muted-foreground flex items-center gap-1">
+                          <User className="w-3 h-3" />Account Holder
+                        </p>
+                        <p className="font-medium">{bankCard.account_holder_name}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-xs text-muted-foreground flex items-center gap-1">
+                          <Building2 className="w-3 h-3" />Bank Name
+                        </p>
+                        <p className="font-medium">{bankCard.bank_name}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-xs text-muted-foreground flex items-center gap-1">
+                          <CreditCard className="w-3 h-3" />Account Number
+                        </p>
+                        <p className="font-medium font-mono">{bankCard.card_number}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-xs text-muted-foreground flex items-center gap-1">
+                          <Hash className="w-3 h-3" />IFSC Code
+                        </p>
+                        <p className="font-medium font-mono">{bankCard.ifsc_code}</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-center py-6 text-muted-foreground">
+                      <CreditCard className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                      <p>No bank account linked</p>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
 
