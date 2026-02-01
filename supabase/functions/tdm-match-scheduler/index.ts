@@ -265,6 +265,133 @@ Deno.serve(async (req) => {
       );
     }
 
+    if (action === 'check_room_timeout') {
+      // Cancel TDM matches that are FULL but admin hasn't uploaded room details within 15 minutes of match time
+      const now = new Date();
+      const fifteenMinutesAgo = new Date(now.getTime() - 15 * 60 * 1000);
+      
+      // Find TDM matches where:
+      // - Match type starts with 'tdm'
+      // - Status is 'upcoming' or 'live'
+      // - Slots are full (filled_slots = max_slots)
+      // - Room ID or password is missing
+      // - Match time + 15 minutes has passed
+      const { data: matchesToCancel, error: fetchError } = await supabase
+        .from('matches')
+        .select('*')
+        .like('match_type', 'tdm%')
+        .in('status', ['upcoming', 'live'])
+        .lte('match_time', fifteenMinutesAgo.toISOString()) // Match time was 15+ mins ago
+        .or('room_id.is.null,room_password.is.null');
+
+      if (fetchError) {
+        console.error('[TDM-ROOM-TIMEOUT] Error fetching matches:', fetchError);
+        return new Response(
+          JSON.stringify({ success: false, message: fetchError.message }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Filter to only full matches (filled_slots = max_slots)
+      const fullMatchesWithoutRoom = (matchesToCancel || []).filter(
+        m => m.filled_slots >= m.max_slots && (!m.room_id || !m.room_password)
+      );
+
+      console.log(`[TDM-ROOM-TIMEOUT] Found ${fullMatchesWithoutRoom.length} full TDM matches without room details after 15 mins`);
+
+      const cancelledMatches: { id: string; title: string; players: number; totalRefund: number }[] = [];
+
+      for (const match of fullMatchesWithoutRoom) {
+        console.log(`[TDM-ROOM-TIMEOUT] Processing: ${match.title} (${match.filled_slots}/${match.max_slots} slots)`);
+        
+        // 1. Get all registrations for this match
+        const { data: registrations, error: regError } = await supabase
+          .from('match_registrations')
+          .select('id, user_id')
+          .eq('match_id', match.id)
+          .eq('is_approved', true);
+
+        if (regError) {
+          console.error(`[TDM-ROOM-TIMEOUT] Error fetching registrations for ${match.id}:`, regError);
+          continue;
+        }
+
+        const entryFee = match.entry_fee || 0;
+        let refundedCount = 0;
+
+        // 2. Refund each player
+        for (const reg of registrations || []) {
+          // Get current balance
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('wallet_balance')
+            .eq('id', reg.user_id)
+            .single();
+
+          if (profile) {
+            const currentBalance = Number(profile.wallet_balance || 0);
+            const newBalance = currentBalance + entryFee;
+
+            // Update wallet
+            await supabase
+              .from('profiles')
+              .update({ wallet_balance: newBalance })
+              .eq('id', reg.user_id);
+
+            // Create refund transaction
+            await supabase.from('transactions').insert({
+              user_id: reg.user_id,
+              type: 'admin_credit',
+              amount: entryFee,
+              status: 'completed',
+              description: `Auto-cancelled: Room details not provided for "${match.title}"`
+            });
+
+            // Send notification
+            await supabase.from('notifications').insert({
+              user_id: reg.user_id,
+              title: '⏰ Match Auto-Cancelled',
+              message: `"${match.title}" was cancelled because room details weren't provided within 15 minutes. ₹${entryFee} has been refunded to your wallet.`,
+              type: 'warning'
+            });
+
+            refundedCount++;
+          }
+        }
+
+        // 3. Delete registrations
+        await supabase
+          .from('match_registrations')
+          .delete()
+          .eq('match_id', match.id);
+
+        // 4. Update match status to cancelled
+        await supabase
+          .from('matches')
+          .update({ status: 'cancelled', filled_slots: 0 })
+          .eq('id', match.id);
+
+        cancelledMatches.push({
+          id: match.id,
+          title: match.title,
+          players: refundedCount,
+          totalRefund: refundedCount * entryFee
+        });
+
+        console.log(`[TDM-ROOM-TIMEOUT] Cancelled ${match.title}, refunded ${refundedCount} players ₹${refundedCount * entryFee}`);
+      }
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          message: `Auto-cancelled ${cancelledMatches.length} TDM matches without room details`,
+          cancelled: cancelledMatches,
+          checked_at: now.toISOString(),
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     return new Response(
       JSON.stringify({ success: false, message: 'Unknown action' }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
