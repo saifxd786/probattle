@@ -67,5 +67,11 @@ verify_jwt = false
 [functions.imb-webhook]
 verify_jwt = false
 
+[functions.imb-check-status]
+verify_jwt = false
+
+[functions.imb-payment-redirect]
+verify_jwt = false
+
 [functions.generate-support-report]
 verify_jwt = false
