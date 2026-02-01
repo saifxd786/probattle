@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Search, Ban, CheckCircle, Shield, ShieldOff, Gamepad2, Trash2, Eye, KeyRound, UserCog, Settings2, Wallet } from 'lucide-react';
+import { Search, Ban, CheckCircle, Shield, ShieldOff, Gamepad2, Trash2, Eye, KeyRound, UserCog, Settings2, Wallet, Crosshair } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -235,6 +235,40 @@ const AdminUsers = () => {
     }
   };
 
+  // Quick BGMI ban toggle
+  const toggleBGMIBan = async (user: Profile) => {
+    const currentBannedGames = user.banned_games || [];
+    const isBGMIBanned = currentBannedGames.includes('bgmi');
+    
+    let newBannedGames: string[];
+    if (isBGMIBanned) {
+      // Remove BGMI ban
+      newBannedGames = currentBannedGames.filter(g => g !== 'bgmi');
+    } else {
+      // Add BGMI ban
+      newBannedGames = [...currentBannedGames, 'bgmi'];
+    }
+
+    const { error } = await supabase
+      .from('profiles')
+      .update({
+        banned_games: newBannedGames,
+        ban_reason: isBGMIBanned ? null : 'BGMI access restricted',
+        banned_at: isBGMIBanned ? null : new Date().toISOString(),
+      })
+      .eq('id', user.id);
+
+    if (error) {
+      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    } else {
+      toast({ 
+        title: isBGMIBanned ? 'BGMI Unbanned' : 'BGMI Banned', 
+        description: `${user.username || 'User'} ${isBGMIBanned ? 'can now access' : 'is now banned from'} BGMI` 
+      });
+      fetchUsers();
+    }
+  };
+
   // Secure wallet update using server-based Edge Function
   const updateWallet = async (userId: string, amount: number, reason: string) => {
     const response = await adminUpdateWallet({
@@ -357,6 +391,7 @@ const AdminUsers = () => {
                     const isAdmin = userRoles[user.id]?.includes('admin');
                     const isAgent = userRoles[user.id]?.includes('agent');
                     const banStatus = getBanStatus(user);
+                    const isBGMIBanned = user.banned_games?.includes('bgmi');
                     return (
                       <tr key={user.id} className="border-b border-border/50 hover:bg-secondary/20">
                         <td className="p-4">
@@ -448,6 +483,15 @@ const AdminUsers = () => {
                               ) : (
                                 <Ban className="w-4 h-4 text-destructive" />
                               )}
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => toggleBGMIBan(user)}
+                              title={isBGMIBanned ? 'Unban from BGMI' : 'Ban from BGMI'}
+                              className={isBGMIBanned ? 'text-red-500' : 'text-muted-foreground'}
+                            >
+                              <Crosshair className="w-4 h-4" />
                             </Button>
                             <Button
                               variant="ghost"
