@@ -131,30 +131,24 @@ Deno.serve(async (req) => {
 
     console.log(`Payment initiated: ${orderId} for user ${user.id}, amount: ${amount}`);
 
-    // Call IMB API to initiate payment (matching their exact API format)
-    // Endpoint: POST /api/initiate-payment
+    // Call IMB API to create order (using formdata as per their API docs)
+    // Endpoint: POST /api/create-order
     const imbApiUrl = IMB_API_URL.endsWith('/') ? IMB_API_URL : `${IMB_API_URL}/`;
     
-    const imbRequestBody = {
-      token: IMB_API_TOKEN,
-      order_id: orderId,
-      amount: amount.toString(),
-      redirect_url: redirectUrl,
-      name: profile?.username || 'User',
-      email: profile?.email || user.email || 'user@probattle.com',
-      phone: profile?.phone || '9999999999'
-    };
+    // Build FormData as per IMB API documentation
+    const formData = new FormData();
+    formData.append('user_token', IMB_API_TOKEN);
+    formData.append('order_id', orderId);
+    formData.append('amount', amount.toString());
+    formData.append('redirect_url', redirectUrl);
+    formData.append('customer_mobile', profile?.phone || '9999999999');
 
-    console.log('Calling IMB API:', `${imbApiUrl}api/initiate-payment`);
-    console.log('Request body (token hidden):', { ...imbRequestBody, token: '***HIDDEN***' });
+    console.log('Calling IMB API:', `${imbApiUrl}api/create-order`);
+    console.log('FormData params: order_id:', orderId, 'amount:', amount);
 
-    const imbResponse = await fetch(`${imbApiUrl}api/initiate-payment`, {
+    const imbResponse = await fetch(`${imbApiUrl}api/create-order`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json'
-      },
-      body: JSON.stringify(imbRequestBody)
+      body: formData
     });
 
     const imbText = await imbResponse.text();
