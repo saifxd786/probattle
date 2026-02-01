@@ -47,26 +47,26 @@ const MinesGamePanel = ({
   const quickMines = [1, 3, 5, 10, 15, 20];
 
   return (
-    <div className="bg-card rounded-xl border border-border p-3 space-y-2.5">
+    <div className="bg-card rounded-xl border border-border p-2 space-y-1.5">
       {/* Wallet Balance */}
-      <div className="flex items-center justify-between p-2 bg-secondary/50 rounded-lg">
-        <div className="flex items-center gap-2">
-          <Wallet className="w-4 h-4 text-primary" />
-          <span className="text-xs text-muted-foreground">Balance</span>
+      <div className="flex items-center justify-between px-2 py-1.5 bg-secondary/50 rounded-lg">
+        <div className="flex items-center gap-1.5">
+          <Wallet className="w-3.5 h-3.5 text-primary" />
+          <span className="text-[10px] text-muted-foreground">Balance</span>
         </div>
-        <span className="font-bold">₹{walletBalance.toFixed(0)}</span>
+        <span className="font-bold text-sm">₹{walletBalance.toFixed(0)}</span>
       </div>
 
       {phase === 'idle' && (
         <>
           {/* Entry Amount */}
-          <div className="space-y-1.5">
-            <label className="text-xs font-medium text-muted-foreground">Bet Amount</label>
-            <div className="flex items-center gap-1.5">
+          <div className="space-y-1">
+            <label className="text-[10px] font-medium text-muted-foreground">Bet Amount</label>
+            <div className="flex items-center gap-1">
               <Button
                 variant="outline"
                 size="icon"
-                className="h-8 w-8"
+                className="h-7 w-7 shrink-0"
                 onClick={() => onEntryChange(Math.max(minEntry, entryAmount - 10))}
                 disabled={entryAmount <= minEntry}
               >
@@ -76,25 +76,25 @@ const MinesGamePanel = ({
                 type="number"
                 value={entryAmount}
                 onChange={(e) => onEntryChange(Math.max(minEntry, Number(e.target.value)))}
-                className="text-center font-bold h-8"
+                className="text-center font-bold h-7 text-sm"
               />
               <Button
                 variant="outline"
                 size="icon"
-                className="h-8 w-8"
+                className="h-7 w-7 shrink-0"
                 onClick={() => onEntryChange(entryAmount + 10)}
                 disabled={entryAmount >= walletBalance}
               >
                 <Plus className="w-3 h-3" />
               </Button>
             </div>
-            <div className="flex gap-1.5">
+            <div className="flex gap-1">
               {quickAmounts.map((amount) => (
                 <Button
                   key={amount}
                   variant="secondary"
                   size="sm"
-                  className={cn('flex-1 h-7 text-xs px-1', entryAmount === amount && 'border-primary bg-primary/10')}
+                  className={cn('flex-1 h-6 text-[10px] px-1', entryAmount === amount && 'border-primary bg-primary/10')}
                   onClick={() => onEntryChange(amount)}
                 >
                   ₹{amount}
@@ -104,15 +104,15 @@ const MinesGamePanel = ({
           </div>
 
           {/* Mines Count */}
-          <div className="space-y-1.5">
-            <label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
-              <Bomb className="w-3 h-3" /> Number of Mines
+          <div className="space-y-1">
+            <label className="text-[10px] font-medium text-muted-foreground flex items-center gap-1">
+              <Bomb className="w-3 h-3" /> Mines
             </label>
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1">
               <Button
                 variant="outline"
                 size="icon"
-                className="h-8 w-8"
+                className="h-7 w-7 shrink-0"
                 onClick={() => onMinesChange(Math.max(minMines, minesCount - 1))}
                 disabled={minesCount <= minMines}
               >
@@ -122,19 +122,19 @@ const MinesGamePanel = ({
                 type="number"
                 value={minesCount}
                 onChange={(e) => onMinesChange(Math.min(maxMines, Math.max(minMines, Number(e.target.value))))}
-                className="text-center font-bold h-8"
+                className="text-center font-bold h-7 text-sm"
               />
               <Button
                 variant="outline"
                 size="icon"
-                className="h-8 w-8"
+                className="h-7 w-7 shrink-0"
                 onClick={() => onMinesChange(Math.min(maxMines, minesCount + 1))}
                 disabled={minesCount >= maxMines}
               >
                 <Plus className="w-3 h-3" />
               </Button>
             </div>
-            <div className="flex gap-1 flex-wrap">
+            <div className="flex gap-1">
               {quickMines.map((count) => (
                 <Button
                   key={count}
@@ -142,7 +142,7 @@ const MinesGamePanel = ({
                   size="sm"
                   onClick={() => onMinesChange(count)}
                   className={cn(
-                    'h-7 text-xs px-2',
+                    'h-6 text-[10px] px-2',
                     minesCount === count && 'border-primary bg-primary/10'
                   )}
                 >
@@ -155,7 +155,7 @@ const MinesGamePanel = ({
           {/* Start Button */}
           <Button
             onClick={onStart}
-            className="w-full h-11 text-base font-bold bg-gradient-to-r from-emerald-400 to-green-500 hover:from-emerald-300 hover:to-green-400 shadow-lg shadow-emerald-500/30"
+            className="w-full h-10 text-sm font-bold bg-gradient-to-r from-emerald-400 to-green-500 hover:from-emerald-300 hover:to-green-400 shadow-lg shadow-emerald-500/30"
             disabled={entryAmount > walletBalance}
           >
             <Gem className="w-4 h-4 mr-2" />
