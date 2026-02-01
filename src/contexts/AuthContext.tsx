@@ -29,9 +29,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   
-  const isInitialized = useRef(false);
   const lastUserIdRef = useRef<string | null>(null);
   const refreshTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const subscriptionRef = useRef<{ unsubscribe: () => void } | null>(null);
 
   // Track the last known user ID for game state preservation
   const updateLastUserId = useCallback((userId: string | null) => {
@@ -41,11 +41,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   useEffect(() => {
-    // Prevent double initialization in strict mode
-    if (isInitialized.current) return;
-    isInitialized.current = true;
-
     let mounted = true;
+
+    // Cleanup any existing subscription first (handles strict mode)
+    if (subscriptionRef.current) {
+      subscriptionRef.current.unsubscribe();
+      subscriptionRef.current = null;
+    }
 
     // Set up auth state listener FIRST (critical for catching all auth events)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -134,6 +136,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
     );
 
+    subscriptionRef.current = subscription;
+
     // THEN get existing session (this will trigger INITIAL_SESSION event)
     // But also set state directly as a fallback for race conditions
     supabase.auth.getSession().then(({ data: { session: existingSession } }) => {
@@ -157,7 +161,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     return () => {
       mounted = false;
-      subscription.unsubscribe();
+      if (subscriptionRef.current) {
+        subscriptionRef.current.unsubscribe();
+        subscriptionRef.current = null;
+      }
       if (refreshTimeoutRef.current) {
         clearTimeout(refreshTimeoutRef.current);
       }
