@@ -73,6 +73,17 @@ export function useAdminAccess(params: {
       setStatus("checking");
       setErrorMessage(null);
 
+      // Some browsers/runtimes may ignore AbortController on fetch. This hard timeout ensures
+      // we never get stuck on "Verifying...".
+      let finished = false;
+      const hardTimeoutId = window.setTimeout(() => {
+        if (cancelled || finished) return;
+        setStatus("error");
+        setErrorMessage(
+          `Verification timed out after ${Math.round(timeoutMs / 1000)}s. Please retry.`,
+        );
+      }, timeoutMs + 250);
+
       try {
         // Prefer freshest token.
         const { data: sessionData, error: sessionErr } =
@@ -104,14 +115,15 @@ export function useAdminAccess(params: {
           "admin-check-access",
           {
             body: {},
-            // Use lowercase key to avoid duplicate header keys during merge
-            // (some runtimes may set a default Authorization header).
-            headers: { authorization: `Bearer ${accessToken}` },
+            // Use canonical header name to ensure gateways reliably forward it.
+            headers: { Authorization: `Bearer ${accessToken}` },
             signal: controller.signal,
           } as any,
         );
 
         window.clearTimeout(timeoutId);
+        window.clearTimeout(hardTimeoutId);
+        finished = true;
 
         if (cancelled) return;
 
@@ -123,10 +135,20 @@ export function useAdminAccess(params: {
             (error as any)?.status;
 
           const message = String((error as any)?.message ?? "");
+
+          // Some runtimes only include the status code in the message.
+          const msgLower = message.toLowerCase();
+          const msgStatusMatch = msgLower.match(/\b(401|403)\b/);
+          const msgStatus = msgStatusMatch ? Number(msgStatusMatch[1]) : null;
+
+          const statusCode =
+            typeof httpStatus === "number" ? httpStatus : msgStatus;
+
           const looksUnauthorized =
-            httpStatus === 401 ||
-            message.toLowerCase().includes("unauthorized") ||
-            message.includes("401");
+            statusCode === 401 ||
+            statusCode === 403 ||
+            msgLower.includes("unauthorized") ||
+            msgLower.includes("forbidden");
 
           if (looksUnauthorized) {
             setStatus("needs_login");
@@ -151,6 +173,8 @@ export function useAdminAccess(params: {
         lastCheckedUserIdRef.current = user.id;
         lastResultRef.current = nextStatus;
       } catch (err: any) {
+        window.clearTimeout(hardTimeoutId);
+        finished = true;
         if (cancelled) return;
 
         // AbortController timeout / fetch abort.
