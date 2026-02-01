@@ -280,9 +280,17 @@ export const useSecureMinesGame = () => {
 
       console.log('[Mines] Server response:', data, error);
 
+      // Parse error from Edge Function response
       if (error) {
         console.error('[Mines] Function error:', error);
-        throw new Error(error.message || 'Server error');
+        let errorMsg = 'Server error';
+        if (error.context?.body) {
+          try {
+            const errorBody = JSON.parse(error.context.body);
+            if (errorBody?.error) errorMsg = errorBody.error;
+          } catch { /* use default */ }
+        }
+        throw new Error(errorMsg);
       }
 
       if (!data || !data.success) {

@@ -202,7 +202,17 @@ export const useSecureThimbleGame = () => {
         }
       });
 
-      if (error) throw error;
+      // Parse error from Edge Function response
+      if (error) {
+        let errorMsg = 'Failed to start game';
+        if (error.context?.body) {
+          try {
+            const errorBody = JSON.parse(error.context.body);
+            if (errorBody?.error) errorMsg = errorBody.error;
+          } catch { /* use default */ }
+        }
+        throw new Error(errorMsg);
+      }
 
       if (!data.success) {
         throw new Error(data.error || 'Failed to start game');
