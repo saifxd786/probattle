@@ -138,20 +138,9 @@ const BGMIPage = () => {
   // Filter matches by map for Classic mode and by user registration for My Matches & Results
   let filteredMatches = matches;
   
-  // For "Upcoming" TDM matches, hide matches that are full (2+ players for 1v1)
-  if (activeFilter === 'Upcoming') {
-    filteredMatches = matches.filter(m => {
-      // For TDM 1v1, hide matches with 2 registrations (full)
-      if (m.match_type === 'tdm_1v1' && m.filled_slots >= 2) {
-        return false;
-      }
-      // For other match types, hide if slots are full
-      if (m.filled_slots >= m.max_slots) {
-        return false;
-      }
-      return true;
-    });
-  }
+  // For "Upcoming" - Show ALL matches (full matches will be marked as "Full" but still visible)
+  // User can scroll to see all scheduled matches
+  // Only filter by map selection, not by slot availability
   
   // For "My Matches" and "Results", only show matches where user is registered
   if (activeFilter === 'My Matches' || activeFilter === 'Results') {
