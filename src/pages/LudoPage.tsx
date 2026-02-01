@@ -347,7 +347,7 @@ const LudoPage = () => {
   if (isBanned && !isBanLoading) {
     return (
       <PullToRefresh onRefresh={handleRefresh}>
-        <div className="min-h-screen bg-background pb-20">
+        <div className="h-[100dvh] bg-background pb-20 overflow-y-auto">
           <Header />
           <main className="container mx-auto px-4 pt-20 text-center">
             <div className="glass-card p-8 max-w-md mx-auto">
@@ -372,7 +372,7 @@ const LudoPage = () => {
   if (!settings.isEnabled) {
     return (
       <PullToRefresh onRefresh={handleRefresh}>
-        <div className="min-h-screen bg-background pb-20">
+        <div className="h-[100dvh] bg-background pb-20 overflow-y-auto">
           <Header />
           <main className="container mx-auto px-4 pt-20 text-center">
             <Dices className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
@@ -427,7 +427,7 @@ const LudoPage = () => {
 
     return (
       <div 
-        className="min-h-screen flex flex-col overflow-hidden"
+        className="h-[100dvh] flex flex-col overflow-hidden"
         style={{
           background: 'linear-gradient(180deg, #1a1a2e 0%, #0f0f23 100%)',
         }}
@@ -749,7 +749,7 @@ const LudoPage = () => {
 
     return (
       <div 
-        className="min-h-screen flex flex-col overflow-hidden"
+        className="h-[100dvh] flex flex-col overflow-hidden"
         style={{
           background: 'linear-gradient(180deg, #1a1a2e 0%, #0f0f23 100%)',
         }}
@@ -1105,7 +1105,7 @@ const LudoPage = () => {
   if (gameMode === 'vs-friend') {
     return (
       <div 
-        className="min-h-screen"
+        className="h-[100dvh] flex flex-col overflow-hidden"
         style={{
           background: 'linear-gradient(180deg, #1a1a2e 0%, #0f0f23 100%)',
         }}

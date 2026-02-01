@@ -51,7 +51,7 @@ const LudoLobby = ({
     : entryAmount * settings.rewardMultiplier;
 
   return (
-    <div className="h-screen bg-[#0A0A0F] relative overflow-hidden flex flex-col">
+    <div className="h-[100dvh] bg-[#0A0A0F] relative overflow-hidden flex flex-col">
       {/* Subtle gradient background */}
       <div 
         className="fixed inset-0 -z-10"
