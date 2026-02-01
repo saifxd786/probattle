@@ -104,7 +104,9 @@ export function useAdminAccess(params: {
           "admin-check-access",
           {
             body: {},
-            headers: { Authorization: `Bearer ${accessToken}` },
+            // Use lowercase key to avoid duplicate header keys during merge
+            // (some runtimes may set a default Authorization header).
+            headers: { authorization: `Bearer ${accessToken}` },
             signal: controller.signal,
           } as any,
         );
