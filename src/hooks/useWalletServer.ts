@@ -51,9 +51,28 @@ export const useWalletServer = () => {
         body: payload,
       });
 
+      // Handle FunctionsHttpError - parse the response body for actual error message
       if (error) {
         console.error('[useWalletServer] Error:', error);
+        
+        // Try to extract the actual error message from the response
+        if (error.context?.body) {
+          try {
+            const errorBody = JSON.parse(error.context.body);
+            if (errorBody?.error) {
+              return { error: errorBody.error };
+            }
+          } catch {
+            // Failed to parse, use default message
+          }
+        }
+        
         return { error: error.message || 'Server error' };
+      }
+
+      // If data contains an error field, return it
+      if (data?.error) {
+        return { error: data.error };
       }
 
       return data as WalletServerResponse;
