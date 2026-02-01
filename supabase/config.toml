@@ -37,6 +37,9 @@ verify_jwt = false
 [functions.tdm-match-scheduler]
 verify_jwt = false
 
+[functions.classic-match-scheduler]
+verify_jwt = false
+
 [functions.mines-game-server]
 verify_jwt = false
 
@@ -51,7 +54,6 @@ verify_jwt = false
 
 [functions.admin-check-access]
 verify_jwt = false
-
 
 [functions.wallet-server]
 verify_jwt = false

@@ -1,4 +1,4 @@
-import { LayoutDashboard, Gamepad2, Users, CreditCard, Settings, LogOut, ChevronLeft, ArrowLeftRight, Bell, Dices, Trophy, Ticket, Gem, MessageCircle, RotateCcw, Calendar, ShieldBan, UserX, Timer, Smartphone } from 'lucide-react';
+import { LayoutDashboard, Gamepad2, Users, CreditCard, Settings, LogOut, ChevronLeft, ArrowLeftRight, Bell, Dices, Trophy, Ticket, Gem, MessageCircle, RotateCcw, Calendar, ShieldBan, UserX, Timer, Smartphone, MapPin } from 'lucide-react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
@@ -15,6 +15,7 @@ const navItems = [
   { title: 'Dashboard', url: '/admin', icon: LayoutDashboard },
   { title: 'Matches', url: '/admin/matches', icon: Gamepad2 },
   { title: 'TDM Scheduler', url: '/admin/tdm-scheduler', icon: Timer },
+  { title: 'Classic Scheduler', url: '/admin/classic-scheduler', icon: MapPin },
   { title: 'Ludo', url: '/admin/ludo', icon: Dices },
   { title: 'Thimble', url: '/admin/thimble', icon: Trophy },
   { title: 'Mines', url: '/admin/mines', icon: Gem },
