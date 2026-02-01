@@ -146,6 +146,57 @@ export type Database = {
         }
         Relationships: []
       }
+      classic_schedule_settings: {
+        Row: {
+          auto_cancel_seconds: number
+          created_at: string
+          entry_fee: number
+          first_place_prize: number | null
+          id: string
+          is_enabled: boolean
+          map_name: string | null
+          max_slots: number
+          prize_per_kill: number | null
+          prize_pool: number
+          schedule_times: string[]
+          second_place_prize: number | null
+          third_place_prize: number | null
+          updated_at: string
+        }
+        Insert: {
+          auto_cancel_seconds?: number
+          created_at?: string
+          entry_fee?: number
+          first_place_prize?: number | null
+          id?: string
+          is_enabled?: boolean
+          map_name?: string | null
+          max_slots?: number
+          prize_per_kill?: number | null
+          prize_pool?: number
+          schedule_times?: string[]
+          second_place_prize?: number | null
+          third_place_prize?: number | null
+          updated_at?: string
+        }
+        Update: {
+          auto_cancel_seconds?: number
+          created_at?: string
+          entry_fee?: number
+          first_place_prize?: number | null
+          id?: string
+          is_enabled?: boolean
+          map_name?: string | null
+          max_slots?: number
+          prize_per_kill?: number | null
+          prize_pool?: number
+          schedule_times?: string[]
+          second_place_prize?: number | null
+          third_place_prize?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       daily_login_bonus: {
         Row: {
           coins: number

@@ -61,6 +61,7 @@ const AdminDeviceBans = lazy(() => import("./pages/admin/AdminDeviceBans"));
 const AdminDevices = lazy(() => import("./pages/admin/AdminDevices"));
 const AdminMultiAccountDetection = lazy(() => import("./pages/admin/AdminMultiAccountDetection"));
 const AdminTDMScheduler = lazy(() => import("./pages/admin/AdminTDMScheduler"));
+const AdminClassicScheduler = lazy(() => import("./pages/admin/AdminClassicScheduler"));
 
 // Agent pages
 const AgentLoginPage = lazy(() => import("./pages/agent/AgentLoginPage"));
@@ -213,6 +214,7 @@ const App = () => {
                         <Route path="devices" element={<AdminDevices />} />
                         <Route path="multi-account" element={<AdminMultiAccountDetection />} />
                         <Route path="tdm-scheduler" element={<AdminTDMScheduler />} />
+                        <Route path="classic-scheduler" element={<AdminClassicScheduler />} />
                       </Route>
                       {/* Agent Routes */}
                       <Route path="/agent/login" element={<AgentLoginPage />} />
