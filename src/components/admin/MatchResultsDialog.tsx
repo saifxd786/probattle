@@ -10,6 +10,7 @@ import { toast } from '@/hooks/use-toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 type Match = {
   id: string;
@@ -28,6 +29,7 @@ type Registration = {
   bgmi_ingame_name: string | null;
   bgmi_player_id: string | null;
   team_name: string | null;
+  avatar_url?: string | null;
 };
 
 type ResultEntry = {
@@ -35,6 +37,7 @@ type ResultEntry = {
   user_id: string;
   player_name: string;
   player_id: string;
+  avatar_url: string | null;
   position: number | null;
   kills: number;
   prize_amount: number;
@@ -111,8 +114,22 @@ const MatchResultsDialog = ({ match, isOpen, onClose, onResultsDeclared, isEditM
 
     if (error) {
       toast({ title: 'Error', description: 'Failed to fetch registrations', variant: 'destructive' });
-    } else if (data) {
-      setRegistrations(data);
+    } else if (data && data.length > 0) {
+      // Fetch avatars from profiles
+      const userIds = data.map(r => r.user_id);
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, avatar_url')
+        .in('id', userIds);
+      
+      const avatarMap = new Map(profiles?.map(p => [p.id, p.avatar_url]) || []);
+      
+      const registrationsWithAvatars = data.map(reg => ({
+        ...reg,
+        avatar_url: avatarMap.get(reg.user_id) || null
+      }));
+      
+      setRegistrations(registrationsWithAvatars);
     }
     setIsLoading(false);
   };
@@ -139,6 +156,7 @@ const MatchResultsDialog = ({ match, isOpen, onClose, onResultsDeclared, isEditM
             user_id: reg.user_id,
             player_name: reg.bgmi_ingame_name || 'Unknown Player',
             player_id: reg.bgmi_player_id || '',
+            avatar_url: reg.avatar_url || null,
             position: existing.position,
             kills: existing.kills || 0,
             prize_amount: existing.prize_amount || 0,
@@ -154,6 +172,7 @@ const MatchResultsDialog = ({ match, isOpen, onClose, onResultsDeclared, isEditM
           user_id: reg.user_id,
           player_name: reg.bgmi_ingame_name || 'Unknown Player',
           player_id: reg.bgmi_player_id || '',
+          avatar_url: reg.avatar_url || null,
           position: null,
           kills: 0,
           prize_amount: 0,
@@ -595,9 +614,12 @@ const MatchResultsDialog = ({ match, isOpen, onClose, onResultsDeclared, isEditM
                     )}
                   >
                     <div className="flex items-center gap-3 mb-3">
-                      <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
-                        <Gamepad2 className="w-4 h-4 text-primary" />
-                      </div>
+                      <Avatar className="w-10 h-10 border-2 border-primary/30">
+                        <AvatarImage src={result.avatar_url || ''} alt={result.player_name} />
+                        <AvatarFallback className="bg-primary/20 text-primary font-bold">
+                          {result.player_name.slice(0, 2).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
                       <div className="flex-1">
                         <p className="font-medium">{result.player_name}</p>
                         {result.player_id && (
