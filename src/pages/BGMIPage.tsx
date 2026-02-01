@@ -200,7 +200,7 @@ const BGMIPage = () => {
       const hours = Math.floor(diffMins / 60);
       return `In ${hours} hour${hours > 1 ? 's' : ''}`;
     }
-    return date.toLocaleDateString('en-IN', { weekday: 'short', hour: '2-digit', minute: '2-digit' });
+    return date.toLocaleDateString('en-IN', { weekday: 'short', hour: 'numeric', minute: '2-digit', hour12: true });
   };
 
   return (
