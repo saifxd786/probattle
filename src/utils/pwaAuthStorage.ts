@@ -178,52 +178,71 @@ export const pwaAuthStorage = {
  * AND patch localStorage to auto-sync with IndexedDB for PWA robustness
  */
 export const initPWAAuthStorage = async (): Promise<void> => {
-  try {
-    // Check if we're in PWA standalone mode
-    const isPWA = window.matchMedia('(display-mode: standalone)').matches ||
-                  (window.navigator as any).standalone === true;
-    
-    console.log('[PWA Auth] Mode check - isPWA:', isPWA);
-    
-    // Always try to restore from IndexedDB first (even in browser mode for consistency)
-    const localSession = localStorage.getItem(SESSION_KEY);
-    
-    if (!localSession) {
-      console.log('[PWA Auth] No localStorage session, checking backups...');
+  // Add a timeout to prevent blocking app startup
+  const timeoutPromise = new Promise<void>((resolve) => {
+    setTimeout(() => {
+      console.warn('[PWA Auth] Init timeout - proceeding without full recovery');
+      resolve();
+    }, 2000); // Max 2 seconds for PWA init
+  });
+  
+  const initPromise = (async () => {
+    try {
+      // Check if we're in PWA standalone mode
+      const isPWA = window.matchMedia('(display-mode: standalone)').matches ||
+                    (window.navigator as any).standalone === true;
       
-      // Try sessionStorage backup first (faster)
-      const backupSession = sessionStorage.getItem(BACKUP_KEY);
-      if (backupSession) {
-        console.log('[PWA Auth] Restoring session from sessionStorage backup');
-        localStorage.setItem(SESSION_KEY, backupSession);
-      } else {
-        // Try to restore from IndexedDB
-        const indexedDBSession = await getFromIndexedDB(SESSION_KEY);
+      console.log('[PWA Auth] Mode check - isPWA:', isPWA);
+      
+      // Always try to restore from IndexedDB first (even in browser mode for consistency)
+      const localSession = localStorage.getItem(SESSION_KEY);
+      
+      if (!localSession) {
+        console.log('[PWA Auth] No localStorage session, checking backups...');
         
-        if (indexedDBSession) {
-          console.log('[PWA Auth] Restoring session from IndexedDB');
-          localStorage.setItem(SESSION_KEY, indexedDBSession);
-          // Also backup to sessionStorage
+        // Try sessionStorage backup first (faster)
+        const backupSession = sessionStorage.getItem(BACKUP_KEY);
+        if (backupSession) {
+          console.log('[PWA Auth] Restoring session from sessionStorage backup');
+          localStorage.setItem(SESSION_KEY, backupSession);
+        } else {
+          // Try to restore from IndexedDB (with timeout)
           try {
-            sessionStorage.setItem(BACKUP_KEY, indexedDBSession);
-          } catch {}
+            const indexedDBSession = await Promise.race([
+              getFromIndexedDB(SESSION_KEY),
+              new Promise<null>((resolve) => setTimeout(() => resolve(null), 1000))
+            ]);
+            
+            if (indexedDBSession) {
+              console.log('[PWA Auth] Restoring session from IndexedDB');
+              localStorage.setItem(SESSION_KEY, indexedDBSession);
+              try {
+                sessionStorage.setItem(BACKUP_KEY, indexedDBSession);
+              } catch {}
+            }
+          } catch {
+            console.log('[PWA Auth] IndexedDB recovery skipped');
+          }
         }
+      } else {
+        console.log('[PWA Auth] localStorage session exists, syncing backups');
+        // Async backup - don't wait
+        saveToIndexedDB(SESSION_KEY, localSession).catch(() => {});
+        try {
+          sessionStorage.setItem(BACKUP_KEY, localSession);
+        } catch {}
       }
-    } else {
-      console.log('[PWA Auth] localStorage session exists, syncing backups');
-      // Ensure backups are synced
-      await saveToIndexedDB(SESSION_KEY, localSession);
-      try {
-        sessionStorage.setItem(BACKUP_KEY, localSession);
-      } catch {}
+      
+      // Patch localStorage to auto-sync auth data with IndexedDB
+      patchLocalStorageForPWA();
+      
+    } catch (error) {
+      console.warn('[PWA Auth] Init error:', error);
     }
-    
-    // Patch localStorage to auto-sync auth data with IndexedDB
-    patchLocalStorageForPWA();
-    
-  } catch (error) {
-    console.warn('[PWA Auth] Init error:', error);
-  }
+  })();
+  
+  // Wait for whichever completes first - init or timeout
+  await Promise.race([initPromise, timeoutPromise]);
 };
 
 /**
