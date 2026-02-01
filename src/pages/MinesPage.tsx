@@ -45,68 +45,12 @@ const MinesPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-background pb-20">
+    <div className="h-[100dvh] bg-background flex flex-col overflow-hidden">
       <Header />
       
-      <main className="container mx-auto px-4 pt-20">
+      <main className="flex-1 container mx-auto px-3 pt-16 pb-16 overflow-hidden">
         {/* Game */}
         <MinesGame />
-
-        {/* How to Play */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="mt-8"
-        >
-          <Accordion type="single" collapsible>
-            <AccordionItem value="how-to-play" className="border rounded-xl px-4">
-              <AccordionTrigger className="text-lg font-semibold">
-                <div className="flex items-center gap-2">
-                  <Gem className="w-5 h-5 text-emerald-400" />
-                  How to Play
-                </div>
-              </AccordionTrigger>
-              <AccordionContent>
-                <ol className="space-y-2">
-                  {howToPlay.map((step, index) => (
-                    <li key={index} className="flex items-start gap-3">
-                      <span className="flex-shrink-0 w-6 h-6 rounded-full bg-primary/10 text-primary text-sm font-bold flex items-center justify-center">
-                        {index + 1}
-                      </span>
-                      <span className="text-muted-foreground">{step}</span>
-                    </li>
-                  ))}
-                </ol>
-              </AccordionContent>
-            </AccordionItem>
-
-            <AccordionItem value="fair-play" className="border rounded-xl px-4 mt-2">
-              <AccordionTrigger className="text-lg font-semibold">
-                <div className="flex items-center gap-2">
-                  <Shield className="w-5 h-5 text-primary" />
-                  Fair Play
-                </div>
-              </AccordionTrigger>
-              <AccordionContent>
-                <div className="space-y-3 text-muted-foreground">
-                  <p>
-                    <strong className="text-foreground">Provably Fair:</strong> Mine positions are determined 
-                    before each game starts and cannot be changed.
-                  </p>
-                  <p>
-                    <strong className="text-foreground">Transparent Odds:</strong> More mines = higher risk = 
-                    higher potential rewards. The multiplier is calculated based on the probability of finding gems.
-                  </p>
-                  <p>
-                    <strong className="text-foreground">No Manipulation:</strong> All games are logged and 
-                    can be verified for fairness.
-                  </p>
-                </div>
-              </AccordionContent>
-            </AccordionItem>
-          </Accordion>
-        </motion.div>
       </main>
 
       <BottomNav />

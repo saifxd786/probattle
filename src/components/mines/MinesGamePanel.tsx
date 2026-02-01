@@ -47,53 +47,55 @@ const MinesGamePanel = ({
   const quickMines = [1, 3, 5, 10, 15, 20];
 
   return (
-    <div className="bg-card rounded-2xl border border-border p-4 space-y-4">
+    <div className="bg-card rounded-xl border border-border p-3 space-y-2.5">
       {/* Wallet Balance */}
-      <div className="flex items-center justify-between p-3 bg-secondary/50 rounded-xl">
+      <div className="flex items-center justify-between p-2 bg-secondary/50 rounded-lg">
         <div className="flex items-center gap-2">
-          <Wallet className="w-5 h-5 text-primary" />
-          <span className="text-sm text-muted-foreground">Balance</span>
+          <Wallet className="w-4 h-4 text-primary" />
+          <span className="text-xs text-muted-foreground">Balance</span>
         </div>
-        <span className="font-bold text-lg">₹{walletBalance.toFixed(0)}</span>
+        <span className="font-bold">₹{walletBalance.toFixed(0)}</span>
       </div>
 
       {phase === 'idle' && (
         <>
           {/* Entry Amount */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-muted-foreground">Bet Amount</label>
-            <div className="flex items-center gap-2">
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-muted-foreground">Bet Amount</label>
+            <div className="flex items-center gap-1.5">
               <Button
                 variant="outline"
                 size="icon"
+                className="h-8 w-8"
                 onClick={() => onEntryChange(Math.max(minEntry, entryAmount - 10))}
                 disabled={entryAmount <= minEntry}
               >
-                <Minus className="w-4 h-4" />
+                <Minus className="w-3 h-3" />
               </Button>
               <Input
                 type="number"
                 value={entryAmount}
                 onChange={(e) => onEntryChange(Math.max(minEntry, Number(e.target.value)))}
-                className="text-center font-bold text-lg"
+                className="text-center font-bold h-8"
               />
               <Button
                 variant="outline"
                 size="icon"
+                className="h-8 w-8"
                 onClick={() => onEntryChange(entryAmount + 10)}
                 disabled={entryAmount >= walletBalance}
               >
-                <Plus className="w-4 h-4" />
+                <Plus className="w-3 h-3" />
               </Button>
             </div>
-            <div className="flex gap-2 flex-wrap">
+            <div className="flex gap-1.5">
               {quickAmounts.map((amount) => (
                 <Button
                   key={amount}
                   variant="secondary"
                   size="sm"
+                  className={cn('flex-1 h-7 text-xs px-1', entryAmount === amount && 'border-primary bg-primary/10')}
                   onClick={() => onEntryChange(amount)}
-                  className={cn(entryAmount === amount && 'border-primary bg-primary/10')}
                 >
                   ₹{amount}
                 </Button>
@@ -102,35 +104,37 @@ const MinesGamePanel = ({
           </div>
 
           {/* Mines Count */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-              <Bomb className="w-4 h-4" /> Number of Mines
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+              <Bomb className="w-3 h-3" /> Number of Mines
             </label>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5">
               <Button
                 variant="outline"
                 size="icon"
+                className="h-8 w-8"
                 onClick={() => onMinesChange(Math.max(minMines, minesCount - 1))}
                 disabled={minesCount <= minMines}
               >
-                <Minus className="w-4 h-4" />
+                <Minus className="w-3 h-3" />
               </Button>
               <Input
                 type="number"
                 value={minesCount}
                 onChange={(e) => onMinesChange(Math.min(maxMines, Math.max(minMines, Number(e.target.value))))}
-                className="text-center font-bold text-lg"
+                className="text-center font-bold h-8"
               />
               <Button
                 variant="outline"
                 size="icon"
+                className="h-8 w-8"
                 onClick={() => onMinesChange(Math.min(maxMines, minesCount + 1))}
                 disabled={minesCount >= maxMines}
               >
-                <Plus className="w-4 h-4" />
+                <Plus className="w-3 h-3" />
               </Button>
             </div>
-            <div className="flex gap-2 flex-wrap">
+            <div className="flex gap-1 flex-wrap">
               {quickMines.map((count) => (
                 <Button
                   key={count}
@@ -138,7 +142,7 @@ const MinesGamePanel = ({
                   size="sm"
                   onClick={() => onMinesChange(count)}
                   className={cn(
-                    'min-w-[40px]',
+                    'h-7 text-xs px-2',
                     minesCount === count && 'border-primary bg-primary/10'
                   )}
                 >
@@ -151,10 +155,10 @@ const MinesGamePanel = ({
           {/* Start Button */}
           <Button
             onClick={onStart}
-            className="w-full h-14 text-lg font-bold bg-gradient-to-r from-emerald-400 to-green-500 hover:from-emerald-300 hover:to-green-400 shadow-lg shadow-emerald-500/30"
+            className="w-full h-11 text-base font-bold bg-gradient-to-r from-emerald-400 to-green-500 hover:from-emerald-300 hover:to-green-400 shadow-lg shadow-emerald-500/30"
             disabled={entryAmount > walletBalance}
           >
-            <Gem className="w-5 h-5 mr-2" />
+            <Gem className="w-4 h-4 mr-2" />
             Start Game
           </Button>
         </>
@@ -163,14 +167,14 @@ const MinesGamePanel = ({
       {phase === 'playing' && (
         <>
           {/* Game Stats */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="p-3 bg-secondary/50 rounded-xl text-center">
-              <div className="text-xs text-muted-foreground mb-1">Gems Found</div>
-              <div className="text-xl font-bold text-emerald-400">{revealedCount}</div>
+          <div className="grid grid-cols-2 gap-2">
+            <div className="p-2 bg-secondary/50 rounded-lg text-center">
+              <div className="text-[10px] text-muted-foreground">Gems Found</div>
+              <div className="text-lg font-bold text-emerald-400">{revealedCount}</div>
             </div>
-            <div className="p-3 bg-secondary/50 rounded-xl text-center">
-              <div className="text-xs text-muted-foreground mb-1">Multiplier</div>
-              <div className="text-xl font-bold text-primary">{currentMultiplier.toFixed(2)}x</div>
+            <div className="p-2 bg-secondary/50 rounded-lg text-center">
+              <div className="text-[10px] text-muted-foreground">Multiplier</div>
+              <div className="text-lg font-bold text-primary">{currentMultiplier.toFixed(2)}x</div>
             </div>
           </div>
 
@@ -179,19 +183,19 @@ const MinesGamePanel = ({
             key={potentialWin}
             initial={{ scale: 1.1 }}
             animate={{ scale: 1 }}
-            className="p-4 bg-gradient-to-r from-emerald-500/20 to-emerald-600/20 rounded-xl border border-emerald-500/30"
+            className="p-3 bg-gradient-to-r from-emerald-500/20 to-emerald-600/20 rounded-lg border border-emerald-500/30"
           >
-            <div className="text-sm text-emerald-400 mb-1 flex items-center gap-2">
-              <TrendingUp className="w-4 h-4" />
+            <div className="text-xs text-emerald-400 mb-0.5 flex items-center gap-1">
+              <TrendingUp className="w-3 h-3" />
               Potential Win
             </div>
-            <div className="text-3xl font-bold text-emerald-400">₹{potentialWin.toFixed(0)}</div>
+            <div className="text-2xl font-bold text-emerald-400">₹{potentialWin.toFixed(0)}</div>
           </motion.div>
 
           {/* Cash Out Button */}
           <Button
             onClick={onCashOut}
-            className="w-full h-14 text-lg font-bold bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700"
+            className="w-full h-11 text-base font-bold bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700"
             disabled={revealedCount === 0}
           >
             Cash Out ₹{potentialWin.toFixed(0)}
@@ -206,7 +210,7 @@ const MinesGamePanel = ({
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             className={cn(
-              'p-6 rounded-xl text-center',
+              'p-4 rounded-lg text-center',
               isWin 
                 ? 'bg-gradient-to-r from-emerald-500/20 to-emerald-600/20 border border-emerald-500/30' 
                 : 'bg-gradient-to-r from-red-500/20 to-red-600/20 border border-red-500/30'
@@ -214,15 +218,15 @@ const MinesGamePanel = ({
           >
             {isWin ? (
               <>
-                <Gem className="w-16 h-16 mx-auto text-emerald-400 mb-3" />
-                <div className="text-2xl font-bold text-emerald-400 mb-1">You Won!</div>
-                <div className="text-4xl font-bold">₹{finalAmount.toFixed(0)}</div>
+                <Gem className="w-10 h-10 mx-auto text-emerald-400 mb-2" />
+                <div className="text-lg font-bold text-emerald-400">You Won!</div>
+                <div className="text-2xl font-bold">₹{finalAmount.toFixed(0)}</div>
               </>
             ) : (
               <>
-                <Bomb className="w-16 h-16 mx-auto text-red-400 mb-3" />
-                <div className="text-2xl font-bold text-red-400 mb-1">Game Over!</div>
-                <div className="text-lg text-muted-foreground">You hit a mine</div>
+                <Bomb className="w-10 h-10 mx-auto text-red-400 mb-2" />
+                <div className="text-lg font-bold text-red-400">Game Over!</div>
+                <div className="text-sm text-muted-foreground">You hit a mine</div>
               </>
             )}
           </motion.div>
@@ -230,7 +234,7 @@ const MinesGamePanel = ({
           {/* Play Again Button */}
           <Button
             onClick={onReset}
-            className="w-full h-14 text-lg font-bold"
+            className="w-full h-11 text-base font-bold"
           >
             Play Again
           </Button>
