@@ -60,3 +60,12 @@ verify_jwt = false
 
 [functions.check-bgmi-duplicate]
 verify_jwt = false
+
+[functions.create-imb-payment]
+verify_jwt = false
+
+[functions.imb-webhook]
+verify_jwt = false
+
+[functions.generate-support-report]
+verify_jwt = false

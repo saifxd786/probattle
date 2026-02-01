@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Clock, Copy, Check, Upload, Shield, Zap, 
-  AlertTriangle, Loader2, X, CheckCircle2, Timer, QrCode
+  AlertTriangle, Loader2, X, CheckCircle2, Timer, QrCode, CreditCard, Smartphone
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,6 +17,7 @@ import paymentProcessingGif from '@/assets/payment-processing.gif';
 import { toast } from '@/hooks/use-toast';
 import { usePaymentQR } from '@/hooks/usePaymentQR';
 import { usePaymentUPI } from '@/hooks/usePaymentUPI';
+import { useIMBPayment } from '@/hooks/useIMBPayment';
 
 const DEPOSIT_AMOUNTS = [100, 200, 500, 1000, 2000, 5000];
 const TIMER_DURATION = 300; // 5 minutes in seconds
@@ -31,8 +32,10 @@ interface DepositPaymentGatewayProps {
 const DepositPaymentGateway = ({ isOpen, onClose, onSubmit, isSubmitting }: DepositPaymentGatewayProps) => {
   const { qrUrl, qrEnabled } = usePaymentQR();
   const { upiId: UPI_ID } = usePaymentUPI();
+  const { redirectToPayment: redirectToIMB, isLoading: imbLoading } = useIMBPayment();
   
-  const [step, setStep] = useState<'amount' | 'payment' | 'verify'>('amount');
+  const [step, setStep] = useState<'amount' | 'gateway' | 'payment' | 'verify'>('amount');
+  const [selectedGateway, setSelectedGateway] = useState<'imb' | 'manual'>('manual');
   const [selectedAmount, setSelectedAmount] = useState(100);
   const [customAmount, setCustomAmount] = useState('');
   const [utrId, setUtrId] = useState('');
@@ -75,6 +78,7 @@ const DepositPaymentGateway = ({ isOpen, onClose, onSubmit, isSubmitting }: Depo
 
   const handleClose = () => {
     setStep('amount');
+    setSelectedGateway('manual');
     setSelectedAmount(100);
     setCustomAmount('');
     setUtrId('');
@@ -85,13 +89,31 @@ const DepositPaymentGateway = ({ isOpen, onClose, onSubmit, isSubmitting }: Depo
     onClose();
   };
 
-  const handleProceedToPayment = () => {
+  const handleProceedToGatewaySelection = () => {
     if (finalAmount < 100) {
       toast({ title: 'Error', description: 'Minimum deposit is ₹100', variant: 'destructive' });
       return;
     }
-    setStep('payment');
-    setTimerActive(true);
+    setStep('gateway');
+  };
+
+  const handleSelectGateway = async (gateway: 'imb' | 'manual') => {
+    setSelectedGateway(gateway);
+    
+    if (gateway === 'imb') {
+      // Redirect to IMB payment gateway
+      const success = await redirectToIMB(finalAmount);
+      if (!success) {
+        // If IMB fails, stay on gateway selection
+        return;
+      }
+      // User will be redirected, close dialog
+      handleClose();
+    } else {
+      // Manual payment flow
+      setStep('payment');
+      setTimerActive(true);
+    }
   };
 
   const handleScreenshotChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -237,18 +259,24 @@ const DepositPaymentGateway = ({ isOpen, onClose, onSubmit, isSubmitting }: Depo
           
           {/* Progress steps */}
           <div className="relative mt-4 flex items-center gap-2">
-            {['amount', 'payment', 'verify'].map((s, i) => (
-              <div key={s} className="flex-1">
-                <div className={`h-1 rounded-full transition-all duration-300 ${
-                  ['amount', 'payment', 'verify'].indexOf(step) >= i 
-                    ? 'bg-primary' 
-                    : 'bg-muted'
-                }`} />
-                <p className={`text-[10px] mt-1 text-center capitalize ${
-                  step === s ? 'text-primary font-medium' : 'text-muted-foreground'
-                }`}>{s}</p>
-              </div>
-            ))}
+            {['amount', 'gateway', 'payment', 'verify'].map((s, i) => {
+              const stepOrder = ['amount', 'gateway', 'payment', 'verify'];
+              const currentStepIndex = stepOrder.indexOf(step);
+              // For manual flow, skip gateway in visual representation
+              const displayLabel = s === 'gateway' ? 'method' : s;
+              return (
+                <div key={s} className="flex-1">
+                  <div className={`h-1 rounded-full transition-all duration-300 ${
+                    currentStepIndex >= i 
+                      ? 'bg-primary' 
+                      : 'bg-muted'
+                  }`} />
+                  <p className={`text-[10px] mt-1 text-center capitalize ${
+                    step === s ? 'text-primary font-medium' : 'text-muted-foreground'
+                  }`}>{displayLabel}</p>
+                </div>
+              );
+            })}
           </div>
         </div>
 
@@ -314,9 +342,90 @@ const DepositPaymentGateway = ({ isOpen, onClose, onSubmit, isSubmitting }: Depo
 
                 <Button 
                   className="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white border-none h-12 text-lg font-display"
-                  onClick={handleProceedToPayment}
+                  onClick={handleProceedToGatewaySelection}
                 >
                   Continue with ₹{finalAmount}
+                </Button>
+              </motion.div>
+            )}
+
+            {step === 'gateway' && (
+              <motion.div
+                key="gateway"
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 20 }}
+                className="space-y-4"
+              >
+                <div className="text-center mb-6">
+                  <h3 className="font-display font-bold text-xl mb-1">Choose Payment Method</h3>
+                  <p className="text-sm text-muted-foreground">Select how you'd like to pay ₹{finalAmount}</p>
+                </div>
+
+                {/* Instant Gateway Option */}
+                <motion.button
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => handleSelectGateway('imb')}
+                  disabled={imbLoading}
+                  className={`w-full p-4 rounded-xl border-2 transition-all duration-200 text-left ${
+                    selectedGateway === 'imb'
+                      ? 'border-primary bg-primary/10'
+                      : 'border-border bg-card hover:border-primary/50'
+                  }`}
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center">
+                      {imbLoading ? (
+                        <Loader2 className="w-6 h-6 text-white animate-spin" />
+                      ) : (
+                        <Zap className="w-6 h-6 text-white" />
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-display font-bold text-lg">Instant Pay</span>
+                        <span className="text-[10px] px-2 py-0.5 bg-green-500/20 text-green-500 rounded-full">RECOMMENDED</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-0.5">Pay via UPI • Auto-credited instantly</p>
+                    </div>
+                  </div>
+                </motion.button>
+
+                {/* Manual UPI Option */}
+                <motion.button
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => handleSelectGateway('manual')}
+                  className={`w-full p-4 rounded-xl border-2 transition-all duration-200 text-left ${
+                    selectedGateway === 'manual'
+                      ? 'border-primary bg-primary/10'
+                      : 'border-border bg-card hover:border-primary/50'
+                  }`}
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
+                      <Smartphone className="w-6 h-6 text-white" />
+                    </div>
+                    <div className="flex-1">
+                      <span className="font-display font-bold text-lg">Manual UPI</span>
+                      <p className="text-xs text-muted-foreground mt-0.5">Pay manually • Submit UTR for verification</p>
+                    </div>
+                  </div>
+                </motion.button>
+
+                <div className="p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg flex items-center gap-3">
+                  <AlertTriangle className="w-5 h-5 text-yellow-500 shrink-0" />
+                  <p className="text-xs text-muted-foreground">
+                    <span className="text-yellow-500 font-medium">Tip:</span> Instant Pay is faster and auto-verified. Manual UPI may take up to 30 mins for verification.
+                  </p>
+                </div>
+
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  onClick={() => setStep('amount')}
+                  className="w-full text-muted-foreground"
+                >
+                  ← Change Amount
                 </Button>
               </motion.div>
             )}
@@ -435,10 +544,10 @@ const DepositPaymentGateway = ({ isOpen, onClose, onSubmit, isSubmitting }: Depo
                 <Button 
                   variant="ghost" 
                   size="sm"
-                  onClick={() => { setStep('amount'); setTimerActive(false); setTimeLeft(TIMER_DURATION); }}
+                  onClick={() => { setStep('gateway'); setTimerActive(false); setTimeLeft(TIMER_DURATION); }}
                   className="w-full text-muted-foreground"
                 >
-                  ← Change Amount
+                  ← Change Payment Method
                 </Button>
               </motion.div>
             )}

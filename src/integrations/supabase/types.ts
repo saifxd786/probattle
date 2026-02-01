@@ -1179,6 +1179,72 @@ export type Database = {
         }
         Relationships: []
       }
+      payment_webhook_logs: {
+        Row: {
+          id: string
+          is_valid: boolean | null
+          order_id: string
+          payload: Json
+          processed_at: string
+          signature: string | null
+        }
+        Insert: {
+          id?: string
+          is_valid?: boolean | null
+          order_id: string
+          payload: Json
+          processed_at?: string
+          signature?: string | null
+        }
+        Update: {
+          id?: string
+          is_valid?: boolean | null
+          order_id?: string
+          payload?: Json
+          processed_at?: string
+          signature?: string | null
+        }
+        Relationships: []
+      }
+      payments: {
+        Row: {
+          amount: number
+          created_at: string
+          gateway: string
+          id: string
+          imb_transaction_id: string | null
+          order_id: string
+          status: Database["public"]["Enums"]["payment_status"]
+          updated_at: string
+          user_id: string
+          webhook_payload: Json | null
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          gateway?: string
+          id?: string
+          imb_transaction_id?: string | null
+          order_id: string
+          status?: Database["public"]["Enums"]["payment_status"]
+          updated_at?: string
+          user_id: string
+          webhook_payload?: Json | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          gateway?: string
+          id?: string
+          imb_transaction_id?: string | null
+          order_id?: string
+          status?: Database["public"]["Enums"]["payment_status"]
+          updated_at?: string
+          user_id?: string
+          webhook_payload?: Json | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           active_session_id: string | null
@@ -2215,6 +2281,7 @@ export type Database = {
       ludo_match_status: "waiting" | "in_progress" | "completed" | "cancelled"
       match_status: "upcoming" | "pending" | "live" | "completed" | "cancelled"
       match_type: "tdm_1v1" | "tdm_2v2" | "tdm_4v4" | "classic"
+      payment_status: "PENDING" | "SUCCESS" | "FAILED"
       thimble_difficulty: "easy" | "hard" | "impossible"
       transaction_status: "processing" | "pending" | "completed" | "cancelled"
       transaction_type:
@@ -2358,6 +2425,7 @@ export const Constants = {
       ludo_match_status: ["waiting", "in_progress", "completed", "cancelled"],
       match_status: ["upcoming", "pending", "live", "completed", "cancelled"],
       match_type: ["tdm_1v1", "tdm_2v2", "tdm_4v4", "classic"],
+      payment_status: ["PENDING", "SUCCESS", "FAILED"],
       thimble_difficulty: ["easy", "hard", "impossible"],
       transaction_status: ["processing", "pending", "completed", "cancelled"],
       transaction_type: [
