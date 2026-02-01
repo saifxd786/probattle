@@ -9,7 +9,7 @@ import { Shield, Eye, EyeOff, Lock, ArrowLeft } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 // Master password for admin access - simple and direct
-const ADMIN_MASTER_PASSWORD = 'probattle@admin2024';
+const ADMIN_MASTER_PASSWORD = 'Saifdev';
 
 const AdminLoginPage = () => {
   const navigate = useNavigate();
