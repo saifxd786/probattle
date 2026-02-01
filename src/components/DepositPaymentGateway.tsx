@@ -90,8 +90,8 @@ const DepositPaymentGateway = ({ isOpen, onClose, onSubmit, isSubmitting }: Depo
   };
 
   const handleProceedToGatewaySelection = () => {
-    if (finalAmount < 100) {
-      toast({ title: 'Error', description: 'Minimum deposit is ₹100', variant: 'destructive' });
+    if (finalAmount < 1) {
+      toast({ title: 'Error', description: 'Minimum deposit is ₹1', variant: 'destructive' });
       return;
     }
     setStep('gateway');
