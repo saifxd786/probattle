@@ -12,7 +12,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { format } from 'date-fns';
 import { Database } from '@/integrations/supabase/types';
 import MatchResultsDialog from '@/components/admin/MatchResultsDialog';
-import MatchParticipantsDialog from '@/components/MatchParticipantsDialog';
+import AdminMatchParticipantsDialog from '@/components/admin/AdminMatchParticipantsDialog';
 
 type GameType = Database['public']['Enums']['game_type'];
 type MatchType = Database['public']['Enums']['match_type'];
@@ -616,11 +616,13 @@ const AdminMatches = () => {
         isEditMode={isEditResultsMode}
       />
 
-      <MatchParticipantsDialog
+      <AdminMatchParticipantsDialog
         matchId={participantsMatch?.id || null}
         matchTitle={participantsMatch?.title || ''}
+        entryFee={participantsMatch?.entry_fee || 0}
         isOpen={isParticipantsOpen}
         onClose={() => setIsParticipantsOpen(false)}
+        onParticipantKicked={fetchMatches}
       />
     </div>
   );
