@@ -13,6 +13,48 @@ const AdminLayout = () => {
   const [isChecking, setIsChecking] = useState(true);
   const [hasAccess, setHasAccess] = useState(false);
 
+  // Switch manifest for admin PWA
+  useEffect(() => {
+    // Find and update manifest link for admin
+    const existingManifest = document.querySelector('link[rel="manifest"]');
+    const originalHref = existingManifest?.getAttribute('href');
+    
+    if (existingManifest) {
+      existingManifest.setAttribute('href', '/admin-manifest.json');
+    } else {
+      const link = document.createElement('link');
+      link.rel = 'manifest';
+      link.href = '/admin-manifest.json';
+      document.head.appendChild(link);
+    }
+    
+    // Update theme color and app name for admin
+    const themeColor = document.querySelector('meta[name="theme-color"]');
+    if (themeColor) {
+      themeColor.setAttribute('content', '#0a0a0a');
+    }
+    
+    const appleTitle = document.querySelector('meta[name="apple-mobile-web-app-title"]');
+    if (appleTitle) {
+      appleTitle.setAttribute('content', 'PB Admin');
+    } else {
+      const meta = document.createElement('meta');
+      meta.name = 'apple-mobile-web-app-title';
+      meta.content = 'PB Admin';
+      document.head.appendChild(meta);
+    }
+    
+    // Cleanup - restore original manifest when leaving admin
+    return () => {
+      if (existingManifest && originalHref) {
+        existingManifest.setAttribute('href', originalHref);
+      }
+      if (appleTitle) {
+        appleTitle.setAttribute('content', 'ProBattle');
+      }
+    };
+  }, []);
+
   useEffect(() => {
     // Simple check - is admin access granted in sessionStorage?
     const adminAccess = sessionStorage.getItem('adminAccess');
