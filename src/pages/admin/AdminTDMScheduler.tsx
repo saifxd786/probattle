@@ -323,19 +323,26 @@ const AdminTDMScheduler = () => {
                 <div>
                   <Label className="mb-2 block">Schedule Times (IST)</Label>
                   <div className="flex flex-wrap gap-2">
-                    {['00:00', '01:00', '02:00', '03:00', '04:00', '05:00', '06:00', '07:00', '08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00', '21:00', '22:00', '23:00'].map((time) => (
-                      <button
-                        key={time}
-                        onClick={() => toggleTime(time)}
-                        className={`px-3 py-1.5 text-xs rounded-lg transition-colors ${
-                          settings.schedule_times.includes(time)
-                            ? 'bg-primary text-primary-foreground'
-                            : 'bg-muted text-muted-foreground hover:bg-muted/80'
-                        }`}
-                      >
-                        {time}
-                      </button>
-                    ))}
+                    {['00:00', '01:00', '02:00', '03:00', '04:00', '05:00', '06:00', '07:00', '08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', '20:00', '21:00', '22:00', '23:00'].map((time) => {
+                      const [hours] = time.split(':').map(Number);
+                      const period = hours >= 12 ? 'PM' : 'AM';
+                      const displayHour = hours === 0 ? 12 : hours > 12 ? hours - 12 : hours;
+                      const displayTime = `${displayHour}:00 ${period}`;
+                      
+                      return (
+                        <button
+                          key={time}
+                          onClick={() => toggleTime(time)}
+                          className={`px-3 py-1.5 text-xs rounded-lg transition-colors ${
+                            settings.schedule_times.includes(time)
+                              ? 'bg-primary text-primary-foreground'
+                              : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                          }`}
+                        >
+                          {displayTime}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
 
