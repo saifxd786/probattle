@@ -118,7 +118,7 @@ export const useMinesGame = () => {
     fetchSettings();
   }, []);
 
-  // Fetch wallet balance and check for active game
+  // Fetch wallet balance and auto-close any orphaned games
   useEffect(() => {
     if (!user) return;
     
@@ -134,41 +134,28 @@ export const useMinesGame = () => {
         setWalletBalance(Number(profileData.wallet_balance) || 0);
       }
 
-      // Check for active (in_progress) game to restore
-      const { data: activeGame } = await supabase
+      // Auto-close any orphaned in_progress games as LOST (no resume)
+      // User abandoned the game, so they forfeit their entry
+      const { data: orphanedGames } = await supabase
         .from('mines_games')
-        .select('*')
+        .select('id')
         .eq('user_id', user.id)
-        .eq('status', 'in_progress')
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
+        .eq('status', 'in_progress');
 
-      if (activeGame) {
-        // Restore the active game state
-        const minePositions = activeGame.mine_positions as number[];
-        const revealedPositions = (activeGame.revealed_positions as number[]) || [];
-        const minesCount = activeGame.mines_count;
-        const entryAmount = Number(activeGame.entry_amount);
+      if (orphanedGames && orphanedGames.length > 0) {
+        console.log(`[Mines] Auto-closing ${orphanedGames.length} orphaned games as LOST`);
         
-        // Recalculate multiplier based on revealed tiles
-        const currentMultiplier = Number(activeGame.current_multiplier) || 1;
-        const potentialWin = Number(activeGame.potential_win) || entryAmount;
-
-        setGameState({
-          phase: 'playing',
-          gameId: activeGame.id,
-          entryAmount,
-          minesCount,
-          minePositions,
-          revealedPositions,
-          currentMultiplier,
-          potentialWin,
-          isWin: null,
-          finalAmount: 0
-        });
-
-        console.log('[Mines] Restored active game:', activeGame.id);
+        for (const game of orphanedGames) {
+          await supabase
+            .from('mines_games')
+            .update({
+              status: 'lost',
+              is_mine_hit: true,
+              final_amount: 0,
+              completed_at: new Date().toISOString()
+            })
+            .eq('id', game.id);
+        }
       }
     };
     
