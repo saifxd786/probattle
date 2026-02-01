@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Trophy, Medal, Skull, Gamepad2, Award, XCircle, Edit, Users, RotateCcw } from 'lucide-react';
+import { Trophy, Medal, Skull, Gamepad2, Award, XCircle, Edit, Users, RotateCcw, Handshake } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -39,7 +39,7 @@ type ResultEntry = {
   kills: number;
   prize_amount: number;
   is_winner: boolean;
-  result_status: 'pending' | 'win' | 'lose';
+  result_status: 'pending' | 'win' | 'lose' | 'tie';
   original_prize: number;
   existing_result_id: string | null;
 };
@@ -124,9 +124,12 @@ const MatchResultsDialog = ({ match, isOpen, onClose, onResultsDeclared, isEditM
         const existing = existingResults.find(r => r.registration_id === reg.id || r.user_id === reg.user_id);
         
         if (existing && isEditMode) {
-          let resultStatus: 'pending' | 'win' | 'lose' = 'pending';
+          let resultStatus: 'pending' | 'win' | 'lose' | 'tie' = 'pending';
           if (existing.is_winner) {
             resultStatus = 'win';
+          } else if (isTDMMatch && !existing.is_winner && existing.prize_amount > 0) {
+            // If player has prize but is not winner, it's a TIE
+            resultStatus = 'tie';
           } else if (isTDMMatch && !existing.is_winner && existingResults.length > 0) {
             resultStatus = 'lose';
           }
@@ -176,6 +179,11 @@ const MatchResultsDialog = ({ match, isOpen, onClose, onResultsDeclared, isEditM
             prize = match.first_place_prize || 0;
             updated.is_winner = true;
             updated.position = 1;
+          } else if (isTDMMatch && updated.result_status === 'tie') {
+            // TIE: Split the prize pool 50/50
+            prize = Math.floor((match.first_place_prize || 0) / 2);
+            updated.is_winner = false;
+            updated.position = null;
           } else if (isTDMMatch && updated.result_status === 'lose') {
             updated.is_winner = false;
             updated.position = null;
@@ -223,6 +231,15 @@ const MatchResultsDialog = ({ match, isOpen, onClose, onResultsDeclared, isEditM
       return updated;
     }));
     toast({ title: 'Bulk Action', description: 'All players marked as losers' });
+  };
+
+  const markAllAsTie = () => {
+    setResults(prev => prev.map(r => {
+      const tieAmount = Math.floor((match?.first_place_prize || 0) / 2);
+      const updated = { ...r, result_status: 'tie' as const, is_winner: false, position: null, prize_amount: tieAmount + (match?.prize_per_kill || 0) * r.kills };
+      return updated;
+    }));
+    toast({ title: 'Bulk Action', description: 'Match marked as TIE - Prize split 50/50' });
   };
 
   const applyBulkKills = () => {
@@ -375,13 +392,25 @@ const MatchResultsDialog = ({ match, isOpen, onClose, onResultsDeclared, isEditM
             amount: result.prize_amount,
             type: 'prize' as const,
             status: 'completed' as const,
-            description: `🏆 Prize for "${match.title}" - ${result.is_winner ? 'Winner' : `Position: ${result.position || 'N/A'}`}, Kills: ${result.kills}`
+            description: result.result_status === 'tie' 
+              ? `🤝 TIE Prize for "${match.title}" - Split 50/50, Kills: ${result.kills}`
+              : `🏆 Prize for "${match.title}" - ${result.is_winner ? 'Winner' : `Position: ${result.position || 'N/A'}`}, Kills: ${result.kills}`
           }]);
+
+          const notificationTitle = result.is_winner 
+            ? '🏆 Congratulations! You Won!' 
+            : result.result_status === 'tie' 
+            ? '🤝 Match Ended in TIE!'
+            : '💰 Match Rewards';
+          
+          const notificationMessage = result.result_status === 'tie'
+            ? `Match "${match.title}" ended in a TIE! You earned ₹${result.prize_amount} (50/50 split). ${result.kills > 0 ? `Kills: ${result.kills}` : ''}`
+            : `You earned ₹${result.prize_amount} from "${match.title}". ${result.position ? `Position: #${result.position}` : ''} ${result.kills > 0 ? `Kills: ${result.kills}` : ''}`;
 
           await supabase.from('notifications').insert({
             user_id: result.user_id,
-            title: result.is_winner ? '🏆 Congratulations! You Won!' : '💰 Match Rewards',
-            message: `You earned ₹${result.prize_amount} from "${match.title}". ${result.position ? `Position: #${result.position}` : ''} ${result.kills > 0 ? `Kills: ${result.kills}` : ''}`,
+            title: notificationTitle,
+            message: notificationMessage,
             type: 'success'
           });
         }
@@ -509,6 +538,14 @@ const MatchResultsDialog = ({ match, isOpen, onClose, onResultsDeclared, isEditM
                       <Button 
                         variant="outline" 
                         size="sm" 
+                        onClick={markAllAsTie}
+                        className="text-yellow-500 border-yellow-500/50 hover:bg-yellow-500/10"
+                      >
+                        <Handshake className="w-3 h-3 mr-1" /> TIE (50/50)
+                      </Button>
+                      <Button
+                        variant="outline" 
+                        size="sm" 
                         onClick={markAllAsLosers}
                         className="text-red-500 border-red-500/50 hover:bg-red-500/10"
                       >
@@ -553,6 +590,7 @@ const MatchResultsDialog = ({ match, isOpen, onClose, onResultsDeclared, isEditM
                     className={cn(
                       "glass-card p-4 transition-colors",
                       result.result_status === 'win' && "border-green-500/50 bg-green-500/5",
+                      result.result_status === 'tie' && "border-yellow-500/50 bg-yellow-500/5",
                       result.result_status === 'lose' && "border-red-500/50 bg-red-500/5"
                     )}
                   >
@@ -575,6 +613,11 @@ const MatchResultsDialog = ({ match, isOpen, onClose, onResultsDeclared, isEditM
                       {result.result_status === 'win' && (
                         <span className="flex items-center gap-1 text-green-500 text-xs">
                           <Award className="w-4 h-4" /> Winner
+                        </span>
+                      )}
+                      {result.result_status === 'tie' && (
+                        <span className="flex items-center gap-1 text-yellow-500 text-xs">
+                          <Handshake className="w-4 h-4" /> Tie
                         </span>
                       )}
                       {result.result_status === 'lose' && (
@@ -600,6 +643,7 @@ const MatchResultsDialog = ({ match, isOpen, onClose, onResultsDeclared, isEditM
                             <SelectContent>
                               <SelectItem value="pending">Not Set</SelectItem>
                               <SelectItem value="win">🏆 Winner</SelectItem>
+                              <SelectItem value="tie">🤝 Tie (50/50 Split)</SelectItem>
                               <SelectItem value="lose">❌ Lost</SelectItem>
                             </SelectContent>
                           </Select>
