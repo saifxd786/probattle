@@ -1,13 +1,19 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import { motion } from 'framer-motion';
-import { MessageCircle, Send, Loader2, User, Clock, CheckCircle, AlertCircle, Zap, Eye, Download, Archive, Bell } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { 
+  MessageCircle, Send, Loader2, User, Clock, CheckCircle, AlertCircle, 
+  Zap, Eye, Download, Archive, Bell, FileText, AlertTriangle, 
+  Wallet, Bug, Gamepad2, ShieldAlert, Image, Video, Bot, ChevronDown,
+  ChevronUp, ExternalLink, Copy, RefreshCw
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
@@ -17,16 +23,14 @@ import ImageLightbox from '@/components/ImageLightbox';
 import JSZip from 'jszip';
 import { resolveSupportAttachments, SupportAttachmentResolved } from '@/utils/supportAttachments';
 import { playNotificationSound, requestNotificationPermission, showBrowserNotification } from '@/utils/notificationSound';
+
 // Canned responses for quick replies
 const CANNED_RESPONSES = [
   { label: 'Greeting', message: 'Hello! Thank you for contacting ProBattle support. How can I help you today?' },
   { label: 'Processing', message: 'Your request is being processed. Please wait 24-48 hours for resolution.' },
   { label: 'Withdrawal', message: 'Withdrawals are processed within 24 hours. Please ensure your UPI ID is correct.' },
   { label: 'Deposit Issue', message: 'If your deposit is not reflected, please share the transaction UTR number for verification.' },
-  { label: 'Game Rules', message: 'Please check our Rules & FAQs section for detailed game rules and guidelines.' },
-  { label: 'Account Ban', message: 'Your account has been reviewed. Please ensure you follow our fair play policies.' },
   { label: 'Resolved', message: 'Your issue has been resolved. Is there anything else I can help you with?' },
-  { label: 'Closing', message: 'Thank you for contacting us. If you have any more questions, feel free to reach out!' },
 ];
 
 interface Ticket {
@@ -60,6 +64,83 @@ interface Message {
   attachments?: Attachment[];
 }
 
+interface SupportReport {
+  ticketId: string;
+  userId: string;
+  username: string;
+  phone: string;
+  email: string;
+  issueCategory: string;
+  issueSummary: string;
+  proofAttached: {
+    images: number;
+    videos: number;
+    hasScreenshot: boolean;
+    hasUTR: boolean;
+    attachmentUrls: string[];
+  };
+  severity: 'low' | 'medium' | 'high' | 'critical';
+  status: string;
+  aiRecommendation: string;
+  extractedDetails: {
+    transactionAmount?: string;
+    utr?: string;
+    gameType?: string;
+    hackerName?: string;
+    errorMessage?: string;
+    deviceInfo?: string;
+  };
+  createdAt: string;
+  lastMessageAt: string;
+}
+
+const CategoryIcon = ({ category }: { category: string }) => {
+  switch (category) {
+    case 'deposit':
+    case 'withdrawal':
+    case 'refund':
+      return <Wallet className="w-4 h-4" />;
+    case 'hacker_report':
+      return <ShieldAlert className="w-4 h-4" />;
+    case 'bug_glitch':
+      return <Bug className="w-4 h-4" />;
+    case 'game_issue':
+      return <Gamepad2 className="w-4 h-4" />;
+    default:
+      return <MessageCircle className="w-4 h-4" />;
+  }
+};
+
+const SeverityBadge = ({ severity }: { severity: string }) => {
+  const config = {
+    critical: { color: 'bg-red-500/20 text-red-400 border-red-500/30', label: 'CRITICAL' },
+    high: { color: 'bg-orange-500/20 text-orange-400 border-orange-500/30', label: 'HIGH' },
+    medium: { color: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30', label: 'MEDIUM' },
+    low: { color: 'bg-green-500/20 text-green-400 border-green-500/30', label: 'LOW' },
+  };
+  const { color, label } = config[severity as keyof typeof config] || config.low;
+  return <Badge className={`${color} border`}>{label}</Badge>;
+};
+
+const CategoryBadge = ({ category }: { category: string }) => {
+  const labels: Record<string, string> = {
+    deposit: '💰 Deposit Issue',
+    withdrawal: '💳 Withdrawal',
+    hacker_report: '🔫 Hacker Report',
+    bug_glitch: '🐛 Bug/Glitch',
+    game_issue: '🎮 Game Issue',
+    account: '👤 Account',
+    refund: '💵 Refund',
+    other: '📋 Other'
+  };
+  return (
+    <Badge variant="outline" className="gap-1">
+      <CategoryIcon category={category} />
+      {labels[category] || labels.other}
+    </Badge>
+  );
+};
+
 const AdminSupport = () => {
   const { user } = useAuth();
   const [tickets, setTickets] = useState<Ticket[]>([]);
@@ -76,6 +157,12 @@ const AdminSupport = () => {
   const [lightboxImages, setLightboxImages] = useState<string[]>([]);
   const [lightboxIndex, setLightboxIndex] = useState(0);
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+  
+  // Report state
+  const [activeTab, setActiveTab] = useState<'report' | 'chat'>('report');
+  const [report, setReport] = useState<SupportReport | null>(null);
+  const [isLoadingReport, setIsLoadingReport] = useState(false);
+  const [expandedDetails, setExpandedDetails] = useState(false);
 
   // Request notification permission on mount
   useEffect(() => {
@@ -101,7 +188,7 @@ const AdminSupport = () => {
     return images;
   }, [messages]);
 
-  // Count all attachments (images + videos) for download button
+  // Count all attachments
   const totalAttachments = useMemo(() => {
     let count = 0;
     messages.forEach(msg => {
@@ -121,11 +208,9 @@ const AdminSupport = () => {
 
   const [isDownloadingZip, setIsDownloadingZip] = useState(false);
 
-  // Download all attachments as zip
   const downloadAllAttachments = useCallback(async () => {
     if (!selectedTicket) return;
     
-    // Collect all attachments from messages
     const attachments: Attachment[] = [];
     messages.forEach(msg => {
       if (msg.attachments && msg.attachments.length > 0) {
@@ -143,7 +228,6 @@ const AdminSupport = () => {
     try {
       const zip = new JSZip();
       
-      // Download each attachment and add to zip
       await Promise.all(
         attachments.map(async (att, index) => {
           try {
@@ -158,7 +242,6 @@ const AdminSupport = () => {
         })
       );
 
-      // Generate zip and download
       const content = await zip.generateAsync({ type: 'blob' });
       const url = URL.createObjectURL(content);
       const a = document.createElement('a');
@@ -182,7 +265,7 @@ const AdminSupport = () => {
     fetchTickets();
   }, [filter]);
 
-  // Subscribe to ALL new support messages for notifications
+  // Subscribe to new support messages for notifications
   useEffect(() => {
     const globalChannel = supabase
       .channel('admin-support-global-notifications')
@@ -196,12 +279,9 @@ const AdminSupport = () => {
         async (payload) => {
           const rawMsg = payload.new as any;
           
-          // Only notify for user messages, not admin messages
           if (rawMsg.sender_type === 'user') {
-            // Play notification sound
             playNotificationSound();
             
-            // Get user info for notification
             const { data: profile } = await supabase
               .from('profiles')
               .select('username, phone')
@@ -210,23 +290,17 @@ const AdminSupport = () => {
             
             const userName = profile?.username || profile?.phone || 'User';
             
-            // Show browser notification
             showBrowserNotification(
               'New Support Message',
               `${userName}: ${rawMsg.message.substring(0, 100)}${rawMsg.message.length > 100 ? '...' : ''}`,
-              () => {
-                // Focus the ticket when notification is clicked
-                fetchTickets();
-              }
+              () => fetchTickets()
             );
             
-            // Also show toast
             toast({
               title: '📩 New Support Message',
               description: `From ${userName}`,
             });
             
-            // Refresh tickets list to update unread counts
             fetchTickets();
           }
         }
@@ -238,11 +312,37 @@ const AdminSupport = () => {
     };
   }, []);
 
+  // Generate report when ticket is selected
+  const generateReport = async (ticketId: string) => {
+    setIsLoadingReport(true);
+    setReport(null);
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-support-report', {
+        body: { ticketId }
+      });
+      
+      if (error) throw error;
+      if (data?.report) {
+        setReport(data.report);
+      }
+    } catch (err) {
+      console.error('Failed to generate report:', err);
+      toast({
+        title: 'Report Generation Failed',
+        description: 'Could not generate AI report. View raw chat instead.',
+        variant: 'destructive'
+      });
+    } finally {
+      setIsLoadingReport(false);
+    }
+  };
+
   useEffect(() => {
     if (selectedTicket) {
       fetchMessages(selectedTicket.id);
+      generateReport(selectedTicket.id);
       
-      // Subscribe to new messages for selected ticket
       const channel = supabase
         .channel(`admin-support-${selectedTicket.id}`)
         .on(
@@ -255,13 +355,14 @@ const AdminSupport = () => {
           },
           async (payload) => {
             const rawMsg = payload.new as Message;
-            // Resolve attachments for realtime messages
             const resolvedAttachments = await resolveSupportAttachments(rawMsg.attachments);
             const newMsg = {
               ...rawMsg,
               attachments: resolvedAttachments,
             };
             setMessages((prev) => [...prev, newMsg]);
+            // Refresh report when new message arrives
+            generateReport(selectedTicket.id);
           }
         )
         .subscribe();
@@ -293,7 +394,6 @@ const AdminSupport = () => {
     const { data: ticketsData } = await query;
 
     if (ticketsData) {
-      // Fetch user info and unread counts for each ticket
       const ticketsWithInfo = await Promise.all(
         ticketsData.map(async (ticket) => {
           const { data: profile } = await supabase
@@ -325,6 +425,7 @@ const AdminSupport = () => {
 
   const useCannedResponse = (message: string) => {
     setNewMessage(message);
+    setActiveTab('chat');
   };
 
   const fetchMessages = async (ticketId: string) => {
@@ -334,7 +435,6 @@ const AdminSupport = () => {
       .eq('ticket_id', ticketId)
       .order('created_at', { ascending: true });
 
-    // Resolve attachments with signed URLs
     const parsedMessages = await Promise.all(
       (data || []).map(async (msg) => {
         const resolvedAttachments = await resolveSupportAttachments(msg.attachments);
@@ -347,7 +447,6 @@ const AdminSupport = () => {
     );
     setMessages(parsedMessages);
 
-    // Mark user messages as read
     await supabase
       .from('support_messages')
       .update({ is_read: true })
@@ -355,7 +454,6 @@ const AdminSupport = () => {
       .eq('sender_type', 'user')
       .eq('is_read', false);
 
-    // Update ticket list
     setTickets((prev) =>
       prev.map((t) =>
         t.id === ticketId ? { ...t, unread_count: 0 } : t
@@ -385,7 +483,6 @@ const AdminSupport = () => {
     } else {
       setNewMessage('');
       
-      // Update ticket status to in_progress if it was open
       if (selectedTicket.status === 'open') {
         await supabase
           .from('support_tickets')
@@ -428,12 +525,20 @@ const AdminSupport = () => {
     }
   };
 
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    toast({ title: 'Copied', description: 'Copied to clipboard' });
+  };
+
   return (
     <div className="p-6 h-[calc(100vh-4rem)]">
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-display font-bold">Support Chat</h1>
-          <p className="text-muted-foreground">Manage customer support tickets</p>
+          <h1 className="text-2xl font-display font-bold flex items-center gap-2">
+            <FileText className="w-6 h-6 text-primary" />
+            AI Support Reports
+          </h1>
+          <p className="text-muted-foreground">View AI-analyzed support tickets with structured reports</p>
         </div>
         <Button
           variant={notificationsEnabled ? "outline" : "default"}
@@ -444,9 +549,7 @@ const AdminSupport = () => {
             setNotificationsEnabled(granted);
             if (granted) {
               playNotificationSound();
-              toast({ title: 'Notifications Enabled', description: 'You will receive sound and browser notifications for new messages.' });
-            } else {
-              toast({ title: 'Notifications Blocked', description: 'Please enable notifications in your browser settings.', variant: 'destructive' });
+              toast({ title: 'Notifications Enabled' });
             }
           }}
         >
@@ -491,7 +594,10 @@ const AdminSupport = () => {
                   {tickets.map((ticket) => (
                     <motion.button
                       key={ticket.id}
-                      onClick={() => setSelectedTicket(ticket)}
+                      onClick={() => {
+                        setSelectedTicket(ticket);
+                        setActiveTab('report');
+                      }}
                       className={`w-full p-4 text-left hover:bg-secondary/30 transition-colors ${
                         selectedTicket?.id === ticket.id ? 'bg-secondary/50' : ''
                       }`}
@@ -531,37 +637,48 @@ const AdminSupport = () => {
           </CardContent>
         </Card>
 
-        {/* Chat Area */}
+        {/* Report/Chat Area */}
         <Card className="glass-card lg:col-span-2 flex flex-col">
           {selectedTicket ? (
             <>
-              {/* Chat Header */}
+              {/* Header */}
               <CardHeader className="pb-3 border-b border-border">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div>
-                      <CardTitle className="text-lg">
+                      <CardTitle className="text-lg flex items-center gap-2">
                         {selectedTicket.user?.username || selectedTicket.user?.phone || 'Unknown User'}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="w-6 h-6"
+                          onClick={() => {
+                            setViewUserId(selectedTicket.user_id);
+                            setViewDialogOpen(true);
+                          }}
+                        >
+                          <Eye className="w-4 h-4" />
+                        </Button>
                       </CardTitle>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {selectedTicket.user?.phone}
-                      </p>
+                      <CardDescription className="flex items-center gap-2">
+                        {selectedTicket.user?.phone && (
+                          <span 
+                            className="cursor-pointer hover:text-primary"
+                            onClick={() => copyToClipboard(selectedTicket.user?.phone || '')}
+                          >
+                            📱 {selectedTicket.user.phone}
+                          </span>
+                        )}
+                        <span 
+                          className="text-xs cursor-pointer hover:text-primary"
+                          onClick={() => copyToClipboard(selectedTicket.user_id)}
+                        >
+                          ID: {selectedTicket.user_id.slice(0, 8)}...
+                        </span>
+                      </CardDescription>
                     </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="gap-1"
-                      onClick={() => {
-                        setViewUserId(selectedTicket.user_id);
-                        setViewDialogOpen(true);
-                      }}
-                    >
-                      <Eye className="w-4 h-4" />
-                      View
-                    </Button>
                   </div>
                   <div className="flex items-center gap-2">
-                    {/* Download all attachments button */}
                     {totalAttachments > 0 && (
                       <Button
                         variant="outline"
@@ -575,7 +692,7 @@ const AdminSupport = () => {
                         ) : (
                           <Archive className="w-4 h-4" />
                         )}
-                        {isDownloadingZip ? 'Zipping...' : 'Download All'}
+                        Download All
                       </Button>
                     )}
                     <Select
@@ -594,117 +711,339 @@ const AdminSupport = () => {
                     </Select>
                   </div>
                 </div>
+
+                {/* Tabs */}
+                <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'report' | 'chat')} className="mt-3">
+                  <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="report" className="gap-2">
+                      <Bot className="w-4 h-4" />
+                      AI Report
+                    </TabsTrigger>
+                    <TabsTrigger value="chat" className="gap-2">
+                      <MessageCircle className="w-4 h-4" />
+                      Raw Chat
+                    </TabsTrigger>
+                  </TabsList>
+                </Tabs>
               </CardHeader>
 
-              {/* Messages */}
+              {/* Content */}
               <CardContent className="flex-1 overflow-hidden p-0">
-                <ScrollArea className="h-full p-4" ref={scrollRef}>
-                  <div className="space-y-3">
-                    {messages.map((msg) => (
-                      <motion.div
-                        key={msg.id}
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className={`flex ${msg.sender_type === 'admin' ? 'justify-end' : 'justify-start'}`}
-                      >
-                        <div
-                          className={`max-w-[70%] rounded-2xl px-4 py-2 ${
-                            msg.sender_type === 'admin'
-                              ? 'bg-primary text-primary-foreground rounded-br-md'
-                              : 'bg-secondary text-foreground rounded-bl-md'
-                          }`}
-                        >
-                          {/* Attachments */}
-                          {msg.attachments && msg.attachments.length > 0 && (
-                            <div className="space-y-2 mb-2">
-                              {msg.attachments.map((att, idx) => (
-                                <div key={idx}>
-                                  {att.type === 'image' ? (
-                                    <img 
-                                      src={att.url} 
-                                      alt={att.name}
-                                      className="rounded-lg max-w-full cursor-pointer hover:opacity-80 transition-opacity"
-                                      onClick={() => openLightbox(att.url)}
-                                    />
-                                  ) : (
-                                    <video 
-                                      src={att.url} 
-                                      controls 
-                                      className="rounded-lg max-w-full"
-                                    />
+                <AnimatePresence mode="wait">
+                  {activeTab === 'report' ? (
+                    <motion.div
+                      key="report"
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: 20 }}
+                      className="h-full"
+                    >
+                      <ScrollArea className="h-full p-4">
+                        {isLoadingReport ? (
+                          <div className="flex flex-col items-center justify-center h-48 gap-3">
+                            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+                            <p className="text-sm text-muted-foreground">Generating AI Report...</p>
+                          </div>
+                        ) : report ? (
+                          <div className="space-y-4">
+                            {/* Severity & Category */}
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <SeverityBadge severity={report.severity} />
+                              <CategoryBadge category={report.issueCategory} />
+                              <Badge variant="outline" className="gap-1">
+                                <Clock className="w-3 h-3" />
+                                {format(new Date(report.createdAt), 'dd MMM yyyy, HH:mm')}
+                              </Badge>
+                            </div>
+
+                            {/* Issue Summary */}
+                            <Card className="bg-secondary/30 border-primary/20">
+                              <CardHeader className="pb-2">
+                                <CardTitle className="text-sm flex items-center gap-2">
+                                  <AlertCircle className="w-4 h-4 text-primary" />
+                                  Issue Summary
+                                </CardTitle>
+                              </CardHeader>
+                              <CardContent>
+                                <p className="text-sm">{report.issueSummary}</p>
+                              </CardContent>
+                            </Card>
+
+                            {/* AI Recommendation */}
+                            <Card className="bg-gradient-to-br from-primary/10 to-transparent border-primary/30">
+                              <CardHeader className="pb-2">
+                                <CardTitle className="text-sm flex items-center gap-2">
+                                  <Bot className="w-4 h-4 text-primary" />
+                                  AI Recommendation
+                                </CardTitle>
+                              </CardHeader>
+                              <CardContent>
+                                <p className="text-sm font-medium">{report.aiRecommendation}</p>
+                              </CardContent>
+                            </Card>
+
+                            {/* Proof Attached */}
+                            <Card className="bg-secondary/30">
+                              <CardHeader className="pb-2">
+                                <CardTitle className="text-sm flex items-center gap-2">
+                                  <Image className="w-4 h-4" />
+                                  Proof Attached
+                                </CardTitle>
+                              </CardHeader>
+                              <CardContent>
+                                <div className="flex items-center gap-4 text-sm">
+                                  <span className="flex items-center gap-1">
+                                    <Image className="w-4 h-4 text-blue-400" />
+                                    {report.proofAttached.images} Images
+                                  </span>
+                                  <span className="flex items-center gap-1">
+                                    <Video className="w-4 h-4 text-purple-400" />
+                                    {report.proofAttached.videos} Videos
+                                  </span>
+                                  {report.proofAttached.hasUTR && (
+                                    <Badge variant="outline" className="text-green-400 border-green-400/30">
+                                      ✓ UTR Found
+                                    </Badge>
                                   )}
                                 </div>
-                              ))}
-                            </div>
-                          )}
-                          {msg.message !== '[Attachments]' && (
-                            <p className="text-sm whitespace-pre-wrap">{msg.message}</p>
-                          )}
-                          <p className={`text-[10px] mt-1 ${msg.sender_type === 'admin' ? 'text-primary-foreground/70' : 'text-muted-foreground'}`}>
-                            {format(new Date(msg.created_at), 'HH:mm')}
-                          </p>
-                        </div>
-                      </motion.div>
-                    ))}
-                  </div>
-                </ScrollArea>
-              </CardContent>
+                                
+                                {/* Show attachment thumbnails */}
+                                {report.proofAttached.attachmentUrls.length > 0 && (
+                                  <div className="flex gap-2 mt-3 flex-wrap">
+                                    {allImages.slice(0, 4).map((url, idx) => (
+                                      <img
+                                        key={idx}
+                                        src={url}
+                                        alt={`Proof ${idx + 1}`}
+                                        className="w-16 h-16 object-cover rounded-lg cursor-pointer hover:opacity-80 transition-opacity border border-border"
+                                        onClick={() => openLightbox(url)}
+                                      />
+                                    ))}
+                                    {allImages.length > 4 && (
+                                      <div className="w-16 h-16 rounded-lg bg-secondary flex items-center justify-center text-sm font-medium border border-border">
+                                        +{allImages.length - 4}
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                              </CardContent>
+                            </Card>
 
-              {/* Input */}
-              <div className="p-4 border-t border-border space-y-2">
-                {/* Canned Responses */}
-                <div className="flex items-center gap-2">
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button variant="outline" size="sm" className="gap-2">
-                        <Zap className="w-4 h-4" />
-                        Quick Replies
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-80 p-2" align="start">
-                      <div className="grid gap-1">
-                        {CANNED_RESPONSES.map((response, idx) => (
-                          <Button
-                            key={idx}
-                            variant="ghost"
-                            size="sm"
-                            className="justify-start text-left h-auto py-2 px-3"
-                            onClick={() => useCannedResponse(response.message)}
-                          >
-                            <div>
-                              <p className="font-medium text-xs text-primary">{response.label}</p>
-                              <p className="text-xs text-muted-foreground truncate max-w-60">{response.message}</p>
+                            {/* Extracted Details */}
+                            {(report.extractedDetails.utr || report.extractedDetails.transactionAmount || report.extractedDetails.gameType || report.extractedDetails.hackerName) && (
+                              <Card className="bg-secondary/30">
+                                <CardHeader className="pb-2">
+                                  <Button
+                                    variant="ghost"
+                                    className="w-full justify-between p-0 h-auto hover:bg-transparent"
+                                    onClick={() => setExpandedDetails(!expandedDetails)}
+                                  >
+                                    <CardTitle className="text-sm flex items-center gap-2">
+                                      <FileText className="w-4 h-4" />
+                                      Extracted Details
+                                    </CardTitle>
+                                    {expandedDetails ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                                  </Button>
+                                </CardHeader>
+                                <AnimatePresence>
+                                  {expandedDetails && (
+                                    <motion.div
+                                      initial={{ height: 0, opacity: 0 }}
+                                      animate={{ height: 'auto', opacity: 1 }}
+                                      exit={{ height: 0, opacity: 0 }}
+                                    >
+                                      <CardContent className="grid grid-cols-2 gap-3 pt-0">
+                                        {report.extractedDetails.utr && (
+                                          <div className="p-2 bg-background/50 rounded-lg">
+                                            <p className="text-xs text-muted-foreground">UTR Number</p>
+                                            <p className="text-sm font-mono flex items-center gap-1">
+                                              {report.extractedDetails.utr}
+                                              <Copy 
+                                                className="w-3 h-3 cursor-pointer hover:text-primary" 
+                                                onClick={() => copyToClipboard(report.extractedDetails.utr || '')}
+                                              />
+                                            </p>
+                                          </div>
+                                        )}
+                                        {report.extractedDetails.transactionAmount && (
+                                          <div className="p-2 bg-background/50 rounded-lg">
+                                            <p className="text-xs text-muted-foreground">Amount</p>
+                                            <p className="text-sm font-bold text-green-400">
+                                              {report.extractedDetails.transactionAmount}
+                                            </p>
+                                          </div>
+                                        )}
+                                        {report.extractedDetails.gameType && (
+                                          <div className="p-2 bg-background/50 rounded-lg">
+                                            <p className="text-xs text-muted-foreground">Game Type</p>
+                                            <p className="text-sm">{report.extractedDetails.gameType}</p>
+                                          </div>
+                                        )}
+                                        {report.extractedDetails.hackerName && (
+                                          <div className="p-2 bg-background/50 rounded-lg">
+                                            <p className="text-xs text-muted-foreground">Reported Player</p>
+                                            <p className="text-sm font-medium text-red-400">
+                                              {report.extractedDetails.hackerName}
+                                            </p>
+                                          </div>
+                                        )}
+                                      </CardContent>
+                                    </motion.div>
+                                  )}
+                                </AnimatePresence>
+                              </Card>
+                            )}
+
+                            {/* Quick Actions */}
+                            <div className="flex gap-2 flex-wrap">
+                              <Button 
+                                variant="outline" 
+                                size="sm" 
+                                className="gap-1"
+                                onClick={() => generateReport(selectedTicket.id)}
+                              >
+                                <RefreshCw className="w-4 h-4" />
+                                Refresh Report
+                              </Button>
+                              <Button 
+                                variant="outline" 
+                                size="sm" 
+                                className="gap-1"
+                                onClick={() => setActiveTab('chat')}
+                              >
+                                <MessageCircle className="w-4 h-4" />
+                                View Full Chat
+                              </Button>
                             </div>
+                          </div>
+                        ) : (
+                          <div className="flex flex-col items-center justify-center h-48 gap-3">
+                            <AlertTriangle className="w-8 h-8 text-yellow-500" />
+                            <p className="text-sm text-muted-foreground">No report available</p>
+                            <Button variant="outline" size="sm" onClick={() => generateReport(selectedTicket.id)}>
+                              Generate Report
+                            </Button>
+                          </div>
+                        )}
+                      </ScrollArea>
+                    </motion.div>
+                  ) : (
+                    <motion.div
+                      key="chat"
+                      initial={{ opacity: 0, x: 20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: -20 }}
+                      className="h-full flex flex-col"
+                    >
+                      {/* Messages */}
+                      <ScrollArea className="flex-1 p-4" ref={scrollRef}>
+                        <div className="space-y-3">
+                          {messages.map((msg) => (
+                            <motion.div
+                              key={msg.id}
+                              initial={{ opacity: 0, y: 10 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              className={`flex ${msg.sender_type === 'admin' ? 'justify-end' : 'justify-start'}`}
+                            >
+                              <div
+                                className={`max-w-[70%] rounded-2xl px-4 py-2 ${
+                                  msg.sender_type === 'admin'
+                                    ? 'bg-primary text-primary-foreground rounded-br-md'
+                                    : 'bg-secondary text-foreground rounded-bl-md'
+                                }`}
+                              >
+                                {msg.attachments && msg.attachments.length > 0 && (
+                                  <div className="space-y-2 mb-2">
+                                    {msg.attachments.map((att, idx) => (
+                                      <div key={idx}>
+                                        {att.type === 'image' ? (
+                                          <img 
+                                            src={att.url} 
+                                            alt={att.name}
+                                            className="rounded-lg max-w-full cursor-pointer hover:opacity-80 transition-opacity"
+                                            onClick={() => openLightbox(att.url)}
+                                          />
+                                        ) : (
+                                          <video 
+                                            src={att.url} 
+                                            controls 
+                                            className="rounded-lg max-w-full"
+                                          />
+                                        )}
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                                {msg.message !== '[Attachments]' && (
+                                  <p className="text-sm whitespace-pre-wrap">{msg.message}</p>
+                                )}
+                                <p className={`text-[10px] mt-1 ${msg.sender_type === 'admin' ? 'text-primary-foreground/70' : 'text-muted-foreground'}`}>
+                                  {format(new Date(msg.created_at), 'HH:mm')}
+                                </p>
+                              </div>
+                            </motion.div>
+                          ))}
+                        </div>
+                      </ScrollArea>
+
+                      {/* Input */}
+                      <div className="p-4 border-t border-border space-y-2">
+                        <div className="flex items-center gap-2">
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button variant="outline" size="sm" className="gap-2">
+                                <Zap className="w-4 h-4" />
+                                Quick Replies
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-80 p-2" align="start">
+                              <div className="grid gap-1">
+                                {CANNED_RESPONSES.map((response, idx) => (
+                                  <Button
+                                    key={idx}
+                                    variant="ghost"
+                                    size="sm"
+                                    className="justify-start text-left h-auto py-2 px-3"
+                                    onClick={() => useCannedResponse(response.message)}
+                                  >
+                                    <div>
+                                      <p className="font-medium text-xs text-primary">{response.label}</p>
+                                      <p className="text-xs text-muted-foreground truncate max-w-60">{response.message}</p>
+                                    </div>
+                                  </Button>
+                                ))}
+                              </div>
+                            </PopoverContent>
+                          </Popover>
+                        </div>
+                        
+                        <form onSubmit={sendMessage} className="flex gap-2">
+                          <Input
+                            value={newMessage}
+                            onChange={(e) => setNewMessage(e.target.value)}
+                            placeholder="Type your reply..."
+                            className="flex-1"
+                            disabled={isSending}
+                          />
+                          <Button type="submit" disabled={isSending || !newMessage.trim()}>
+                            {isSending ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <Send className="w-4 h-4" />
+                            )}
                           </Button>
-                        ))}
+                        </form>
                       </div>
-                    </PopoverContent>
-                  </Popover>
-                </div>
-                
-                <form onSubmit={sendMessage} className="flex gap-2">
-                  <Input
-                    value={newMessage}
-                    onChange={(e) => setNewMessage(e.target.value)}
-                    placeholder="Type your reply..."
-                    className="flex-1"
-                    disabled={isSending}
-                  />
-                  <Button type="submit" disabled={isSending || !newMessage.trim()}>
-                    {isSending ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <Send className="w-4 h-4" />
-                    )}
-                  </Button>
-                </form>
-              </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </CardContent>
             </>
           ) : (
             <div className="flex-1 flex items-center justify-center">
               <div className="text-center">
-                <MessageCircle className="w-16 h-16 text-muted-foreground/20 mx-auto mb-4" />
-                <p className="text-muted-foreground">Select a ticket to view conversation</p>
+                <FileText className="w-16 h-16 text-muted-foreground/20 mx-auto mb-4" />
+                <p className="text-muted-foreground">Select a ticket to view AI report</p>
               </div>
             </div>
           )}
@@ -717,7 +1056,6 @@ const AdminSupport = () => {
         userId={viewUserId}
       />
 
-      {/* Image Lightbox */}
       <ImageLightbox
         images={lightboxImages}
         initialIndex={lightboxIndex}
