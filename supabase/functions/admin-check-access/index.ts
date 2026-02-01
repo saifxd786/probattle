@@ -1,13 +1,21 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers':
-    'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
-  'Access-Control-Allow-Credentials': 'true',
+const corsHeadersFor = (req: Request) => {
+  const origin = req.headers.get('origin')
+
+  // For credentialed requests, wildcard origin is not allowed. Reflect the request origin.
+  // If origin is missing (non-browser calls), fall back to '*'.
+  return {
+    'Access-Control-Allow-Origin': origin ?? '*',
+    'Vary': 'Origin',
+    'Access-Control-Allow-Headers':
+      'authorization, Authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
+    'Access-Control-Allow-Credentials': 'true',
+  }
 }
 
 Deno.serve(async (req) => {
+  const corsHeaders = corsHeadersFor(req)
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
@@ -21,7 +29,7 @@ Deno.serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseAnonKey, {
       global: {
         headers: {
-          authorization: authHeader,
+          Authorization: authHeader,
         },
       },
     })

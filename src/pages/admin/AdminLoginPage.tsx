@@ -24,6 +24,16 @@ const AdminLoginPage = () => {
     return digits.slice(-10);
   };
 
+  const waitForSessionReady = async (timeoutMs = 2000) => {
+    const start = Date.now();
+    while (Date.now() - start < timeoutMs) {
+      const { data } = await supabase.auth.getSession();
+      if (data.session?.access_token) return data.session;
+      await new Promise((r) => setTimeout(r, 120));
+    }
+    throw new Error('Session not ready yet. Please retry.');
+  };
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -95,8 +105,9 @@ const AdminLoginPage = () => {
         throw new Error('Failed to establish session');
       }
 
-      // Short delay for session propagation
-      await new Promise(r => setTimeout(r, 300));
+      // Ensure the session is actually visible to the client before navigating.
+      // This prevents cross-browser races where the dashboard loads before auth is fully ready.
+      await waitForSessionReady(2500);
 
       toast({ title: '✅ Welcome Admin!', description: 'Redirecting to dashboard...' });
       navigate('/admin');
