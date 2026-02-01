@@ -5,52 +5,52 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-imb-signature, x-signature',
 };
 
-// Convert hex string to Uint8Array
-function hexToBytes(hex: string): Uint8Array {
-  const bytes = new Uint8Array(hex.length / 2);
-  for (let i = 0; i < hex.length; i += 2) {
-    bytes[i / 2] = parseInt(hex.substr(i, 2), 16);
-  }
-  return bytes;
-}
-
-// Timing-safe comparison
-function timingSafeEqual(a: Uint8Array, b: Uint8Array): boolean {
-  if (a.length !== b.length) return false;
-  let result = 0;
-  for (let i = 0; i < a.length; i++) {
-    result |= a[i] ^ b[i];
-  }
-  return result === 0;
-}
-
-// Verify IMB webhook signature using timing-safe comparison
-async function verifySignature(payload: string, signature: string, secret: string): Promise<boolean> {
+// Verify payment via IMB CHECK STATUS API
+async function verifyPaymentWithIMB(orderId: string, userToken: string, apiUrl: string): Promise<{ valid: boolean; status: string; amount?: number }> {
   try {
-    if (!signature || !secret) return false;
+    const checkUrl = apiUrl.endsWith('/') ? `${apiUrl}api/check-status` : `${apiUrl}/api/check-status`;
     
-    const encoder = new TextEncoder();
-    const key = await crypto.subtle.importKey(
-      'raw',
-      encoder.encode(secret),
-      { name: 'HMAC', hash: 'SHA-256' },
-      false,
-      ['sign']
-    );
-    
-    const signatureBytes = await crypto.subtle.sign('HMAC', key, encoder.encode(payload));
-    const expectedSignature = Array.from(new Uint8Array(signatureBytes))
-      .map(b => b.toString(16).padStart(2, '0'))
-      .join('');
-    
-    // Use timing-safe comparison
-    const expectedBytes = hexToBytes(expectedSignature);
-    const signatureHexBytes = hexToBytes(signature);
-    
-    return timingSafeEqual(expectedBytes, signatureHexBytes);
+    // Build FormData for CHECK STATUS API
+    const formData = new FormData();
+    formData.append('user_token', userToken);
+    formData.append('order_id', orderId);
+
+    console.log('Verifying with IMB CHECK STATUS API:', checkUrl);
+
+    const response = await fetch(checkUrl, {
+      method: 'POST',
+      body: formData
+    });
+
+    const text = await response.text();
+    console.log('CHECK STATUS raw response:', text);
+
+    let data: any;
+    try {
+      data = JSON.parse(text);
+    } catch {
+      // Try URL encoded
+      const params = new URLSearchParams(text);
+      data = Object.fromEntries(params.entries());
+    }
+
+    console.log('CHECK STATUS parsed:', data);
+
+    // Check if response indicates success
+    if (data.status === true || data.status === 'true' || data.status === 'SUCCESS') {
+      const transactionStatus = (data.result?.status || data.transaction_status || data.payment_status || '').toUpperCase();
+      const amount = Number(data.result?.amount || data.amount || 0);
+      return { 
+        valid: true, 
+        status: transactionStatus,
+        amount: amount
+      };
+    }
+
+    return { valid: false, status: 'UNKNOWN' };
   } catch (error) {
-    console.error('Signature verification error:', error);
-    return false;
+    console.error('CHECK STATUS API error:', error);
+    return { valid: false, status: 'ERROR' };
   }
 }
 
@@ -66,17 +66,13 @@ Deno.serve(async (req) => {
 
   try {
     const rawBody = await req.text();
-    // Support multiple signature header names
-    const signature = req.headers.get('x-imb-signature') || 
-                      req.headers.get('x-signature') || 
-                      req.headers.get('signature') || '';
     const IMB_API_TOKEN = Deno.env.get('IMB_API_TOKEN');
+    const IMB_API_URL = Deno.env.get('IMB_API_URL');
 
     console.log('=== IMB WEBHOOK RECEIVED ===');
-    console.log('Signature header present:', !!signature);
     console.log('Raw body:', rawBody);
 
-    // Parse payload - support both JSON and form-urlencoded
+    // Parse payload - IMB sends application/x-www-form-urlencoded
     let payload: {
       order_id?: string;
       orderId?: string;
@@ -85,17 +81,21 @@ Deno.serve(async (req) => {
       utr?: string;
       transaction_id?: string;
       txn_id?: string;
+      customer_mobile?: string;
+      remark1?: string;
       message?: string;
     };
     
     try {
-      // Try JSON first
-      payload = JSON.parse(rawBody);
+      // Try form-urlencoded first (IMB format)
+      const params = new URLSearchParams(rawBody);
+      payload = Object.fromEntries(params.entries());
+      console.log('Parsed as form-urlencoded');
     } catch {
-      // Try form-urlencoded
       try {
-        const params = new URLSearchParams(rawBody);
-        payload = Object.fromEntries(params.entries());
+        // Fallback to JSON
+        payload = JSON.parse(rawBody);
+        console.log('Parsed as JSON');
       } catch {
         console.error('Invalid payload format');
         return new Response(
@@ -107,12 +107,14 @@ Deno.serve(async (req) => {
 
     console.log('Parsed payload:', payload);
 
-    // Normalize field names (IMB might use different field names)
+    // Normalize field names (IMB specific fields)
     const normalizedPayload = {
       order_id: payload.order_id || payload.orderId || '',
       status: (payload.status || '').toString().toUpperCase(),
       amount: Number(payload.amount) || 0,
       utr: payload.utr || payload.transaction_id || payload.txn_id || '',
+      customer_mobile: payload.customer_mobile || '',
+      remark1: payload.remark1 || '',
       message: payload.message || ''
     };
 
@@ -124,7 +126,7 @@ Deno.serve(async (req) => {
       .insert({
         order_id: normalizedPayload.order_id || 'unknown',
         payload: payload,
-        signature: signature || null,
+        signature: null,
         is_valid: null
       });
 
@@ -135,27 +137,6 @@ Deno.serve(async (req) => {
         JSON.stringify({ error: 'Missing order_id' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
-    }
-
-    // Verify signature (if token is configured and signature is present)
-    if (IMB_API_TOKEN && signature) {
-      const isValidSignature = await verifySignature(rawBody, signature, IMB_API_TOKEN);
-      if (!isValidSignature) {
-        console.error('Invalid webhook signature');
-        
-        await supabaseAdmin
-          .from('payment_webhook_logs')
-          .update({ is_valid: false })
-          .eq('order_id', normalizedPayload.order_id);
-        
-        return new Response(
-          JSON.stringify({ error: 'Invalid signature' }),
-          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-      console.log('Signature verified successfully');
-    } else {
-      console.log('Skipping signature verification (no signature provided or token not configured)');
     }
 
     // Get existing payment record
@@ -190,9 +171,28 @@ Deno.serve(async (req) => {
       );
     }
 
-    // ANTI-FRAUD: Verify amount matches (if amount provided in webhook)
-    if (normalizedPayload.amount > 0 && Number(payment.amount) !== normalizedPayload.amount) {
-      console.error('Amount mismatch! DB:', payment.amount, 'Webhook:', normalizedPayload.amount);
+    // VERIFY WITH IMB CHECK STATUS API (as per their docs - no signature, use API verification)
+    let verifiedStatus = normalizedPayload.status;
+    let verifiedAmount = normalizedPayload.amount;
+    
+    if (IMB_API_TOKEN && IMB_API_URL) {
+      console.log('Verifying payment with IMB CHECK STATUS API...');
+      const verification = await verifyPaymentWithIMB(normalizedPayload.order_id, IMB_API_TOKEN, IMB_API_URL);
+      
+      if (verification.valid) {
+        verifiedStatus = verification.status || normalizedPayload.status;
+        if (verification.amount && verification.amount > 0) {
+          verifiedAmount = verification.amount;
+        }
+        console.log('IMB verification successful:', { verifiedStatus, verifiedAmount });
+      } else {
+        console.log('IMB verification failed, using webhook status');
+      }
+    }
+
+    // ANTI-FRAUD: Verify amount matches (if amount provided)
+    if (verifiedAmount > 0 && Number(payment.amount) !== verifiedAmount) {
+      console.error('Amount mismatch! DB:', payment.amount, 'Verified:', verifiedAmount);
       
       await supabaseAdmin
         .from('payments')
@@ -214,7 +214,7 @@ Deno.serve(async (req) => {
           details: {
             order_id: normalizedPayload.order_id,
             expected_amount: payment.amount,
-            received_amount: normalizedPayload.amount
+            received_amount: verifiedAmount
           },
           performed_by: 'imb-webhook'
         });
@@ -225,9 +225,10 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Process based on status
-    const isSuccess = ['SUCCESS', 'SUCCESSFUL', 'COMPLETED', 'PAID', 'TXN_SUCCESS'].includes(normalizedPayload.status);
-    const isFailed = ['FAILED', 'FAILURE', 'CANCELLED', 'CANCELED', 'TXN_FAILURE', 'EXPIRED'].includes(normalizedPayload.status);
+    // Process based on status (use verified status if available)
+    const finalStatus = verifiedStatus || normalizedPayload.status;
+    const isSuccess = ['SUCCESS', 'SUCCESSFUL', 'COMPLETED', 'PAID', 'TXN_SUCCESS'].includes(finalStatus);
+    const isFailed = ['FAILED', 'FAILURE', 'CANCELLED', 'CANCELED', 'TXN_FAILURE', 'EXPIRED'].includes(finalStatus);
 
     if (isSuccess) {
       console.log(`Processing SUCCESS for order: ${normalizedPayload.order_id}`);
@@ -324,7 +325,7 @@ Deno.serve(async (req) => {
       console.log(`Payment ${normalizedPayload.order_id} marked as failed`);
     } else {
       // Unknown/pending status - log but don't process
-      console.log(`Unknown status "${normalizedPayload.status}" for order: ${normalizedPayload.order_id}`);
+      console.log(`Unknown status "${finalStatus}" for order: ${normalizedPayload.order_id}`);
       
       await supabaseAdmin
         .from('payments')
