@@ -11,7 +11,10 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Loader2, User, Wallet, Phone, Mail, Calendar, Shield, ArrowUpCircle, ArrowDownCircle, Clock, CheckCircle, XCircle, AlertCircle, Globe, Smartphone, MapPin } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { toast } from 'sonner';
+import { Loader2, User, Wallet, Phone, Mail, Calendar, Shield, ArrowUpCircle, ArrowDownCircle, Clock, CheckCircle, XCircle, AlertCircle, Globe, Smartphone, MapPin, Plus, Minus, Target } from 'lucide-react';
 
 interface UserDetailDialogProps {
   isOpen: boolean;
@@ -71,6 +74,8 @@ const UserDetailDialog = ({ isOpen, onClose, userId }: UserDetailDialogProps) =>
   const [geoLocations, setGeoLocations] = useState<Record<string, GeoLocation | null>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingGeo, setIsLoadingGeo] = useState(false);
+  const [wagerInput, setWagerInput] = useState('');
+  const [isUpdatingWager, setIsUpdatingWager] = useState(false);
   const [stats, setStats] = useState({
     totalDeposits: 0,
     totalWithdrawals: 0,
@@ -176,6 +181,58 @@ const UserDetailDialog = ({ isOpen, onClose, userId }: UserDetailDialogProps) =>
     setIsLoading(false);
   };
 
+  const handleWagerAdjust = async (adjustment: number) => {
+    if (!profile || !userId) return;
+    
+    setIsUpdatingWager(true);
+    try {
+      const currentWager = profile.wager_requirement || 0;
+      const newWager = Math.max(0, currentWager + adjustment);
+      
+      const { error } = await supabase
+        .from('profiles')
+        .update({ wager_requirement: newWager })
+        .eq('id', userId);
+
+      if (error) throw error;
+
+      setProfile(prev => prev ? { ...prev, wager_requirement: newWager } : null);
+      toast.success(`Wager requirement updated to ₹${newWager.toFixed(2)}`);
+    } catch (err) {
+      console.error('Failed to update wager:', err);
+      toast.error('Failed to update wager requirement');
+    }
+    setIsUpdatingWager(false);
+  };
+
+  const handleSetWager = async () => {
+    if (!profile || !userId) return;
+    
+    const amount = parseFloat(wagerInput);
+    if (isNaN(amount) || amount < 0) {
+      toast.error('Please enter a valid amount');
+      return;
+    }
+    
+    setIsUpdatingWager(true);
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ wager_requirement: amount })
+        .eq('id', userId);
+
+      if (error) throw error;
+
+      setProfile(prev => prev ? { ...prev, wager_requirement: amount } : null);
+      setWagerInput('');
+      toast.success(`Wager requirement set to ₹${amount.toFixed(2)}`);
+    } catch (err) {
+      console.error('Failed to set wager:', err);
+      toast.error('Failed to set wager requirement');
+    }
+    setIsUpdatingWager(false);
+  };
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'completed':
@@ -279,6 +336,121 @@ const UserDetailDialog = ({ isOpen, onClose, userId }: UserDetailDialogProps) =>
                       ) : (
                         <Badge className="bg-green-500/20 text-green-500">Active</Badge>
                       )}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Wager Requirement Adjustment */}
+              <Card className="glass-card border-orange-500/30">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Target className="w-5 h-5 text-orange-500" />
+                    Wager Requirement
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {/* Current Wager Display */}
+                    <div className="flex items-center justify-between p-4 bg-orange-500/10 rounded-lg">
+                      <span className="text-muted-foreground">Current Wager</span>
+                      <span className="text-2xl font-bold text-orange-500">
+                        ₹{(profile.wager_requirement || 0).toFixed(2)}
+                      </span>
+                    </div>
+
+                    {/* Quick Adjust Buttons */}
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <p className="text-xs text-muted-foreground text-center">Decrease by</p>
+                        <div className="flex gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="flex-1 border-red-500/50 text-red-500 hover:bg-red-500/10"
+                            onClick={() => handleWagerAdjust(-100)}
+                            disabled={isUpdatingWager}
+                          >
+                            <Minus className="w-3 h-3 mr-1" />100
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="flex-1 border-red-500/50 text-red-500 hover:bg-red-500/10"
+                            onClick={() => handleWagerAdjust(-500)}
+                            disabled={isUpdatingWager}
+                          >
+                            <Minus className="w-3 h-3 mr-1" />500
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="flex-1 border-red-500/50 text-red-500 hover:bg-red-500/10"
+                            onClick={() => handleWagerAdjust(-1000)}
+                            disabled={isUpdatingWager}
+                          >
+                            <Minus className="w-3 h-3 mr-1" />1K
+                          </Button>
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <p className="text-xs text-muted-foreground text-center">Increase by</p>
+                        <div className="flex gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="flex-1 border-green-500/50 text-green-500 hover:bg-green-500/10"
+                            onClick={() => handleWagerAdjust(100)}
+                            disabled={isUpdatingWager}
+                          >
+                            <Plus className="w-3 h-3 mr-1" />100
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="flex-1 border-green-500/50 text-green-500 hover:bg-green-500/10"
+                            onClick={() => handleWagerAdjust(500)}
+                            disabled={isUpdatingWager}
+                          >
+                            <Plus className="w-3 h-3 mr-1" />500
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="flex-1 border-green-500/50 text-green-500 hover:bg-green-500/10"
+                            onClick={() => handleWagerAdjust(1000)}
+                            disabled={isUpdatingWager}
+                          >
+                            <Plus className="w-3 h-3 mr-1" />1K
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Custom Amount */}
+                    <div className="flex gap-2">
+                      <Input
+                        type="number"
+                        placeholder="Set custom amount..."
+                        value={wagerInput}
+                        onChange={(e) => setWagerInput(e.target.value)}
+                        className="flex-1"
+                      />
+                      <Button
+                        onClick={handleSetWager}
+                        disabled={isUpdatingWager || !wagerInput}
+                        className="bg-orange-500 hover:bg-orange-600"
+                      >
+                        {isUpdatingWager ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Set'}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        onClick={() => handleWagerAdjust(-(profile.wager_requirement || 0))}
+                        disabled={isUpdatingWager || !profile.wager_requirement}
+                        className="border-red-500/50 text-red-500 hover:bg-red-500/10"
+                      >
+                        Clear
+                      </Button>
                     </div>
                   </div>
                 </CardContent>
