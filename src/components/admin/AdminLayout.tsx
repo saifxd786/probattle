@@ -1,90 +1,62 @@
 import { useState, useEffect } from 'react';
 import { Outlet, useNavigate } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
 import AdminSidebar from './AdminSidebar';
 import { cn } from '@/lib/utils';
 import { Loader2, Menu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
-import { useAdminAccess } from '@/hooks/useAdminAccess';
 
 const AdminLayout = () => {
-  const { user, isLoading: authLoading, session } = useAuth();
   const navigate = useNavigate();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const { status, errorMessage, retry } = useAdminAccess({
-    user,
-    session,
-    authLoading,
-    timeoutMs: 8000,
-  });
+  const [isChecking, setIsChecking] = useState(true);
+  const [hasAccess, setHasAccess] = useState(false);
 
   useEffect(() => {
-    if (authLoading) return;
-
-    // Keep the same end behavior, but avoid infinite "Verifying...".
-    if (status === 'needs_login') {
+    // Simple check - is admin access granted in sessionStorage?
+    const adminAccess = sessionStorage.getItem('adminAccess');
+    const accessTime = sessionStorage.getItem('adminAccessTime');
+    
+    if (adminAccess === 'granted' && accessTime) {
+      // Optional: Check if access is still valid (e.g., within 24 hours)
+      const grantedAt = parseInt(accessTime, 10);
+      const now = Date.now();
+      const maxAge = 24 * 60 * 60 * 1000; // 24 hours
+      
+      if (now - grantedAt < maxAge) {
+        setHasAccess(true);
+      } else {
+        // Access expired
+        sessionStorage.removeItem('adminAccess');
+        sessionStorage.removeItem('adminAccessTime');
+        navigate('/admin/login', { replace: true });
+      }
+    } else {
+      // No access - redirect to login
       navigate('/admin/login', { replace: true });
-      return;
     }
+    
+    setIsChecking(false);
+  }, [navigate]);
 
-    if (status === 'unauthorized') {
-      navigate('/', { replace: true });
-      return;
-    }
-  }, [authLoading, status, navigate]);
-
-  // Loading / verifying
-  if (authLoading || status === 'checking') {
+  if (isChecking) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <Loader2 className="w-8 h-8 animate-spin text-primary" />
-          <p className="text-muted-foreground">Verifying access...</p>
+          <p className="text-muted-foreground">Loading...</p>
         </div>
       </div>
     );
   }
 
-  if (status === 'needs_login') {
+  if (!hasAccess) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="flex flex-col items-center gap-3 text-center px-6">
           <Loader2 className="w-7 h-7 animate-spin text-primary" />
           <p className="text-muted-foreground">Redirecting to login…</p>
-        </div>
-      </div>
-    );
-  }
-
-  // If verification failed (network/cold start/etc.), don't get stuck.
-  if (status === 'error') {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4 text-center px-6 max-w-sm">
-          <p className="text-foreground font-medium">Unable to verify access</p>
-          <p className="text-muted-foreground text-sm">
-            {errorMessage ?? 'Please retry or login again.'}
-          </p>
-          <div className="flex items-center gap-3">
-            <Button onClick={retry}>Retry</Button>
-            <Button variant="ghost" onClick={() => navigate('/admin/login', { replace: true })}>
-              Go to login
-            </Button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Unauthorized will redirect; show a small interim state.
-  if (status === 'unauthorized') {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="flex flex-col items-center gap-3 text-center px-6">
-          <Loader2 className="w-7 h-7 animate-spin text-primary" />
-          <p className="text-muted-foreground">Access denied. Redirecting…</p>
         </div>
       </div>
     );
