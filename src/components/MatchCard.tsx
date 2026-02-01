@@ -119,7 +119,14 @@ const MatchCard = ({
   const [secureRoomPassword, setSecureRoomPassword] = useState<string | null>(null);
   const [walletBalance, setWalletBalance] = useState<number>(0);
   const [isBanned, setIsBanned] = useState(false);
-  const [bgmiProfile, setBgmiProfile] = useState<{ ingame_name: string; player_id: string; player_level: number } | null>(null);
+  const [bgmiProfile, setBgmiProfile] = useState<{ 
+    ingame_name: string; 
+    player_id: string; 
+    player_level: number;
+    secondary_ingame_name?: string | null;
+    secondary_player_id?: string | null;
+    secondary_player_level?: number | null;
+  } | null>(null);
   const [isLoadingProfile, setIsLoadingProfile] = useState(false);
   
   // Generate short match ID from UUID
@@ -139,11 +146,17 @@ const MatchCard = ({
   const isTdmMatch = mode.toLowerCase().includes('tdm');
   const displayGunCategory = gunCategory && gunCategoryLabels[gunCategory];
   
-  // Form fields
+  // Form fields - Primary account
   const [bgmiIngameName, setBgmiIngameName] = useState('');
   const [bgmiPlayerId, setBgmiPlayerId] = useState('');
   const [bgmiPlayerLevel, setBgmiPlayerLevel] = useState('');
   const [isLevel30Confirmed, setIsLevel30Confirmed] = useState(false);
+  
+  // Secondary account fields
+  const [use6hrSecondary, setUse6hrSecondary] = useState(false);
+  const [secondaryIngameName, setSecondaryIngameName] = useState('');
+  const [secondaryPlayerId, setSecondaryPlayerId] = useState('');
+  const [secondaryPlayerLevel, setSecondaryPlayerLevel] = useState('');
 
   const isFree = entryFee === 0 || isFreeMatch;
   const slotsPercentage = (slots.current / slots.total) * 100;
@@ -204,7 +217,7 @@ const MatchCard = ({
     setIsLoadingProfile(true);
     const { data } = await supabase
       .from('bgmi_profiles')
-      .select('ingame_name, player_id, player_level')
+      .select('ingame_name, player_id, player_level, secondary_ingame_name, secondary_player_id, secondary_player_level')
       .eq('user_id', user.id)
       .maybeSingle();
     
@@ -214,6 +227,12 @@ const MatchCard = ({
       setBgmiIngameName(data.ingame_name);
       setBgmiPlayerId(data.player_id);
       setBgmiPlayerLevel(data.player_level.toString());
+      // Pre-fill secondary account if exists
+      if (data.secondary_ingame_name) {
+        setSecondaryIngameName(data.secondary_ingame_name);
+        setSecondaryPlayerId(data.secondary_player_id || '');
+        setSecondaryPlayerLevel(data.secondary_player_level?.toString() || '');
+      }
     }
     setIsLoadingProfile(false);
   };
@@ -284,24 +303,31 @@ const MatchCard = ({
   const handleRegister = async () => {
     if (!user) return;
     
-    // Validate BGMI fields
-    if (!bgmiIngameName.trim()) {
-      toast({ title: 'Error', description: 'Please enter your BGMI In-Game Name', variant: 'destructive' });
+    // Determine which account to use (primary or secondary)
+    const usingSecondary = use6hrSecondary;
+    const accountName = usingSecondary ? secondaryIngameName : bgmiIngameName;
+    const accountPlayerId = usingSecondary ? secondaryPlayerId : bgmiPlayerId;
+    const accountLevel = usingSecondary ? secondaryPlayerLevel : bgmiPlayerLevel;
+    
+    // Validate account fields
+    if (!accountName.trim()) {
+      toast({ title: 'Error', description: `Please enter your ${usingSecondary ? 'Secondary' : 'BGMI'} In-Game Name`, variant: 'destructive' });
       return;
     }
-    if (!bgmiPlayerId.trim()) {
-      toast({ title: 'Error', description: 'Please enter your BGMI Player ID', variant: 'destructive' });
+    if (!accountPlayerId.trim()) {
+      toast({ title: 'Error', description: `Please enter your ${usingSecondary ? 'Secondary' : 'BGMI'} Player ID`, variant: 'destructive' });
       return;
     }
-    // Check level 30 confirmation first (for new users)
-    if (!bgmiProfile && !isLevel30Confirmed) {
+    
+    // Check level 30 confirmation for new users (only for primary account)
+    if (!bgmiProfile && !usingSecondary && !isLevel30Confirmed) {
       toast({ title: 'Confirm Level', description: 'Please confirm your account is Level 30+', variant: 'destructive' });
       return;
     }
     
-    const level = parseInt(bgmiPlayerLevel);
-    if (!bgmiPlayerLevel || isNaN(level)) {
-      toast({ title: 'Error', description: 'Please enter your BGMI Player Level', variant: 'destructive' });
+    const level = parseInt(accountLevel);
+    if (!accountLevel || isNaN(level)) {
+      toast({ title: 'Error', description: `Please enter your ${usingSecondary ? 'Secondary' : 'BGMI'} Player Level`, variant: 'destructive' });
       return;
     }
     if (level < 30) {
@@ -357,14 +383,23 @@ const MatchCard = ({
     
     // Save BGMI profile permanently if first time registration
     if (!bgmiProfile) {
+      const insertData: any = {
+        user_id: user.id,
+        ingame_name: bgmiIngameName.trim(),
+        player_id: bgmiPlayerId.trim(),
+        player_level: parseInt(bgmiPlayerLevel),
+      };
+      
+      // If also registering secondary account, save it too
+      if (usingSecondary) {
+        insertData.secondary_ingame_name = secondaryIngameName.trim();
+        insertData.secondary_player_id = secondaryPlayerId.trim();
+        insertData.secondary_player_level = level;
+      }
+      
       const { error: profileError } = await supabase
         .from('bgmi_profiles')
-        .insert({
-          user_id: user.id,
-          ingame_name: bgmiIngameName.trim(),
-          player_id: bgmiPlayerId.trim(),
-          player_level: level,
-        });
+        .insert(insertData);
       
       if (profileError && profileError.code !== '23505') {
         // Log error but don't block registration
@@ -374,20 +409,43 @@ const MatchCard = ({
         setBgmiProfile({
           ingame_name: bgmiIngameName.trim(),
           player_id: bgmiPlayerId.trim(),
-          player_level: level,
+          player_level: parseInt(bgmiPlayerLevel),
+          secondary_ingame_name: usingSecondary ? secondaryIngameName.trim() : null,
+          secondary_player_id: usingSecondary ? secondaryPlayerId.trim() : null,
+          secondary_player_level: usingSecondary ? level : null,
+        });
+      }
+    } else if (usingSecondary && !bgmiProfile.secondary_ingame_name) {
+      // Save secondary account if using it for the first time
+      const { error: updateError } = await supabase
+        .from('bgmi_profiles')
+        .update({
+          secondary_ingame_name: secondaryIngameName.trim(),
+          secondary_player_id: secondaryPlayerId.trim(),
+          secondary_player_level: level,
+        })
+        .eq('user_id', user.id);
+      
+      if (!updateError) {
+        // Update local state
+        setBgmiProfile({
+          ...bgmiProfile,
+          secondary_ingame_name: secondaryIngameName.trim(),
+          secondary_player_id: secondaryPlayerId.trim(),
+          secondary_player_level: level,
         });
       }
     }
     
-    // Register for match - directly approved since payment is done via wallet
+    // Register for match with the selected account
     const { error } = await supabase
       .from('match_registrations')
       .insert({
         match_id: id,
         user_id: user.id,
-        team_name: bgmiIngameName.trim(),
-        bgmi_ingame_name: bgmiIngameName.trim(),
-        bgmi_player_id: bgmiPlayerId.trim(),
+        team_name: accountName.trim(),
+        bgmi_ingame_name: accountName.trim(),
+        bgmi_player_id: accountPlayerId.trim(),
         bgmi_player_level: level,
         payment_status: 'approved',
         is_approved: true,
@@ -675,31 +733,143 @@ const MatchCard = ({
           <div className="space-y-4 mt-4">
             {/* Show saved profile or first-time form */}
             {bgmiProfile ? (
-              // Saved Profile - Quick Join
-              <div className="p-4 bg-green-500/10 border border-green-500/30 rounded-lg">
-                <div className="flex items-center gap-2 mb-3">
-                  <Check className="w-5 h-5 text-green-400" />
-                  <span className="font-medium text-green-400">BGMI Profile Saved</span>
+              // Saved Profile - Quick Join with Secondary Account Option
+              <>
+                {/* 6hr Limit Toggle - Show only if primary profile exists */}
+                <div className="p-4 bg-orange-500/10 border border-orange-500/30 rounded-lg">
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <p className="font-medium text-foreground">Main account reached 6hr limit?</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Use a secondary account instead
+                      </p>
+                    </div>
+                    <div className="flex gap-2 ml-4">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={!use6hrSecondary ? 'default' : 'outline'}
+                        onClick={() => setUse6hrSecondary(false)}
+                        className={cn(
+                          'px-4',
+                          !use6hrSecondary && 'bg-green-500 hover:bg-green-600'
+                        )}
+                      >
+                        No
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={use6hrSecondary ? 'default' : 'outline'}
+                        onClick={() => setUse6hrSecondary(true)}
+                        className={cn(
+                          'px-4',
+                          use6hrSecondary && 'bg-orange-500 hover:bg-orange-600'
+                        )}
+                      >
+                        Yes
+                      </Button>
+                    </div>
+                  </div>
                 </div>
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">In-Game Name</span>
-                    <span className="font-medium">{bgmiProfile.ingame_name}</span>
+
+                {!use6hrSecondary ? (
+                  // Primary Profile Display
+                  <div className="p-4 bg-green-500/10 border border-green-500/30 rounded-lg">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Check className="w-5 h-5 text-green-400" />
+                      <span className="font-medium text-green-400">Primary Account</span>
+                    </div>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">In-Game Name</span>
+                        <span className="font-medium">{bgmiProfile.ingame_name}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Player ID</span>
+                        <span className="font-medium">{bgmiProfile.player_id}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Level</span>
+                        <span className="font-medium">{bgmiProfile.player_level}</span>
+                      </div>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-3 flex items-center gap-1">
+                      <Lock className="w-3 h-3" />
+                      Profile details are permanently saved
+                    </p>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Player ID</span>
-                    <span className="font-medium">{bgmiProfile.player_id}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Level</span>
-                    <span className="font-medium">{bgmiProfile.player_level}</span>
-                  </div>
-                </div>
-                <p className="text-xs text-muted-foreground mt-3 flex items-center gap-1">
-                  <Lock className="w-3 h-3" />
-                  Profile details are permanently saved
-                </p>
-              </div>
+                ) : (
+                  // Secondary Account Section
+                  bgmiProfile.secondary_ingame_name ? (
+                    // Saved Secondary Profile
+                    <div className="p-4 bg-orange-500/10 border border-orange-500/30 rounded-lg">
+                      <div className="flex items-center gap-2 mb-3">
+                        <Check className="w-5 h-5 text-orange-400" />
+                        <span className="font-medium text-orange-400">Secondary Account (Saved)</span>
+                      </div>
+                      <div className="space-y-2 text-sm">
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">In-Game Name</span>
+                          <span className="font-medium">{bgmiProfile.secondary_ingame_name}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Player ID</span>
+                          <span className="font-medium">{bgmiProfile.secondary_player_id}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Level</span>
+                          <span className="font-medium">{bgmiProfile.secondary_player_level}</span>
+                        </div>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-3 flex items-center gap-1">
+                        <Lock className="w-3 h-3" />
+                        Secondary profile is permanently saved
+                      </p>
+                    </div>
+                  ) : (
+                    // New Secondary Account Form
+                    <div className="space-y-4">
+                      <div className="p-3 bg-orange-500/10 border border-orange-500/30 rounded-lg">
+                        <p className="text-xs text-orange-400 flex items-center gap-2">
+                          <AlertCircle className="w-4 h-4" />
+                          Register your secondary account (will be saved permanently)
+                        </p>
+                      </div>
+                      
+                      <div>
+                        <Label>Secondary In-Game Name <span className="text-destructive">*</span></Label>
+                        <Input
+                          value={secondaryIngameName}
+                          onChange={(e) => setSecondaryIngameName(e.target.value)}
+                          placeholder="Your secondary account username"
+                        />
+                      </div>
+
+                      <div>
+                        <Label>Secondary Player ID <span className="text-destructive">*</span></Label>
+                        <Input
+                          value={secondaryPlayerId}
+                          onChange={(e) => setSecondaryPlayerId(e.target.value)}
+                          placeholder="e.g., 5123456789"
+                        />
+                      </div>
+
+                      <div>
+                        <Label>Secondary Player Level <span className="text-destructive">*</span></Label>
+                        <Input
+                          type="number"
+                          value={secondaryPlayerLevel}
+                          onChange={(e) => setSecondaryPlayerLevel(e.target.value)}
+                          placeholder="Enter level (30+)"
+                          min={30}
+                          max={100}
+                        />
+                      </div>
+                    </div>
+                  )
+                )}
+              </>
             ) : (
               // First Time Registration Form
               <>
@@ -823,7 +993,12 @@ const MatchCard = ({
               <Button 
                 variant="neon" 
                 onClick={handleRegister} 
-                disabled={isLoading || (!isFree && !hasEnoughBalance) || (!bgmiProfile && !isLevel30Confirmed)} 
+                disabled={
+                  isLoading || 
+                  (!isFree && !hasEnoughBalance) || 
+                  (!bgmiProfile && !isLevel30Confirmed) ||
+                  (bgmiProfile && use6hrSecondary && !bgmiProfile.secondary_ingame_name && (!secondaryIngameName.trim() || !secondaryPlayerId.trim() || !secondaryPlayerLevel))
+                } 
                 className="flex-1"
               >
                 {isLoading ? 'Joining...' : isFree ? 'Join Now' : `Pay ₹${entryFee} & Join`}

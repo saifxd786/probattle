@@ -123,6 +123,9 @@ export type Database = {
           ingame_name: string
           player_id: string
           player_level: number
+          secondary_ingame_name: string | null
+          secondary_player_id: string | null
+          secondary_player_level: number | null
           updated_at: string
           user_id: string
         }
@@ -132,6 +135,9 @@ export type Database = {
           ingame_name: string
           player_id: string
           player_level: number
+          secondary_ingame_name?: string | null
+          secondary_player_id?: string | null
+          secondary_player_level?: number | null
           updated_at?: string
           user_id: string
         }
@@ -141,6 +147,9 @@ export type Database = {
           ingame_name?: string
           player_id?: string
           player_level?: number
+          secondary_ingame_name?: string | null
+          secondary_player_id?: string | null
+          secondary_player_level?: number | null
           updated_at?: string
           user_id?: string
         }
