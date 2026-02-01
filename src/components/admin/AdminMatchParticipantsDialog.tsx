@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
-import { Users, Gamepad2, UserX, Loader2 } from 'lucide-react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Users, Gamepad2, UserX, Loader2, XCircle, AlertTriangle } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 
@@ -21,22 +22,28 @@ interface AdminMatchParticipantsDialogProps {
   matchId: string | null;
   matchTitle: string;
   entryFee: number;
+  matchStatus?: string;
   isOpen: boolean;
   onClose: () => void;
   onParticipantKicked?: () => void;
+  onMatchCancelled?: () => void;
 }
 
 const AdminMatchParticipantsDialog = ({ 
   matchId, 
   matchTitle, 
   entryFee,
+  matchStatus,
   isOpen, 
   onClose,
-  onParticipantKicked
+  onParticipantKicked,
+  onMatchCancelled
 }: AdminMatchParticipantsDialogProps) => {
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [kickingUserId, setKickingUserId] = useState<string | null>(null);
+  const [isCancelDialogOpen, setIsCancelDialogOpen] = useState(false);
+  const [isCancelling, setIsCancelling] = useState(false);
 
   useEffect(() => {
     if (matchId && isOpen) {
@@ -171,11 +178,102 @@ const AdminMatchParticipantsDialog = ({
     }
   };
 
+  // Cancel match and refund all players
+  const handleCancelMatchAndRefundAll = async () => {
+    if (!matchId) return;
+    
+    setIsCancelling(true);
+    
+    try {
+      const totalRefund = participants.length * entryFee;
+      
+      // 1. Refund all participants
+      for (const participant of participants) {
+        // Get current balance
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('wallet_balance')
+          .eq('id', participant.user_id)
+          .single();
+        
+        if (profileError) {
+          console.error('Failed to fetch profile for:', participant.user_id);
+          continue;
+        }
+        
+        const currentBalance = Number(profile.wallet_balance || 0);
+        const newBalance = currentBalance + entryFee;
+        
+        // Update wallet
+        await supabase
+          .from('profiles')
+          .update({ wallet_balance: newBalance })
+          .eq('id', participant.user_id);
+        
+        // Create refund transaction
+        await supabase.from('transactions').insert([{
+          user_id: participant.user_id,
+          type: 'admin_credit' as const,
+          amount: entryFee,
+          status: 'completed' as const,
+          description: `Match Cancelled: Refund for "${matchTitle}"`
+        }]);
+        
+        // Send notification
+        await supabase.from('notifications').insert({
+          user_id: participant.user_id,
+          title: '🚫 Match Cancelled',
+          message: `"${matchTitle}" has been cancelled. ₹${entryFee} has been refunded to your wallet.`,
+          type: 'warning'
+        });
+      }
+      
+      // 2. Delete all registrations
+      const { error: deleteError } = await supabase
+        .from('match_registrations')
+        .delete()
+        .eq('match_id', matchId);
+      
+      if (deleteError) {
+        console.error('Failed to delete registrations:', deleteError);
+      }
+      
+      // 3. Update match status to cancelled
+      const { error: matchError } = await supabase
+        .from('matches')
+        .update({ status: 'cancelled', filled_slots: 0 })
+        .eq('id', matchId);
+      
+      if (matchError) throw matchError;
+      
+      toast({
+        title: 'Match Cancelled',
+        description: `${participants.length} players refunded ₹${totalRefund} total`,
+      });
+      
+      setIsCancelDialogOpen(false);
+      onClose();
+      onMatchCancelled?.();
+      
+    } catch (error: any) {
+      console.error('Cancel match error:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to cancel match',
+        variant: 'destructive'
+      });
+    } finally {
+      setIsCancelling(false);
+    }
+  };
+
   // Get initials from name
   const getInitials = (name: string | null) => {
     if (!name) return '?';
     return name.slice(0, 2).toUpperCase();
   };
+
+  const canCancelMatch = matchStatus === 'upcoming' || matchStatus === 'live';
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -247,15 +345,76 @@ const AdminMatchParticipantsDialog = ({
           )}
         </ScrollArea>
 
-        <div className="pt-2 border-t border-border space-y-1">
-          <p className="text-xs text-muted-foreground text-center">
-            Total: {participants.length} player{participants.length !== 1 ? 's' : ''} registered
-          </p>
-          <p className="text-xs text-destructive/80 text-center">
-            Kick will refund ₹{entryFee} to player's wallet
-          </p>
+        {/* Footer with Cancel Match button */}
+        <div className="pt-3 border-t border-border space-y-3">
+          <div className="flex items-center justify-between text-xs text-muted-foreground">
+            <span>{participants.length} player{participants.length !== 1 ? 's' : ''} registered</span>
+            <span>Kick refunds ₹{entryFee}</span>
+          </div>
+          
+          {/* Cancel Match & Refund All Button */}
+          {canCancelMatch && participants.length > 0 && (
+            <Button
+              variant="destructive"
+              className="w-full"
+              onClick={() => setIsCancelDialogOpen(true)}
+            >
+              <XCircle className="w-4 h-4 mr-2" />
+              Cancel Match & Refund All (₹{participants.length * entryFee})
+            </Button>
+          )}
+          
+          {matchStatus === 'cancelled' && (
+            <p className="text-xs text-center text-destructive">
+              This match has been cancelled
+            </p>
+          )}
         </div>
       </DialogContent>
+
+      {/* Confirmation Dialog */}
+      <AlertDialog open={isCancelDialogOpen} onOpenChange={setIsCancelDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+              <AlertTriangle className="w-5 h-5" />
+              Cancel Match & Refund All?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-2">
+              <p>You are about to cancel <strong>"{matchTitle}"</strong></p>
+              <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-3 space-y-1">
+                <p className="text-sm">This action will:</p>
+                <ul className="text-sm list-disc list-inside space-y-1">
+                  <li>Cancel the match permanently</li>
+                  <li>Refund <strong>₹{entryFee}</strong> to each of <strong>{participants.length}</strong> players</li>
+                  <li>Total refund: <strong>₹{participants.length * entryFee}</strong></li>
+                  <li>Notify all players about cancellation</li>
+                </ul>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isCancelling}>Keep Match</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleCancelMatchAndRefundAll}
+              disabled={isCancelling}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isCancelling ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Cancelling...
+                </>
+              ) : (
+                <>
+                  <XCircle className="w-4 h-4 mr-2" />
+                  Cancel & Refund All
+                </>
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 };

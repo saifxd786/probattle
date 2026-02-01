@@ -674,9 +674,11 @@ const AdminMatches = () => {
         matchId={participantsMatch?.id || null}
         matchTitle={participantsMatch?.title || ''}
         entryFee={participantsMatch?.entry_fee || 0}
+        matchStatus={participantsMatch?.status}
         isOpen={isParticipantsOpen}
         onClose={() => setIsParticipantsOpen(false)}
         onParticipantKicked={fetchMatches}
+        onMatchCancelled={fetchMatches}
       />
     </div>
   );
