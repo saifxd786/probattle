@@ -55,19 +55,27 @@ const AdminLoginPage = () => {
     setIsLoading(true);
 
     try {
-      // Simple direct call - let Supabase handle retries
+      console.log('[AdminLogin] Starting login...');
+      
       const { data, error } = await supabase.functions.invoke('secure-admin-login', {
         body: { phone: cleanPhone, password: rawPassword }
       });
 
+      console.log('[AdminLogin] Response:', { data, error });
+
       if (error) {
         console.error('[AdminLogin] Invoke error:', error);
-        throw new Error('Connection failed. Please check your internet and try again.');
+        throw new Error('Connection failed. Please try again.');
       }
 
-      // Handle response codes
-      if (data?.code && data.code !== 'SUCCESS' && !data?.success) {
-        throw new Error(data.error || 'Login failed');
+      // Handle warmup/invalid calls
+      if (data?.code === 'WARMUP') {
+        throw new Error('Invalid phone number');
+      }
+
+      // Handle error responses
+      if (data?.error && !data?.success) {
+        throw new Error(data.error);
       }
 
       // Check for session
@@ -76,13 +84,19 @@ const AdminLoginPage = () => {
       }
 
       // SUCCESS - Set session
-      await supabase.auth.setSession({
+      console.log('[AdminLogin] Setting session...');
+      const { error: sessionError } = await supabase.auth.setSession({
         access_token: data.session.access_token,
         refresh_token: data.session.refresh_token,
       });
 
-      // Wait for session propagation
-      await new Promise(r => setTimeout(r, 400));
+      if (sessionError) {
+        console.error('[AdminLogin] Session error:', sessionError);
+        throw new Error('Failed to establish session');
+      }
+
+      // Short delay for session propagation
+      await new Promise(r => setTimeout(r, 300));
 
       toast({ title: '✅ Welcome Admin!', description: 'Redirecting to dashboard...' });
       navigate('/admin');
