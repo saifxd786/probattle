@@ -5,7 +5,7 @@ import probattleLogo from '@/assets/probattle-logo.jpg';
 
 const MaintenancePage = () => {
   return (
-    <div className="min-h-screen bg-[#0A0A0F] relative overflow-hidden flex items-center justify-center">
+    <div className="h-[100dvh] bg-[#0A0A0F] relative overflow-hidden flex items-center justify-center">
       {/* Animated Background Grid */}
       <div className="absolute inset-0 opacity-[0.03]">
         <div 
@@ -59,13 +59,13 @@ const MaintenancePage = () => {
       ))}
 
       {/* Main Content */}
-      <div className="relative z-10 max-w-lg mx-auto px-6 text-center">
+      <div className="relative z-10 max-w-lg mx-auto px-4 text-center py-4 max-h-full overflow-y-auto">
         {/* Logo */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
-          className="mb-8"
+          className="mb-4"
         >
           <img 
             src={probattleLogo} 
@@ -79,9 +79,9 @@ const MaintenancePage = () => {
           initial={{ opacity: 0, scale: 0.5 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.5, delay: 0.2 }}
-          className="relative mb-8"
+          className="relative mb-4"
         >
-          <div className="w-32 h-32 mx-auto relative">
+          <div className="w-24 h-24 mx-auto relative">
             {/* Outer Ring */}
             <motion.div
               animate={{ rotate: 360 }}
@@ -100,8 +100,8 @@ const MaintenancePage = () => {
               transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
               className="absolute inset-0 flex items-center justify-center"
             >
-              <div className="w-16 h-16 bg-gradient-to-br from-primary to-purple-600 rounded-2xl flex items-center justify-center shadow-lg shadow-primary/30">
-                <Wrench className="w-8 h-8 text-white" />
+              <div className="w-12 h-12 bg-gradient-to-br from-primary to-purple-600 rounded-xl flex items-center justify-center shadow-lg shadow-primary/30">
+                <Wrench className="w-6 h-6 text-white" />
               </div>
             </motion.div>
           </div>
@@ -113,10 +113,10 @@ const MaintenancePage = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.3 }}
         >
-          <h1 className="font-display text-3xl md:text-4xl font-bold text-white mb-3">
+          <h1 className="font-display text-2xl md:text-3xl font-bold text-white mb-2">
             Under Maintenance
           </h1>
-          <div className="flex items-center justify-center gap-2 mb-6">
+          <div className="flex items-center justify-center gap-2 mb-4">
             <span className="w-2 h-2 bg-yellow-500 rounded-full animate-pulse" />
             <span className="text-yellow-500 font-medium text-sm">System Upgrade in Progress</span>
           </div>
@@ -127,10 +127,10 @@ const MaintenancePage = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.4 }}
-          className="text-muted-foreground mb-8 leading-relaxed"
+          className="text-muted-foreground mb-4 leading-relaxed text-sm"
         >
           We're making ProBattle even better! Our team is working hard to bring you 
-          exciting new features and improvements. We'll be back shortly.
+          exciting new features. We'll be back shortly.
         </motion.p>
 
         {/* Status Cards */}
@@ -138,17 +138,17 @@ const MaintenancePage = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.5 }}
-          className="grid grid-cols-2 gap-3 mb-8"
+          className="grid grid-cols-2 gap-2 mb-4"
         >
-          <div className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-xl p-4">
-            <Clock className="w-5 h-5 text-primary mx-auto mb-2" />
-            <p className="text-xs text-muted-foreground">Estimated Time</p>
-            <p className="text-sm font-bold text-white">~30 Minutes</p>
+          <div className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-xl p-3">
+            <Clock className="w-4 h-4 text-primary mx-auto mb-1" />
+            <p className="text-[10px] text-muted-foreground">Estimated Time</p>
+            <p className="text-xs font-bold text-white">~30 Minutes</p>
           </div>
-          <div className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-xl p-4">
-            <Shield className="w-5 h-5 text-green-500 mx-auto mb-2" />
-            <p className="text-xs text-muted-foreground">Your Data</p>
-            <p className="text-sm font-bold text-white">100% Safe</p>
+          <div className="bg-card/50 backdrop-blur-sm border border-border/50 rounded-xl p-3">
+            <Shield className="w-4 h-4 text-green-500 mx-auto mb-1" />
+            <p className="text-[10px] text-muted-foreground">Your Data</p>
+            <p className="text-xs font-bold text-white">100% Safe</p>
           </div>
         </motion.div>
 
@@ -157,17 +157,17 @@ const MaintenancePage = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.6 }}
-          className="bg-gradient-to-r from-primary/10 via-purple-600/10 to-primary/10 border border-primary/20 rounded-xl p-4 mb-8"
+          className="bg-gradient-to-r from-primary/10 via-purple-600/10 to-primary/10 border border-primary/20 rounded-xl p-3 mb-4"
         >
-          <div className="flex items-center justify-center gap-2 mb-3">
-            <Zap className="w-4 h-4 text-primary" />
-            <span className="text-sm font-semibold text-white">What's Coming</span>
+          <div className="flex items-center justify-center gap-2 mb-2">
+            <Zap className="w-3 h-3 text-primary" />
+            <span className="text-xs font-semibold text-white">What's Coming</span>
           </div>
-          <div className="flex flex-wrap justify-center gap-2">
-            {['Performance Boost', 'New Features', 'Bug Fixes', 'Security Updates'].map((item, i) => (
+          <div className="flex flex-wrap justify-center gap-1.5">
+            {['Performance', 'New Features', 'Bug Fixes', 'Security'].map((item, i) => (
               <span 
                 key={i}
-                className="px-3 py-1 bg-background/50 rounded-full text-xs text-muted-foreground border border-border/50"
+                className="px-2 py-0.5 bg-background/50 rounded-full text-[10px] text-muted-foreground border border-border/50"
               >
                 {item}
               </span>
@@ -180,26 +180,26 @@ const MaintenancePage = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.7 }}
-          className="space-y-3"
+          className="space-y-2"
         >
-          <p className="text-xs text-muted-foreground">Need urgent help?</p>
-          <div className="flex items-center justify-center gap-3">
+          <p className="text-[10px] text-muted-foreground">Need urgent help?</p>
+          <div className="flex items-center justify-center gap-2">
             <Button 
               variant="outline" 
               size="sm"
-              className="gap-2 border-border/50 hover:border-primary/50"
+              className="gap-1.5 border-border/50 hover:border-primary/50 h-8 text-xs px-3"
               onClick={() => window.open('https://t.me/probattle_support', '_blank')}
             >
-              <MessageCircle className="w-4 h-4" />
+              <MessageCircle className="w-3 h-3" />
               Telegram
             </Button>
             <Button 
               variant="outline" 
               size="sm"
-              className="gap-2 border-border/50 hover:border-primary/50"
+              className="gap-1.5 border-border/50 hover:border-primary/50 h-8 text-xs px-3"
               onClick={() => window.location.href = 'mailto:support@probattle.app'}
             >
-              <Mail className="w-4 h-4" />
+              <Mail className="w-3 h-3" />
               Email
             </Button>
           </div>
@@ -210,7 +210,7 @@ const MaintenancePage = () => {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.5, delay: 0.8 }}
-          className="mt-10 text-xs text-muted-foreground/50"
+          className="mt-4 text-[10px] text-muted-foreground/50"
         >
           © 2025 ProBattle. All rights reserved.
         </motion.p>
