@@ -217,7 +217,7 @@ const FriendMultiplayer = ({
   // Mode Selection - Flat Design
   if (mode === 'select') {
     return (
-      <div className="h-[100dvh] bg-[#0A0A0F] p-4 pb-24 overflow-y-auto">
+      <div className="min-h-[100dvh] bg-[#0A0A0F] p-4 pb-24">
         {/* Subtle gradient background */}
         <div 
           className="fixed inset-0 -z-10 pointer-events-none"
@@ -461,7 +461,7 @@ const FriendMultiplayer = ({
   // Create Room - Waiting Screen
   if (mode === 'create') {
     return (
-      <div className="h-[100dvh] bg-[#0A0A0F] p-4 pb-24 overflow-y-auto">
+      <div className="min-h-[100dvh] bg-[#0A0A0F] p-4 pb-24">
         {/* Background */}
         <div 
           className="fixed inset-0 -z-10 pointer-events-none"
@@ -662,7 +662,7 @@ const FriendMultiplayer = ({
     const hasEnoughBalance = roomPreview.isFree || walletBalance >= roomPreview.entryAmount;
     
     return (
-      <div className="h-[100dvh] bg-[#0A0A0F] p-4 pb-24 overflow-y-auto">
+      <div className="min-h-[100dvh] bg-[#0A0A0F] p-4 pb-24">
         {/* Background */}
         <div 
           className="fixed inset-0 -z-10 pointer-events-none"
@@ -837,7 +837,7 @@ const FriendMultiplayer = ({
 
   // Join Room Screen - Enter code
   return (
-    <div className="h-[100dvh] bg-[#0A0A0F] p-4 pb-24 overflow-y-auto">
+    <div className="min-h-[100dvh] bg-[#0A0A0F] p-4 pb-24">
       {/* Background */}
       <div 
         className="fixed inset-0 -z-10 pointer-events-none"
