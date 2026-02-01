@@ -641,10 +641,22 @@ export const useLudoGame = () => {
     const currentUserAvatar = freshProfile?.avatar_url || userAvatar || undefined;
     const currentUserUID = freshProfile?.user_code || userUID || generateUID();
 
-    // Deduct entry from wallet
+    // Deduct entry from wallet AND reduce wager requirement
+    const { data: profileData, error: profileFetchError } = await supabase
+      .from('profiles')
+      .select('wager_requirement')
+      .eq('id', user.id)
+      .single();
+    
+    const currentWager = Number(profileData?.wager_requirement || 0);
+    const newWager = Math.max(0, currentWager - entryAmount);
+    
     const { error: deductError } = await supabase
       .from('profiles')
-      .update({ wallet_balance: walletBalance - entryAmount })
+      .update({ 
+        wallet_balance: walletBalance - entryAmount,
+        wager_requirement: newWager 
+      })
       .eq('id', user.id);
 
     if (deductError) {
@@ -652,6 +664,7 @@ export const useLudoGame = () => {
       return;
     }
 
+    console.log(`[LudoGame] Wager reduced: ${currentWager} -> ${newWager} (bet: ${entryAmount})`);
     setWalletBalance(prev => prev - entryAmount);
 
     // 4v4 mode gets 2x multiplier, 1v1 uses settings multiplier

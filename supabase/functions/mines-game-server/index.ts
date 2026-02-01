@@ -157,10 +157,10 @@ Deno.serve(async (req) => {
           })
         }
 
-        // Check wallet balance
+        // Check wallet balance and get wager requirement
         const { data: profile, error: profileError } = await supabaseAdmin
           .from('profiles')
-          .select('wallet_balance')
+          .select('wallet_balance, wager_requirement')
           .eq('id', userId)
           .single()
 
@@ -182,10 +182,16 @@ Deno.serve(async (req) => {
           })
         }
 
-        // Deduct entry fee
+        // Deduct entry fee AND reduce wager requirement
+        const currentWager = Number(profile.wager_requirement || 0);
+        const newWager = Math.max(0, currentWager - entryAmount);
+        
         const { error: deductError } = await supabaseAdmin
           .from('profiles')
-          .update({ wallet_balance: Number(profile.wallet_balance) - entryAmount })
+          .update({ 
+            wallet_balance: Number(profile.wallet_balance) - entryAmount,
+            wager_requirement: newWager
+          })
           .eq('id', userId)
 
         if (deductError) {
@@ -195,6 +201,8 @@ Deno.serve(async (req) => {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
           })
         }
+        
+        console.log(`[mines-game-server] Wager reduced: ${currentWager} -> ${newWager} (bet: ${entryAmount})`)
 
         // Generate mine positions SERVER-SIDE (secret, never sent to client)
         const minePositions = generateMinePositions(minesCount)
