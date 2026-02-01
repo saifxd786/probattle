@@ -170,64 +170,64 @@ const MatchResultsDialog = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-lg p-0 overflow-hidden border-2 border-primary/30">
-        {/* Header with gradient */}
-        <div className="relative bg-gradient-to-br from-primary/30 via-primary/10 to-transparent p-6 border-b border-primary/20">
+      <DialogContent className="max-w-md p-0 overflow-hidden border border-primary/30 max-h-[85vh]">
+        {/* Header with gradient - Compact */}
+        <div className="relative bg-gradient-to-br from-primary/30 via-primary/10 to-transparent p-3 border-b border-primary/20">
           <motion.div
             className="absolute inset-0 bg-gradient-to-r from-transparent via-primary/10 to-transparent"
             animate={{ x: ['-100%', '100%'] }}
             transition={{ repeat: Infinity, duration: 3, ease: 'linear' }}
           />
           <DialogHeader className="relative z-10">
-            <DialogTitle className="flex items-center gap-3 text-xl">
-              <div className="p-2 rounded-xl bg-primary/20 border border-primary/30">
-                <Trophy className="w-6 h-6 text-primary" />
+            <DialogTitle className="flex items-center gap-2 text-base">
+              <div className="p-1.5 rounded-lg bg-primary/20 border border-primary/30">
+                <Trophy className="w-4 h-4 text-primary" />
               </div>
               <div>
-                <span className="block">Match Results</span>
-                <span className="text-sm font-normal text-muted-foreground">{matchTitle}</span>
+                <span className="block text-sm font-semibold">Match Results</span>
+                <span className="text-xs font-normal text-muted-foreground">{matchTitle}</span>
               </div>
             </DialogTitle>
           </DialogHeader>
           
-          {/* Stats summary */}
-          <div className="flex gap-4 mt-4">
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-background/50 border border-border/50">
-              <Gamepad2 className="w-4 h-4 text-primary" />
-              <span className="text-sm font-medium">{results.length} Players</span>
+          {/* Stats summary - Compact */}
+          <div className="flex gap-2 mt-2">
+            <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-background/50 border border-border/50">
+              <Gamepad2 className="w-3 h-3 text-primary" />
+              <span className="text-xs font-medium">{results.length} Players</span>
             </div>
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-background/50 border border-border/50">
-              <Trophy className="w-4 h-4 text-green-400" />
-              <span className="text-sm font-medium">{winners.length} Winners</span>
+            <div className="flex items-center gap-1.5 px-2 py-1 rounded-md bg-background/50 border border-border/50">
+              <Trophy className="w-3 h-3 text-green-400" />
+              <span className="text-xs font-medium">{winners.length} Winners</span>
             </div>
           </div>
         </div>
 
-        <ScrollArea className="max-h-[60vh] p-4">
+        <ScrollArea className="max-h-[50vh] p-3">
           {isLoading ? (
-            <div className="py-12 text-center">
+            <div className="py-8 text-center">
               <motion.div
-                className="w-12 h-12 mx-auto mb-4 border-4 border-primary/30 border-t-primary rounded-full"
+                className="w-8 h-8 mx-auto mb-3 border-3 border-primary/30 border-t-primary rounded-full"
                 animate={{ rotate: 360 }}
                 transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}
               />
-              <p className="text-muted-foreground">Loading results...</p>
+              <p className="text-sm text-muted-foreground">Loading results...</p>
             </div>
           ) : results.length === 0 ? (
-            <div className="py-12 text-center text-muted-foreground">
-              <Trophy className="w-12 h-12 mx-auto mb-3 opacity-30" />
-              <p>No results published yet</p>
+            <div className="py-8 text-center text-muted-foreground">
+              <Trophy className="w-8 h-8 mx-auto mb-2 opacity-30" />
+              <p className="text-sm">No results published yet</p>
             </div>
           ) : (
-            <div className="space-y-6">
+            <div className="space-y-3">
               {/* Winners Section */}
               {winners.length > 0 && (
                 <div>
-                  <div className="flex items-center gap-2 mb-3">
-                    <Trophy className="w-5 h-5 text-green-400" />
-                    <h3 className="font-semibold text-green-400">Winners</h3>
+                  <div className="flex items-center gap-1.5 mb-2">
+                    <Trophy className="w-4 h-4 text-green-400" />
+                    <h3 className="text-sm font-semibold text-green-400">Winners</h3>
                   </div>
-                  <div className="space-y-2">
+                  <div className="space-y-1.5">
                     <AnimatePresence>
                       {winners.map((result, index) => (
                         <ResultCard 
@@ -249,11 +249,11 @@ const MatchResultsDialog = ({
               {/* Ties Section (for TDM) */}
               {ties.length > 0 && (
                 <div>
-                  <div className="flex items-center gap-2 mb-3">
-                    <Minus className="w-5 h-5 text-yellow-400" />
-                    <h3 className="font-semibold text-yellow-400">Tie</h3>
+                  <div className="flex items-center gap-1.5 mb-2">
+                    <Minus className="w-4 h-4 text-yellow-400" />
+                    <h3 className="text-sm font-semibold text-yellow-400">Tie</h3>
                   </div>
-                  <div className="space-y-2">
+                  <div className="space-y-1.5">
                     {ties.map((result, index) => (
                       <ResultCard 
                         key={result.id} 
@@ -273,9 +273,9 @@ const MatchResultsDialog = ({
               {/* Losers Section */}
               {losers.length > 0 && (
                 <div>
-                  <div className="flex items-center gap-2 mb-3">
-                    <Skull className="w-5 h-5 text-red-400" />
-                    <h3 className="font-semibold text-red-400">
+                  <div className="flex items-center gap-1.5 mb-2">
+                    <Skull className="w-4 h-4 text-red-400" />
+                    <h3 className="text-sm font-semibold text-red-400">
                       {isTDM ? 'Lost' : 'Other Participants'}
                     </h3>
                   </div>
@@ -327,11 +327,11 @@ const ResultCard = ({
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
+      initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.05 }}
+      transition={{ delay: index * 0.03 }}
       className={cn(
-        "relative flex items-center gap-3 p-4 rounded-xl border-2 transition-all overflow-hidden",
+        "relative flex items-center gap-2 p-2.5 rounded-lg border transition-all overflow-hidden",
         isWinner 
           ? "bg-gradient-to-r from-green-500/10 via-transparent to-transparent border-green-500/30" 
           : status.label === 'TIE'
@@ -350,22 +350,34 @@ const ResultCard = ({
       
       {/* Rank/Position */}
       <div className="relative z-10 shrink-0">
-        {!isTDM && getPositionBadge(result.position)}
+        {!isTDM && (
+          <div className={cn(
+            "flex items-center justify-center w-8 h-8 rounded-md text-xs font-bold",
+            result.position === 1 ? "bg-yellow-500/20 text-yellow-400 border border-yellow-500/50" :
+            result.position === 2 ? "bg-gray-400/20 text-gray-300 border border-gray-400/50" :
+            result.position === 3 ? "bg-amber-600/20 text-amber-500 border border-amber-600/50" :
+            "bg-muted/50 text-muted-foreground border border-border"
+          )}>
+            {result.position === 1 ? <Crown className="w-4 h-4" /> :
+             result.position && result.position <= 3 ? <Medal className="w-4 h-4" /> :
+             `#${result.position}`}
+          </div>
+        )}
         {isTDM && (
-          <div className={cn("p-2 rounded-lg", status.bg, status.border, "border")}>
-            <StatusIcon className={cn("w-5 h-5", status.color)} />
+          <div className={cn("p-1.5 rounded-md", status.bg, status.border, "border")}>
+            <StatusIcon className={cn("w-4 h-4", status.color)} />
           </div>
         )}
       </div>
       
       {/* Avatar */}
       <Avatar className={cn(
-        "w-12 h-12 border-2 relative z-10",
+        "w-9 h-9 border relative z-10",
         isWinner ? "border-green-500/50" : status.label === 'TIE' ? "border-yellow-500/50" : "border-red-500/30"
       )}>
         <AvatarImage src={result.avatar_url || undefined} alt={result.bgmi_ingame_name || 'Player'} />
         <AvatarFallback className={cn(
-          "font-bold",
+          "text-xs font-bold",
           isWinner ? "bg-green-500/20 text-green-400" : status.label === 'TIE' ? "bg-yellow-500/20 text-yellow-400" : "bg-red-500/20 text-red-400"
         )}>
           {getInitials(result.bgmi_ingame_name)}
@@ -374,21 +386,18 @@ const ResultCard = ({
       
       {/* Player Info */}
       <div className="flex-1 min-w-0 relative z-10">
-        <div className="flex items-center gap-2">
-          <p className="font-semibold truncate">{result.bgmi_ingame_name || 'Unknown'}</p>
-          <Badge variant="outline" className={cn("text-[10px] py-0", status.color, status.bg, status.border)}>
+        <div className="flex items-center gap-1.5">
+          <p className="text-sm font-medium truncate max-w-[100px]">{result.bgmi_ingame_name || 'Unknown'}</p>
+          <Badge variant="outline" className={cn("text-[9px] px-1.5 py-0 h-4", status.color, status.bg, status.border)}>
             {status.label}
           </Badge>
         </div>
         
         {/* Kills info */}
         {result.kills !== null && (
-          <div className="flex items-center gap-1 mt-1 text-sm text-muted-foreground">
-            <Target className="w-3.5 h-3.5 text-orange-400" />
+          <div className="flex items-center gap-1 text-xs text-muted-foreground">
+            <Target className="w-3 h-3 text-orange-400" />
             <span>{result.kills} Kills</span>
-            {prizePerKill > 0 && result.kills > 0 && (
-              <span className="text-orange-400 ml-1">(+₹{result.kills * prizePerKill})</span>
-            )}
           </div>
         )}
       </div>
@@ -397,16 +406,15 @@ const ResultCard = ({
       <div className="relative z-10 text-right shrink-0">
         {result.prize_amount !== null && result.prize_amount > 0 ? (
           <div className="flex flex-col items-end">
-            <div className="flex items-center gap-1 text-green-400">
-              <Coins className="w-4 h-4" />
-              <span className="font-bold text-lg">₹{result.prize_amount}</span>
+            <div className="flex items-center gap-0.5 text-green-400">
+              <span className="font-bold text-sm">₹{result.prize_amount}</span>
             </div>
-            <span className="text-[10px] text-green-400/70">Won</span>
+            <span className="text-[9px] text-green-400/70">Won</span>
           </div>
         ) : (
           <div className="flex flex-col items-end">
-            <span className="text-muted-foreground font-medium">₹0</span>
-            <span className="text-[10px] text-muted-foreground">No Prize</span>
+            <span className="text-xs text-muted-foreground font-medium">₹0</span>
+            <span className="text-[9px] text-muted-foreground">No Prize</span>
           </div>
         )}
       </div>
