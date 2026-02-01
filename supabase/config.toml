@@ -57,3 +57,6 @@ verify_jwt = false
 
 [functions.wallet-server]
 verify_jwt = false
+
+[functions.check-bgmi-duplicate]
+verify_jwt = false
