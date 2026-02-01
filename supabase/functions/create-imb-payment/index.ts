@@ -190,7 +190,8 @@ Deno.serve(async (req) => {
     }
 
     // Extract payment URL from response
-    const paymentUrl = imbData.payment_url || imbData.data?.payment_url || imbData.url;
+    // Extract payment URL from response (IMB returns it in result.payment_url)
+    const paymentUrl = imbData.result?.payment_url || imbData.payment_url || imbData.data?.payment_url || imbData.url;
     
     if (!paymentUrl) {
       console.error('No payment URL in IMB response:', imbData);
