@@ -49,49 +49,30 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       subscriptionRef.current = null;
     }
     
-    // CRITICAL: Add safety timeout to prevent infinite loading states
-    // If auth doesn't resolve within 5 seconds, force isLoading to false
+    // Safety timeout - reduced to 3 seconds for faster fallback
     loadingTimeoutRef.current = setTimeout(() => {
       if (mounted && isLoading) {
-        console.warn('[Auth] Safety timeout triggered - forcing loading to complete');
+        console.warn('[Auth] Safety timeout - forcing load complete');
         setIsLoading(false);
       }
-    }, 5000);
+    }, 3000);
 
-    // Set up auth state listener FIRST (critical for catching all auth events)
+    // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event: AuthChangeEvent, newSession) => {
         if (!mounted) return;
         
-        console.log('[Auth] Auth state changed:', event, newSession?.user?.id);
+        console.log('[Auth] Event:', event, newSession?.user?.id?.slice(0, 8));
         
-        // Handle token refresh specifically
+        // Handle token refresh
         if (event === 'TOKEN_REFRESHED') {
-          console.log('[Auth] Token refreshed - preserving game state');
           setIsRefreshing(true);
-          
-          // Clear any existing refresh timeout
-          if (refreshTimeoutRef.current) {
-            clearTimeout(refreshTimeoutRef.current);
-          }
-          
-          // Mark refresh as complete after a short delay
+          if (refreshTimeoutRef.current) clearTimeout(refreshTimeoutRef.current);
           refreshTimeoutRef.current = setTimeout(() => {
             if (mounted) setIsRefreshing(false);
-            console.log('[Auth] Token refresh complete');
-          }, 500);
+          }, 300);
           
-          // Update session but preserve user continuity
           if (newSession?.user) {
-            // Verify same user
-            if (lastUserIdRef.current && lastUserIdRef.current !== newSession.user.id) {
-              console.error('[Auth] CRITICAL: User ID changed during token refresh!', {
-                expected: lastUserIdRef.current,
-                received: newSession.user.id
-              });
-              // Don't update - this is an anomaly
-              return;
-            }
             setSession(newSession);
             setUser(newSession.user);
           }
@@ -111,23 +92,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         // Handle initial session and sign in
         if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN') {
           if (newSession?.user) {
-            // Check for unexpected user change during active session
-            if (lastUserIdRef.current && lastUserIdRef.current !== newSession.user.id) {
-              console.warn('[Auth] User ID changed!', {
-                old: lastUserIdRef.current,
-                new: newSession.user.id
-              });
-            }
             setSession(newSession);
             setUser(newSession.user);
             updateLastUserId(newSession.user.id);
             
-            // Log session for multi-account detection
             if (event === 'SIGNED_IN') {
               logUserSession();
             }
           } else {
-            // INITIAL_SESSION with null session means no user is logged in
             setSession(null);
             setUser(null);
           }
@@ -135,7 +107,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           return;
         }
         
-        // Handle other events (USER_UPDATED, PASSWORD_RECOVERY, etc.)
+        // Handle other events
         if (newSession?.user) {
           setSession(newSession);
           setUser(newSession.user);
@@ -147,52 +119,31 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     subscriptionRef.current = subscription;
 
-    // THEN get existing session (this will trigger INITIAL_SESSION event)
-    // But also set state directly as a fallback for race conditions
+    // Get existing session
     const initSession = async () => {
       try {
-        // First attempt - get session
         const { data: { session: existingSession } } = await supabase.auth.getSession();
         
         if (!mounted) return;
         
         if (existingSession?.user) {
-          console.log('[Auth] Initial session found:', existingSession.user.id);
+          console.log('[Auth] Found existing session:', existingSession.user.id.slice(0, 8));
           setSession(existingSession);
           setUser(existingSession.user);
           updateLastUserId(existingSession.user.id);
-          if (mounted) setIsLoading(false);
+          setIsLoading(false);
           return;
         }
         
-        // No session found - try refresh (critical for PWA mode)
-        console.log('[Auth] No session found, attempting refresh...', isPWAStandalone() ? '(PWA mode)' : '');
-        
-        try {
-          const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
-          
-          if (!mounted) return;
-          
-          if (refreshData?.session?.user) {
-            console.log('[Auth] Session recovered via refresh:', refreshData.session.user.id);
-            setSession(refreshData.session);
-            setUser(refreshData.session.user);
-            updateLastUserId(refreshData.session.user.id);
-          } else if (refreshError) {
-            console.log('[Auth] Session refresh failed:', refreshError.message);
-          }
-        } catch (refreshErr) {
-          console.log('[Auth] Session refresh exception:', refreshErr);
-        }
-        
-        if (mounted) setIsLoading(false);
+        // No session - set loading false immediately
+        console.log('[Auth] No session found');
+        setIsLoading(false);
       } catch (error) {
-        console.error('[Auth] Failed to get session:', error);
+        console.error('[Auth] Session check failed:', error);
         if (mounted) setIsLoading(false);
       }
     };
     
-    // Start init immediately - PWA storage is already initialized in main.tsx
     initSession();
 
     return () => {
