@@ -11,6 +11,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
 import MatchParticipantsDialog from './MatchParticipantsDialog';
+import MatchResultsDialog from './MatchResultsDialog';
 import { safeError } from '@/utils/safeLogger';
 
 // Map images
@@ -112,6 +113,7 @@ const MatchCard = ({
   const [isRoomDialogOpen, setIsRoomDialogOpen] = useState(false);
   const [isRulesDialogOpen, setIsRulesDialogOpen] = useState(false);
   const [isParticipantsOpen, setIsParticipantsOpen] = useState(false);
+  const [isResultsOpen, setIsResultsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingCredentials, setIsLoadingCredentials] = useState(false);
   const [copiedField, setCopiedField] = useState<'id' | 'password' | 'matchId' | null>(null);
@@ -702,7 +704,7 @@ const MatchCard = ({
               </span>
             ) : isCompleted ? (
               <motion.button
-                onClick={() => setIsParticipantsOpen(true)}
+                onClick={() => setIsResultsOpen(true)}
                 className="relative flex items-center gap-2 text-sm font-semibold text-primary bg-primary/15 px-4 py-2.5 rounded-xl border-2 border-primary/50 shadow-lg shadow-primary/20 overflow-hidden"
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
@@ -725,7 +727,7 @@ const MatchCard = ({
                   transition={{ repeat: Infinity, duration: 2, ease: 'linear' }}
                 />
                 <Trophy className="w-5 h-5 relative z-10" />
-                <span className="relative z-10">Click - Result</span>
+                <span className="relative z-10">See Results</span>
               </motion.button>
             ) : (
               <Button 
@@ -1099,6 +1101,16 @@ const MatchCard = ({
         matchTitle={title}
         isOpen={isParticipantsOpen}
         onClose={() => setIsParticipantsOpen(false)}
+      />
+
+      {/* Match Results Dialog for completed matches */}
+      <MatchResultsDialog
+        matchId={id}
+        matchTitle={title}
+        matchType={mode}
+        prizePerKill={prizePerKill}
+        isOpen={isResultsOpen}
+        onClose={() => setIsResultsOpen(false)}
       />
 
       {/* BGMI Match Rules Dialog */}
