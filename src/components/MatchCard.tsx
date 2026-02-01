@@ -346,6 +346,25 @@ const MatchCard = ({
     
     setIsLoading(true);
     
+    // Check for duplicate BGMI Player IDs (silent - doesn't block registration, only alerts admin)
+    try {
+      const playerIdsToCheck: { playerId: string; secondaryPlayerId?: string } = {
+        playerId: accountPlayerId.trim(),
+      };
+      if (usingSecondary && secondaryPlayerId.trim()) {
+        playerIdsToCheck.secondaryPlayerId = secondaryPlayerId.trim();
+      }
+      
+      supabase.functions.invoke('check-bgmi-duplicate', {
+        body: playerIdsToCheck
+      }).catch((err) => {
+        // Silent fail - don't block registration
+        console.log('Duplicate check failed silently:', err);
+      });
+    } catch {
+      // Silent fail - don't block registration
+    }
+    
     // If paid match, deduct from wallet first
     if (!isFree) {
       // Get current profile data including wager requirement
