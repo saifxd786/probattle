@@ -143,6 +143,7 @@ const MatchCard = ({
   const [bgmiIngameName, setBgmiIngameName] = useState('');
   const [bgmiPlayerId, setBgmiPlayerId] = useState('');
   const [bgmiPlayerLevel, setBgmiPlayerLevel] = useState('');
+  const [isLevel30Confirmed, setIsLevel30Confirmed] = useState(false);
 
   const isFree = entryFee === 0 || isFreeMatch;
   const slotsPercentage = (slots.current / slots.total) * 100;
@@ -292,6 +293,12 @@ const MatchCard = ({
       toast({ title: 'Error', description: 'Please enter your BGMI Player ID', variant: 'destructive' });
       return;
     }
+    // Check level 30 confirmation first (for new users)
+    if (!bgmiProfile && !isLevel30Confirmed) {
+      toast({ title: 'Confirm Level', description: 'Please confirm your account is Level 30+', variant: 'destructive' });
+      return;
+    }
+    
     const level = parseInt(bgmiPlayerLevel);
     if (!bgmiPlayerLevel || isNaN(level)) {
       toast({ title: 'Error', description: 'Please enter your BGMI Player Level', variant: 'destructive' });
@@ -721,20 +728,64 @@ const MatchCard = ({
                   />
                 </div>
 
-                <div>
+                {/* Level 30+ Confirmation Toggle */}
+                <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-lg">
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <p className="font-medium text-foreground">Is your account Level 30+?</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Minimum level 30 required to participate
+                      </p>
+                    </div>
+                    <div className="flex gap-2 ml-4">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={isLevel30Confirmed === false ? 'destructive' : 'outline'}
+                        onClick={() => setIsLevel30Confirmed(false)}
+                        className={cn(
+                          'px-4',
+                          isLevel30Confirmed === false && 'ring-2 ring-destructive'
+                        )}
+                      >
+                        No
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={isLevel30Confirmed ? 'default' : 'outline'}
+                        onClick={() => setIsLevel30Confirmed(true)}
+                        className={cn(
+                          'px-4',
+                          isLevel30Confirmed && 'bg-green-500 hover:bg-green-600 ring-2 ring-green-500'
+                        )}
+                      >
+                        Yes
+                      </Button>
+                    </div>
+                  </div>
+                  
+                  {isLevel30Confirmed === false && (
+                    <div className="mt-3 p-2 bg-destructive/20 border border-destructive/30 rounded flex items-center gap-2">
+                      <Ban className="w-4 h-4 text-destructive shrink-0" />
+                      <p className="text-xs text-destructive">
+                        You cannot participate in matches with an account below Level 30. Level up your account first!
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                <div className={cn(!isLevel30Confirmed && 'opacity-50 pointer-events-none')}>
                   <Label>BGMI Player Level <span className="text-destructive">*</span></Label>
                   <Input
                     type="number"
                     value={bgmiPlayerLevel}
                     onChange={(e) => setBgmiPlayerLevel(e.target.value)}
-                    placeholder="Minimum level 30"
-                    min={1}
+                    placeholder="Enter your level (30+)"
+                    min={30}
                     max={100}
+                    disabled={!isLevel30Confirmed}
                   />
-                  <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
-                    <AlertCircle className="w-3 h-3" />
-                    Level 30+ required to participate
-                  </p>
                 </div>
               </>
             )}
@@ -772,7 +823,7 @@ const MatchCard = ({
               <Button 
                 variant="neon" 
                 onClick={handleRegister} 
-                disabled={isLoading || (!isFree && !hasEnoughBalance)} 
+                disabled={isLoading || (!isFree && !hasEnoughBalance) || (!bgmiProfile && !isLevel30Confirmed)} 
                 className="flex-1"
               >
                 {isLoading ? 'Joining...' : isFree ? 'Join Now' : `Pay ₹${entryFee} & Join`}
