@@ -2,11 +2,11 @@
   "name": "ProBattle Admin",
   "short_name": "PB Admin",
   "description": "ProBattle Admin Panel",
-  "start_url": "/admin",
-  "scope": "/admin",
+  "start_url": "/admin/login",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#0a0a0a",
-  "theme_color": "#0a0a0a",
+  "theme_color": "#00f0ff",
   "orientation": "portrait",
   "icons": [
     {
