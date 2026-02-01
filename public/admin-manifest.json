@@ -1,28 +1,28 @@
 {
-  "name": "ProBattle Admin",
+  "name": "PB Admin Panel",
   "short_name": "PB Admin",
-  "description": "ProBattle Admin Panel",
+  "description": "ProBattle Admin Control Panel",
   "start_url": "/admin/login",
-  "scope": "/",
+  "scope": "/admin",
   "display": "standalone",
   "background_color": "#0a0a0a",
   "theme_color": "#00f0ff",
   "orientation": "portrait",
   "icons": [
     {
-      "src": "/pwa-192x192.png",
+      "src": "/admin-icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/pwa-512x512.png",
+      "src": "/admin-icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/pwa-512x512.png",
+      "src": "/admin-icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
