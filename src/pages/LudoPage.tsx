@@ -347,7 +347,7 @@ const LudoPage = () => {
   if (isBanned && !isBanLoading) {
     return (
       <PullToRefresh onRefresh={handleRefresh}>
-        <div className="h-[100dvh] bg-background pb-20 overflow-y-auto">
+        <div className="min-h-[100dvh] bg-background pb-20">
           <Header />
           <main className="container mx-auto px-4 pt-20 text-center">
             <div className="glass-card p-8 max-w-md mx-auto">
@@ -372,7 +372,7 @@ const LudoPage = () => {
   if (!settings.isEnabled) {
     return (
       <PullToRefresh onRefresh={handleRefresh}>
-        <div className="h-[100dvh] bg-background pb-20 overflow-y-auto">
+        <div className="min-h-[100dvh] bg-background pb-20">
           <Header />
           <main className="container mx-auto px-4 pt-20 text-center">
             <Dices className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
