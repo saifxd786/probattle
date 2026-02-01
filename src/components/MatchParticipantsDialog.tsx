@@ -68,17 +68,23 @@ const MatchParticipantsDialog = ({ matchId, matchTitle, isOpen, onClose }: Match
     return name.slice(0, 2).toUpperCase();
   };
 
+  // Compact grid layout for large player counts (Classic matches with 100 players)
+  const isLargeMatch = participants.length > 20;
+
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-md">
+      <DialogContent className={isLargeMatch ? "max-w-2xl" : "max-w-md"}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Users className="w-5 h-5 text-primary" />
             Opponents - {matchTitle}
+            <span className="ml-auto text-sm font-normal text-muted-foreground">
+              {participants.length} players
+            </span>
           </DialogTitle>
         </DialogHeader>
 
-        <ScrollArea className="max-h-[400px] pr-4">
+        <ScrollArea className="max-h-[60vh] pr-2">
           {isLoading ? (
             <div className="py-8 text-center text-muted-foreground">Loading participants...</div>
           ) : participants.length === 0 ? (
@@ -86,7 +92,36 @@ const MatchParticipantsDialog = ({ matchId, matchTitle, isOpen, onClose }: Match
               <Users className="w-8 h-8 mx-auto mb-2 opacity-50" />
               No participants yet
             </div>
+          ) : isLargeMatch ? (
+            // Compact grid layout for Classic matches (100 players)
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+              {participants.map((participant, index) => (
+                <div 
+                  key={participant.id} 
+                  className="flex items-center gap-2 p-2 rounded-lg bg-secondary/30 border border-border/50 hover:border-primary/30 transition-colors"
+                >
+                  {/* Compact Slot Number */}
+                  <div className="w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center text-[10px] font-bold text-primary shrink-0">
+                    {index + 1}
+                  </div>
+                  
+                  {/* Small Avatar */}
+                  <Avatar className="w-6 h-6 border border-primary/20">
+                    <AvatarImage src={participant.avatar_url || undefined} alt={participant.bgmi_ingame_name || 'Player'} />
+                    <AvatarFallback className="bg-primary/20 text-primary text-[8px] font-bold">
+                      {getInitials(participant.bgmi_ingame_name)}
+                    </AvatarFallback>
+                  </Avatar>
+                  
+                  {/* Compact Name */}
+                  <p className="text-xs font-medium truncate flex-1" title={participant.bgmi_ingame_name || 'Unknown'}>
+                    {participant.bgmi_ingame_name || 'Unknown'}
+                  </p>
+                </div>
+              ))}
+            </div>
           ) : (
+            // Standard list layout for TDM/small matches
             <div className="space-y-2">
               {participants.map((participant, index) => (
                 <div 
@@ -118,12 +153,6 @@ const MatchParticipantsDialog = ({ matchId, matchTitle, isOpen, onClose }: Match
             </div>
           )}
         </ScrollArea>
-
-        <div className="pt-2 border-t border-border">
-          <p className="text-xs text-muted-foreground text-center">
-            Total: {participants.length} player{participants.length !== 1 ? 's' : ''} registered
-          </p>
-        </div>
       </DialogContent>
     </Dialog>
   );
