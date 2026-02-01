@@ -114,8 +114,19 @@ export function useAdminAccess(params: {
         if (cancelled) return;
 
         if (error) {
-          const httpStatus = (error as any)?.context?.response?.status;
-          if (httpStatus === 401) {
+          // Supabase Functions errors can expose status in different shapes depending on runtime.
+          const httpStatus =
+            (error as any)?.context?.response?.status ??
+            (error as any)?.context?.status ??
+            (error as any)?.status;
+
+          const message = String((error as any)?.message ?? "");
+          const looksUnauthorized =
+            httpStatus === 401 ||
+            message.toLowerCase().includes("unauthorized") ||
+            message.includes("401");
+
+          if (looksUnauthorized) {
             setStatus("needs_login");
             lastCheckedUserIdRef.current = user.id;
             lastResultRef.current = "needs_login";
