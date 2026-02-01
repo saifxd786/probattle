@@ -363,7 +363,49 @@ Deno.serve(async (req) => {
           .maybeSingle()
 
         if (duplicateCard) {
-          console.log(`[wallet-server] Duplicate bank card attempt: ${cardNumber.slice(-4)} by user ${userId}`)
+          console.log(`[wallet-server] Duplicate bank card attempt: ${cardNumber.slice(-4)} by user ${userId}, original owner: ${duplicateCard.user_id}`)
+          
+          // Create multi-account alert for admin
+          const alertIdentifier = `bank_${cardNumber.trim().slice(-4)}_${ifscCode.trim().toUpperCase()}`
+          
+          // Check if alert already exists for these users
+          const { data: existingAlert } = await supabaseAdmin
+            .from('multi_account_alerts')
+            .select('id, user_ids')
+            .eq('alert_type', 'bank_card_match')
+            .eq('identifier_value', alertIdentifier)
+            .eq('is_resolved', false)
+            .maybeSingle()
+
+          if (existingAlert) {
+            // Update existing alert if this user is not already in the list
+            const userIds = existingAlert.user_ids || []
+            if (!userIds.includes(userId)) {
+              userIds.push(userId)
+              await supabaseAdmin
+                .from('multi_account_alerts')
+                .update({ 
+                  user_ids: userIds, 
+                  user_count: userIds.length,
+                  updated_at: new Date().toISOString(),
+                  notes: `Attempt by user ${userId} to bind bank ****${cardNumber.slice(-4)}. Original owner: ${duplicateCard.user_id}`
+                })
+                .eq('id', existingAlert.id)
+            }
+          } else {
+            // Create new alert
+            await supabaseAdmin
+              .from('multi_account_alerts')
+              .insert({
+                alert_type: 'bank_card_match',
+                severity: 'critical',
+                identifier_value: alertIdentifier,
+                user_ids: [duplicateCard.user_id, userId],
+                user_count: 2,
+                notes: `User ${userId} tried to bind bank account ****${cardNumber.slice(-4)} (IFSC: ${ifscCode.trim().toUpperCase()}) which is already linked to user ${duplicateCard.user_id}`
+              })
+          }
+
           return new Response(JSON.stringify({ error: 'This bank details already in use by someone else' }), { 
             status: 400, 
             headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
