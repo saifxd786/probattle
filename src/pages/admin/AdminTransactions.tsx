@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Check, X, Search, Clock, CheckCircle, XCircle, Loader2, Image as ImageIcon, Bot } from 'lucide-react';
+import { Check, X, Search, Clock, CheckCircle, XCircle, Loader2, Image as ImageIcon, Bot, ArrowDownCircle, ArrowUpCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { toast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 type Transaction = {
   id: string;
@@ -36,6 +37,7 @@ const isAutoRejected = (tx: Transaction): boolean => {
 const AdminTransactions = () => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [transactionType, setTransactionType] = useState<'deposit' | 'withdrawal'>('deposit');
   const [filter, setFilter] = useState<'all' | 'pending' | 'processing' | 'completed' | 'cancelled' | 'auto-rejected'>('pending');
   const [searchTerm, setSearchTerm] = useState('');
   const [screenshotUrl, setScreenshotUrl] = useState<string | null>(null);
@@ -47,6 +49,7 @@ const AdminTransactions = () => {
     let query = supabase
       .from('transactions')
       .select('*')
+      .eq('type', transactionType)
       .order('created_at', { ascending: false });
 
     if (filter === 'auto-rejected') {
@@ -81,7 +84,7 @@ const AdminTransactions = () => {
 
   useEffect(() => {
     fetchTransactions();
-  }, [filter]);
+  }, [filter, transactionType]);
 
   const createNotification = async (userId: string, title: string, message: string, type: string) => {
     await supabase.from('notifications').insert({
@@ -332,6 +335,20 @@ const AdminTransactions = () => {
         <p className="text-muted-foreground">Manage deposits and withdrawals</p>
       </div>
 
+      {/* Deposit/Withdrawal Tabs */}
+      <Tabs value={transactionType} onValueChange={(v) => setTransactionType(v as 'deposit' | 'withdrawal')} className="w-full">
+        <TabsList className="grid w-full max-w-md grid-cols-2">
+          <TabsTrigger value="deposit" className="gap-2">
+            <ArrowDownCircle className="w-4 h-4" />
+            Deposits
+          </TabsTrigger>
+          <TabsTrigger value="withdrawal" className="gap-2">
+            <ArrowUpCircle className="w-4 h-4" />
+            Withdrawals
+          </TabsTrigger>
+        </TabsList>
+      </Tabs>
+
       {/* Search */}
       <div className="relative max-w-md">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -343,7 +360,7 @@ const AdminTransactions = () => {
         />
       </div>
 
-      {/* Filter Tabs */}
+      {/* Status Filter Tabs */}
       <div className="flex gap-2 flex-wrap">
         {filterButtons.map((btn) => (
           <Button
