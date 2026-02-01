@@ -3,6 +3,7 @@ import { User, Session, AuthChangeEvent } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
 import { logDeviceToServer } from '@/utils/deviceInfo';
+import { isPWAStandalone } from '@/utils/pwaAuthStorage';
 
 interface AuthContextType {
   user: User | null;
@@ -140,24 +141,41 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     // THEN get existing session (this will trigger INITIAL_SESSION event)
     // But also set state directly as a fallback for race conditions
-    supabase.auth.getSession().then(({ data: { session: existingSession } }) => {
-      if (!mounted) return;
-      
-      // Set the session state regardless - this ensures we don't stay in loading state
-      // The onAuthStateChange callback may have already set this, but setting again is safe
-      if (existingSession?.user) {
-        console.log('[Auth] Initial session found:', existingSession.user.id);
-        setSession(existingSession);
-        setUser(existingSession.user);
-        updateLastUserId(existingSession.user.id);
+    const initSession = async () => {
+      try {
+        const { data: { session: existingSession } } = await supabase.auth.getSession();
+        
+        if (!mounted) return;
+        
+        // Set the session state regardless - this ensures we don't stay in loading state
+        // The onAuthStateChange callback may have already set this, but setting again is safe
+        if (existingSession?.user) {
+          console.log('[Auth] Initial session found:', existingSession.user.id);
+          setSession(existingSession);
+          setUser(existingSession.user);
+          updateLastUserId(existingSession.user.id);
+        } else if (isPWAStandalone()) {
+          // PWA mode: If no session found, try refreshing the session
+          // This helps recover from storage issues
+          console.log('[Auth] PWA mode - attempting session refresh...');
+          const { data: refreshData } = await supabase.auth.refreshSession();
+          if (refreshData?.session?.user && mounted) {
+            console.log('[Auth] PWA session recovered:', refreshData.session.user.id);
+            setSession(refreshData.session);
+            setUser(refreshData.session.user);
+            updateLastUserId(refreshData.session.user.id);
+          }
+        }
+        
+        // Always mark loading as complete after getSession returns
+        if (mounted) setIsLoading(false);
+      } catch (error) {
+        console.error('[Auth] Failed to get session:', error);
+        if (mounted) setIsLoading(false);
       }
-      
-      // Always mark loading as complete after getSession returns
-      setIsLoading(false);
-    }).catch((error) => {
-      console.error('[Auth] Failed to get session:', error);
-      if (mounted) setIsLoading(false);
-    });
+    };
+    
+    initSession();
 
     return () => {
       mounted = false;
