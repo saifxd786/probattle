@@ -30,7 +30,7 @@ function checkRateLimit(userId: string): boolean {
 function generateOrderId(): string {
   const timestamp = Date.now();
   const random = Math.random().toString(36).substring(2, 10).toUpperCase();
-  return `PB_${timestamp}_${random}`;
+  return `PB${timestamp}${random}`;
 }
 
 Deno.serve(async (req) => {
@@ -78,9 +78,9 @@ Deno.serve(async (req) => {
     const { amount } = await req.json();
     
     // Validate amount
-    if (!amount || typeof amount !== 'number' || amount <= 0) {
+    if (!amount || typeof amount !== 'number' || amount < 1) {
       return new Response(
-        JSON.stringify({ error: 'Invalid amount. Must be greater than 0.' }),
+        JSON.stringify({ error: 'Invalid amount. Must be at least ₹1.' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -100,8 +100,15 @@ Deno.serve(async (req) => {
     // Generate unique order ID
     const orderId = generateOrderId();
 
-    // Get callback URL (webhook URL)
-    const callbackUrl = `${supabaseUrl}/functions/v1/imb-webhook`;
+    // Get user profile for customer details
+    const { data: profile } = await supabaseAdmin
+      .from('profiles')
+      .select('username, email, phone')
+      .eq('id', user.id)
+      .single();
+
+    // Build callback/redirect URLs
+    const redirectUrl = `${supabaseUrl}/functions/v1/imb-payment-redirect?order_id=${orderId}`;
 
     // Insert payment record with PENDING status
     const { error: insertError } = await supabaseAdmin
@@ -124,46 +131,98 @@ Deno.serve(async (req) => {
 
     console.log(`Payment initiated: ${orderId} for user ${user.id}, amount: ${amount}`);
 
-    // Call IMB API to initiate payment
-    const imbResponse = await fetch(`${IMB_API_URL}/api/v1/payment/initiate`, {
+    // Call IMB API to initiate payment (matching their exact API format)
+    // Endpoint: POST /api/initiate-payment
+    const imbApiUrl = IMB_API_URL.endsWith('/') ? IMB_API_URL : `${IMB_API_URL}/`;
+    
+    const imbRequestBody = {
+      token: IMB_API_TOKEN,
+      order_id: orderId,
+      amount: amount.toString(),
+      redirect_url: redirectUrl,
+      name: profile?.username || 'User',
+      email: profile?.email || user.email || 'user@probattle.com',
+      phone: profile?.phone || '9999999999'
+    };
+
+    console.log('Calling IMB API:', `${imbApiUrl}api/initiate-payment`);
+    console.log('Request body (token hidden):', { ...imbRequestBody, token: '***HIDDEN***' });
+
+    const imbResponse = await fetch(`${imbApiUrl}api/initiate-payment`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${IMB_API_TOKEN}`
+        'Accept': 'application/json'
       },
-      body: JSON.stringify({
-        order_id: orderId,
-        amount: amount,
-        currency: 'INR',
-        callback_url: callbackUrl,
-        customer_email: user.email,
-        customer_id: user.id
-      })
+      body: JSON.stringify(imbRequestBody)
     });
 
-    if (!imbResponse.ok) {
-      const errorText = await imbResponse.text();
-      console.error('IMB API error:', errorText);
-      
-      // Update payment status to FAILED
+    const imbText = await imbResponse.text();
+    console.log('IMB API raw response:', imbText);
+
+    let imbData: any;
+    try {
+      imbData = JSON.parse(imbText);
+    } catch {
+      console.error('IMB API returned invalid JSON:', imbText);
       await supabaseAdmin
         .from('payments')
         .update({ status: 'FAILED', updated_at: new Date().toISOString() })
         .eq('order_id', orderId);
       
       return new Response(
-        JSON.stringify({ error: 'Payment gateway error. Please try again.' }),
+        JSON.stringify({ error: 'Payment gateway returned invalid response' }),
         { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    const imbData = await imbResponse.json();
+    // Check IMB response status
+    if (!imbData.status || imbData.status === false || imbData.status === 'false') {
+      console.error('IMB API error:', imbData);
+      
+      await supabaseAdmin
+        .from('payments')
+        .update({ 
+          status: 'FAILED', 
+          webhook_payload: imbData,
+          updated_at: new Date().toISOString() 
+        })
+        .eq('order_id', orderId);
+      
+      return new Response(
+        JSON.stringify({ error: imbData.message || 'Payment gateway error. Please try again.' }),
+        { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Extract payment URL from response
+    const paymentUrl = imbData.payment_url || imbData.data?.payment_url || imbData.url;
+    
+    if (!paymentUrl) {
+      console.error('No payment URL in IMB response:', imbData);
+      
+      await supabaseAdmin
+        .from('payments')
+        .update({ 
+          status: 'FAILED', 
+          webhook_payload: imbData,
+          updated_at: new Date().toISOString() 
+        })
+        .eq('order_id', orderId);
+      
+      return new Response(
+        JSON.stringify({ error: 'Payment gateway did not return payment URL' }),
+        { status: 502, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log('Payment URL received:', paymentUrl);
 
     // Return only the payment URL (never expose tokens)
     return new Response(
       JSON.stringify({
         success: true,
-        payment_url: imbData.payment_url,
+        payment_url: paymentUrl,
         order_id: orderId
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
