@@ -31,6 +31,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const lastUserIdRef = useRef<string | null>(null);
   const refreshTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const subscriptionRef = useRef<{ unsubscribe: () => void } | null>(null);
+  const loadingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Track the last known user ID for game state preservation
   const updateLastUserId = useCallback((userId: string | null) => {
@@ -47,6 +48,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       subscriptionRef.current.unsubscribe();
       subscriptionRef.current = null;
     }
+    
+    // CRITICAL: Add safety timeout to prevent infinite loading states
+    // If auth doesn't resolve within 5 seconds, force isLoading to false
+    loadingTimeoutRef.current = setTimeout(() => {
+      if (mounted && isLoading) {
+        console.warn('[Auth] Safety timeout triggered - forcing loading to complete');
+        setIsLoading(false);
+      }
+    }, 5000);
 
     // Set up auth state listener FIRST (critical for catching all auth events)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
@@ -193,6 +203,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
       if (refreshTimeoutRef.current) {
         clearTimeout(refreshTimeoutRef.current);
+      }
+      if (loadingTimeoutRef.current) {
+        clearTimeout(loadingTimeoutRef.current);
       }
     };
   }, [updateLastUserId]);
