@@ -469,8 +469,10 @@ const MatchCard = ({
     } else {
       toast({ title: 'Joined Successfully!', description: 'Please read the match rules carefully.' });
       setIsDialogOpen(false);
-      // Show rules popup after successful registration
-      setIsRulesDialogOpen(true);
+      // Show rules popup after successful registration with slight delay for animation
+      setTimeout(() => {
+        setIsRulesDialogOpen(true);
+      }, 300);
       onRegister?.();
     }
     
@@ -1113,9 +1115,13 @@ const MatchCard = ({
         onClose={() => setIsResultsOpen(false)}
       />
 
-      {/* BGMI Match Rules Dialog */}
+      {/* BGMI Match Rules Dialog - Only closes via X button */}
       <Dialog open={isRulesDialogOpen} onOpenChange={setIsRulesDialogOpen}>
-        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+        <DialogContent 
+          className="max-w-md max-h-[90vh] overflow-y-auto"
+          onInteractOutside={(e) => e.preventDefault()}
+          onEscapeKeyDown={(e) => e.preventDefault()}
+        >
           <DialogHeader className="text-center pb-2">
             <div className="mx-auto w-16 h-16 rounded-full bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center mb-3 border border-primary/30">
               <Shield className="w-8 h-8 text-primary" />
