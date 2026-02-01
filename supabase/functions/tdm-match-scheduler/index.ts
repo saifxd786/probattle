@@ -104,12 +104,14 @@ Deno.serve(async (req) => {
         });
 
         // Create match
+        // For TDM matches, the winner gets the full prize pool
         const matchData = {
           title: `TDM 1v1 - ${formattedTime}`,
           game: 'bgmi' as const,
           match_type: settings.match_type,
           entry_fee: settings.entry_fee,
           prize_pool: settings.prize_pool,
+          first_place_prize: settings.prize_pool, // Winner gets full prize pool in TDM
           max_slots: settings.max_slots,
           match_time: matchTimeIST.toISOString(),
           gun_category: settings.gun_category,
