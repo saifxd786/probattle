@@ -67,6 +67,17 @@ const MAX_VIDEO_SIZE = 3 * 1024 * 1024 * 1024; // 3GB
 
 const INACTIVITY_TIMEOUT = 60 * 60 * 1000; // 1 hour in milliseconds
 
+// Storage key for chat persistence
+const CHAT_STORAGE_KEY = 'probattle_ai_chat';
+
+interface StoredChatData {
+  messages: AIMessage[];
+  category: string | null;
+  transaction: any | null;
+  lastActivityTime: number;
+  step: 'category' | 'transactions' | 'game' | 'chat';
+}
+
 const SupportChat = () => {
   const { user } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
@@ -75,6 +86,7 @@ const SupportChat = () => {
   const [selectedTransaction, setSelectedTransaction] = useState<any | null>(null);
   const [transactions, setTransactions] = useState<any[]>([]);
   const [loadingTransactions, setLoadingTransactions] = useState(false);
+  const [userCode, setUserCode] = useState<string | null>(null);
   
   // AI Chat state
   const [aiMessages, setAiMessages] = useState<AIMessage[]>([]);
@@ -100,6 +112,74 @@ const SupportChat = () => {
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxImages, setLightboxImages] = useState<string[]>([]);
   const [lightboxIndex, setLightboxIndex] = useState(0);
+
+  // Load saved chat on mount
+  useEffect(() => {
+    if (!user) return;
+    
+    try {
+      const storedData = localStorage.getItem(`${CHAT_STORAGE_KEY}_${user.id}`);
+      if (storedData) {
+        const parsed: StoredChatData = JSON.parse(storedData);
+        const timeSinceLastActivity = Date.now() - parsed.lastActivityTime;
+        
+        // Check if chat has expired (1 hour of inactivity)
+        if (timeSinceLastActivity < INACTIVITY_TIMEOUT) {
+          // Restore chat state
+          setAiMessages(parsed.messages.map(m => ({
+            ...m,
+            timestamp: new Date(m.timestamp)
+          })));
+          setSelectedCategory(parsed.category);
+          setSelectedTransaction(parsed.transaction);
+          setStep(parsed.step);
+          setLastActivityTime(parsed.lastActivityTime);
+        } else {
+          // Clear expired chat
+          localStorage.removeItem(`${CHAT_STORAGE_KEY}_${user.id}`);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to load chat history:', err);
+    }
+  }, [user]);
+
+  // Save chat to localStorage whenever messages change
+  useEffect(() => {
+    if (!user || aiMessages.length === 0) return;
+    
+    try {
+      const dataToStore: StoredChatData = {
+        messages: aiMessages,
+        category: selectedCategory,
+        transaction: selectedTransaction,
+        lastActivityTime,
+        step,
+      };
+      localStorage.setItem(`${CHAT_STORAGE_KEY}_${user.id}`, JSON.stringify(dataToStore));
+    } catch (err) {
+      console.error('Failed to save chat history:', err);
+    }
+  }, [aiMessages, selectedCategory, selectedTransaction, lastActivityTime, step, user]);
+
+  // Fetch user code for display
+  useEffect(() => {
+    if (!user) return;
+    
+    const fetchUserCode = async () => {
+      const { data } = await supabase
+        .from('profiles')
+        .select('user_code')
+        .eq('id', user.id)
+        .single();
+      
+      if (data?.user_code) {
+        setUserCode(data.user_code);
+      }
+    };
+    
+    fetchUserCode();
+  }, [user]);
 
   // Inactivity auto-reset effect
   useEffect(() => {
@@ -349,6 +429,7 @@ const SupportChat = () => {
           language: 'auto',
           hasImage: !!userMessage.image,
           userId: user?.id,
+          userCode: userCode,
           transactionId: selectedTransaction?.id,
         },
       });
@@ -400,6 +481,10 @@ const SupportChat = () => {
     setNewMessage('');
     setPendingImage(null);
     setLastActivityTime(Date.now());
+    // Clear localStorage when chat is reset
+    if (user) {
+      localStorage.removeItem(`${CHAT_STORAGE_KEY}_${user.id}`);
+    }
   };
 
   const openLightbox = (imageUrl: string) => {
@@ -442,14 +527,14 @@ const SupportChat = () => {
         onChange={handleImageSelect}
       />
 
-      {/* Chat Window */}
+      {/* Chat Window - Fullscreen on mobile to prevent accidental touches */}
       <AnimatePresence>
         {isOpen && (
           <motion.div
             initial={{ opacity: 0, y: 20, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
-            className="fixed top-16 right-4 z-50 w-[340px] sm:w-[400px] h-[550px] max-h-[75vh] bg-card border border-border rounded-2xl shadow-2xl flex flex-col overflow-hidden"
+            className="fixed inset-0 z-50 sm:inset-auto sm:top-16 sm:right-4 sm:w-[400px] sm:h-[550px] sm:max-h-[75vh] sm:rounded-2xl bg-card border-0 sm:border sm:border-border shadow-2xl flex flex-col overflow-hidden"
           >
             {/* Header */}
             <div className="flex items-center justify-between p-3 border-b border-border bg-gradient-to-r from-primary/10 via-primary/5 to-transparent">
@@ -468,7 +553,9 @@ const SupportChat = () => {
                     <Sparkles className="w-3 h-3 text-yellow-400" />
                   </h3>
                   <p className="text-xs text-muted-foreground">
-                    {step === 'category' ? 'Select your issue type' : 
+                    {step === 'chat' && userCode ? (
+                      <span>ID: <span className="font-mono text-primary">{userCode}</span> • Online</span>
+                    ) : step === 'category' ? 'Select your issue type' : 
                      step === 'transactions' ? 'Select transaction' :
                      step === 'game' ? 'Select game' : 
                      'Online • Instant replies'}

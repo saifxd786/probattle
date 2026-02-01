@@ -19,6 +19,7 @@ interface RequestBody {
   language: string;
   hasImage: boolean;
   userId?: string;
+  userCode?: string;
 }
 
 // Keywords that indicate serious issues requiring admin attention
@@ -293,7 +294,7 @@ serve(async (req) => {
   }
 
   try {
-    const { messages, category, subCategory, language, userId } = await req.json() as RequestBody;
+    const { messages, category, subCategory, language, userId, userCode } = await req.json() as RequestBody;
     
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
@@ -442,6 +443,10 @@ serve(async (req) => {
           const ticketMessage = `🤖 **AI Support Escalation Report**
 
 ---
+
+**👤 User Details:**
+- **User ID:** ${userId}
+${userCode ? `- **User Code:** ${userCode}` : ''}
 
 **📋 Issue Details:**
 - **Category:** ${category}
