@@ -466,9 +466,24 @@ const AuthPage = () => {
   const [deviceBanned, setDeviceBanned] = useState(false);
   const [banReason, setBanReason] = useState('');
 
+  // Load saved credentials from localStorage
+  const getSavedCredentials = () => {
+    try {
+      const saved = localStorage.getItem('probattle_saved_login');
+      if (saved) {
+        return JSON.parse(saved);
+      }
+    } catch {
+      // Ignore parse errors
+    }
+    return null;
+  };
+
+  const savedCreds = getSavedCredentials();
+
   const [formData, setFormData] = useState({
-    phone: '',
-    password: '',
+    phone: savedCreds?.phone || '',
+    password: savedCreds?.password || '',
     confirmPassword: '',
     username: '',
     dateOfBirth: '',
@@ -894,6 +909,16 @@ const AuthPage = () => {
         // Update device fingerprint on login (non-blocking)
         if (loginData.user) {
           saveDeviceFingerprint(loginData.user.id);
+          
+          // Save credentials to localStorage for auto-fill on next login
+          try {
+            localStorage.setItem('probattle_saved_login', JSON.stringify({
+              phone: phoneForAuth,
+              password: passwordForAuth,
+            }));
+          } catch {
+            // Ignore storage errors
+          }
         }
 
         toast({
