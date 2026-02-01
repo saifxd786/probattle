@@ -143,7 +143,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     // But also set state directly as a fallback for race conditions
     const initSession = async () => {
       try {
-        const { data: { session: existingSession } } = await supabase.auth.getSession();
+        const { data: { session: existingSession }, error: sessionError } = await supabase.auth.getSession();
         
         if (!mounted) return;
         
@@ -154,28 +154,38 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           setSession(existingSession);
           setUser(existingSession.user);
           updateLastUserId(existingSession.user.id);
-        } else if (isPWAStandalone()) {
-          // PWA mode: If no session found, try refreshing the session
-          // This helps recover from storage issues
-          console.log('[Auth] PWA mode - attempting session refresh...');
-          const { data: refreshData } = await supabase.auth.refreshSession();
-          if (refreshData?.session?.user && mounted) {
-            console.log('[Auth] PWA session recovered:', refreshData.session.user.id);
-            setSession(refreshData.session);
-            setUser(refreshData.session.user);
-            updateLastUserId(refreshData.session.user.id);
+          if (mounted) setIsLoading(false);
+        } else {
+          // No session found - try refresh (especially important for PWA)
+          console.log('[Auth] No session found, attempting refresh...', isPWAStandalone() ? '(PWA mode)' : '');
+          
+          try {
+            const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+            
+            if (!mounted) return;
+            
+            if (refreshData?.session?.user) {
+              console.log('[Auth] Session recovered via refresh:', refreshData.session.user.id);
+              setSession(refreshData.session);
+              setUser(refreshData.session.user);
+              updateLastUserId(refreshData.session.user.id);
+            } else if (refreshError) {
+              console.log('[Auth] Session refresh failed:', refreshError.message);
+            }
+          } catch (refreshErr) {
+            console.log('[Auth] Session refresh exception:', refreshErr);
           }
+          
+          if (mounted) setIsLoading(false);
         }
-        
-        // Always mark loading as complete after getSession returns
-        if (mounted) setIsLoading(false);
       } catch (error) {
         console.error('[Auth] Failed to get session:', error);
         if (mounted) setIsLoading(false);
       }
     };
     
-    initSession();
+    // Small delay to ensure PWA storage patching is complete
+    setTimeout(initSession, 50);
 
     return () => {
       mounted = false;

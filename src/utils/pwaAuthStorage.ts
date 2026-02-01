@@ -175,6 +175,7 @@ export const pwaAuthStorage = {
 
 /**
  * Initialize PWA auth storage - restore session from IndexedDB if localStorage is empty
+ * AND patch localStorage to auto-sync with IndexedDB for PWA robustness
  */
 export const initPWAAuthStorage = async (): Promise<void> => {
   try {
@@ -182,14 +183,14 @@ export const initPWAAuthStorage = async (): Promise<void> => {
     const isPWA = window.matchMedia('(display-mode: standalone)').matches ||
                   (window.navigator as any).standalone === true;
     
-    if (!isPWA) return;
+    console.log('[PWA Auth] Mode check - isPWA:', isPWA);
     
-    console.log('[PWA Auth] Initializing PWA storage...');
-    
-    // Check if localStorage has the session
+    // Always try to restore from IndexedDB first (even in browser mode for consistency)
     const localSession = localStorage.getItem(SESSION_KEY);
     
     if (!localSession) {
+      console.log('[PWA Auth] No localStorage session, checking IndexedDB...');
+      
       // Try to restore from IndexedDB
       const indexedDBSession = await getFromIndexedDB(SESSION_KEY);
       
@@ -200,17 +201,64 @@ export const initPWAAuthStorage = async (): Promise<void> => {
         // Try sessionStorage backup
         const backupSession = sessionStorage.getItem(BACKUP_KEY);
         if (backupSession) {
-          console.log('[PWA Auth] Restoring session from backup');
+          console.log('[PWA Auth] Restoring session from sessionStorage backup');
           localStorage.setItem(SESSION_KEY, backupSession);
         }
       }
     } else {
+      console.log('[PWA Auth] localStorage session exists, syncing to IndexedDB');
       // Ensure IndexedDB is synced
       await saveToIndexedDB(SESSION_KEY, localSession);
+      // Also backup to sessionStorage
+      try {
+        sessionStorage.setItem(BACKUP_KEY, localSession);
+      } catch {}
     }
+    
+    // Patch localStorage to auto-sync auth data with IndexedDB
+    patchLocalStorageForPWA();
+    
   } catch (error) {
     console.warn('[PWA Auth] Init error:', error);
   }
+};
+
+/**
+ * Patch localStorage setItem/removeItem to auto-sync auth data with IndexedDB
+ * This ensures the Supabase client's storage operations are also backed up
+ */
+const patchLocalStorageForPWA = () => {
+  // Only patch once
+  if ((localStorage as any).__pwa_patched) return;
+  
+  const originalSetItem = localStorage.setItem.bind(localStorage);
+  const originalRemoveItem = localStorage.removeItem.bind(localStorage);
+  
+  localStorage.setItem = (key: string, value: string) => {
+    originalSetItem(key, value);
+    
+    // Sync auth data to IndexedDB
+    if (key.includes('auth') || key.includes(STORAGE_KEY_PREFIX)) {
+      saveToIndexedDB(key, value).catch(() => {});
+      try {
+        sessionStorage.setItem(BACKUP_KEY, value);
+      } catch {}
+    }
+  };
+  
+  localStorage.removeItem = (key: string) => {
+    originalRemoveItem(key);
+    
+    if (key.includes('auth') || key.includes(STORAGE_KEY_PREFIX)) {
+      removeFromIndexedDB(key).catch(() => {});
+      try {
+        sessionStorage.removeItem(BACKUP_KEY);
+      } catch {}
+    }
+  };
+  
+  (localStorage as any).__pwa_patched = true;
+  console.log('[PWA Auth] localStorage patched for PWA sync');
 };
 
 /**
