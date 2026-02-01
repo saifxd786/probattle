@@ -284,21 +284,6 @@ const MaintenancePage = () => {
                   </div>
                 </div>
 
-                {/* Progress indicator */}
-                <div className="bg-gray-900/50 backdrop-blur-sm border border-gray-800 rounded-2xl p-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-gray-400 text-xs">Update Progress</span>
-                    <span className="text-indigo-400 text-xs font-bold">75%</span>
-                  </div>
-                  <div className="h-2 bg-gray-800 rounded-full overflow-hidden">
-                    <motion.div
-                      initial={{ width: 0 }}
-                      animate={{ width: '75%' }}
-                      transition={{ duration: 1, delay: 0.3 }}
-                      className="h-full bg-gradient-to-r from-indigo-600 to-purple-600 rounded-full"
-                    />
-                  </div>
-                </div>
               </motion.div>
             )}
 
