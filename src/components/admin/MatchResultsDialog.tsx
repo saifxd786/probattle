@@ -75,6 +75,9 @@ const MatchResultsDialog = ({ match, isOpen, onClose, onResultsDeclared, isEditM
 
   const isClassicMatch = match?.match_type === 'classic';
   const isTDMMatch = match?.match_type?.startsWith('tdm');
+  
+  // For TDM matches, use prize_pool as winner prize if first_place_prize is not set
+  const effectiveWinnerPrize = match ? (match.first_place_prize || (isTDMMatch ? match.prize_pool : 0)) : 0;
 
   useEffect(() => {
     if (match && isOpen) {
@@ -195,12 +198,12 @@ const MatchResultsDialog = ({ match, isOpen, onClose, onResultsDeclared, isEditM
           let prize = 0;
           
           if (isTDMMatch && updated.result_status === 'win') {
-            prize = match.first_place_prize || 0;
+            prize = effectiveWinnerPrize;
             updated.is_winner = true;
             updated.position = 1;
           } else if (isTDMMatch && updated.result_status === 'tie') {
             // TIE: Split the prize pool 50/50
-            prize = Math.floor((match.first_place_prize || 0) / 2);
+            prize = Math.floor(effectiveWinnerPrize / 2);
             updated.is_winner = false;
             updated.position = null;
           } else if (isTDMMatch && updated.result_status === 'lose') {
@@ -210,7 +213,7 @@ const MatchResultsDialog = ({ match, isOpen, onClose, onResultsDeclared, isEditM
           
           if (isClassicMatch) {
             if (updated.position === 1) {
-              prize += match.first_place_prize || 0;
+              prize += effectiveWinnerPrize;
               updated.is_winner = true;
             } else if (updated.position === 2) {
               prize += (match as any).second_place_prize || 0;
@@ -237,7 +240,7 @@ const MatchResultsDialog = ({ match, isOpen, onClose, onResultsDeclared, isEditM
     setResults(prev => prev.map(r => {
       const updated = { ...r, result_status: 'win' as const, is_winner: true, position: 1 };
       if (match) {
-        updated.prize_amount = (match.first_place_prize || 0) + (match.prize_per_kill * r.kills);
+        updated.prize_amount = effectiveWinnerPrize + (match.prize_per_kill * r.kills);
       }
       return updated;
     }));
@@ -254,7 +257,7 @@ const MatchResultsDialog = ({ match, isOpen, onClose, onResultsDeclared, isEditM
 
   const markAllAsTie = () => {
     setResults(prev => prev.map(r => {
-      const tieAmount = Math.floor((match?.first_place_prize || 0) / 2);
+      const tieAmount = Math.floor(effectiveWinnerPrize / 2);
       const updated = { ...r, result_status: 'tie' as const, is_winner: false, position: null, prize_amount: tieAmount + (match?.prize_per_kill || 0) * r.kills };
       return updated;
     }));
@@ -267,7 +270,7 @@ const MatchResultsDialog = ({ match, isOpen, onClose, onResultsDeclared, isEditM
       if (match && match.prize_per_kill && bulkKills > 0) {
         let prize = match.prize_per_kill * bulkKills;
         if (r.is_winner || r.result_status === 'win') {
-          prize += match.first_place_prize || 0;
+          prize += effectiveWinnerPrize;
         } else if (isClassicMatch && r.position === 2) {
           prize += (match as any).second_place_prize || 0;
         } else if (isClassicMatch && r.position === 3) {
@@ -513,7 +516,7 @@ const MatchResultsDialog = ({ match, isOpen, onClose, onResultsDeclared, isEditM
                 {isTDMMatch && (
                   <div>
                     <span className="text-muted-foreground">Winner Prize:</span>
-                    <p className="font-bold text-yellow-500">₹{match?.first_place_prize || 0}</p>
+                    <p className="font-bold text-yellow-500">₹{effectiveWinnerPrize}</p>
                   </div>
                 )}
                 <div>
