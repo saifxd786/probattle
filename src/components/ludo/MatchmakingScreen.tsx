@@ -182,7 +182,7 @@ const MatchmakingScreen = ({ players, totalPlayers, entryAmount, rewardAmount }:
   };
 
   return (
-    <div className="h-screen flex flex-col bg-[#0A0A0F] relative overflow-hidden">
+    <div className="h-[100dvh] flex flex-col bg-[#0A0A0F] relative overflow-hidden">
       {/* Subtle gradient background */}
       <div 
         className="fixed inset-0 -z-10 pointer-events-none"
