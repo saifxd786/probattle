@@ -1,8 +1,10 @@
-import { useEffect, useState } from 'react';
-import { Users, Gamepad2, DollarSign, Clock, TrendingUp, ArrowUpRight, ArrowDownRight, Trophy, Dices, Gem, Percent, AlertTriangle, Shield, Bot, CheckCircle, XCircle } from 'lucide-react';
+import { useEffect, useState, useCallback } from 'react';
+import { Users, Gamepad2, DollarSign, Clock, TrendingUp, ArrowUpRight, ArrowDownRight, Trophy, Dices, Gem, Percent, AlertTriangle, Shield, Bot, CheckCircle, XCircle, RefreshCw } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import { 
   LineChart, 
   Line, 
@@ -73,38 +75,65 @@ const AdminDashboard = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [multiAccountAlerts, setMultiAccountAlerts] = useState({ total: 0, critical: 0 });
   const [lastCleanup, setLastCleanup] = useState<{ run_at: string; rejected_count: number; success: boolean } | null>(null);
+  const [fetchError, setFetchError] = useState<string | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  useEffect(() => {
-    const fetchStats = async () => {
+  const fetchAllStats = useCallback(async (showRefresh = false) => {
+    try {
+      if (showRefresh) {
+        setIsRefreshing(true);
+      }
+      setFetchError(null);
+      
       // Get total users
-      const { count: usersCount } = await supabase
+      const { count: usersCount, error: usersError } = await supabase
         .from('profiles')
         .select('*', { count: 'exact', head: true });
 
+      if (usersError) {
+        console.error('Error fetching users:', usersError);
+      }
+
       // Get active matches
-      const { count: matchesCount } = await supabase
+      const { count: matchesCount, error: matchesError } = await supabase
         .from('matches')
         .select('*', { count: 'exact', head: true })
         .in('status', ['upcoming', 'live']);
 
+      if (matchesError) {
+        console.error('Error fetching matches:', matchesError);
+      }
+
       // Get pending payments
-      const { count: paymentsCount } = await supabase
+      const { count: paymentsCount, error: paymentsError } = await supabase
         .from('match_registrations')
         .select('*', { count: 'exact', head: true })
         .eq('payment_status', 'pending')
         .eq('is_approved', false);
 
+      if (paymentsError) {
+        console.error('Error fetching pending payments:', paymentsError);
+      }
+
       // Get total completed deposits
-      const { data: completedDeposits } = await supabase
+      const { data: completedDeposits, error: depositsError } = await supabase
         .from('transactions')
         .select('amount')
         .eq('type', 'deposit')
         .eq('status', 'completed');
 
+      if (depositsError) {
+        console.error('Error fetching deposits:', depositsError);
+        // This is likely an RLS issue - user may not have admin access
+        if (depositsError.code === 'PGRST116' || depositsError.message?.includes('permission')) {
+          setFetchError('You do not have permission to view this data. Please ensure you are logged in as an admin.');
+        }
+      }
+
       const totalRevenue = completedDeposits?.reduce((sum, t) => sum + Number(t.amount), 0) || 0;
 
       // Get recent registrations
-      const { data: registrations } = await supabase
+      const { data: registrations, error: regError } = await supabase
         .from('match_registrations')
         .select(`
           *,
@@ -113,6 +142,10 @@ const AdminDashboard = () => {
         `)
         .order('registered_at', { ascending: false })
         .limit(5);
+
+      if (regError) {
+        console.error('Error fetching registrations:', regError);
+      }
 
       setStats({
         totalUsers: usersCount || 0,
@@ -131,10 +164,18 @@ const AdminDashboard = () => {
       await fetchLastCleanup();
       
       setIsLoading(false);
-    };
-
-    fetchStats();
+      setIsRefreshing(false);
+    } catch (err) {
+      console.error('Dashboard fetch error:', err);
+      setFetchError('Failed to load dashboard data. Please try refreshing the page.');
+      setIsLoading(false);
+      setIsRefreshing(false);
+    }
   }, []);
+
+  useEffect(() => {
+    fetchAllStats();
+  }, [fetchAllStats]);
 
   const fetchLastCleanup = async () => {
     const { data } = await supabase
@@ -325,6 +366,32 @@ const AdminDashboard = () => {
 
   return (
     <div className="p-6 space-y-6">
+      {/* Error Banner */}
+      {fetchError && (
+        <Card className="border-l-4 border-l-red-500 bg-red-500/10">
+          <CardContent className="p-4 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-full bg-red-500/20">
+                <AlertTriangle className="w-5 h-5 text-red-500" />
+              </div>
+              <div>
+                <p className="font-medium text-red-500">Error Loading Dashboard</p>
+                <p className="text-sm text-muted-foreground">{fetchError}</p>
+              </div>
+            </div>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => fetchAllStats(true)}
+              disabled={isRefreshing}
+            >
+              <RefreshCw className={`w-4 h-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+              Retry
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Multi-Account Alert Banner */}
       {multiAccountAlerts.total > 0 && (
         <Link to="/admin/multi-account">
@@ -382,36 +449,64 @@ const AdminDashboard = () => {
         </Card>
       )}
 
-      <div>
-        <h1 className="text-2xl font-display font-bold">Dashboard</h1>
-        <p className="text-muted-foreground">Welcome to ProBattle Admin Panel</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-display font-bold">Dashboard</h1>
+          <p className="text-muted-foreground">Welcome to ProBattle Admin Panel</p>
+        </div>
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={() => fetchAllStats(true)}
+          disabled={isRefreshing || isLoading}
+        >
+          <RefreshCw className={`w-4 h-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+          Refresh
+        </Button>
       </div>
 
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {statCards.map((stat, index) => (
-          <Card key={stat.title} className="glass-card">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                {stat.title}
-              </CardTitle>
-              <stat.icon className={`w-5 h-5 ${stat.color}`} />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stat.value}</div>
-              <div className="flex items-center gap-1 mt-1">
-                {stat.trend.startsWith('+') ? (
-                  <ArrowUpRight className="w-3 h-3 text-green-500" />
-                ) : (
-                  <ArrowDownRight className="w-3 h-3 text-red-500" />
-                )}
-                <span className={`text-xs ${stat.trend.startsWith('+') ? 'text-green-500' : 'text-red-500'}`}>
-                  {stat.trend} from last week
-                </span>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+        {isLoading ? (
+          <>
+            {[1, 2, 3, 4].map((i) => (
+              <Card key={i} className="glass-card">
+                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                  <Skeleton className="h-4 w-24" />
+                  <Skeleton className="h-5 w-5 rounded" />
+                </CardHeader>
+                <CardContent>
+                  <Skeleton className="h-8 w-20 mb-2" />
+                  <Skeleton className="h-3 w-28" />
+                </CardContent>
+              </Card>
+            ))}
+          </>
+        ) : (
+          statCards.map((stat, index) => (
+            <Card key={stat.title} className="glass-card">
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  {stat.title}
+                </CardTitle>
+                <stat.icon className={`w-5 h-5 ${stat.color}`} />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{stat.value}</div>
+                <div className="flex items-center gap-1 mt-1">
+                  {stat.trend.startsWith('+') ? (
+                    <ArrowUpRight className="w-3 h-3 text-green-500" />
+                  ) : (
+                    <ArrowDownRight className="w-3 h-3 text-red-500" />
+                  )}
+                  <span className={`text-xs ${stat.trend.startsWith('+') ? 'text-green-500' : 'text-red-500'}`}>
+                    {stat.trend} from last week
+                  </span>
+                </div>
+              </CardContent>
+            </Card>
+          ))
+        )}
       </div>
 
       {/* Charts Row */}
