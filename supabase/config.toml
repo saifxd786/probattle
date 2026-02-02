@@ -82,3 +82,16 @@ verify_jwt = false
 # Run stale ticket cleanup every 6 hours
 [functions.cleanup-stale-tickets.schedule]
 cron = "0 */6 * * *"
+
+# CoreX Payment Gateway Functions
+[functions.create-corex-payment]
+verify_jwt = false
+
+[functions.corex-webhook]
+verify_jwt = false
+
+[functions.corex-check-status]
+verify_jwt = false
+
+[functions.corex-payment-redirect]
+verify_jwt = false

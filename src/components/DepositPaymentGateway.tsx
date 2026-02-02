@@ -18,6 +18,7 @@ import { toast } from '@/hooks/use-toast';
 import { usePaymentQR } from '@/hooks/usePaymentQR';
 import { usePaymentUPI } from '@/hooks/usePaymentUPI';
 import { useIMBPayment } from '@/hooks/useIMBPayment';
+import { useCoreXPayment } from '@/hooks/useCoreXPayment';
 
 const DEPOSIT_AMOUNTS = [100, 200, 500, 1000, 2000, 5000];
 const TIMER_DURATION = 300; // 5 minutes in seconds
@@ -33,9 +34,10 @@ const DepositPaymentGateway = ({ isOpen, onClose, onSubmit, isSubmitting }: Depo
   const { qrUrl, qrEnabled } = usePaymentQR();
   const { upiId: UPI_ID } = usePaymentUPI();
   const { redirectToPayment: redirectToIMB, isLoading: imbLoading } = useIMBPayment();
+  const { redirectToPayment: redirectToCoreX, isLoading: corexLoading } = useCoreXPayment();
   
   const [step, setStep] = useState<'amount' | 'gateway' | 'payment' | 'verify'>('amount');
-  const [selectedGateway, setSelectedGateway] = useState<'imb' | 'manual'>('manual');
+  const [selectedGateway, setSelectedGateway] = useState<'corex' | 'imb' | 'manual'>('manual');
   const [selectedAmount, setSelectedAmount] = useState(100);
   const [customAmount, setCustomAmount] = useState('');
   const [utrId, setUtrId] = useState('');
@@ -97,10 +99,19 @@ const DepositPaymentGateway = ({ isOpen, onClose, onSubmit, isSubmitting }: Depo
     setStep('gateway');
   };
 
-  const handleSelectGateway = async (gateway: 'imb' | 'manual') => {
+  const handleSelectGateway = async (gateway: 'corex' | 'imb' | 'manual') => {
     setSelectedGateway(gateway);
     
-    if (gateway === 'imb') {
+    if (gateway === 'corex') {
+      // Redirect to CoreX payment gateway
+      const success = await redirectToCoreX(finalAmount);
+      if (!success) {
+        // If CoreX fails, stay on gateway selection
+        return;
+      }
+      // User will be redirected, close dialog
+      handleClose();
+    } else if (gateway === 'imb') {
       // Redirect to IMB payment gateway
       const success = await redirectToIMB(finalAmount);
       if (!success) {
@@ -362,7 +373,36 @@ const DepositPaymentGateway = ({ isOpen, onClose, onSubmit, isSubmitting }: Depo
                   <p className="text-sm text-muted-foreground">Select how you'd like to pay ₹{finalAmount}</p>
                 </div>
 
-                {/* Instant Gateway Option */}
+                {/* CoreX Gateway Option - Primary */}
+                <motion.button
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => handleSelectGateway('corex')}
+                  disabled={corexLoading}
+                  className={`w-full p-4 rounded-xl border-2 transition-all duration-200 text-left ${
+                    selectedGateway === 'corex'
+                      ? 'border-primary bg-primary/10'
+                      : 'border-border bg-card hover:border-primary/50'
+                  }`}
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">
+                      {corexLoading ? (
+                        <Loader2 className="w-6 h-6 text-white animate-spin" />
+                      ) : (
+                        <Zap className="w-6 h-6 text-white" />
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-display font-bold text-lg">Instant Pay</span>
+                        <span className="text-[10px] px-2 py-0.5 bg-emerald-500/20 text-emerald-500 rounded-full">RECOMMENDED</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-0.5">Pay via UPI • Auto-credited instantly</p>
+                    </div>
+                  </div>
+                </motion.button>
+
+                {/* IMB Gateway Option - Backup */}
                 <motion.button
                   whileTap={{ scale: 0.98 }}
                   onClick={() => handleSelectGateway('imb')}
@@ -378,15 +418,15 @@ const DepositPaymentGateway = ({ isOpen, onClose, onSubmit, isSubmitting }: Depo
                       {imbLoading ? (
                         <Loader2 className="w-6 h-6 text-white animate-spin" />
                       ) : (
-                        <Zap className="w-6 h-6 text-white" />
+                        <CreditCard className="w-6 h-6 text-white" />
                       )}
                     </div>
                     <div className="flex-1">
                       <div className="flex items-center gap-2">
-                        <span className="font-display font-bold text-lg">Instant Pay</span>
-                        <span className="text-[10px] px-2 py-0.5 bg-green-500/20 text-green-500 rounded-full">RECOMMENDED</span>
+                        <span className="font-display font-bold text-lg">Alternate Pay</span>
+                        <span className="text-[10px] px-2 py-0.5 bg-green-500/20 text-green-500 rounded-full">BACKUP</span>
                       </div>
-                      <p className="text-xs text-muted-foreground mt-0.5">Pay via UPI • Auto-credited instantly</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">IMB Gateway • Auto-credited</p>
                     </div>
                   </div>
                 </motion.button>
@@ -415,7 +455,7 @@ const DepositPaymentGateway = ({ isOpen, onClose, onSubmit, isSubmitting }: Depo
                 <div className="p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg flex items-center gap-3">
                   <AlertTriangle className="w-5 h-5 text-yellow-500 shrink-0" />
                   <p className="text-xs text-muted-foreground">
-                    <span className="text-yellow-500 font-medium">Tip:</span> Instant Pay is faster and auto-verified. Manual UPI may take up to 30 mins for verification.
+                    <span className="text-yellow-500 font-medium">Tip:</span> Instant Pay is fastest with auto-verification. Manual UPI may take up to 30 mins.
                   </p>
                 </div>
 
