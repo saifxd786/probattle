@@ -276,6 +276,7 @@ const AdminTDMScheduler = () => {
                         <SelectItem value="any_gun">Any Gun</SelectItem>
                         <SelectItem value="m416_only">Only M416</SelectItem>
                         <SelectItem value="shotgun_only">Only Shotgun</SelectItem>
+                        <SelectItem value="m24_only">Only M24</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
