@@ -132,25 +132,36 @@ Deno.serve(async (req) => {
     console.log(`[CoreX] Payment initiated: ${orderId} for user ${user.id}, amount: ${amount}`);
 
     // Call CoreX API to create order
-    // CoreX API uses JSON body as per their docs
+    // CoreX API uses header-based authentication
     const corexApiUrl = COREX_API_URL.endsWith('/') ? COREX_API_URL : `${COREX_API_URL}/`;
+    const COREX_USERNAME = Deno.env.get('COREX_USERNAME');
+    
+    if (!COREX_USERNAME) {
+      console.error('CoreX username not configured');
+      return new Response(
+        JSON.stringify({ error: 'Payment gateway not configured' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
     
     const requestBody = {
-      user_token: COREX_API_TOKEN,
+      amount: amount,
+      customer_mobile: profile?.phone || '9999999999',
+      customer_email: profile?.email || user.email || '',
       order_id: orderId,
-      amount: amount.toString(),
-      redirect_url: redirectUrl,
-      customer_mobile: profile?.phone || '9999999999'
+      redirect_url: redirectUrl
     };
 
-    console.log('[CoreX] Calling API:', `${corexApiUrl}api/create-order`);
-    console.log('[CoreX] Request body:', { ...requestBody, user_token: '[REDACTED]' });
+    console.log('[CoreX] Calling API:', `${corexApiUrl}create_order.php`);
+    console.log('[CoreX] Request body:', requestBody);
 
-    const corexResponse = await fetch(`${corexApiUrl}api/create-order`, {
+    const corexResponse = await fetch(`${corexApiUrl}create_order.php`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Accept': 'application/json'
+        'Accept': 'application/json',
+        'x-client-username': COREX_USERNAME,
+        'x-client-apikey': COREX_API_TOKEN
       },
       body: JSON.stringify(requestBody)
     });
@@ -174,8 +185,8 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Check CoreX response status
-    if (!corexData.status || corexData.status === false || corexData.status === 'false') {
+    // Check CoreX response status - API returns status: "success" or "error"
+    if (corexData.status !== 'success') {
       console.error('[CoreX] API error:', corexData);
       
       await supabaseAdmin
@@ -193,8 +204,8 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Extract payment URL from response (CoreX returns it in result.payment_url)
-    const paymentUrl = corexData.result?.payment_url || corexData.payment_url || corexData.data?.payment_url || corexData.url;
+    // Extract payment URL from response - CoreX returns it in data.payment_url
+    const paymentUrl = corexData.data?.payment_url || corexData.payment_url || corexData.result?.payment_url || corexData.url;
     
     if (!paymentUrl) {
       console.error('[CoreX] No payment URL in response:', corexData);
