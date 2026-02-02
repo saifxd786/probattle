@@ -26,6 +26,7 @@ import mapTdm from '@/assets/map-tdm.jpg';
 import gunM416 from '@/assets/gun-m416.jpg';
 import gunShotgun from '@/assets/gun-shotgun.jpg';
 import gunAny from '@/assets/gun-any.jpg';
+import gunM24 from '@/assets/gun-m24.jpg';
 
 // Map name to image mapping
 const mapImages: Record<string, string> = {
@@ -45,6 +46,7 @@ const gunCategoryImages: Record<string, string> = {
   'm416_only': gunM416,
   'shotgun_only': gunShotgun,
   'any_gun': gunAny,
+  'm24_only': gunM24,
 };
 
 // Gun category labels
@@ -52,6 +54,15 @@ const gunCategoryLabels: Record<string, string> = {
   'm416_only': 'M416 ONLY',
   'shotgun_only': 'SHOTGUN ONLY',
   'any_gun': 'ANY GUN',
+  'm24_only': 'M24 ONLY',
+};
+
+// Gun-specific rules
+const gunCategoryRules: Record<string, { weapon: string; description: string }> = {
+  'm416_only': { weapon: 'ONLY M416 ALLOWED', description: 'Use M416 as your primary weapon only' },
+  'shotgun_only': { weapon: 'ONLY SHOTGUN ALLOWED', description: 'Use Shotgun (S12K/S686/S1897) only' },
+  'any_gun': { weapon: 'ANY GUN ALLOWED', description: 'Use any weapon of your choice' },
+  'm24_only': { weapon: 'ONLY M24 ALLOWED', description: 'Use M24 sniper rifle only' },
 };
 
 interface MatchCardProps {
@@ -751,15 +762,45 @@ const MatchCard = ({
                 <span className="relative z-10">See Results</span>
               </motion.button>
             ) : (
-              <Button 
-                variant={status === 'full' && !isRegistered ? 'secondary' : isRegistered ? 'outline' : 'neon'} 
-                size="sm"
-                disabled={status === 'full' && !isRegistered}
-                onClick={handleJoinClick}
-                className="text-xs h-8"
-              >
-                {status === 'full' && !isRegistered ? 'Full' : isRegistered ? 'View Room' : 'Join Match'}
-              </Button>
+              <div className="flex flex-col gap-1.5">
+                {/* Read Rules button - only for registered users */}
+                {isRegistered && (
+                  <motion.button
+                    onClick={() => setIsRulesDialogOpen(true)}
+                    className="relative overflow-hidden px-3 py-1 rounded-md text-[10px] font-semibold text-primary border border-primary/50 bg-primary/10"
+                    animate={{
+                      boxShadow: [
+                        '0 0 8px hsl(var(--primary) / 0.3)',
+                        '0 0 16px hsl(var(--primary) / 0.5)',
+                        '0 0 8px hsl(var(--primary) / 0.3)',
+                      ],
+                    }}
+                    transition={{
+                      boxShadow: { repeat: Infinity, duration: 1.5 },
+                    }}
+                    whileTap={{ scale: 0.95 }}
+                  >
+                    <motion.div
+                      className="absolute inset-0 bg-gradient-to-r from-primary/0 via-primary/30 to-primary/0"
+                      animate={{ x: ['-100%', '100%'] }}
+                      transition={{ repeat: Infinity, duration: 2, ease: 'linear' }}
+                    />
+                    <span className="relative z-10 flex items-center justify-center gap-1">
+                      <Shield className="w-3 h-3" />
+                      Read Rules
+                    </span>
+                  </motion.button>
+                )}
+                <Button 
+                  variant={status === 'full' && !isRegistered ? 'secondary' : isRegistered ? 'outline' : 'neon'} 
+                  size="sm"
+                  disabled={status === 'full' && !isRegistered}
+                  onClick={handleJoinClick}
+                  className="text-xs h-8"
+                >
+                  {status === 'full' && !isRegistered ? 'Full' : isRegistered ? 'View Room' : 'Join Match'}
+                </Button>
+              </div>
             )}
           </div>
         </div>
@@ -1152,15 +1193,23 @@ const MatchCard = ({
           </DialogHeader>
           
           <div className="space-y-3 mt-4">
-            {/* Weapon Rules */}
+            {/* Weapon Rules - Dynamic based on gun category */}
             <div className="p-3 rounded-lg bg-gradient-to-r from-green-500/10 to-green-500/5 border border-green-500/20">
               <div className="flex items-start gap-3">
                 <div className="p-2 rounded-lg bg-green-500/20 shrink-0">
                   <Crosshair className="w-4 h-4 text-green-400" />
                 </div>
                 <div>
-                  <h4 className="font-semibold text-green-400 text-sm">ONLY M416 ALLOWED</h4>
-                  <p className="text-xs text-muted-foreground mt-0.5">Use M416 as your primary weapon only</p>
+                  <h4 className="font-semibold text-green-400 text-sm">
+                    {gunCategory && gunCategoryRules[gunCategory] 
+                      ? gunCategoryRules[gunCategory].weapon 
+                      : 'ONLY M416 ALLOWED'}
+                  </h4>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {gunCategory && gunCategoryRules[gunCategory] 
+                      ? gunCategoryRules[gunCategory].description 
+                      : 'Use M416 as your primary weapon only'}
+                  </p>
                 </div>
               </div>
             </div>
