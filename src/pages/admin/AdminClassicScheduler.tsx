@@ -9,6 +9,7 @@ import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { toast } from '@/hooks/use-toast';
+import ClassicMatchCalculator from '@/components/admin/ClassicMatchCalculator';
 
 interface ClassicScheduleSettings {
   id: string;
@@ -449,6 +450,28 @@ const AdminClassicScheduler = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* AI Match Calculator */}
+      <ClassicMatchCalculator 
+        onApplySettings={(calcSettings) => {
+          if (settings) {
+            setSettings({
+              ...settings,
+              entry_fee: calcSettings.entryFee,
+              prize_pool: calcSettings.prizePool,
+              first_place_prize: calcSettings.firstPlace,
+              second_place_prize: calcSettings.secondPlace,
+              third_place_prize: calcSettings.thirdPlace,
+              prize_per_kill: calcSettings.perKill,
+              max_slots: calcSettings.maxSlots,
+            });
+            toast({
+              title: 'Settings Applied!',
+              description: 'Calculator suggestions applied. Click "Save Settings" to confirm.',
+            });
+          }
+        }}
+      />
 
       {/* Info Card */}
       <Card className="border-amber-500/20 bg-amber-500/5">
