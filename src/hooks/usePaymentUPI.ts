@@ -82,7 +82,7 @@ export const usePaymentUPI = () => {
   });
 
   return {
-    upiId: upiSettings?.upi_id ?? 'mohdqureshi807@naviaxis',
+    upiId: upiSettings?.upi_id ?? 'qureshi.saif@freecharge',
     isLoading,
     updateUPI: updateMutation.mutate,
     isUpdating: updateMutation.isPending,
