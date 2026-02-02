@@ -173,11 +173,11 @@ const MatchResultsDialog = ({
       <DialogContent className="max-w-md p-0 overflow-hidden border border-primary/30 max-h-[85vh]">
         {/* Header with gradient - Compact */}
         <div className="relative bg-gradient-to-br from-primary/30 via-primary/10 to-transparent p-3 border-b border-primary/20">
-          <motion.div
-            className="absolute inset-0 bg-gradient-to-r from-transparent via-primary/10 to-transparent"
-            animate={{ x: ['-100%', '100%'] }}
-            transition={{ repeat: Infinity, duration: 3, ease: 'linear' }}
-          />
+        <motion.div
+          className="absolute inset-0 bg-gradient-to-r from-transparent via-primary/10 to-transparent pointer-events-none"
+          animate={{ x: ['-100%', '100%'] }}
+          transition={{ repeat: Infinity, duration: 3, ease: 'linear' }}
+        />
           <DialogHeader className="relative z-10">
             <DialogTitle className="flex items-center gap-2 text-base">
               <div className="p-1.5 rounded-lg bg-primary/20 border border-primary/30">
