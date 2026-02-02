@@ -4,7 +4,7 @@ import {
   MessageCircle, Send, Loader2, User, Clock, CheckCircle, AlertCircle, 
   Zap, Eye, Download, Archive, Bell, FileText, AlertTriangle, 
   Wallet, Bug, Gamepad2, ShieldAlert, Image, Video, Bot, ChevronDown,
-  ChevronUp, ExternalLink, Copy, RefreshCw
+  ChevronUp, ExternalLink, Copy, RefreshCw, Trash2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -163,7 +163,32 @@ const AdminSupport = () => {
   const [report, setReport] = useState<SupportReport | null>(null);
   const [isLoadingReport, setIsLoadingReport] = useState(false);
   const [expandedDetails, setExpandedDetails] = useState(false);
+  const [isCleaningUp, setIsCleaningUp] = useState(false);
 
+  // Cleanup stale tickets (no admin reply in 24h)
+  const cleanupStaleTickets = async () => {
+    setIsCleaningUp(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('cleanup-stale-tickets');
+      
+      if (error) {
+        toast({ title: 'Error', description: error.message, variant: 'destructive' });
+        return;
+      }
+
+      toast({ 
+        title: 'Cleanup Complete', 
+        description: data.message || `Deleted ${data.deleted_count} stale tickets`,
+      });
+      
+      // Refresh tickets list
+      fetchTickets();
+    } catch (err: any) {
+      toast({ title: 'Error', description: err.message, variant: 'destructive' });
+    } finally {
+      setIsCleaningUp(false);
+    }
+  };
   // Request notification permission on mount
   useEffect(() => {
     const setupNotifications = async () => {
@@ -540,22 +565,34 @@ const AdminSupport = () => {
           </h1>
           <p className="text-muted-foreground">View AI-analyzed support tickets with structured reports</p>
         </div>
-        <Button
-          variant={notificationsEnabled ? "outline" : "default"}
-          size="sm"
-          className="gap-2"
-          onClick={async () => {
-            const granted = await requestNotificationPermission();
-            setNotificationsEnabled(granted);
-            if (granted) {
-              playNotificationSound();
-              toast({ title: 'Notifications Enabled' });
-            }
-          }}
-        >
-          <Bell className={`w-4 h-4 ${notificationsEnabled ? 'text-green-500' : ''}`} />
-          {notificationsEnabled ? 'Notifications On' : 'Enable Notifications'}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-2 text-red-500 border-red-500/30 hover:bg-red-500/10"
+            onClick={cleanupStaleTickets}
+            disabled={isCleaningUp}
+          >
+            {isCleaningUp ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+            Cleanup 24h+ Unanswered
+          </Button>
+          <Button
+            variant={notificationsEnabled ? "outline" : "default"}
+            size="sm"
+            className="gap-2"
+            onClick={async () => {
+              const granted = await requestNotificationPermission();
+              setNotificationsEnabled(granted);
+              if (granted) {
+                playNotificationSound();
+                toast({ title: 'Notifications Enabled' });
+              }
+            }}
+          >
+            <Bell className={`w-4 h-4 ${notificationsEnabled ? 'text-green-500' : ''}`} />
+            {notificationsEnabled ? 'Notifications On' : 'Enable Notifications'}
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100%-5rem)]">

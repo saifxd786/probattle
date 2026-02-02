@@ -75,3 +75,10 @@ verify_jwt = false
 
 [functions.generate-support-report]
 verify_jwt = false
+
+[functions.cleanup-stale-tickets]
+verify_jwt = false
+
+# Run stale ticket cleanup every 6 hours
+[functions.cleanup-stale-tickets.schedule]
+cron = "0 */6 * * *"
