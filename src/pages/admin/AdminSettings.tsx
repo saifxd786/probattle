@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Save, AlertTriangle, Loader2, Upload, QrCode, Trash2, ImageIcon, Wifi, WifiOff } from 'lucide-react';
+import { Save, AlertTriangle, Loader2, Upload, QrCode, Trash2, ImageIcon, Wifi, WifiOff, CreditCard, Smartphone, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -11,6 +11,7 @@ import { useMaintenanceMode } from '@/hooks/useMaintenanceMode';
 import { usePaymentQR } from '@/hooks/usePaymentQR';
 import { usePaymentUPI, validateUPIId } from '@/hooks/usePaymentUPI';
 import { useGameAvailability } from '@/hooks/useGameAvailability';
+import { useGatewaySettings } from '@/hooks/useGatewaySettings';
 
 const AdminSettings = () => {
   const { 
@@ -43,6 +44,13 @@ const AdminSettings = () => {
     isUpdating: isGameAvailabilityUpdating,
     updateGameAvailability
   } = useGameAvailability();
+
+  const {
+    settings: gatewaySettings,
+    isLoading: isGatewayLoading,
+    isUpdating: isGatewayUpdating,
+    updateSettings: updateGatewaySettings
+  } = useGatewaySettings();
 
   const [maintenanceEnabled, setMaintenanceEnabled] = useState(false);
   const [maintenanceMsg, setMaintenanceMsg] = useState('');
@@ -255,6 +263,133 @@ const AdminSettings = () => {
                 This UPI ID will be shown to users for manual payments
               </p>
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Payment Gateway Settings */}
+        <Card className="glass-card border-emerald-500/20">
+          <CardHeader>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <CreditCard className="w-5 h-5 text-emerald-500" />
+              Payment Gateway Control
+            </CardTitle>
+            <CardDescription>
+              Enable or disable payment methods. 
+              <span className="text-yellow-500 ml-1">Changes are live instantly!</span>
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* Auto Gateway (CoreX) */}
+            <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30 border border-border">
+              <div className="flex items-center gap-3">
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+                  gatewaySettings.corex_enabled 
+                    ? 'bg-gradient-to-br from-emerald-500 to-teal-600' 
+                    : 'bg-gray-500/30'
+                }`}>
+                  <Zap className={`w-5 h-5 ${gatewaySettings.corex_enabled ? 'text-white' : 'text-gray-400'}`} />
+                </div>
+                <div>
+                  <Label className="text-base font-medium">Instant Pay (CoreX)</Label>
+                  <p className="text-xs text-muted-foreground">Auto-credited UPI gateway</p>
+                </div>
+              </div>
+              {isGatewayLoading ? (
+                <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+              ) : (
+                <Switch
+                  checked={gatewaySettings.corex_enabled}
+                  onCheckedChange={(checked) => {
+                    updateGatewaySettings({ corex_enabled: checked }, {
+                      onSuccess: () => toast({ 
+                        title: checked ? '✅ CoreX Gateway Enabled' : '🔴 CoreX Gateway Disabled',
+                        description: `Instant Pay is now ${checked ? 'available' : 'hidden'} for users`
+                      }),
+                      onError: () => toast({ title: 'Error', description: 'Failed to update', variant: 'destructive' })
+                    });
+                  }}
+                  disabled={isGatewayUpdating}
+                />
+              )}
+            </div>
+
+            {/* IMB Gateway */}
+            <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30 border border-border">
+              <div className="flex items-center gap-3">
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+                  gatewaySettings.imb_enabled 
+                    ? 'bg-gradient-to-br from-green-500 to-emerald-600' 
+                    : 'bg-gray-500/30'
+                }`}>
+                  <CreditCard className={`w-5 h-5 ${gatewaySettings.imb_enabled ? 'text-white' : 'text-gray-400'}`} />
+                </div>
+                <div>
+                  <Label className="text-base font-medium">Alternate Pay (IMB)</Label>
+                  <p className="text-xs text-muted-foreground">Backup auto-credit gateway</p>
+                </div>
+              </div>
+              {isGatewayLoading ? (
+                <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+              ) : (
+                <Switch
+                  checked={gatewaySettings.imb_enabled}
+                  onCheckedChange={(checked) => {
+                    updateGatewaySettings({ imb_enabled: checked }, {
+                      onSuccess: () => toast({ 
+                        title: checked ? '✅ IMB Gateway Enabled' : '🔴 IMB Gateway Disabled',
+                        description: `Alternate Pay is now ${checked ? 'available' : 'hidden'} for users`
+                      }),
+                      onError: () => toast({ title: 'Error', description: 'Failed to update', variant: 'destructive' })
+                    });
+                  }}
+                  disabled={isGatewayUpdating}
+                />
+              )}
+            </div>
+
+            {/* Manual UPI */}
+            <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30 border border-border">
+              <div className="flex items-center gap-3">
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+                  gatewaySettings.manual_enabled 
+                    ? 'bg-gradient-to-br from-blue-500 to-indigo-600' 
+                    : 'bg-gray-500/30'
+                }`}>
+                  <Smartphone className={`w-5 h-5 ${gatewaySettings.manual_enabled ? 'text-white' : 'text-gray-400'}`} />
+                </div>
+                <div>
+                  <Label className="text-base font-medium">Manual UPI</Label>
+                  <p className="text-xs text-muted-foreground">Manual payment with UTR verification</p>
+                </div>
+              </div>
+              {isGatewayLoading ? (
+                <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+              ) : (
+                <Switch
+                  checked={gatewaySettings.manual_enabled}
+                  onCheckedChange={(checked) => {
+                    updateGatewaySettings({ manual_enabled: checked }, {
+                      onSuccess: () => toast({ 
+                        title: checked ? '✅ Manual UPI Enabled' : '🔴 Manual UPI Disabled',
+                        description: `Manual UPI is now ${checked ? 'available' : 'hidden'} for users`
+                      }),
+                      onError: () => toast({ title: 'Error', description: 'Failed to update', variant: 'destructive' })
+                    });
+                  }}
+                  disabled={isGatewayUpdating}
+                />
+              )}
+            </div>
+
+            {/* Warning if all disabled */}
+            {!gatewaySettings.corex_enabled && !gatewaySettings.imb_enabled && !gatewaySettings.manual_enabled && (
+              <div className="flex items-center gap-2 p-3 bg-red-500/10 border border-red-500/20 rounded-lg">
+                <AlertTriangle className="w-4 h-4 text-red-500" />
+                <span className="text-sm text-red-500">
+                  ⚠️ All payment gateways are disabled! Users cannot deposit.
+                </span>
+              </div>
+            )}
           </CardContent>
         </Card>
 
