@@ -69,6 +69,8 @@ const AgentLayout = lazy(() => import("./components/agent/AgentLayout"));
 const AgentUsers = lazy(() => import("./pages/agent/AgentUsers"));
 const AgentMatches = lazy(() => import("./pages/agent/AgentMatches"));
 const AgentTransactions = lazy(() => import("./pages/agent/AgentTransactions"));
+const AgentTDMScheduler = lazy(() => import("./pages/agent/AgentTDMScheduler"));
+const AgentClassicScheduler = lazy(() => import("./pages/agent/AgentClassicScheduler"));
 
 // Optimized QueryClient with better caching and performance settings
 const queryClient = new QueryClient({
@@ -222,6 +224,8 @@ const App = () => {
                         <Route index element={<AgentUsers />} />
                         <Route path="matches" element={<AgentMatches />} />
                         <Route path="transactions" element={<AgentTransactions />} />
+                        <Route path="tdm-scheduler" element={<AgentTDMScheduler />} />
+                        <Route path="classic-scheduler" element={<AgentClassicScheduler />} />
                       </Route>
                         <Route path="*" element={<NotFound />} />
                       </Routes>
