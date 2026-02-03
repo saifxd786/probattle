@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
-import { Plus, Edit, Trash2, Send, Trophy, Users, Copy, Check, Pencil, Clock, Play, CheckCircle, XCircle, List } from 'lucide-react';
+import { Plus, Edit, Trash2, Send, Trophy, Users, Copy, Check, Pencil, Clock, Play, CheckCircle, XCircle, List, Search, X } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -72,12 +72,50 @@ const AdminMatches = () => {
   const [isParticipantsOpen, setIsParticipantsOpen] = useState(false);
   const [copiedMatchId, setCopiedMatchId] = useState<string | null>(null);
   const [activeFilter, setActiveFilter] = useState<'all' | 'upcoming' | 'live' | 'completed' | 'cancelled'>('all');
+  const [searchCode, setSearchCode] = useState('');
+  const [searchedMatch, setSearchedMatch] = useState<Match | null>(null);
+  const [isSearching, setIsSearching] = useState(false);
 
   // Filter matches based on active filter
   const filteredMatches = useMemo(() => {
     if (activeFilter === 'all') return matches;
     return matches.filter(match => match.status === activeFilter);
   }, [matches, activeFilter]);
+
+  // Search match by code
+  const searchMatchByCode = async () => {
+    if (!searchCode.trim()) {
+      toast({ title: 'Error', description: 'Please enter a match code', variant: 'destructive' });
+      return;
+    }
+    
+    setIsSearching(true);
+    setSearchedMatch(null);
+    
+    // Match code is first 8 chars of UUID (case insensitive)
+    const searchPattern = searchCode.trim().toLowerCase();
+    
+    // Search in all matches - match_code column or id prefix
+    const { data, error } = await supabase
+      .from('matches')
+      .select('*')
+      .or(`match_code.ilike.${searchPattern}%,id.ilike.${searchPattern}%`)
+      .limit(1)
+      .single();
+    
+    if (error || !data) {
+      toast({ title: 'Not Found', description: 'No match found with this code', variant: 'destructive' });
+    } else {
+      setSearchedMatch(data);
+      toast({ title: 'Match Found!', description: `Found: ${data.title}` });
+    }
+    setIsSearching(false);
+  };
+
+  const clearSearch = () => {
+    setSearchCode('');
+    setSearchedMatch(null);
+  };
 
   const filterTabs = [
     { id: 'all', label: 'All', icon: List, count: matches.length },
@@ -283,11 +321,37 @@ const AdminMatches = () => {
 
   return (
     <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-display font-bold">Match Management</h1>
           <p className="text-muted-foreground">Create and manage tournament matches</p>
         </div>
+        
+        {/* Search by Match Code */}
+        <div className="flex items-center gap-2">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              placeholder="Search by match code..."
+              value={searchCode}
+              onChange={(e) => setSearchCode(e.target.value.toUpperCase())}
+              onKeyDown={(e) => e.key === 'Enter' && searchMatchByCode()}
+              className="pl-9 pr-8 w-48 md:w-56 font-mono uppercase"
+            />
+            {searchCode && (
+              <button
+                onClick={clearSearch}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+          <Button variant="outline" size="sm" onClick={searchMatchByCode} disabled={isSearching}>
+            {isSearching ? 'Searching...' : 'Search'}
+          </Button>
+        </div>
+        
         <Dialog open={isDialogOpen} onOpenChange={(open) => { setIsDialogOpen(open); if (!open) resetForm(); }}>
           <DialogTrigger asChild>
             <Button variant="neon">
@@ -489,6 +553,104 @@ const AdminMatches = () => {
           </DialogContent>
         </Dialog>
       </div>
+
+      {/* Searched Match Result */}
+      {searchedMatch && (
+        <Card className="glass-card border-primary/30 bg-primary/5">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-semibold text-primary flex items-center gap-2">
+                <Search className="w-4 h-4" />
+                Search Result
+              </h3>
+              <Button variant="ghost" size="sm" onClick={clearSearch}>
+                <X className="w-4 h-4 mr-1" />
+                Clear
+              </Button>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-border">
+                    <th className="text-left p-2 font-medium text-muted-foreground text-sm">Match Code</th>
+                    <th className="text-left p-2 font-medium text-muted-foreground text-sm">Match</th>
+                    <th className="text-left p-2 font-medium text-muted-foreground text-sm">Type</th>
+                    <th className="text-left p-2 font-medium text-muted-foreground text-sm">Entry</th>
+                    <th className="text-left p-2 font-medium text-muted-foreground text-sm">Prize</th>
+                    <th className="text-left p-2 font-medium text-muted-foreground text-sm">Slots</th>
+                    <th className="text-left p-2 font-medium text-muted-foreground text-sm">Time</th>
+                    <th className="text-left p-2 font-medium text-muted-foreground text-sm">Status</th>
+                    <th className="text-left p-2 font-medium text-muted-foreground text-sm">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr className="hover:bg-secondary/20">
+                    <td className="p-2">
+                      <button
+                        onClick={() => copyMatchId(searchedMatch.id)}
+                        className="flex items-center gap-1 text-xs font-mono bg-primary/20 px-2 py-1 rounded hover:bg-primary/30 transition-colors text-primary"
+                        title="Click to copy"
+                      >
+                        {searchedMatch.id.slice(0, 8).toUpperCase()}
+                        {copiedMatchId === searchedMatch.id ? (
+                          <Check className="w-3 h-3 text-green-500" />
+                        ) : (
+                          <Copy className="w-3 h-3" />
+                        )}
+                      </button>
+                    </td>
+                    <td className="p-2">
+                      <div>
+                        <p className="font-medium">{searchedMatch.title}</p>
+                        <p className="text-xs text-muted-foreground uppercase">{searchedMatch.game}</p>
+                      </div>
+                    </td>
+                    <td className="p-2 text-sm">{searchedMatch.match_type.replace('_', ' ').toUpperCase()}</td>
+                    <td className="p-2">{searchedMatch.is_free ? 'Free' : `₹${searchedMatch.entry_fee}`}</td>
+                    <td className="p-2">₹{searchedMatch.prize_pool}</td>
+                    <td className="p-2">{searchedMatch.filled_slots}/{searchedMatch.max_slots}</td>
+                    <td className="p-2 text-sm">
+                      {searchedMatch.match_time ? format(new Date(searchedMatch.match_time), 'MMM dd, hh:mm a') : '-'}
+                    </td>
+                    <td className="p-2">
+                      <span className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(searchedMatch.status)}`}>
+                        {searchedMatch.status.toUpperCase()}
+                      </span>
+                    </td>
+                    <td className="p-2">
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => { setParticipantsMatch(searchedMatch); setIsParticipantsOpen(true); }}
+                          title="View Players"
+                        >
+                          <Users className="w-4 h-4 text-blue-500" />
+                        </Button>
+                        {searchedMatch.status === 'completed' && (
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            className="text-blue-500 border-blue-500/50 hover:bg-blue-500/10"
+                            onClick={() => { setResultsMatch(searchedMatch); setIsEditResultsMode(true); setIsResultsOpen(true); }}
+                            title="View/Edit Results"
+                          >
+                            <Trophy className="w-4 h-4 mr-1" />
+                            Results
+                          </Button>
+                        )}
+                        <Button variant="ghost" size="icon" onClick={() => handleEdit(searchedMatch)}>
+                          <Edit className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Filter Tabs */}
       <div className="flex items-center gap-2 overflow-x-auto pb-2">
