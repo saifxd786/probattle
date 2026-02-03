@@ -19,6 +19,7 @@ import { usePaymentQR } from '@/hooks/usePaymentQR';
 import { usePaymentUPI } from '@/hooks/usePaymentUPI';
 import { useIMBPayment } from '@/hooks/useIMBPayment';
 import { useCoreXPayment } from '@/hooks/useCoreXPayment';
+import { useGatewaySettings } from '@/hooks/useGatewaySettings';
 
 const DEPOSIT_AMOUNTS = [100, 200, 500, 1000, 2000, 5000];
 const TIMER_DURATION = 300; // 5 minutes in seconds
@@ -35,6 +36,7 @@ const DepositPaymentGateway = ({ isOpen, onClose, onSubmit, isSubmitting }: Depo
   const { upiId: UPI_ID } = usePaymentUPI();
   const { redirectToPayment: redirectToIMB, isLoading: imbLoading } = useIMBPayment();
   const { redirectToPayment: redirectToCoreX, isLoading: corexLoading } = useCoreXPayment();
+  const { settings: gatewaySettings, isLoading: gatewaySettingsLoading } = useGatewaySettings();
   
   const [step, setStep] = useState<'amount' | 'gateway' | 'payment' | 'verify'>('amount');
   const [selectedGateway, setSelectedGateway] = useState<'corex' | 'imb' | 'manual'>('manual');
@@ -373,91 +375,110 @@ const DepositPaymentGateway = ({ isOpen, onClose, onSubmit, isSubmitting }: Depo
                   <p className="text-sm text-muted-foreground">Select how you'd like to pay ₹{finalAmount}</p>
                 </div>
 
-                {/* CoreX Gateway Option - Primary */}
-                <motion.button
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => handleSelectGateway('corex')}
-                  disabled={corexLoading}
-                  className={`w-full p-4 rounded-xl border-2 transition-all duration-200 text-left ${
-                    selectedGateway === 'corex'
-                      ? 'border-primary bg-primary/10'
-                      : 'border-border bg-card hover:border-primary/50'
-                  }`}
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">
-                      {corexLoading ? (
-                        <Loader2 className="w-6 h-6 text-white animate-spin" />
-                      ) : (
-                        <Zap className="w-6 h-6 text-white" />
-                      )}
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="font-display font-bold text-lg">Instant Pay</span>
-                        <span className="text-[10px] px-2 py-0.5 bg-emerald-500/20 text-emerald-500 rounded-full">RECOMMENDED</span>
-                      </div>
-                      <p className="text-xs text-muted-foreground mt-0.5">Pay via UPI • Auto-credited instantly</p>
-                    </div>
+                {/* No gateways available */}
+                {!gatewaySettings.corex_enabled && !gatewaySettings.imb_enabled && !gatewaySettings.manual_enabled && (
+                  <div className="p-6 text-center">
+                    <AlertTriangle className="w-12 h-12 text-yellow-500 mx-auto mb-4" />
+                    <h4 className="font-display font-bold text-lg mb-2">Payment Unavailable</h4>
+                    <p className="text-sm text-muted-foreground">
+                      Payment methods are currently disabled. Please try again later or contact support.
+                    </p>
                   </div>
-                </motion.button>
+                )}
+
+                {/* CoreX Gateway Option - Primary */}
+                {gatewaySettings.corex_enabled && (
+                  <motion.button
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => handleSelectGateway('corex')}
+                    disabled={corexLoading}
+                    className={`w-full p-4 rounded-xl border-2 transition-all duration-200 text-left ${
+                      selectedGateway === 'corex'
+                        ? 'border-primary bg-primary/10'
+                        : 'border-border bg-card hover:border-primary/50'
+                    }`}
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">
+                        {corexLoading ? (
+                          <Loader2 className="w-6 h-6 text-white animate-spin" />
+                        ) : (
+                          <Zap className="w-6 h-6 text-white" />
+                        )}
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-display font-bold text-lg">Instant Pay</span>
+                          <span className="text-[10px] px-2 py-0.5 bg-emerald-500/20 text-emerald-500 rounded-full">RECOMMENDED</span>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-0.5">Pay via UPI • Auto-credited instantly</p>
+                      </div>
+                    </div>
+                  </motion.button>
+                )}
 
                 {/* IMB Gateway Option - Backup */}
-                <motion.button
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => handleSelectGateway('imb')}
-                  disabled={imbLoading}
-                  className={`w-full p-4 rounded-xl border-2 transition-all duration-200 text-left ${
-                    selectedGateway === 'imb'
-                      ? 'border-primary bg-primary/10'
-                      : 'border-border bg-card hover:border-primary/50'
-                  }`}
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center">
-                      {imbLoading ? (
-                        <Loader2 className="w-6 h-6 text-white animate-spin" />
-                      ) : (
-                        <CreditCard className="w-6 h-6 text-white" />
-                      )}
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="font-display font-bold text-lg">Alternate Pay</span>
-                        <span className="text-[10px] px-2 py-0.5 bg-green-500/20 text-green-500 rounded-full">BACKUP</span>
+                {gatewaySettings.imb_enabled && (
+                  <motion.button
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => handleSelectGateway('imb')}
+                    disabled={imbLoading}
+                    className={`w-full p-4 rounded-xl border-2 transition-all duration-200 text-left ${
+                      selectedGateway === 'imb'
+                        ? 'border-primary bg-primary/10'
+                        : 'border-border bg-card hover:border-primary/50'
+                    }`}
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center">
+                        {imbLoading ? (
+                          <Loader2 className="w-6 h-6 text-white animate-spin" />
+                        ) : (
+                          <CreditCard className="w-6 h-6 text-white" />
+                        )}
                       </div>
-                      <p className="text-xs text-muted-foreground mt-0.5">IMB Gateway • Auto-credited</p>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-display font-bold text-lg">Alternate Pay</span>
+                          <span className="text-[10px] px-2 py-0.5 bg-green-500/20 text-green-500 rounded-full">BACKUP</span>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-0.5">IMB Gateway • Auto-credited</p>
+                      </div>
                     </div>
-                  </div>
-                </motion.button>
+                  </motion.button>
+                )}
 
                 {/* Manual UPI Option */}
-                <motion.button
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => handleSelectGateway('manual')}
-                  className={`w-full p-4 rounded-xl border-2 transition-all duration-200 text-left ${
-                    selectedGateway === 'manual'
-                      ? 'border-primary bg-primary/10'
-                      : 'border-border bg-card hover:border-primary/50'
-                  }`}
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
-                      <Smartphone className="w-6 h-6 text-white" />
+                {gatewaySettings.manual_enabled && (
+                  <motion.button
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => handleSelectGateway('manual')}
+                    className={`w-full p-4 rounded-xl border-2 transition-all duration-200 text-left ${
+                      selectedGateway === 'manual'
+                        ? 'border-primary bg-primary/10'
+                        : 'border-border bg-card hover:border-primary/50'
+                    }`}
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
+                        <Smartphone className="w-6 h-6 text-white" />
+                      </div>
+                      <div className="flex-1">
+                        <span className="font-display font-bold text-lg">Manual UPI</span>
+                        <p className="text-xs text-muted-foreground mt-0.5">Pay manually • Submit UTR for verification</p>
+                      </div>
                     </div>
-                    <div className="flex-1">
-                      <span className="font-display font-bold text-lg">Manual UPI</span>
-                      <p className="text-xs text-muted-foreground mt-0.5">Pay manually • Submit UTR for verification</p>
-                    </div>
-                  </div>
-                </motion.button>
+                  </motion.button>
+                )}
 
-                <div className="p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg flex items-center gap-3">
-                  <AlertTriangle className="w-5 h-5 text-yellow-500 shrink-0" />
-                  <p className="text-xs text-muted-foreground">
-                    <span className="text-yellow-500 font-medium">Tip:</span> Instant Pay is fastest with auto-verification. Manual UPI may take up to 30 mins.
-                  </p>
-                </div>
+                {(gatewaySettings.corex_enabled || gatewaySettings.imb_enabled || gatewaySettings.manual_enabled) && (
+                  <div className="p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg flex items-center gap-3">
+                    <AlertTriangle className="w-5 h-5 text-yellow-500 shrink-0" />
+                    <p className="text-xs text-muted-foreground">
+                      <span className="text-yellow-500 font-medium">Tip:</span> Instant Pay is fastest with auto-verification. Manual UPI may take up to 30 mins.
+                    </p>
+                  </div>
+                )}
 
                 <Button 
                   variant="ghost" 
