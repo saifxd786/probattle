@@ -205,14 +205,15 @@ const CHECKSUM_IN_FLIGHT_GRACE_MS = 600; // Reduced for faster detection
 
 // === ULTRA-LOW LATENCY (Sub-20ms TARGET) ===
 const PING_INTERVAL_MS = 80; // 80ms pings for sub-20ms response tracking
-const PING_TIMEOUT_MS = 400; // 400ms timeout (faster detection)
-const HEARTBEAT_INTERVAL_MS = 600; // 600ms heartbeat
-const HEARTBEAT_MISS_THRESHOLD = 3; // Allow 3 misses before disconnect
+const PING_TIMEOUT_MS = 600; // 600ms timeout (increased from 400ms for stability)
+const HEARTBEAT_INTERVAL_MS = 2000; // 2s heartbeat (increased from 600ms to reduce false disconnects)
+const HEARTBEAT_MISS_THRESHOLD = 5; // Allow 5 misses before disconnect (increased from 3 for stability)
 const MAX_PING_HISTORY = 80; // More samples for Kalman filter accuracy
 const HIGH_PING_WARNING_THRESHOLD = 100; // Show warning at 100ms+ (esports-grade)
 const HIGH_PING_WARNING_COOLDOWN = 60000; // 60 seconds between warnings (less spam)
 const BROADCAST_RETRY_COUNT = 5; // More retries for reliability
 const BROADCAST_RETRY_DELAY = 10; // 10ms retry delay (ultra-fast)
+const PRESENCE_STALE_THRESHOLD_MS = 15000; // 15 seconds before considering opponent offline
 
 // Calculate median for more stable ping display (removes outliers)
 const calculateMedian = (arr: number[]): number => {
@@ -1442,6 +1443,10 @@ export const useFriendLudoGame = () => {
   }, [opponentDisconnectCountdown, gameState.phase, claimWinByDisconnect]);
   // 60-second countdown when opponent disconnects
   // countdownRunningRef tracks if countdown is running to avoid duplicate intervals
+  // Added: 5-second grace period before starting countdown to avoid false positives on unstable networks
+  
+  const gracePeriodRef = useRef<NodeJS.Timeout | null>(null);
+  const graceActiveRef = useRef(false);
   
   useEffect(() => {
     // Only run during active games
@@ -1455,76 +1460,99 @@ export const useFriendLudoGame = () => {
         clearInterval(countdownIntervalRef.current);
         countdownIntervalRef.current = null;
       }
+      if (gracePeriodRef.current) {
+        clearTimeout(gracePeriodRef.current);
+        gracePeriodRef.current = null;
+      }
+      graceActiveRef.current = false;
       countdownRunningRef.current = false;
       setOpponentDisconnectCountdown(null);
       return;
     }
 
     if (!opponentOnline) {
-      // Opponent went offline - start 60 second countdown
-      // Only start if not already running (check ref, not state to avoid re-trigger)
-      if (!countdownRunningRef.current) {
-        console.log('[LudoSync] Opponent offline - starting 60s countdown');
-        soundManager.playDisconnectAlert();
-
-        // Track repeated disconnects (penalty) - only after we have seen opponent online at least once
-        if (opponentEverOnlineRef.current) {
-          const nextCount = opponentDisconnectCountRef.current + 1;
-          opponentDisconnectCountRef.current = nextCount;
-          setOpponentDisconnectCount(nextCount);
-          console.log('[LudoSync] Opponent disconnect count:', nextCount);
-
-          // More than 3 disconnects => instant forfeit (no 60s wait)
-          if (nextCount > MAX_DISCONNECT_COUNT) {
-            console.log('[LudoSync] Opponent exceeded disconnect limit - instant win');
-            countdownRunningRef.current = true; // prevent double-trigger until phase changes
-            setOpponentDisconnectCountdown(null);
-
-            sonnerToast.error('Opponent forfeited!', {
-              description: 'Disconnected too many times. You win.',
-              duration: 3000,
-            });
-
-            claimWinByDisconnect();
-            return;
-          }
-        }
+      // Opponent went offline - wait 5 seconds grace period before starting countdown
+      // This prevents false disconnects on unstable mobile networks
+      if (!countdownRunningRef.current && !graceActiveRef.current) {
+        console.log('[LudoSync] Opponent offline - starting 5s grace period before countdown');
+        graceActiveRef.current = true;
         
-        countdownRunningRef.current = true;
-        setOpponentDisconnectCountdown(60);
-        
-        // Show notification
-        sonnerToast.warning('Opponent disconnected!', {
-          description: 'Waiting 60 seconds for them to reconnect...',
-          duration: 4000
-        });
-        
-        // Clear any existing interval first
-        if (countdownIntervalRef.current) {
-          clearInterval(countdownIntervalRef.current);
-        }
-        
-        // Start countdown interval - decrements every second
-        countdownIntervalRef.current = setInterval(() => {
-          setOpponentDisconnectCountdown(prev => {
-            if (prev === null || prev <= 1) {
-              // Time's up - claim win
-              if (countdownIntervalRef.current) {
-                clearInterval(countdownIntervalRef.current);
-                countdownIntervalRef.current = null;
-              }
-              countdownRunningRef.current = false;
-              console.log('[LudoSync] Countdown finished - claiming win');
+        gracePeriodRef.current = setTimeout(() => {
+          // After grace period, check if opponent is still offline
+          // If they came back online, the else branch would have cleared this timeout
+          console.log('[LudoSync] Grace period ended - opponent still offline, starting 60s countdown');
+          graceActiveRef.current = false;
+          
+          soundManager.playDisconnectAlert();
+
+          // Track repeated disconnects (penalty) - only after we have seen opponent online at least once
+          if (opponentEverOnlineRef.current) {
+            const nextCount = opponentDisconnectCountRef.current + 1;
+            opponentDisconnectCountRef.current = nextCount;
+            setOpponentDisconnectCount(nextCount);
+            console.log('[LudoSync] Opponent disconnect count:', nextCount);
+
+            // More than 3 disconnects => instant forfeit (no 60s wait)
+            if (nextCount > MAX_DISCONNECT_COUNT) {
+              console.log('[LudoSync] Opponent exceeded disconnect limit - instant win');
+              countdownRunningRef.current = true; // prevent double-trigger until phase changes
+              setOpponentDisconnectCountdown(null);
+
+              sonnerToast.error('Opponent forfeited!', {
+                description: 'Disconnected too many times. You win.',
+                duration: 3000,
+              });
+
               claimWinByDisconnect();
-              return null;
+              return;
             }
-            console.log('[LudoSync] Countdown:', prev - 1);
-            return prev - 1;
+          }
+          
+          countdownRunningRef.current = true;
+          setOpponentDisconnectCountdown(60);
+          
+          // Show notification
+          sonnerToast.warning('Opponent disconnected!', {
+            description: 'Waiting 60 seconds for them to reconnect...',
+            duration: 4000
           });
-        }, 1000);
+          
+          // Clear any existing interval first
+          if (countdownIntervalRef.current) {
+            clearInterval(countdownIntervalRef.current);
+          }
+          
+          // Start countdown interval - decrements every second
+          countdownIntervalRef.current = setInterval(() => {
+            setOpponentDisconnectCountdown(prev => {
+              if (prev === null || prev <= 1) {
+                // Time's up - claim win
+                if (countdownIntervalRef.current) {
+                  clearInterval(countdownIntervalRef.current);
+                  countdownIntervalRef.current = null;
+                }
+                countdownRunningRef.current = false;
+                console.log('[LudoSync] Countdown finished - claiming win');
+                claimWinByDisconnect();
+                return null;
+              }
+              console.log('[LudoSync] Countdown:', prev - 1);
+              return prev - 1;
+            });
+          }, 1000);
+        }, 5000); // 5 second grace period
       }
     } else {
-      // Opponent came back online - clear countdown
+      // Opponent came back online - clear grace period AND countdown
+      if (graceActiveRef.current) {
+        console.log('[LudoSync] Opponent reconnected during grace period');
+        if (gracePeriodRef.current) {
+          clearTimeout(gracePeriodRef.current);
+          gracePeriodRef.current = null;
+        }
+        graceActiveRef.current = false;
+      }
+      
       if (countdownRunningRef.current) {
         console.log('[LudoSync] Opponent reconnected - clearing countdown');
         if (countdownIntervalRef.current) {
@@ -1545,6 +1573,10 @@ export const useFriendLudoGame = () => {
       if (countdownIntervalRef.current) {
         clearInterval(countdownIntervalRef.current);
         countdownIntervalRef.current = null;
+      }
+      if (gracePeriodRef.current) {
+        clearTimeout(gracePeriodRef.current);
+        gracePeriodRef.current = null;
       }
     };
   }, [opponentOnline, gameState.phase, claimWinByDisconnect]);
