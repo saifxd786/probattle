@@ -1,4 +1,4 @@
-import { Users, Gamepad2, ArrowLeftRight, LogOut, ChevronLeft } from 'lucide-react';
+import { Users, Gamepad2, ArrowLeftRight, LogOut, ChevronLeft, Calendar, MapPin } from 'lucide-react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
@@ -20,6 +20,8 @@ const AgentSidebar = ({ collapsed, onToggle, onNavigate, isMobile }: AgentSideba
   const navItems = [
     { title: 'Users', url: '/agent', icon: Users, visible: permissions.can_view_users },
     { title: 'BGMI Matches', url: '/agent/matches', icon: Gamepad2, visible: permissions.can_manage_bgmi_results },
+    { title: 'TDM Scheduler', url: '/agent/tdm-scheduler', icon: Calendar, visible: permissions.can_schedule_tdm_matches },
+    { title: 'Classic Scheduler', url: '/agent/classic-scheduler', icon: MapPin, visible: permissions.can_schedule_classic_matches },
     { title: 'Transactions', url: '/agent/transactions', icon: ArrowLeftRight, visible: permissions.can_view_transactions },
   ];
 

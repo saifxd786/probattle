@@ -11,6 +11,8 @@ export type AgentPermissions = {
   can_reply_support: boolean;
   can_approve_registrations: boolean;
   can_publish_room_details: boolean;
+  can_schedule_tdm_matches: boolean;
+  can_schedule_classic_matches: boolean;
 };
 
 const defaultPermissions: AgentPermissions = {
@@ -22,6 +24,8 @@ const defaultPermissions: AgentPermissions = {
   can_reply_support: false,
   can_approve_registrations: false,
   can_publish_room_details: false,
+  can_schedule_tdm_matches: false,
+  can_schedule_classic_matches: false,
 };
 
 export const useAgentPermissions = () => {
@@ -55,6 +59,8 @@ export const useAgentPermissions = () => {
           can_reply_support: data.can_reply_support,
           can_approve_registrations: data.can_approve_registrations,
           can_publish_room_details: data.can_publish_room_details,
+          can_schedule_tdm_matches: data.can_schedule_tdm_matches ?? false,
+          can_schedule_classic_matches: data.can_schedule_classic_matches ?? false,
         });
       }
       setIsLoading(false);

@@ -54,6 +54,8 @@ export type Database = {
           can_manage_bgmi_results: boolean
           can_publish_room_details: boolean
           can_reply_support: boolean
+          can_schedule_classic_matches: boolean | null
+          can_schedule_tdm_matches: boolean | null
           can_view_support: boolean
           can_view_transactions: boolean
           can_view_user_details: boolean
@@ -68,6 +70,8 @@ export type Database = {
           can_manage_bgmi_results?: boolean
           can_publish_room_details?: boolean
           can_reply_support?: boolean
+          can_schedule_classic_matches?: boolean | null
+          can_schedule_tdm_matches?: boolean | null
           can_view_support?: boolean
           can_view_transactions?: boolean
           can_view_user_details?: boolean
@@ -82,6 +86,8 @@ export type Database = {
           can_manage_bgmi_results?: boolean
           can_publish_room_details?: boolean
           can_reply_support?: boolean
+          can_schedule_classic_matches?: boolean | null
+          can_schedule_tdm_matches?: boolean | null
           can_view_support?: boolean
           can_view_transactions?: boolean
           can_view_user_details?: boolean

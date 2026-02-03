@@ -10,7 +10,7 @@ import {
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { Loader2, Users, Eye, Trophy, CreditCard, MessageSquare, Reply, CheckCircle, Key } from 'lucide-react';
+import { Loader2, Users, Eye, Trophy, CreditCard, MessageSquare, Reply, CheckCircle, Key, Calendar, MapPin } from 'lucide-react';
 
 type AgentPermissions = {
   id: string;
@@ -23,6 +23,8 @@ type AgentPermissions = {
   can_reply_support: boolean;
   can_approve_registrations: boolean;
   can_publish_room_details: boolean;
+  can_schedule_tdm_matches: boolean;
+  can_schedule_classic_matches: boolean;
 };
 
 type Props = {
@@ -38,6 +40,8 @@ const permissionConfig = [
   { key: 'can_manage_bgmi_results', label: 'Manage BGMI Results', description: 'Match results update kar sakta hai', icon: Trophy },
   { key: 'can_publish_room_details', label: 'Publish Room Details', description: 'Room ID aur password publish kar sakta hai', icon: Key },
   { key: 'can_approve_registrations', label: 'Approve Registrations', description: 'Match registrations approve kar sakta hai', icon: CheckCircle },
+  { key: 'can_schedule_tdm_matches', label: 'Schedule TDM Matches', description: 'TDM matches schedule kar sakta hai', icon: Calendar },
+  { key: 'can_schedule_classic_matches', label: 'Schedule Classic Matches', description: 'Classic matches schedule kar sakta hai', icon: MapPin },
   { key: 'can_view_transactions', label: 'View Transactions', description: 'Deposits/withdrawals dekh sakta hai', icon: CreditCard },
   { key: 'can_view_support', label: 'View Support Tickets', description: 'Support tickets dekh sakta hai', icon: MessageSquare },
   { key: 'can_reply_support', label: 'Reply to Support', description: 'Support tickets ka reply kar sakta hai', icon: Reply },
@@ -106,6 +110,8 @@ const AgentPermissionsDialog = ({ isOpen, onClose, userId, username }: Props) =>
         can_reply_support: permissions.can_reply_support,
         can_approve_registrations: permissions.can_approve_registrations,
         can_publish_room_details: permissions.can_publish_room_details,
+        can_schedule_tdm_matches: permissions.can_schedule_tdm_matches,
+        can_schedule_classic_matches: permissions.can_schedule_classic_matches,
       })
       .eq('agent_user_id', userId);
 
@@ -130,6 +136,8 @@ const AgentPermissionsDialog = ({ isOpen, onClose, userId, username }: Props) =>
       can_reply_support: value,
       can_approve_registrations: value,
       can_publish_room_details: value,
+      can_schedule_tdm_matches: value,
+      can_schedule_classic_matches: value,
     });
   };
 
