@@ -206,7 +206,7 @@ const LudoLobby = ({
                 Create Challenge
               </button>
               <button
-                onClick={onPlayWithFriend}
+                onClick={onJoinChallenge}
                 className="flex-1 h-14 rounded-xl flex items-center justify-center gap-2 font-bold text-base transition-all bg-gradient-to-r from-emerald-500 to-green-500 text-white shadow-lg shadow-emerald-500/30 hover:shadow-emerald-500/50"
               >
                 <Users className="w-5 h-5" />
