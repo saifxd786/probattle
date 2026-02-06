@@ -246,6 +246,7 @@ const LudoPage = () => {
   const [showRematchDialog, setShowRematchDialog] = useState(false);
   const [liveUsers, setLiveUsers] = useState(getLiveUsersCount);
   const [selectedAvatar, setSelectedAvatar] = useState<string | null>('profile');
+  const [showChallengesPage, setShowChallengesPage] = useState<'create' | 'join' | null>(null);
   
   // Bot game hook
   const {
