@@ -174,6 +174,21 @@ jobs:
       - name: Sync Capacitor
         run: npx cap sync android
 
+      # CRITICAL: Pin Gradle wrapper AFTER cap add android (which creates its own wrapper)
+      - name: Force Gradle wrapper version (CI)
+        run: |
+          set -euo pipefail
+          WRAPPER="android/gradle/wrapper/gradle-wrapper.properties"
+          if [ ! -f "$WRAPPER" ]; then
+            echo "ERROR: $WRAPPER not found"
+            exit 1
+          fi
+
+          # Pin to Gradle 8.13 (required for AGP 8.13.0)
+          sed -i -E 's#^distributionUrl=.*#distributionUrl=https\\://services.gradle.org/distributions/gradle-8.13-bin.zip#' "$WRAPPER"
+          echo "Pinned Gradle wrapper:"
+          cat "$WRAPPER"
+
       - name: Clean build directories (prevent stale resources)
         run: |
           set -euo pipefail
@@ -220,19 +235,7 @@ jobs:
           kotlin.incremental=false
           EOF
 
-      - name: Force Gradle wrapper version (CI)
-        run: |
-          set -euo pipefail
-          WRAPPER="android/gradle/wrapper/gradle-wrapper.properties"
-          if [ ! -f "$WRAPPER" ]; then
-            echo "ERROR: $WRAPPER not found"
-            exit 1
-          fi
-
-          # Pin wrapper without running Gradle (avoids AGP/Gradle mismatch during wrapper upgrade)
-          sed -i -E 's#^distributionUrl=.*#distributionUrl=https\://services.gradle.org/distributions/gradle-8.13-bin.zip#' "$WRAPPER"
-          echo "Pinned Gradle wrapper:"
-          grep -n "distributionUrl" "$WRAPPER" || true
+      # Gradle wrapper already pinned in earlier step
 
       - name: Disable Navigation Resources (CI workaround)
         run: |
