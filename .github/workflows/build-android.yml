@@ -28,6 +28,37 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
+      - name: Install Android SDK packages (prevent missing platform/build-tools)
+        run: |
+          set -euo pipefail
+          SDKROOT="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-}}"
+          echo "SDKROOT=$SDKROOT"
+          if [ -z "$SDKROOT" ]; then
+            echo "ERROR: ANDROID_SDK_ROOT/ANDROID_HOME not set"
+            exit 1
+          fi
+
+          SM="sdkmanager --sdk_root=$SDKROOT"
+
+          # Accept licenses (non-interactive)
+          yes | $SM --licenses > /dev/null
+
+          # Ensure core tooling exists
+          $SM "platform-tools" "cmdline-tools;latest"
+
+          # Try newest first; fall back if runner image doesn't have it yet.
+          set +e
+          $SM "platforms;android-35" "build-tools;35.0.0"
+          RC=$?
+          set -e
+          if [ "$RC" -ne 0 ]; then
+            echo "Android 35 packages not available; using Android 34."
+            $SM "platforms;android-34" "build-tools;34.0.0"
+          fi
+
+          # Keep Android 33 available for compatibility.
+          $SM "platforms;android-33" "build-tools;33.0.2"
+
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
         with:
@@ -90,7 +121,17 @@ jobs:
           set -euo pipefail
           cd android
           chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon --stacktrace | tee ../gradle-build.log
+
+          # Reduce OOM / Kotlin daemon crashes on CI
+          export GRADLE_OPTS='-Dorg.gradle.jvmargs=-Xmx4g -Dfile.encoding=UTF-8 -Dkotlin.daemon.jvm.options=-Xmx2g'
+
+          ./gradlew assembleDebug --no-daemon --stacktrace --info --warning-mode all | tee ../gradle-build.log
+
+      - name: Print Gradle failure snippet (always)
+        if: always()
+        run: |
+          echo "==== gradle-build.log (tail 250) ===="
+          tail -n 250 gradle-build.log || true
 
       - name: Upload build logs (always)
         if: always()
