@@ -28,6 +28,7 @@ import LudoChat from '@/components/ludo/LudoChat';
 import CaptureAnimation from '@/components/ludo/CaptureAnimation';
 import RematchDialog from '@/components/ludo/RematchDialog';
 import LudoLobby from '@/components/ludo/LudoLobby';
+import ChallengesPage from '@/components/ludo/ChallengesPage';
 import { CUSTOM_AVATARS } from '@/components/ludo/LudoAvatarPicker';
 import { useLudoGame } from '@/hooks/useLudoGame';
 import { useFriendLudoGame } from '@/hooks/useFriendLudoGame';
