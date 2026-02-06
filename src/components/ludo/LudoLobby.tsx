@@ -202,28 +202,21 @@ const LudoLobby = ({
           </div>
         )}
 
-        {/* With Friend Button - Prominent */}
-        {user && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mb-3"
-          >
-            <motion.button
-              whileTap={{ scale: 0.98 }}
+        {/* Bottom Fixed Section */}
+        <div className="flex-shrink-0 space-y-2">
+          {/* With Friend Button */}
+          {user && (
+            <button
               onClick={onPlayWithFriend}
-              className="w-full relative h-12 rounded-xl overflow-hidden group"
+              className="w-full h-11 rounded-xl flex items-center justify-center gap-2"
               style={{
                 background: 'linear-gradient(135deg, #EC4899 0%, #DB2777 100%)',
               }}
             >
-              <div className="relative z-10 flex items-center justify-center h-full gap-2">
-                <UserPlus className="w-4 h-4 text-white" />
-                <span className="font-semibold text-white text-sm">Play With Friend</span>
-              </div>
-            </motion.button>
-          </motion.div>
-        )}
+              <UserPlus className="w-4 h-4 text-white" />
+              <span className="font-semibold text-white text-sm">Play With Friend</span>
+            </button>
+          )}
 
         {/* Features - Compact Row */}
         <motion.div
