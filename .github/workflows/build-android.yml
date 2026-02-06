@@ -49,11 +49,12 @@ jobs:
 
           # Install ONLY stable SDK (avoid preview SDK flakiness that can break resource parsing)
           $SM "platform-tools" "cmdline-tools;latest"
+          $SM "platforms;android-35" "build-tools;35.0.0"
           $SM "platforms;android-34" "build-tools;34.0.0"
           $SM "platforms;android-33" "build-tools;33.0.2"
-
-          # Hard-pin chosen API to stable 34
-          API="34"
+ 
+          # Hard-pin chosen API to stable 35 (commonly required by newer AndroidX AAR metadata)
+          API="35"
 
           echo "==== Android platform sanity check (android-$API) ===="
           ls -la "$SDKROOT/platforms" || true
@@ -303,7 +304,7 @@ jobs:
 
           echo "==== gradle-build.log (best-effort failure context) ===="
           # Gradle doesn't always print the 'FAILURE:' block (some crashes only show stacktrace + 'BUILD FAILED')
-          MARKER_RE='BUILD FAILED|FAILURE:|Build failed with an exception|What went wrong:|A problem occurred|Execution failed for task|Caused by:|Daemon disappeared|daemon disappeared|Killed|SIGKILL|exit code'
+          MARKER_RE='BUILD FAILED|FAILURE:|Build failed with an exception|What went wrong:|A problem occurred|Execution failed for task|Caused by:|AAR metadata|aar metadata|checkAarMetadata|CheckAarMetadata|issues were found when checking|Daemon disappeared|daemon disappeared|Killed|SIGKILL|exit code'
           if grep -nE "$MARKER_RE" "$CLEAN" >/dev/null 2>&1; then
             L=$(grep -nE "$MARKER_RE" "$CLEAN" | tail -n 1 | cut -d: -f1)
             START=$((L-320)); if [ "$START" -lt 1 ]; then START=1; fi
@@ -314,7 +315,7 @@ jobs:
 
           echo "==== gradle-build.log (likely-cause lines) ===="
           # Print the most informative error-like lines even when Gradle markers are missing
-          grep -nE "Caused by:|\\bException\\b|\\bERROR\\b|\\bError:\\b|Plugin \\[id:|Could not|No matching variant|Unsupported|SDK location|compileSdkVersion|targetSdkVersion|Daemon disappeared|daemon disappeared|Killed|SIGKILL|exit code|OutOfMemory|OOM" "$CLEAN" | tail -n 320 || true
+          grep -nE "Caused by:|\\bException\\b|\\bERROR\\b|\\bError:\\b|AAR metadata|aar metadata|checkAarMetadata|CheckAarMetadata|issues were found when checking|Plugin \\[id:|Could not|No matching variant|Unsupported|SDK location|compileSdkVersion|targetSdkVersion|Daemon disappeared|daemon disappeared|Killed|SIGKILL|exit code|OutOfMemory|OOM" "$CLEAN" | tail -n 320 || true
 
           echo "==== gradle-build.log (tail 2000) ===="
           tail -n 2000 "$CLEAN" || true
