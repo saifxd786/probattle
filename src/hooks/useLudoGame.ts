@@ -667,10 +667,16 @@ export const useLudoGame = () => {
     console.log(`[LudoGame] Wager reduced: ${currentWager} -> ${newWager} (bet: ${entryAmount})`);
     setWalletBalance(prev => prev - entryAmount);
 
-    // 4v4 mode gets 2x multiplier, 1v1 uses settings multiplier
-    const rewardAmount = playerMode === 4 
-      ? entryAmount * 2 
-      : entryAmount * settings.rewardMultiplier;
+    // Calculate reward based on player mode
+    // 1v1: 1.5x, 1v1v1: 2.5x, 1v1v1v1: 3.5x
+    const getRewardMultiplier = (mode: 2 | 3 | 4) => {
+      switch (mode) {
+        case 2: return settings.rewardMultiplier; // 1.5x
+        case 3: return 2.5; // 2.5x for 1v1v1
+        case 4: return 3.5; // 3.5x for 1v1v1v1
+      }
+    };
+    const rewardAmount = entryAmount * getRewardMultiplier(playerMode);
     const { data: match, error: matchError } = await supabase
       .from('ludo_matches')
       .insert({
