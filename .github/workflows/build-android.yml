@@ -145,13 +145,24 @@ jobs:
           SDK_DIR="${ANDROID_SDK_ROOT:-$ANDROID_HOME}"
           echo "sdk.dir=$SDK_DIR" > android/local.properties
 
+      - name: Configure Gradle properties for CI stability
+        run: |
+          cat >> android/gradle.properties << 'EOF'
+          # CI stability settings - prevent worker deadlocks
+          org.gradle.parallel=false
+          org.gradle.workers.max=2
+          org.gradle.configureondemand=false
+          org.gradle.caching=false
+          kotlin.incremental=false
+          EOF
+
       - name: Upgrade Gradle wrapper
         run: |
           set -euo pipefail
           cd android
           chmod +x gradlew
-          # Use Gradle 8.10.2 (stable) - 8.14.x has worker deadlock issues with --no-daemon
-          ./gradlew wrapper --gradle-version=8.10.2 --distribution-type=bin || true
+          # Use Gradle 8.9 (minimum stable for AGP 8.7/Capacitor 8)
+          ./gradlew wrapper --gradle-version=8.9 --distribution-type=bin || true
 
       - name: Disable Navigation Resources (CI workaround)
         run: |
@@ -174,12 +185,11 @@ jobs:
           cd android
           chmod +x gradlew
 
-          # Reduce OOM / worker deadlock crashes on CI - limit parallelism
-          export GRADLE_OPTS='-Dorg.gradle.jvmargs=-Xmx4g -Dfile.encoding=UTF-8 -Dkotlin.daemon.jvm.options=-Xmx2g -Dorg.gradle.workers.max=2'
+          # Memory settings for CI - avoid OOM
+          export GRADLE_OPTS='-Dorg.gradle.jvmargs=-Xmx3g -Dfile.encoding=UTF-8'
 
-          # Use plain console output so logs are grep/parse friendly (no carriage-return UI)
-          # --no-parallel prevents worker lease deadlocks
-          ./gradlew assembleDebug -x :app:processDebugNavigationResources -x :app:compileDebugNavigationResources --no-daemon --no-parallel --stacktrace --info --warning-mode all --console=plain | tee ../gradle-build.log
+          # Build with daemon (more stable than --no-daemon on CI), parallelism disabled via gradle.properties
+          ./gradlew assembleDebug -x :app:processDebugNavigationResources -x :app:compileDebugNavigationResources --stacktrace --info --warning-mode all --console=plain | tee ../gradle-build.log
 
       - name: Print Gradle failure snippet (always)
         if: always()
