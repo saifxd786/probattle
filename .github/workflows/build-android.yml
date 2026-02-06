@@ -161,15 +161,26 @@ jobs:
         run: |
           rm -rf ~/.gradle/caches || true
           rm -rf ~/.gradle/wrapper || true
+          rm -rf ~/.gradle/native || true
+          rm -rf ~/.gradle/daemon || true
           echo "Gradle caches cleaned"
 
-      - name: Add Android platform
+      - name: Add Android platform (fresh)
         run: |
           rm -rf android
+          rm -rf node_modules/.cache || true
           npx cap add android
 
       - name: Sync Capacitor
         run: npx cap sync android
+
+      - name: Clean build directories (prevent stale resources)
+        run: |
+          set -euo pipefail
+          rm -rf android/app/build || true
+          rm -rf android/build || true
+          rm -rf android/.gradle || true
+          echo "Android build directories cleaned"
 
       - name: Align Android SDK level (CI)
         run: |
