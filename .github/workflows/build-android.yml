@@ -41,7 +41,11 @@ jobs:
           SM="sdkmanager --sdk_root=$SDKROOT"
 
           # Accept licenses (non-interactive)
-          yes | $SM --licenses > /dev/null
+          # NOTE: `yes` may exit with SIGPIPE (prints "Broken pipe") once sdkmanager stops reading.
+          # With pipefail enabled, that would fail the step even if sdkmanager succeeded.
+          set +o pipefail
+          yes 2>/dev/null | $SM --licenses > /dev/null
+          set -o pipefail
 
           # Ensure core tooling exists
           $SM "platform-tools" "cmdline-tools;latest"
