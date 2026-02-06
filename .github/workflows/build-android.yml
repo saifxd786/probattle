@@ -28,11 +28,11 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Install dependencies
-        run: npm install
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
 
-      - name: Install Capacitor CLI
-        run: npm install @capacitor/cli @capacitor/core @capacitor/android --save-dev
+      - name: Install dependencies
+        run: npm ci
 
       - name: Build web assets
         run: npm run build
@@ -69,13 +69,27 @@ jobs:
 
       - name: Build Debug APK
         run: |
+          set -euo pipefail
           cd android
           chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon --stacktrace
+          ./gradlew assembleDebug --no-daemon --stacktrace | tee ../gradle-build.log
+
+      - name: Upload build logs (always)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-build-logs
+          path: |
+            gradle-build.log
+            android/app/build/reports
+            android/build/reports
+          if-no-files-found: ignore
+          retention-days: 7
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: ProBattle-APK
           path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
           retention-days: 30
