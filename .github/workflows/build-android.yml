@@ -145,6 +145,14 @@ jobs:
           SDK_DIR="${ANDROID_SDK_ROOT:-$ANDROID_HOME}"
           echo "sdk.dir=$SDK_DIR" > android/local.properties
 
+      - name: Upgrade Gradle wrapper
+        run: |
+          set -euo pipefail
+          cd android
+          chmod +x gradlew
+          # Upgrade to a modern, stable Gradle version that fixes deadlock issues
+          ./gradlew wrapper --gradle-version=8.7 --distribution-type=bin || true
+
       - name: Build Debug APK
         run: |
           set -euo pipefail
