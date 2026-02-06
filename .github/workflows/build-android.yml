@@ -154,7 +154,9 @@ jobs:
           org.gradle.configureondemand=false
           org.gradle.caching=false
           org.gradle.vfs.watch=false
+          org.gradle.daemon=false
           org.gradle.jvmargs=-Xmx3g -Dfile.encoding=UTF-8
+          kotlin.daemon.jvmargs=-Xmx2g -Dfile.encoding=UTF-8
           kotlin.incremental=false
           EOF
 
@@ -208,7 +210,7 @@ jobs:
           # Capture BOTH stdout + stderr into gradle-build.log
           # Also preserve exit code even with piping to tee
           set +e
-          ./gradlew assembleDebug -x :app:processDebugNavigationResources -x :app:compileDebugNavigationResources --stacktrace --info --warning-mode all --console=plain 2>&1 | tee ../gradle-build.log
+          ./gradlew --no-daemon --max-workers=2 assembleDebug -x :app:processDebugNavigationResources -x :app:compileDebugNavigationResources --stacktrace --info --warning-mode all --console=plain 2>&1 | tee ../gradle-build.log
           RC=${PIPESTATUS[0]}
           set -e
 
@@ -224,6 +226,8 @@ jobs:
         run: |
           set -euo pipefail
           CLEAN="gradle-build.clean.log"
+          SUMMARY="${GITHUB_STEP_SUMMARY:-}"
+          if [ -z "$SUMMARY" ]; then SUMMARY=/dev/null; fi
 
           # Strip ANSI codes + Windows CR to make grep reliable
           (sed -r 's/\x1B\[[0-9;]*[mK]//g' gradle-build.log | tr -d '\r') > "$CLEAN" || cp gradle-build.log "$CLEAN"
@@ -248,6 +252,21 @@ jobs:
 
           echo "==== gradle-build.log (tail 2000) ===="
           tail -n 2000 "$CLEAN" || true
+
+          # Also write a concise summary to the GitHub job summary (easy to view on mobile)
+          {
+            echo "## Android build failure summary";
+            echo "";
+            echo "### Likely-cause lines (tail)";
+            echo "\`\`\`";
+            grep -nE "Caused by:|\\bException\\b|\\bERROR\\b|\\bError:\\b|Plugin \\[id:|Could not|No matching variant|Unsupported|SDK location|compileSdkVersion|targetSdkVersion|Daemon disappeared|daemon disappeared|Killed|SIGKILL|exit code|OutOfMemory|OOM" "$CLEAN" | tail -n 120 || true;
+            echo "\`\`\`";
+            echo "";
+            echo "### Tail 250";
+            echo "\`\`\`";
+            tail -n 250 "$CLEAN" || true;
+            echo "\`\`\`";
+          } >> "$SUMMARY" || true
 
       - name: Upload build logs (always)
         if: always()
