@@ -47,71 +47,32 @@ jobs:
           yes 2>/dev/null | $SM --licenses > /dev/null
           set -o pipefail
 
-          # Ensure core tooling exists
+          # Install ONLY stable SDK (avoid preview SDK flakiness that can break resource parsing)
           $SM "platform-tools" "cmdline-tools;latest"
-
-          # Always install a stable SDK level (34), plus a compatibility level (33)
           $SM "platforms;android-34" "build-tools;34.0.0"
           $SM "platforms;android-33" "build-tools;33.0.2"
 
-          # Try installing Android 36 first (some AndroidX versions require compileSdk 36)
-          # Android 36 may be preview depending on the runner image; fall back safely if it can't be installed.
-          set +e
+          # Hard-pin chosen API to stable 34
+          API="34"
 
-          # Defensive: remove partially-installed SDK dirs (can happen with interrupted installs)
-          rm -rf "$SDKROOT/platforms/android-36" "$SDKROOT/build-tools/36.0.0" || true
-          rm -rf "$SDKROOT/platforms/android-35" "$SDKROOT/build-tools/35.0.0" || true
+          echo "==== Android platform sanity check (android-$API) ===="
+          ls -la "$SDKROOT/platforms" || true
+          ls -la "$SDKROOT/platforms/android-$API" || true
+          ls -la "$SDKROOT/platforms/android-$API/data" || true
 
-          $SM "build-tools;36.0.0"
-          RC_BT36=$?
-          if [ "$RC_BT36" -ne 0 ]; then
-            $SM --channel=3 "build-tools;36.0.0"
-            RC_BT36=$?
+          if [ ! -f "$SDKROOT/platforms/android-$API/android.jar" ]; then
+            echo "ERROR: android.jar missing for android-$API"
+            exit 1
           fi
 
-          $SM "platforms;android-36"
-          RC_PL36=$?
-          if [ "$RC_PL36" -ne 0 ]; then
-            $SM --channel=3 "platforms;android-36"
-            RC_PL36=$?
+          if [ ! -d "$SDKROOT/platforms/android-$API/data/res" ]; then
+            echo "ERROR: data/res directory missing for android-$API (this is required by AGP transforms)"
+            echo "If this keeps happening, the SDK install may be incomplete on the runner image."
+            exit 1
           fi
 
-          # Also try installing Android 35 / Build Tools 35 (AGP 8.13 default)
-          $SM "build-tools;35.0.0"
-          RC_BT35=$?
-          $SM "platforms;android-35"
-          RC_PL35=$?
-          set -e
-
-          if [ "$RC_PL36" -ne 0 ]; then
-            echo "Android 36 platform not available; may fail if dependencies require compileSdk 36."
-          fi
-          if [ "$RC_BT36" -ne 0 ]; then
-            echo "Android Build Tools 36.0.0 not available; will use older build-tools."
-          fi
-          if [ "$RC_BT35" -ne 0 ]; then
-            echo "Android Build Tools 35.0.0 not available; will use 34.0.0."
-          fi
-          if [ "$RC_PL35" -ne 0 ]; then
-            echo "Android 35 platform not available; will build against Android 34."
-          fi
-
-          # Export chosen API level for later steps (must have a valid android.jar + data/res)
-          CHOSEN_API=""
-          for A in 36 35 34 33; do
-            if [ -f "$SDKROOT/platforms/android-$A/android.jar" ] && [ -d "$SDKROOT/platforms/android-$A/data/res" ]; then
-              CHOSEN_API="$A"
-              break
-            fi
-          done
-
-          if [ -z "$CHOSEN_API" ]; then
-            echo "WARNING: No valid Android platform found; defaulting to 34."
-            CHOSEN_API="34"
-          fi
-
-          echo "ANDROID_API_LEVEL=$CHOSEN_API" >> $GITHUB_ENV
-          echo "Selected Android platform API level: $CHOSEN_API"
+          echo "ANDROID_API_LEVEL=$API" >> $GITHUB_ENV
+          echo "Selected Android platform API level: $API"
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
@@ -215,6 +176,28 @@ jobs:
             sed -i -E "s/(targetSdkVersion\\s+)[0-9]+/\\1${API}/" android/app/build.gradle || true
           fi
 
+      - name: Android platform sanity (CI)
+        run: |
+          set -euo pipefail
+          SDKROOT="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-}}"
+          API="${ANDROID_API_LEVEL:-34}"
+          echo "SDKROOT=$SDKROOT"
+          echo "ANDROID_API_LEVEL=$API"
+          if [ -z "$SDKROOT" ]; then
+            echo "ERROR: ANDROID_SDK_ROOT/ANDROID_HOME not set"
+            exit 1
+          fi
+
+          echo "==== android-$API contents ===="
+          ls -la "$SDKROOT/platforms/android-$API" || true
+          ls -la "$SDKROOT/platforms/android-$API/data" || true
+          ls -la "$SDKROOT/platforms/android-$API/data/res" || true
+          file "$SDKROOT/platforms/android-$API/android.jar" || true
+
+          # Fail early with a clear error (this is the common root cause for parseDebugLocalResources flakiness)
+          test -f "$SDKROOT/platforms/android-$API/android.jar"
+          test -d "$SDKROOT/platforms/android-$API/data/res"
+
       - name: Ensure Android SDK path (local.properties)
         run: |
           SDK_DIR="${ANDROID_SDK_ROOT:-$ANDROID_HOME}"
@@ -266,6 +249,18 @@ jobs:
 
           echo "==== Gradle version ===="
           ./gradlew --version
+
+          echo "==== Android SDK sanity ===="
+          SDKROOT="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-}}"
+          API="${ANDROID_API_LEVEL:-34}"
+          echo "SDKROOT=$SDKROOT"
+          echo "ANDROID_API_LEVEL=$API"
+          if [ -n "$SDKROOT" ]; then
+            ls -la "$SDKROOT/platforms/android-$API" || true
+            ls -la "$SDKROOT/platforms/android-$API/data" || true
+            ls -la "$SDKROOT/platforms/android-$API/data/res" || true
+            file "$SDKROOT/platforms/android-$API/android.jar" || true
+          fi
 
           echo "==== CI memory (before Gradle) ===="
           free -h || true
