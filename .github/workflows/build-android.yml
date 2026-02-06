@@ -158,14 +158,19 @@ jobs:
           kotlin.incremental=false
           EOF
 
-      - name: Upgrade Gradle wrapper
+      - name: Force Gradle wrapper version (CI)
         run: |
           set -euo pipefail
-          cd android
-          chmod +x gradlew
-          # Use Gradle 8.13 to match Android Gradle Plugin 8.13.x compatibility.
-          # Note: We still keep CI stability flags via android/gradle.properties above.
-          ./gradlew wrapper --gradle-version=8.13 --distribution-type=bin || true
+          WRAPPER="android/gradle/wrapper/gradle-wrapper.properties"
+          if [ ! -f "$WRAPPER" ]; then
+            echo "ERROR: $WRAPPER not found"
+            exit 1
+          fi
+
+          # Pin wrapper without running Gradle (avoids AGP/Gradle mismatch during wrapper upgrade)
+          sed -i -E 's#^distributionUrl=.*#distributionUrl=https\://services.gradle.org/distributions/gradle-8.13-bin.zip#' "$WRAPPER"
+          echo "Pinned Gradle wrapper:"
+          grep -n "distributionUrl" "$WRAPPER" || true
 
       - name: Disable Navigation Resources (CI workaround)
         run: |
@@ -190,6 +195,12 @@ jobs:
 
           # Memory settings for CI - avoid OOM
           export GRADLE_OPTS='-Dorg.gradle.jvmargs=-Xmx3g -Dfile.encoding=UTF-8'
+
+          echo "==== Wrapper distributionUrl ===="
+          cat gradle/wrapper/gradle-wrapper.properties || true
+
+          echo "==== Gradle version ===="
+          ./gradlew --version
 
           echo "==== CI memory (before Gradle) ===="
           free -h || true
