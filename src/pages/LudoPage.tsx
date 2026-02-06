@@ -18,7 +18,6 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import EntrySelector from '@/components/ludo/EntrySelector';
 import MatchmakingScreen from '@/components/ludo/MatchmakingScreen';
 import LudoBoard from '@/components/ludo/LudoBoard';
 import LudoDice from '@/components/ludo/LudoDice';
