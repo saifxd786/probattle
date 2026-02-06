@@ -48,6 +48,12 @@ jobs:
           }
           EOF
 
+      - name: Prefer JSON Capacitor config (CI)
+        run: |
+          if [ -f capacitor.config.ts ]; then
+            mv capacitor.config.ts capacitor.config.ts.ci.bak
+          fi
+
       - name: Add Android platform
         run: |
           rm -rf android
@@ -56,11 +62,16 @@ jobs:
       - name: Sync Capacitor
         run: npx cap sync android
 
+      - name: Ensure Android SDK path (local.properties)
+        run: |
+          SDK_DIR="${ANDROID_SDK_ROOT:-$ANDROID_HOME}"
+          echo "sdk.dir=$SDK_DIR" > android/local.properties
+
       - name: Build Debug APK
         run: |
           cd android
           chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon
+          ./gradlew assembleDebug --no-daemon --stacktrace
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
