@@ -154,24 +154,48 @@ jobs:
           # Reduce OOM / Kotlin daemon crashes on CI
           export GRADLE_OPTS='-Dorg.gradle.jvmargs=-Xmx4g -Dfile.encoding=UTF-8 -Dkotlin.daemon.jvm.options=-Xmx2g'
 
-          ./gradlew assembleDebug --no-daemon --stacktrace --info --warning-mode all | tee ../gradle-build.log
+          # Use plain console output so logs are grep/parse friendly (no carriage-return UI)
+          ./gradlew assembleDebug --no-daemon --stacktrace --info --warning-mode all --console=plain | tee ../gradle-build.log
 
       - name: Print Gradle failure snippet (always)
         if: always()
         run: |
+          set -euo pipefail
+          CLEAN="gradle-build.clean.log"
+
+          # Strip ANSI codes + Windows CR to make grep reliable
+          (sed -r 's/\x1B\[[0-9;]*[mK]//g' gradle-build.log | tr -d '\r') > "$CLEAN" || cp gradle-build.log "$CLEAN"
+
           echo "==== gradle-build.log (failure section) ===="
-          if grep -n "FAILURE: Build failed" gradle-build.log >/dev/null 2>&1; then
-            START=$(grep -n "FAILURE: Build failed" gradle-build.log | head -n 1 | cut -d: -f1)
-            tail -n +$START gradle-build.log | head -n 260 || true
+          if grep -n "FAILURE: Build failed" "$CLEAN" >/dev/null 2>&1; then
+            START=$(grep -n "FAILURE: Build failed" "$CLEAN" | head -n 1 | cut -d: -f1)
+            tail -n +$START "$CLEAN" | head -n 320 || true
           else
-            echo "No 'FAILURE: Build failed' marker found; printing tail."
+            echo "No 'FAILURE: Build failed' marker found."
+          fi
+
+          echo "==== gradle-build.log (execution failed section) ===="
+          if grep -n "Execution failed for task" "$CLEAN" >/dev/null 2>&1; then
+            START=$(grep -n "Execution failed for task" "$CLEAN" | head -n 1 | cut -d: -f1)
+            tail -n +$START "$CLEAN" | head -n 260 || true
+          else
+            echo "No 'Execution failed for task' marker found."
+          fi
+
+          echo "==== gradle-build.log (:app:compileDebugNavigationResources context) ===="
+          if grep -n ":app:compileDebugNavigationResources" "$CLEAN" >/dev/null 2>&1; then
+            L=$(grep -n ":app:compileDebugNavigationResources" "$CLEAN" | head -n 1 | cut -d: -f1)
+            START=$((L-60)); if [ "$START" -lt 1 ]; then START=1; fi
+            sed -n "${START},$((L+220))p" "$CLEAN" || true
+          else
+            echo "No ':app:compileDebugNavigationResources' marker found."
           fi
 
           echo "==== gradle-build.log (key lines) ===="
-          grep -nE "FAILURE:|What went wrong:|A problem occurred|Caused by:" gradle-build.log | tail -n 120 || true
+          grep -nE "FAILURE:|What went wrong:|A problem occurred|Execution failed for task|Caused by:" "$CLEAN" | tail -n 200 || true
 
-          echo "==== gradle-build.log (tail 400) ===="
-          tail -n 400 gradle-build.log || true
+          echo "==== gradle-build.log (tail 500) ===="
+          tail -n 500 "$CLEAN" || true
 
       - name: Upload build logs (always)
         if: always()
@@ -180,6 +204,7 @@ jobs:
           name: android-build-logs
           path: |
             gradle-build.log
+            gradle-build.clean.log
             android/app/build/reports
             android/build/reports
           if-no-files-found: ignore
