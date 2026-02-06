@@ -49,15 +49,14 @@ jobs:
 
           # Install ONLY stable SDK (avoid preview SDK flakiness that can break resource parsing)
           $SM "platform-tools" "cmdline-tools;latest"
-          
-          # Newer AndroidX dependencies may require compileSdk 36+
-          $SM "platforms;android-36" "build-tools;36.0.0"
+
+          # Use stable Android SDK 35 for CI reliability
           $SM "platforms;android-35" "build-tools;35.0.0"
           $SM "platforms;android-34" "build-tools;34.0.0"
           $SM "platforms;android-33" "build-tools;33.0.2"
  
-          # Hard-pin chosen API to stable 36 (required by newer AAR metadata)
-          API="36"
+          # Hard-pin chosen API to stable 35
+          API="35"
 
           echo "==== Android platform sanity check (android-$API) ===="
           ls -la "$SDKROOT/platforms" || true
@@ -138,6 +137,28 @@ jobs:
 
       - name: Sync Capacitor
         run: npx cap sync android
+
+      - name: Pin AndroidX to SDK 35-compatible versions (CI)
+        run: |
+          set -euo pipefail
+          ROOT_GRADLE="android/build.gradle"
+          if [ -f "$ROOT_GRADLE" ]; then
+            cat >> "$ROOT_GRADLE" << 'EOF'
+
+// CI Workaround: keep AndroidX versions compatible with compileSdk 35
+subprojects { proj ->
+  proj.configurations.all { cfg ->
+    cfg.resolutionStrategy.force(
+      "androidx.core:core:1.15.0",
+      "androidx.core:core-ktx:1.15.0"
+    )
+  }
+}
+EOF
+            echo "Pinned AndroidX core to 1.15.0 in $ROOT_GRADLE"
+          else
+            echo "WARN: $ROOT_GRADLE not found; skipping AndroidX pin"
+          fi
 
       # CRITICAL: Pin Gradle wrapper AFTER cap add android (which creates its own wrapper)
       - name: Force Gradle wrapper version (CI)
