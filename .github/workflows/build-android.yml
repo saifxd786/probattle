@@ -50,18 +50,25 @@ jobs:
           # Ensure core tooling exists
           $SM "platform-tools" "cmdline-tools;latest"
 
-          # Try newest first; fall back if runner image doesn't have it yet.
+          # Always install a stable SDK level (34), plus a compatibility level (33)
+          $SM "platforms;android-34" "build-tools;34.0.0"
+          $SM "platforms;android-33" "build-tools;33.0.2"
+
+          # Optionally install newest (35) if available on the runner image
           set +e
           $SM "platforms;android-35" "build-tools;35.0.0"
-          RC=$?
+          RC35=$?
           set -e
-          if [ "$RC" -ne 0 ]; then
-            echo "Android 35 packages not available; using Android 34."
-            $SM "platforms;android-34" "build-tools;34.0.0"
+          if [ "$RC35" -ne 0 ]; then
+            echo "Android 35 packages not available; will build against Android 34."
           fi
 
-          # Keep Android 33 available for compatibility.
-          $SM "platforms;android-33" "build-tools;33.0.2"
+          # Export chosen API level for later steps
+          if [ -d "$SDKROOT/platforms/android-35" ]; then
+            echo "ANDROID_API_LEVEL=35" >> $GITHUB_ENV
+          else
+            echo "ANDROID_API_LEVEL=34" >> $GITHUB_ENV
+          fi
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
@@ -115,6 +122,24 @@ jobs:
       - name: Sync Capacitor
         run: npx cap sync android
 
+      - name: Align Android SDK level (CI)
+        run: |
+          set -euo pipefail
+          API="${ANDROID_API_LEVEL:-34}"
+          echo "Using ANDROID_API_LEVEL=$API"
+
+          # Capacitor templates usually keep these values in android/variables.gradle
+          if [ -f android/variables.gradle ]; then
+            sed -i -E "s/(compileSdkVersion\\s*=\\s*)[0-9]+/\\1${API}/" android/variables.gradle
+            sed -i -E "s/(targetSdkVersion\\s*=\\s*)[0-9]+/\\1${API}/" android/variables.gradle
+          fi
+
+          # Fallback: patch app/build.gradle if values are inlined
+          if [ -f android/app/build.gradle ]; then
+            sed -i -E "s/(compileSdkVersion\\s+)[0-9]+/\\1${API}/" android/app/build.gradle || true
+            sed -i -E "s/(targetSdkVersion\\s+)[0-9]+/\\1${API}/" android/app/build.gradle || true
+          fi
+
       - name: Ensure Android SDK path (local.properties)
         run: |
           SDK_DIR="${ANDROID_SDK_ROOT:-$ANDROID_HOME}"
@@ -134,8 +159,19 @@ jobs:
       - name: Print Gradle failure snippet (always)
         if: always()
         run: |
-          echo "==== gradle-build.log (tail 250) ===="
-          tail -n 250 gradle-build.log || true
+          echo "==== gradle-build.log (failure section) ===="
+          if grep -n "FAILURE: Build failed" gradle-build.log >/dev/null 2>&1; then
+            START=$(grep -n "FAILURE: Build failed" gradle-build.log | head -n 1 | cut -d: -f1)
+            tail -n +$START gradle-build.log | head -n 260 || true
+          else
+            echo "No 'FAILURE: Build failed' marker found; printing tail."
+          fi
+
+          echo "==== gradle-build.log (key lines) ===="
+          grep -nE "FAILURE:|What went wrong:|A problem occurred|Caused by:" gradle-build.log | tail -n 120 || true
+
+          echo "==== gradle-build.log (tail 400) ===="
+          tail -n 400 gradle-build.log || true
 
       - name: Upload build logs (always)
         if: always()
