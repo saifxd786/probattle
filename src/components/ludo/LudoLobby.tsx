@@ -45,11 +45,23 @@ const LudoLobby = ({
   userAvatar,
 }: LudoLobbyProps) => {
   const navigate = useNavigate();
-  // 4v4 mode gets 2x multiplier, 1v1 uses settings multiplier
-  const rewardAmount = playerMode === 4 
-    ? entryAmount * 2 
-    : entryAmount * settings.rewardMultiplier;
+  
+  // Multipliers based on player mode
+  const getMultiplier = (mode: 2 | 3 | 4) => {
+    switch (mode) {
+      case 2: return settings.rewardMultiplier; // 1.5x for 1v1
+      case 3: return 2.5; // 2.5x for 1v1v1
+      case 4: return 3.5; // 3.5x for 1v1v1v1
+    }
+  };
+  const rewardAmount = entryAmount * getMultiplier(playerMode);
 
+  const handleAcceptChallenge = (challenge: BotChallenge) => {
+    setEntryAmount(challenge.entryAmount);
+    setPlayerMode(challenge.playerMode);
+    // Small delay to update state then start
+    setTimeout(() => startMatchmaking(challenge), 100);
+  };
   return (
     <div className="h-[100dvh] bg-[#0A0A0F] relative overflow-hidden flex flex-col">
       {/* Subtle gradient background */}
