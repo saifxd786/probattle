@@ -23,7 +23,7 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
-          java-version: '17'
+          java-version: '21'
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
@@ -150,8 +150,8 @@ jobs:
           set -euo pipefail
           cd android
           chmod +x gradlew
-          # Upgrade to a modern, stable Gradle version that fixes deadlock issues
-          ./gradlew wrapper --gradle-version=8.7 --distribution-type=bin || true
+          # Align Gradle with modern Android/Capacitor toolchain
+          ./gradlew wrapper --gradle-version=8.14.3 --distribution-type=bin || true
 
       - name: Build Debug APK
         run: |
