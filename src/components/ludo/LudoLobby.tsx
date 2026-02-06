@@ -2,32 +2,39 @@ import { motion } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
 import { 
   Dices, Wallet, Trophy, Users, Zap, UserPlus, Info, 
-  Gamepad2, Star, Play, ChevronRight, Shield, Timer, Gift, Flame, ArrowLeft
+  ChevronRight, Shield, Timer, Gift, Flame, ArrowLeft
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import EntrySelector from './EntrySelector';
 import LudoAvatarPicker from './LudoAvatarPicker';
+import FindMatchChallenges from './FindMatchChallenges';
+
+interface BotChallenge {
+  id: string;
+  bot: { name: string; avatar: string };
+  entryAmount: number;
+  playerMode: 2 | 3 | 4;
+  isHot: boolean;
+  waitingTime: number;
+}
 
 interface LudoLobbyProps {
   user: any;
   walletBalance: number;
   entryAmount: number;
   setEntryAmount: (amount: number) => void;
-  playerMode: 2 | 4;
-  setPlayerMode: (mode: 2 | 4) => void;
+  playerMode: 2 | 3 | 4;
+  setPlayerMode: (mode: 2 | 3 | 4) => void;
   settings: {
     minEntryAmount: number;
     rewardMultiplier: number;
   };
   liveUsers: string;
-  startMatchmaking: () => void;
+  startMatchmaking: (challenge?: BotChallenge) => void;
   onPlayWithFriend: () => void;
   selectedAvatar: string | null;
   onSelectAvatar: (avatar: string | null) => void;
   userAvatar?: string | null;
 }
-
-const ENTRY_AMOUNTS = [10, 20, 50, 100, 200, 500, 1000, 5000];
 
 const LudoLobby = ({
   user,
@@ -45,16 +52,6 @@ const LudoLobby = ({
   userAvatar,
 }: LudoLobbyProps) => {
   const navigate = useNavigate();
-  
-  // Multipliers based on player mode
-  const getMultiplier = (mode: 2 | 3 | 4) => {
-    switch (mode) {
-      case 2: return settings.rewardMultiplier; // 1.5x for 1v1
-      case 3: return 2.5; // 2.5x for 1v1v1
-      case 4: return 3.5; // 3.5x for 1v1v1v1
-    }
-  };
-  const rewardAmount = entryAmount * getMultiplier(playerMode);
 
   const handleAcceptChallenge = (challenge: BotChallenge) => {
     setEntryAmount(challenge.entryAmount);
@@ -62,6 +59,7 @@ const LudoLobby = ({
     // Small delay to update state then start
     setTimeout(() => startMatchmaking(challenge), 100);
   };
+
   return (
     <div className="h-[100dvh] bg-[#0A0A0F] relative overflow-hidden flex flex-col">
       {/* Subtle gradient background */}
@@ -114,7 +112,7 @@ const LudoLobby = ({
                 <h1 className="text-lg font-bold text-white tracking-tight">Ludo Arena</h1>
                 <p className="text-[10px] text-gray-500 flex items-center gap-1">
                   <Flame className="w-3 h-3 text-orange-500" />
-                  Win up to ₹{rewardAmount.toFixed(0)}
+                  Accept a challenge below
                 </p>
               </div>
             </div>
@@ -182,82 +180,21 @@ const LudoLobby = ({
           </div>
         </motion.div>
 
-        {/* Entry Selector - Compact */}
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mb-3"
-        >
-          <EntrySelector
-            amounts={ENTRY_AMOUNTS.filter(a => a >= settings.minEntryAmount)}
-            selectedAmount={entryAmount}
-            onSelect={setEntryAmount}
-            rewardMultiplier={settings.rewardMultiplier}
-            playerMode={playerMode}
-            onPlayerModeChange={setPlayerMode}
-          />
-        </motion.div>
-
-        {/* Play Modes - Compact */}
-        {user && (
+        {/* Find Match Challenges - Main Section */}
+        {user ? (
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="grid grid-cols-2 gap-2 mb-3"
+            className="flex-1 min-h-0 mb-3"
           >
-            {/* VS Bot */}
-            <motion.button
-              whileTap={{ scale: 0.98 }}
-              onClick={startMatchmaking}
-              disabled={walletBalance < entryAmount}
-              className="relative h-14 rounded-xl overflow-hidden disabled:opacity-40 disabled:cursor-not-allowed group"
-              style={{
-                background: walletBalance >= entryAmount
-                  ? 'linear-gradient(135deg, #6366F1 0%, #4F46E5 100%)'
-                  : '#1F2937',
-              }}
-            >
-              <div className="relative z-10 flex items-center justify-center h-full gap-2">
-                <Gamepad2 className="w-4 h-4 text-white" />
-                <span className="font-semibold text-white text-sm">Play Now</span>
-              </div>
-            </motion.button>
-
-            {/* With Friend */}
-            <motion.button
-              whileTap={{ scale: 0.98 }}
-              onClick={() => {
-                if (playerMode === 4) {
-                  // Show toast that 4-player friend mode is coming soon
-                  import('sonner').then(({ toast }) => {
-                    toast.info('4-Player Friend mode coming soon! Switching to 1v1.');
-                  });
-                  setPlayerMode(2);
-                  setTimeout(() => onPlayWithFriend(), 100);
-                } else {
-                  onPlayWithFriend();
-                }
-              }}
-              className="relative h-14 rounded-xl overflow-hidden group"
-              style={{
-                background: 'linear-gradient(135deg, #EC4899 0%, #DB2777 100%)',
-              }}
-            >
-              <div className="relative z-10 flex items-center justify-center h-full gap-2">
-                <UserPlus className="w-4 h-4 text-white" />
-                <span className="font-semibold text-white text-sm">With Friend</span>
-              </div>
-              {playerMode === 4 && (
-                <div className="absolute top-1 right-1 px-1.5 py-0.5 rounded text-[7px] font-bold bg-black/40 text-white">
-                  1v1 only
-                </div>
-              )}
-            </motion.button>
+            <FindMatchChallenges
+              minEntryAmount={settings.minEntryAmount}
+              walletBalance={walletBalance}
+              rewardMultiplier={settings.rewardMultiplier}
+              onAcceptChallenge={handleAcceptChallenge}
+            />
           </motion.div>
-        )}
-
-        {/* Login Prompt */}
-        {!user && (
+        ) : (
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -267,13 +204,34 @@ const LudoLobby = ({
               <Button 
                 className="w-full h-12 bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white font-semibold rounded-xl border-0"
               >
-                <Play className="w-4 h-4 mr-2" />
                 Login to Play
               </Button>
             </Link>
           </motion.div>
         )}
 
+        {/* With Friend Button - Prominent */}
+        {user && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mb-3"
+          >
+            <motion.button
+              whileTap={{ scale: 0.98 }}
+              onClick={onPlayWithFriend}
+              className="w-full relative h-12 rounded-xl overflow-hidden group"
+              style={{
+                background: 'linear-gradient(135deg, #EC4899 0%, #DB2777 100%)',
+              }}
+            >
+              <div className="relative z-10 flex items-center justify-center h-full gap-2">
+                <UserPlus className="w-4 h-4 text-white" />
+                <span className="font-semibold text-white text-sm">Play With Friend</span>
+              </div>
+            </motion.button>
+          </motion.div>
+        )}
 
         {/* Features - Compact Row */}
         <motion.div
