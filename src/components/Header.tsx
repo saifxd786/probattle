@@ -117,8 +117,9 @@ const Header = () => {
                       download="ProBattle.apk"
                       className="flex items-center gap-2 cursor-pointer"
                     >
-                    <Download className="w-4 h-4" />
-                    <span>Download APK</span>
+                      <Download className="w-4 h-4" />
+                      <span>Download APK</span>
+                    </a>
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
