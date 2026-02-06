@@ -182,24 +182,16 @@ const LudoLobby = ({
 
         {/* Find Match Challenges - Main Section */}
         {user ? (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="flex-1 min-h-0 mb-3"
-          >
+          <div className="flex-1 min-h-0 overflow-hidden mb-2">
             <FindMatchChallenges
               minEntryAmount={settings.minEntryAmount}
               walletBalance={walletBalance}
               rewardMultiplier={settings.rewardMultiplier}
               onAcceptChallenge={handleAcceptChallenge}
             />
-          </motion.div>
+          </div>
         ) : (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mb-3"
-          >
+          <div className="mb-3">
             <Link to="/auth">
               <Button 
                 className="w-full h-12 bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white font-semibold rounded-xl border-0"
@@ -207,7 +199,7 @@ const LudoLobby = ({
                 Login to Play
               </Button>
             </Link>
-          </motion.div>
+          </div>
         )}
 
         {/* With Friend Button - Prominent */}
