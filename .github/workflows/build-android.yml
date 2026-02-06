@@ -146,7 +146,15 @@ jobs:
           fi
 
           # Pin to Gradle 8.13 (required for AGP 8.13.0)
-          sed -i -E 's#^distributionUrl=.*#distributionUrl=https\\://services.gradle.org/distributions/gradle-8.13-bin.zip#' "$WRAPPER"
+          sed -i 's|distributionUrl=.*|distributionUrl=https\\://services.gradle.org/distributions/gradle-8.13-bin.zip|' "$WRAPPER"
+          
+          # Verify the pinning worked
+          echo "==== Verify wrapper version ===="
+          grep "distributionUrl" "$WRAPPER"
+          if ! grep -q "gradle-8.13" "$WRAPPER"; then
+            echo "ERROR: Failed to pin Gradle wrapper to 8.13!"
+            exit 1
+          fi
           echo "Pinned Gradle wrapper:"
           cat "$WRAPPER"
 
