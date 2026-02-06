@@ -54,15 +54,26 @@ jobs:
           $SM "platforms;android-34" "build-tools;34.0.0"
           $SM "platforms;android-33" "build-tools;33.0.2"
 
-          # Try installing Build Tools 35.0.0 (AGP 8.13 default) even if the Android 35 platform
-          # isn't available on the runner image.
+          # Try installing Android 36 first (some AndroidX versions require compileSdk 36)
           set +e
+          $SM "build-tools;36.0.0"
+          RC_BT36=$?
+          $SM "platforms;android-36"
+          RC_PL36=$?
+
+          # Also try installing Android 35 / Build Tools 35 (AGP 8.13 default)
           $SM "build-tools;35.0.0"
           RC_BT35=$?
           $SM "platforms;android-35"
           RC_PL35=$?
           set -e
 
+          if [ "$RC_PL36" -ne 0 ]; then
+            echo "Android 36 platform not available; may fail if dependencies require compileSdk 36."
+          fi
+          if [ "$RC_BT36" -ne 0 ]; then
+            echo "Android Build Tools 36.0.0 not available; will use older build-tools."
+          fi
           if [ "$RC_BT35" -ne 0 ]; then
             echo "Android Build Tools 35.0.0 not available; will use 34.0.0."
           fi
@@ -71,7 +82,9 @@ jobs:
           fi
 
           # Export chosen API level for later steps
-          if [ -d "$SDKROOT/platforms/android-35" ]; then
+          if [ -d "$SDKROOT/platforms/android-36" ]; then
+            echo "ANDROID_API_LEVEL=36" >> $GITHUB_ENV
+          elif [ -d "$SDKROOT/platforms/android-35" ]; then
             echo "ANDROID_API_LEVEL=35" >> $GITHUB_ENV
           else
             echo "ANDROID_API_LEVEL=34" >> $GITHUB_ENV
