@@ -218,66 +218,24 @@ const LudoLobby = ({
             </button>
           )}
 
-        {/* Features - Compact Row */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="grid grid-cols-3 gap-2 mb-3"
-        >
-          {[
-            { icon: Shield, label: 'Fair Play', color: 'text-emerald-400', bg: 'bg-emerald-500/10' },
-            { icon: Timer, label: 'Quick Pay', color: 'text-violet-400', bg: 'bg-violet-500/10' },
-            { icon: Gift, label: 'Rewards', color: 'text-amber-400', bg: 'bg-amber-500/10' },
-          ].map((feature) => (
-            <div
-              key={feature.label}
-              className={`p-2 rounded-lg ${feature.bg} flex items-center justify-center gap-1.5`}
-            >
-              <feature.icon className={`w-3.5 h-3.5 ${feature.color}`} />
-              <p className="text-[10px] text-gray-400 font-medium">{feature.label}</p>
-            </div>
-          ))}
-        </motion.div>
-
-        {/* Quick Links - Compact */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="flex gap-2 mb-2"
-        >
-          {user && (
-            <Link to="/friends" className="flex-1">
-              <div className="flex items-center gap-2 p-2.5 rounded-xl bg-gray-900/50 border border-gray-800">
-                <div className="w-7 h-7 rounded-lg bg-cyan-500/10 flex items-center justify-center">
-                  <Users className="w-3.5 h-3.5 text-cyan-400" />
+          {/* Quick Row */}
+          <div className="flex gap-2">
+            {user && (
+              <Link to="/friends" className="flex-1">
+                <div className="flex items-center gap-2 p-2 rounded-xl bg-gray-900/50 border border-gray-800">
+                  <Users className="w-4 h-4 text-cyan-400" />
+                  <span className="font-medium text-white text-xs">Friends</span>
+                  <ChevronRight className="w-3.5 h-3.5 text-gray-600 ml-auto" />
                 </div>
-                <span className="font-medium text-white text-xs">Friends</span>
-                <ChevronRight className="w-3.5 h-3.5 text-gray-600 ml-auto" />
+              </Link>
+            )}
+            <Link to="/ludo/rules" className={user ? 'flex-1' : 'w-full'}>
+              <div className="flex items-center gap-2 p-2 rounded-xl bg-gray-900/50 border border-gray-800">
+                <Info className="w-4 h-4 text-gray-400" />
+                <span className="font-medium text-white text-xs">Rules</span>
               </div>
             </Link>
-          )}
-          <div className={`${user ? 'flex-1' : 'w-full'}`}>
-            <div className="flex items-center gap-2 p-2.5 rounded-xl bg-gray-900/50 border border-gray-800">
-              <div className="w-7 h-7 rounded-lg bg-amber-500/10 flex items-center justify-center">
-                <Trophy className="w-3.5 h-3.5 text-amber-400" />
-              </div>
-              <span className="font-medium text-white text-xs">Leaderboard</span>
-              <span className="text-[8px] bg-amber-500/10 text-amber-400 px-1.5 py-0.5 rounded-full font-medium ml-auto">
-                LIVE
-              </span>
-            </div>
           </div>
-        </motion.div>
-
-        {/* Rules Link */}
-        <div className="text-center mt-auto pt-2 pb-2">
-          <Link 
-            to="/ludo/rules" 
-            className="inline-flex items-center gap-1.5 text-xs text-gray-400 hover:text-gray-300 bg-gray-800/50 px-3 py-1.5 rounded-full border border-gray-700/50"
-          >
-            <Info className="w-3.5 h-3.5" />
-            Rules & Fair Play
-          </Link>
         </div>
       </div>
     </div>
