@@ -163,8 +163,9 @@ jobs:
           set -euo pipefail
           cd android
           chmod +x gradlew
-          # Use Gradle 8.10.2 (stable + AGP compatible). Avoid 8.14.x worker deadlocks.
-          ./gradlew wrapper --gradle-version=8.10.2 --distribution-type=bin || true
+          # Use Gradle 8.13 to match Android Gradle Plugin 8.13.x compatibility.
+          # Note: We still keep CI stability flags via android/gradle.properties above.
+          ./gradlew wrapper --gradle-version=8.13 --distribution-type=bin || true
 
       - name: Disable Navigation Resources (CI workaround)
         run: |
