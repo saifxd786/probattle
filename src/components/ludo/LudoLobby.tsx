@@ -189,28 +189,27 @@ const LudoLobby = ({
               />
             </motion.div>
 
-            {/* Find a Match Button - Replaces old 4v4 button */}
+            {/* Create Challenge / Join Challenge Buttons */}
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
-              className="mb-3"
+              className="mb-3 flex gap-2"
             >
               <button
                 onClick={() => startMatchmaking()}
-                disabled={!canAfford}
-                className={`w-full h-14 rounded-xl flex items-center justify-center gap-2 font-bold text-lg transition-all ${
-                  canAfford
-                    ? "bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white shadow-lg shadow-purple-500/30 hover:shadow-purple-500/50"
-                    : "bg-gray-800 text-gray-500 cursor-not-allowed"
-                }`}
+                className="flex-1 h-14 rounded-xl flex items-center justify-center gap-2 font-bold text-base transition-all bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white shadow-lg shadow-purple-500/30 hover:shadow-purple-500/50"
               >
                 <Play className="w-5 h-5" />
-                Find a Match
+                Create Challenge
               </button>
-              {!canAfford && (
-                <p className="text-center text-xs text-red-400 mt-1">Insufficient balance</p>
-              )}
+              <button
+                onClick={onPlayWithFriend}
+                className="flex-1 h-14 rounded-xl flex items-center justify-center gap-2 font-bold text-base transition-all bg-gradient-to-r from-emerald-500 to-green-500 text-white shadow-lg shadow-emerald-500/30 hover:shadow-emerald-500/50"
+              >
+                <Users className="w-5 h-5" />
+                Join Challenge
+              </button>
             </motion.div>
 
             {/* Play With Friend Button */}
