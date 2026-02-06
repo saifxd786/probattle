@@ -39,6 +39,7 @@ const LudoLobby = ({
   liveUsers,
   startMatchmaking,
   onPlayWithFriend,
+  onJoinChallenge,
   selectedAvatar,
   onSelectAvatar,
   userAvatar,
