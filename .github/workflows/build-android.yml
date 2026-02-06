@@ -150,8 +150,8 @@ jobs:
           set -euo pipefail
           cd android
           chmod +x gradlew
-          # Align Gradle with modern Android/Capacitor toolchain
-          ./gradlew wrapper --gradle-version=8.14.3 --distribution-type=bin || true
+          # Use Gradle 8.10.2 (stable) - 8.14.x has worker deadlock issues with --no-daemon
+          ./gradlew wrapper --gradle-version=8.10.2 --distribution-type=bin || true
 
       - name: Disable Navigation Resources (CI workaround)
         run: |
@@ -174,11 +174,12 @@ jobs:
           cd android
           chmod +x gradlew
 
-          # Reduce OOM / Kotlin daemon crashes on CI
-          export GRADLE_OPTS='-Dorg.gradle.jvmargs=-Xmx4g -Dfile.encoding=UTF-8 -Dkotlin.daemon.jvm.options=-Xmx2g'
+          # Reduce OOM / worker deadlock crashes on CI - limit parallelism
+          export GRADLE_OPTS='-Dorg.gradle.jvmargs=-Xmx4g -Dfile.encoding=UTF-8 -Dkotlin.daemon.jvm.options=-Xmx2g -Dorg.gradle.workers.max=2'
 
           # Use plain console output so logs are grep/parse friendly (no carriage-return UI)
-          ./gradlew assembleDebug -x :app:processDebugNavigationResources -x :app:compileDebugNavigationResources --no-daemon --stacktrace --info --warning-mode all --console=plain | tee ../gradle-build.log
+          # --no-parallel prevents worker lease deadlocks
+          ./gradlew assembleDebug -x :app:processDebugNavigationResources -x :app:compileDebugNavigationResources --no-daemon --no-parallel --stacktrace --info --warning-mode all --console=plain | tee ../gradle-build.log
 
       - name: Print Gradle failure snippet (always)
         if: always()
