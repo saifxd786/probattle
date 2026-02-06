@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Link } from 'react-router-dom';
 import Header from '@/components/Header';
@@ -77,6 +77,12 @@ const Index = () => {
                   <ChevronRight className="w-5 h-5" />
                 </Button>
               </Link>
+              <a href="/probattle.apk" download="ProBattle.apk">
+                <Button variant="outline" size="xl" className="gap-2">
+                  <Download className="w-5 h-5" />
+                  Download App
+                </Button>
+              </a>
               {!user && (
                 <Link to="/auth">
                   <Button variant="outline" size="xl">
