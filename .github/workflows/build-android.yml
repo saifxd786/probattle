@@ -55,11 +55,26 @@ jobs:
           $SM "platforms;android-33" "build-tools;33.0.2"
 
           # Try installing Android 36 first (some AndroidX versions require compileSdk 36)
+          # Android 36 may be preview depending on the runner image; fall back safely if it can't be installed.
           set +e
+
+          # Defensive: remove partially-installed SDK dirs (can happen with interrupted installs)
+          rm -rf "$SDKROOT/platforms/android-36" "$SDKROOT/build-tools/36.0.0" || true
+          rm -rf "$SDKROOT/platforms/android-35" "$SDKROOT/build-tools/35.0.0" || true
+
           $SM "build-tools;36.0.0"
           RC_BT36=$?
+          if [ "$RC_BT36" -ne 0 ]; then
+            $SM --channel=3 "build-tools;36.0.0"
+            RC_BT36=$?
+          fi
+
           $SM "platforms;android-36"
           RC_PL36=$?
+          if [ "$RC_PL36" -ne 0 ]; then
+            $SM --channel=3 "platforms;android-36"
+            RC_PL36=$?
+          fi
 
           # Also try installing Android 35 / Build Tools 35 (AGP 8.13 default)
           $SM "build-tools;35.0.0"
@@ -81,14 +96,22 @@ jobs:
             echo "Android 35 platform not available; will build against Android 34."
           fi
 
-          # Export chosen API level for later steps
-          if [ -d "$SDKROOT/platforms/android-36" ]; then
-            echo "ANDROID_API_LEVEL=36" >> $GITHUB_ENV
-          elif [ -d "$SDKROOT/platforms/android-35" ]; then
-            echo "ANDROID_API_LEVEL=35" >> $GITHUB_ENV
-          else
-            echo "ANDROID_API_LEVEL=34" >> $GITHUB_ENV
+          # Export chosen API level for later steps (must have a valid android.jar + data/res)
+          CHOSEN_API=""
+          for A in 36 35 34 33; do
+            if [ -f "$SDKROOT/platforms/android-$A/android.jar" ] && [ -d "$SDKROOT/platforms/android-$A/data/res" ]; then
+              CHOSEN_API="$A"
+              break
+            fi
+          done
+
+          if [ -z "$CHOSEN_API" ]; then
+            echo "WARNING: No valid Android platform found; defaulting to 34."
+            CHOSEN_API="34"
           fi
+
+          echo "ANDROID_API_LEVEL=$CHOSEN_API" >> $GITHUB_ENV
+          echo "Selected Android platform API level: $CHOSEN_API"
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
@@ -136,10 +159,8 @@ jobs:
 
       - name: Clean Gradle caches (prevent stale resource dirs)
         run: |
-          rm -rf ~/.gradle/caches/transforms-*
-          rm -rf ~/.gradle/caches/build-cache-*
-          rm -rf ~/.gradle/caches/*/executionHistory
-          rm -rf ~/.gradle/caches/journal-*
+          rm -rf ~/.gradle/caches || true
+          rm -rf ~/.gradle/wrapper || true
           echo "Gradle caches cleaned"
 
       - name: Add Android platform
