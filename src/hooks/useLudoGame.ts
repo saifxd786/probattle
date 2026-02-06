@@ -276,7 +276,7 @@ export const useLudoGame = () => {
   }, [user?.id, isRefreshing, lastUserId, gameState.phase]);
   
   const [entryAmount, setEntryAmount] = useState(10);
-  const [playerMode, setPlayerMode] = useState<2 | 4>(2);
+  const [playerMode, setPlayerMode] = useState<2 | 3 | 4>(2);
   const [walletBalance, setWalletBalance] = useState(0);
   const [userUID, setUserUID] = useState<string>('');
   const [userName, setUserName] = useState<string>('You');
