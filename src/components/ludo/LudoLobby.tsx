@@ -64,7 +64,7 @@ const LudoLobby = ({
     <div className="h-[100dvh] bg-[#0A0A0F] relative overflow-hidden flex flex-col">
       {/* Subtle gradient background */}
       <div 
-        className="fixed inset-0 -z-10"
+        className="fixed inset-0 -z-10 pointer-events-none"
         style={{
           background: `
             radial-gradient(circle at 0% 0%, rgba(99, 102, 241, 0.08) 0%, transparent 40%),
@@ -76,14 +76,14 @@ const LudoLobby = ({
 
       {/* Dot pattern overlay */}
       <div 
-        className="fixed inset-0 -z-5 opacity-[0.03]"
+        className="fixed inset-0 -z-5 opacity-[0.03] pointer-events-none"
         style={{
           backgroundImage: `radial-gradient(circle, #fff 1px, transparent 1px)`,
           backgroundSize: '24px 24px',
         }}
       />
 
-      <div className="relative z-10 px-4 pt-4 pb-4 flex-1 flex flex-col overflow-hidden">
+      <div className="relative z-10 px-4 pt-4 pb-2 flex-1 flex flex-col min-h-0">
         {/* Header - Compact with Back Button and Avatar Picker */}
         <motion.div
           initial={{ opacity: 0, y: -10 }}
