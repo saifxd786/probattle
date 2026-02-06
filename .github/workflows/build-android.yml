@@ -183,7 +183,7 @@ PATCH
           export GRADLE_OPTS='-Dorg.gradle.jvmargs=-Xmx4g -Dfile.encoding=UTF-8 -Dkotlin.daemon.jvm.options=-Xmx2g'
 
           # Use plain console output so logs are grep/parse friendly (no carriage-return UI)
-          ./gradlew assembleDebug --no-daemon --stacktrace --info --warning-mode all --console=plain | tee ../gradle-build.log
+          ./gradlew assembleDebug -x :app:processDebugNavigationResources --no-daemon --stacktrace --info --warning-mode all --console=plain | tee ../gradle-build.log
 
       - name: Print Gradle failure snippet (always)
         if: always()
