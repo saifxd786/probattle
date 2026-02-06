@@ -49,12 +49,15 @@ jobs:
 
           # Install ONLY stable SDK (avoid preview SDK flakiness that can break resource parsing)
           $SM "platform-tools" "cmdline-tools;latest"
+          
+          # Newer AndroidX dependencies may require compileSdk 36+
+          $SM "platforms;android-36" "build-tools;36.0.0"
           $SM "platforms;android-35" "build-tools;35.0.0"
           $SM "platforms;android-34" "build-tools;34.0.0"
           $SM "platforms;android-33" "build-tools;33.0.2"
  
-          # Hard-pin chosen API to stable 35 (commonly required by newer AndroidX AAR metadata)
-          API="35"
+          # Hard-pin chosen API to stable 36 (required by newer AAR metadata)
+          API="36"
 
           echo "==== Android platform sanity check (android-$API) ===="
           ls -la "$SDKROOT/platforms" || true
