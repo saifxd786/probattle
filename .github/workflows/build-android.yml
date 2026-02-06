@@ -54,13 +54,20 @@ jobs:
           $SM "platforms;android-34" "build-tools;34.0.0"
           $SM "platforms;android-33" "build-tools;33.0.2"
 
-          # Optionally install newest (35) if available on the runner image
+          # Try installing Build Tools 35.0.0 (AGP 8.13 default) even if the Android 35 platform
+          # isn't available on the runner image.
           set +e
-          $SM "platforms;android-35" "build-tools;35.0.0"
-          RC35=$?
+          $SM "build-tools;35.0.0"
+          RC_BT35=$?
+          $SM "platforms;android-35"
+          RC_PL35=$?
           set -e
-          if [ "$RC35" -ne 0 ]; then
-            echo "Android 35 packages not available; will build against Android 34."
+
+          if [ "$RC_BT35" -ne 0 ]; then
+            echo "Android Build Tools 35.0.0 not available; will use 34.0.0."
+          fi
+          if [ "$RC_PL35" -ne 0 ]; then
+            echo "Android 35 platform not available; will build against Android 34."
           fi
 
           # Export chosen API level for later steps
