@@ -23,7 +23,7 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
-          java-version: '21'
+          java-version: '17'
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
@@ -153,6 +153,8 @@ jobs:
           org.gradle.workers.max=2
           org.gradle.configureondemand=false
           org.gradle.caching=false
+          org.gradle.vfs.watch=false
+          org.gradle.jvmargs=-Xmx3g -Dfile.encoding=UTF-8
           kotlin.incremental=false
           EOF
 
@@ -161,8 +163,8 @@ jobs:
           set -euo pipefail
           cd android
           chmod +x gradlew
-          # Use Gradle 8.9 (minimum stable for AGP 8.7/Capacitor 8)
-          ./gradlew wrapper --gradle-version=8.9 --distribution-type=bin || true
+          # Use Gradle 8.10.2 (stable + AGP compatible). Avoid 8.14.x worker deadlocks.
+          ./gradlew wrapper --gradle-version=8.10.2 --distribution-type=bin || true
 
       - name: Disable Navigation Resources (CI workaround)
         run: |
