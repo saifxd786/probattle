@@ -3,7 +3,7 @@ name: Build Android APK
 on:
   push:
     branches: [main]
-  workflow_dispatch:  # Manual trigger bhi available
+  workflow_dispatch:
 
 jobs:
   build:
@@ -29,24 +29,33 @@ jobs:
         uses: android-actions/setup-android@v3
 
       - name: Install dependencies
-        run: npm ci
+        run: npm install
 
-      - name: Add Android platform
-        run: npx cap add android || true
+      - name: Install Capacitor CLI
+        run: npm install @capacitor/cli @capacitor/core @capacitor/android --save-dev
 
       - name: Build web assets
         run: npm run build
 
+      - name: Initialize Capacitor (if needed)
+        run: |
+          if [ ! -f "capacitor.config.ts" ] && [ ! -f "capacitor.config.json" ]; then
+            npx cap init "ProBattle" "app.lovable.cd88dc0dffab4b21aa84c640694b0643" --web-dir dist
+          fi
+
+      - name: Add Android platform
+        run: |
+          rm -rf android
+          npx cap add android
+
       - name: Sync Capacitor
         run: npx cap sync android
-
-      - name: Make gradlew executable
-        run: chmod +x android/gradlew
 
       - name: Build Debug APK
         run: |
           cd android
-          ./gradlew assembleDebug
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
