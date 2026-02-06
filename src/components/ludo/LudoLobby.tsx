@@ -64,7 +64,7 @@ const LudoLobby = ({
     <div className="h-[100dvh] bg-[#0A0A0F] relative overflow-hidden flex flex-col">
       {/* Subtle gradient background */}
       <div 
-        className="fixed inset-0 -z-10"
+        className="fixed inset-0 -z-10 pointer-events-none"
         style={{
           background: `
             radial-gradient(circle at 0% 0%, rgba(99, 102, 241, 0.08) 0%, transparent 40%),
@@ -76,14 +76,14 @@ const LudoLobby = ({
 
       {/* Dot pattern overlay */}
       <div 
-        className="fixed inset-0 -z-5 opacity-[0.03]"
+        className="fixed inset-0 -z-5 opacity-[0.03] pointer-events-none"
         style={{
           backgroundImage: `radial-gradient(circle, #fff 1px, transparent 1px)`,
           backgroundSize: '24px 24px',
         }}
       />
 
-      <div className="relative z-10 px-4 pt-4 pb-4 flex-1 flex flex-col overflow-hidden">
+      <div className="relative z-10 px-4 pt-4 pb-2 flex-1 flex flex-col min-h-0">
         {/* Header - Compact with Back Button and Avatar Picker */}
         <motion.div
           initial={{ opacity: 0, y: -10 }}
@@ -182,24 +182,16 @@ const LudoLobby = ({
 
         {/* Find Match Challenges - Main Section */}
         {user ? (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="flex-1 min-h-0 mb-3"
-          >
+          <div className="flex-1 min-h-0 overflow-hidden mb-2">
             <FindMatchChallenges
               minEntryAmount={settings.minEntryAmount}
               walletBalance={walletBalance}
               rewardMultiplier={settings.rewardMultiplier}
               onAcceptChallenge={handleAcceptChallenge}
             />
-          </motion.div>
+          </div>
         ) : (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mb-3"
-          >
+          <div className="mb-3">
             <Link to="/auth">
               <Button 
                 className="w-full h-12 bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white font-semibold rounded-xl border-0"
@@ -207,92 +199,43 @@ const LudoLobby = ({
                 Login to Play
               </Button>
             </Link>
-          </motion.div>
+          </div>
         )}
 
-        {/* With Friend Button - Prominent */}
-        {user && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mb-3"
-          >
-            <motion.button
-              whileTap={{ scale: 0.98 }}
+        {/* Bottom Fixed Section */}
+        <div className="flex-shrink-0 space-y-2">
+          {/* With Friend Button */}
+          {user && (
+            <button
               onClick={onPlayWithFriend}
-              className="w-full relative h-12 rounded-xl overflow-hidden group"
+              className="w-full h-11 rounded-xl flex items-center justify-center gap-2"
               style={{
                 background: 'linear-gradient(135deg, #EC4899 0%, #DB2777 100%)',
               }}
             >
-              <div className="relative z-10 flex items-center justify-center h-full gap-2">
-                <UserPlus className="w-4 h-4 text-white" />
-                <span className="font-semibold text-white text-sm">Play With Friend</span>
-              </div>
-            </motion.button>
-          </motion.div>
-        )}
+              <UserPlus className="w-4 h-4 text-white" />
+              <span className="font-semibold text-white text-sm">Play With Friend</span>
+            </button>
+          )}
 
-        {/* Features - Compact Row */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="grid grid-cols-3 gap-2 mb-3"
-        >
-          {[
-            { icon: Shield, label: 'Fair Play', color: 'text-emerald-400', bg: 'bg-emerald-500/10' },
-            { icon: Timer, label: 'Quick Pay', color: 'text-violet-400', bg: 'bg-violet-500/10' },
-            { icon: Gift, label: 'Rewards', color: 'text-amber-400', bg: 'bg-amber-500/10' },
-          ].map((feature) => (
-            <div
-              key={feature.label}
-              className={`p-2 rounded-lg ${feature.bg} flex items-center justify-center gap-1.5`}
-            >
-              <feature.icon className={`w-3.5 h-3.5 ${feature.color}`} />
-              <p className="text-[10px] text-gray-400 font-medium">{feature.label}</p>
-            </div>
-          ))}
-        </motion.div>
-
-        {/* Quick Links - Compact */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="flex gap-2 mb-2"
-        >
-          {user && (
-            <Link to="/friends" className="flex-1">
-              <div className="flex items-center gap-2 p-2.5 rounded-xl bg-gray-900/50 border border-gray-800">
-                <div className="w-7 h-7 rounded-lg bg-cyan-500/10 flex items-center justify-center">
-                  <Users className="w-3.5 h-3.5 text-cyan-400" />
+          {/* Quick Row */}
+          <div className="flex gap-2">
+            {user && (
+              <Link to="/friends" className="flex-1">
+                <div className="flex items-center gap-2 p-2 rounded-xl bg-gray-900/50 border border-gray-800">
+                  <Users className="w-4 h-4 text-cyan-400" />
+                  <span className="font-medium text-white text-xs">Friends</span>
+                  <ChevronRight className="w-3.5 h-3.5 text-gray-600 ml-auto" />
                 </div>
-                <span className="font-medium text-white text-xs">Friends</span>
-                <ChevronRight className="w-3.5 h-3.5 text-gray-600 ml-auto" />
+              </Link>
+            )}
+            <Link to="/ludo/rules" className={user ? 'flex-1' : 'w-full'}>
+              <div className="flex items-center gap-2 p-2 rounded-xl bg-gray-900/50 border border-gray-800">
+                <Info className="w-4 h-4 text-gray-400" />
+                <span className="font-medium text-white text-xs">Rules</span>
               </div>
             </Link>
-          )}
-          <div className={`${user ? 'flex-1' : 'w-full'}`}>
-            <div className="flex items-center gap-2 p-2.5 rounded-xl bg-gray-900/50 border border-gray-800">
-              <div className="w-7 h-7 rounded-lg bg-amber-500/10 flex items-center justify-center">
-                <Trophy className="w-3.5 h-3.5 text-amber-400" />
-              </div>
-              <span className="font-medium text-white text-xs">Leaderboard</span>
-              <span className="text-[8px] bg-amber-500/10 text-amber-400 px-1.5 py-0.5 rounded-full font-medium ml-auto">
-                LIVE
-              </span>
-            </div>
           </div>
-        </motion.div>
-
-        {/* Rules Link */}
-        <div className="text-center mt-auto pt-2 pb-2">
-          <Link 
-            to="/ludo/rules" 
-            className="inline-flex items-center gap-1.5 text-xs text-gray-400 hover:text-gray-300 bg-gray-800/50 px-3 py-1.5 rounded-full border border-gray-700/50"
-          >
-            <Info className="w-3.5 h-3.5" />
-            Rules & Fair Play
-          </Link>
         </div>
       </div>
     </div>

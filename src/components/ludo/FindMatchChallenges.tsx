@@ -193,7 +193,7 @@ const FindMatchChallenges = ({
   }, [challenges, selectedFilter]);
 
   return (
-    <div className="space-y-3">
+    <div className="h-full flex flex-col">
       {/* Header with filters */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
@@ -217,7 +217,7 @@ const FindMatchChallenges = ({
       </div>
       
       {/* Mode Filters */}
-      <div className="flex gap-1.5">
+      <div className="flex gap-1.5 mt-2 flex-shrink-0">
         {(['all', 2, 3, 4] as const).map((filter) => {
           const isActive = selectedFilter === filter;
           const colors = filter === 'all' 
@@ -242,7 +242,7 @@ const FindMatchChallenges = ({
       </div>
       
       {/* Challenges List */}
-      <div className="space-y-2 max-h-[280px] overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
+      <div className="flex-1 min-h-0 overflow-y-auto mt-2 space-y-2 pr-1 scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
         <AnimatePresence mode="popLayout">
           {filteredChallenges.map((challenge, index) => {
             const canAfford = walletBalance >= challenge.entryAmount;
