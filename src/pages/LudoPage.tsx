@@ -28,6 +28,7 @@ import LudoChat from '@/components/ludo/LudoChat';
 import CaptureAnimation from '@/components/ludo/CaptureAnimation';
 import RematchDialog from '@/components/ludo/RematchDialog';
 import LudoLobby from '@/components/ludo/LudoLobby';
+import ChallengesPage from '@/components/ludo/ChallengesPage';
 import { CUSTOM_AVATARS } from '@/components/ludo/LudoAvatarPicker';
 import { useLudoGame } from '@/hooks/useLudoGame';
 import { useFriendLudoGame } from '@/hooks/useFriendLudoGame';
@@ -246,6 +247,7 @@ const LudoPage = () => {
   const [showRematchDialog, setShowRematchDialog] = useState(false);
   const [liveUsers, setLiveUsers] = useState(getLiveUsersCount);
   const [selectedAvatar, setSelectedAvatar] = useState<string | null>('profile');
+  const [showChallengesPage, setShowChallengesPage] = useState<'create' | 'join' | null>(null);
   
   // Bot game hook
   const {
@@ -1220,21 +1222,47 @@ const LudoPage = () => {
         </AlertDialogContent>
       </AlertDialog>
       
-      <LudoLobby
-        user={user}
-        walletBalance={walletBalance}
-        entryAmount={entryAmount}
-        setEntryAmount={setEntryAmount}
-        playerMode={playerMode}
-        setPlayerMode={setPlayerMode}
-        settings={settings}
-        liveUsers={liveUsers}
-        startMatchmaking={startMatchmaking}
-        onPlayWithFriend={() => setGameMode('vs-friend')}
-        selectedAvatar={selectedAvatar}
-        onSelectAvatar={setSelectedAvatar}
-        userAvatar={userAvatar}
-      />
+      {/* Challenges Page (Full Screen Overlay) */}
+      {showChallengesPage && (
+        <ChallengesPage
+          mode={showChallengesPage}
+          minEntryAmount={settings.minEntryAmount}
+          walletBalance={walletBalance}
+          rewardMultiplier={settings.rewardMultiplier}
+          onBack={() => setShowChallengesPage(null)}
+          onAcceptChallenge={(challenge) => {
+            setEntryAmount(challenge.entryAmount);
+            setPlayerMode(challenge.playerMode);
+            setShowChallengesPage(null);
+            startMatchmaking();
+          }}
+          onCreateChallenge={(amount, mode) => {
+            setEntryAmount(amount);
+            setPlayerMode(mode);
+            setShowChallengesPage(null);
+            startMatchmaking();
+          }}
+        />
+      )}
+      
+      {!showChallengesPage && (
+        <LudoLobby
+          user={user}
+          walletBalance={walletBalance}
+          entryAmount={entryAmount}
+          setEntryAmount={setEntryAmount}
+          playerMode={playerMode}
+          setPlayerMode={setPlayerMode}
+          settings={settings}
+          liveUsers={liveUsers}
+          startMatchmaking={() => setShowChallengesPage('create')}
+          onPlayWithFriend={() => setGameMode('vs-friend')}
+          onJoinChallenge={() => setShowChallengesPage('join')}
+          selectedAvatar={selectedAvatar}
+          onSelectAvatar={setSelectedAvatar}
+          userAvatar={userAvatar}
+        />
+      )}
     </>
   );
 };
