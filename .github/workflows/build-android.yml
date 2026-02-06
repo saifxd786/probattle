@@ -178,7 +178,7 @@ jobs:
           export GRADLE_OPTS='-Dorg.gradle.jvmargs=-Xmx4g -Dfile.encoding=UTF-8 -Dkotlin.daemon.jvm.options=-Xmx2g'
 
           # Use plain console output so logs are grep/parse friendly (no carriage-return UI)
-          ./gradlew assembleDebug -x :app:processDebugNavigationResources --no-daemon --stacktrace --info --warning-mode all --console=plain | tee ../gradle-build.log
+          ./gradlew assembleDebug -x :app:processDebugNavigationResources -x :app:compileDebugNavigationResources --no-daemon --stacktrace --info --warning-mode all --console=plain | tee ../gradle-build.log
 
       - name: Print Gradle failure snippet (always)
         if: always()
@@ -191,7 +191,7 @@ jobs:
 
           echo "==== gradle-build.log (failure section) ===="
           if grep -n "FAILURE: Build failed" "$CLEAN" >/dev/null 2>&1; then
-            START=$(grep -n "FAILURE: Build failed" "$CLEAN" | head -n 1 | cut -d: -f1)
+            START=$(grep -n -m 1 "FAILURE: Build failed" "$CLEAN" | cut -d: -f1)
             tail -n +$START "$CLEAN" | head -n 320 || true
           else
             echo "No 'FAILURE: Build failed' marker found."
@@ -199,7 +199,7 @@ jobs:
 
           echo "==== gradle-build.log (execution failed section) ===="
           if grep -n "Execution failed for task" "$CLEAN" >/dev/null 2>&1; then
-            START=$(grep -n "Execution failed for task" "$CLEAN" | head -n 1 | cut -d: -f1)
+            START=$(grep -n -m 1 "Execution failed for task" "$CLEAN" | cut -d: -f1)
             tail -n +$START "$CLEAN" | head -n 260 || true
           else
             echo "No 'Execution failed for task' marker found."
@@ -207,7 +207,7 @@ jobs:
 
           echo "==== gradle-build.log (:app:compileDebugNavigationResources context) ===="
           if grep -n ":app:compileDebugNavigationResources" "$CLEAN" >/dev/null 2>&1; then
-            L=$(grep -n ":app:compileDebugNavigationResources" "$CLEAN" | head -n 1 | cut -d: -f1)
+            L=$(grep -n -m 1 ":app:compileDebugNavigationResources" "$CLEAN" | cut -d: -f1)
             START=$((L-60)); if [ "$START" -lt 1 ]; then START=1; fi
             sed -n "${START},$((L+220))p" "$CLEAN" || true
           else
