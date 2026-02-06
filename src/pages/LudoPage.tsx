@@ -1222,21 +1222,47 @@ const LudoPage = () => {
         </AlertDialogContent>
       </AlertDialog>
       
-      <LudoLobby
-        user={user}
-        walletBalance={walletBalance}
-        entryAmount={entryAmount}
-        setEntryAmount={setEntryAmount}
-        playerMode={playerMode}
-        setPlayerMode={setPlayerMode}
-        settings={settings}
-        liveUsers={liveUsers}
-        startMatchmaking={startMatchmaking}
-        onPlayWithFriend={() => setGameMode('vs-friend')}
-        selectedAvatar={selectedAvatar}
-        onSelectAvatar={setSelectedAvatar}
-        userAvatar={userAvatar}
-      />
+      {/* Challenges Page (Full Screen Overlay) */}
+      {showChallengesPage && (
+        <ChallengesPage
+          mode={showChallengesPage}
+          minEntryAmount={settings.minEntryAmount}
+          walletBalance={walletBalance}
+          rewardMultiplier={settings.rewardMultiplier}
+          onBack={() => setShowChallengesPage(null)}
+          onAcceptChallenge={(challenge) => {
+            setEntryAmount(challenge.entryAmount);
+            setPlayerMode(challenge.playerMode);
+            setShowChallengesPage(null);
+            startMatchmaking();
+          }}
+          onCreateChallenge={(amount, mode) => {
+            setEntryAmount(amount);
+            setPlayerMode(mode);
+            setShowChallengesPage(null);
+            startMatchmaking();
+          }}
+        />
+      )}
+      
+      {!showChallengesPage && (
+        <LudoLobby
+          user={user}
+          walletBalance={walletBalance}
+          entryAmount={entryAmount}
+          setEntryAmount={setEntryAmount}
+          playerMode={playerMode}
+          setPlayerMode={setPlayerMode}
+          settings={settings}
+          liveUsers={liveUsers}
+          startMatchmaking={() => setShowChallengesPage('create')}
+          onPlayWithFriend={() => setGameMode('vs-friend')}
+          onJoinChallenge={() => setShowChallengesPage('join')}
+          selectedAvatar={selectedAvatar}
+          onSelectAvatar={setSelectedAvatar}
+          userAvatar={userAvatar}
+        />
+      )}
     </>
   );
 };
