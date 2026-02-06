@@ -111,10 +111,12 @@ const Header = () => {
                       <span>PWA Install</span>
                     </Link>
                   </DropdownMenuItem>
-                  <DropdownMenuItem 
-                    onClick={() => window.open('/apk/probattle.apk', '_blank')}
-                    className="flex items-center gap-2 cursor-pointer"
-                  >
+                  <DropdownMenuItem asChild>
+                    <a 
+                      href="/probattle.apk" 
+                      download="ProBattle.apk"
+                      className="flex items-center gap-2 cursor-pointer"
+                    >
                     <Download className="w-4 h-4" />
                     <span>Download APK</span>
                   </DropdownMenuItem>
