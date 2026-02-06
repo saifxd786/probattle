@@ -190,8 +190,22 @@ jobs:
           # Memory settings for CI - avoid OOM
           export GRADLE_OPTS='-Dorg.gradle.jvmargs=-Xmx3g -Dfile.encoding=UTF-8'
 
-          # Build with daemon (more stable than --no-daemon on CI), parallelism disabled via gradle.properties
-          ./gradlew assembleDebug -x :app:processDebugNavigationResources -x :app:compileDebugNavigationResources --stacktrace --info --warning-mode all --console=plain | tee ../gradle-build.log
+          echo "==== CI memory (before Gradle) ===="
+          free -h || true
+
+          # Capture BOTH stdout + stderr into gradle-build.log
+          # Also preserve exit code even with piping to tee
+          set +e
+          ./gradlew assembleDebug -x :app:processDebugNavigationResources -x :app:compileDebugNavigationResources --stacktrace --info --warning-mode all --console=plain 2>&1 | tee ../gradle-build.log
+          RC=${PIPESTATUS[0]}
+          set -e
+
+          echo "Gradle exit code: ${RC}"
+          echo "==== CI memory (after Gradle) ===="
+          free -h || true
+
+          exit ${RC}
+
 
       - name: Print Gradle failure snippet (always)
         if: always()
@@ -207,7 +221,7 @@ jobs:
 
           echo "==== gradle-build.log (best-effort failure context) ===="
           # Gradle doesn't always print the 'FAILURE:' block (some crashes only show stacktrace + 'BUILD FAILED')
-          MARKER_RE='BUILD FAILED|FAILURE:|Build failed with an exception|What went wrong:|A problem occurred|Execution failed for task|Caused by:'
+          MARKER_RE='BUILD FAILED|FAILURE:|Build failed with an exception|What went wrong:|A problem occurred|Execution failed for task|Caused by:|Daemon disappeared|daemon disappeared|Killed|SIGKILL|exit code'
           if grep -nE "$MARKER_RE" "$CLEAN" >/dev/null 2>&1; then
             L=$(grep -nE "$MARKER_RE" "$CLEAN" | tail -n 1 | cut -d: -f1)
             START=$((L-320)); if [ "$START" -lt 1 ]; then START=1; fi
@@ -218,7 +232,7 @@ jobs:
 
           echo "==== gradle-build.log (likely-cause lines) ===="
           # Print the most informative error-like lines even when Gradle markers are missing
-          grep -nE "Caused by:|\bException\b|\bERROR\b|\bError:\b|Plugin \[id:|Could not|No matching variant|Unsupported|SDK location|compileSdkVersion|targetSdkVersion" "$CLEAN" | tail -n 260 || true
+          grep -nE "Caused by:|\\bException\\b|\\bERROR\\b|\\bError:\\b|Plugin \\[id:|Could not|No matching variant|Unsupported|SDK location|compileSdkVersion|targetSdkVersion|Daemon disappeared|daemon disappeared|Killed|SIGKILL|exit code|OutOfMemory|OOM" "$CLEAN" | tail -n 320 || true
 
           echo "==== gradle-build.log (tail 2000) ===="
           tail -n 2000 "$CLEAN" || true
@@ -233,6 +247,7 @@ jobs:
             gradle-build.clean.log
             android/app/build/reports
             android/build/reports
+            ~/.gradle/daemon/**/daemon-*.out.log
           if-no-files-found: ignore
           retention-days: 7
 
