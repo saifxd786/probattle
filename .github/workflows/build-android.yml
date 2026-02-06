@@ -134,6 +134,14 @@ jobs:
             mv capacitor.config.ts capacitor.config.ts.ci.bak
           fi
 
+      - name: Clean Gradle caches (prevent stale resource dirs)
+        run: |
+          rm -rf ~/.gradle/caches/transforms-*
+          rm -rf ~/.gradle/caches/build-cache-*
+          rm -rf ~/.gradle/caches/*/executionHistory
+          rm -rf ~/.gradle/caches/journal-*
+          echo "Gradle caches cleaned"
+
       - name: Add Android platform
         run: |
           rm -rf android
