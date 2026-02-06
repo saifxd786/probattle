@@ -22,6 +22,7 @@ interface LudoLobbyProps {
   liveUsers: string;
   startMatchmaking: () => void;
   onPlayWithFriend: () => void;
+  onJoinChallenge: () => void;
   selectedAvatar: string | null;
   onSelectAvatar: (avatar: string | null) => void;
   userAvatar?: string | null;
