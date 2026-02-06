@@ -193,7 +193,7 @@ const FindMatchChallenges = ({
   }, [challenges, selectedFilter]);
 
   return (
-    <div className="space-y-3">
+    <div className="h-full flex flex-col">
       {/* Header with filters */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
