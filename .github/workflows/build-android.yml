@@ -153,6 +153,26 @@ jobs:
           # Align Gradle with modern Android/Capacitor toolchain
           ./gradlew wrapper --gradle-version=8.14.3 --distribution-type=bin || true
 
+      - name: Disable Navigation Resources (CI workaround)
+        run: |
+          set -euo pipefail
+          # Capacitor 8 includes navigation-fragment-ktx which triggers processDebugNavigationResources
+          # This task often fails on CI with minimal Android setups; disable it
+          BUILD_GRADLE="android/app/build.gradle"
+          if [ -f "$BUILD_GRADLE" ]; then
+            # Add afterEvaluate block to disable the problematic task
+            cat >> "$BUILD_GRADLE" << 'PATCH'
+
+// CI Workaround: Disable navigation resources task that fails without full navigation setup
+afterEvaluate {
+    tasks.matching { it.name.contains('NavigationResources') }.configureEach {
+        enabled = false
+    }
+}
+PATCH
+            echo "Patched $BUILD_GRADLE to disable NavigationResources tasks"
+          fi
+
       - name: Build Debug APK
         run: |
           set -euo pipefail
