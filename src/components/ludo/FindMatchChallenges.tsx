@@ -217,7 +217,7 @@ const FindMatchChallenges = ({
       </div>
       
       {/* Mode Filters */}
-      <div className="flex gap-1.5">
+      <div className="flex gap-1.5 mt-2 flex-shrink-0">
         {(['all', 2, 3, 4] as const).map((filter) => {
           const isActive = selectedFilter === filter;
           const colors = filter === 'all' 
