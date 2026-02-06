@@ -163,7 +163,7 @@ const AdminLudoSettings = () => {
                   className="bg-background border-border text-foreground"
                 />
                 <p className="text-xs text-muted-foreground">
-                  Example: {settings.rewardMultiplier}x = ₹{settings.minEntryAmount} → ₹{(settings.minEntryAmount * settings.rewardMultiplier).toFixed(0)} reward
+                  1v1: {settings.rewardMultiplier}x | 1v1v1: 2.5x | 1v1v1v1: 3.5x
                 </p>
               </div>
             </CardContent>
