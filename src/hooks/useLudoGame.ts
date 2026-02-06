@@ -1734,6 +1734,15 @@ export const useLudoGame = () => {
     setTurnTimeLeft(15);
   }, [gameState.phase, gameState.currentTurn, gameState.players.length]);
 
+  // Calculate reward based on player mode for return value
+  const getReturnRewardAmount = () => {
+    switch (playerMode) {
+      case 2: return entryAmount * settings.rewardMultiplier; // 1.5x
+      case 3: return entryAmount * 2.5; // 2.5x for 1v1v1
+      case 4: return entryAmount * 3.5; // 3.5x for 1v1v1v1
+    }
+  };
+
   return {
     settings,
     gameState,
@@ -1746,7 +1755,7 @@ export const useLudoGame = () => {
     rollDice,
     handleTokenClick,
     resetGame,
-    rewardAmount: entryAmount * settings.rewardMultiplier,
+    rewardAmount: getReturnRewardAmount(),
     captureEvent,
     clearCaptureEvent,
     // Resume game functionality
