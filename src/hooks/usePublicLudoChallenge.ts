@@ -15,7 +15,7 @@ export interface PublicChallenge {
   id: string;
   creator_id: string;
   entry_amount: number;
-  player_mode: 2 | 3 | 4;
+  player_mode: 2 | 4;
   status: string;
   room_code: string | null;
   matched_user_id: string | null;
@@ -69,7 +69,7 @@ export const usePublicLudoChallenge = () => {
           const waitingTime = Math.floor((nowMs - new Date(c.created_at).getTime()) / 1000);
           return {
             ...c,
-            player_mode: c.player_mode as 2 | 3 | 4,
+            player_mode: c.player_mode as 2 | 4,
             creator: profiles?.find(p => p.id === c.creator_id),
             waitingTime,
             isRealPlayer: true, // Mark as real player challenge
@@ -94,7 +94,7 @@ export const usePublicLudoChallenge = () => {
   }, [user]);
 
   // Create a new challenge
-  const createChallenge = async (entryAmount: number, playerMode: 2 | 3 | 4) => {
+  const createChallenge = async (entryAmount: number, playerMode: 2 | 4) => {
     if (!user) return { success: false, error: 'Not logged in' };
 
     setIsLoading(true);
@@ -212,7 +212,7 @@ export const usePublicLudoChallenge = () => {
         return { success: false, error: 'Insufficient balance' };
       }
 
-      const playerMode = challenge.player_mode as 2 | 3 | 4;
+      const playerMode = challenge.player_mode as 2 | 4;
 
       // For 1v1v1 and 1v1v1v1 (playerMode > 2), use bot-based matches
       // Because ludo_rooms only supports 2-player (1v1) games

@@ -31,7 +31,7 @@ interface BotChallenge {
   id: string;
   bot: typeof BOT_PERSONAS[0];
   entryAmount: number;
-  playerMode: 2 | 3 | 4;
+  playerMode: 2 | 4;
   isHot: boolean;
   waitingTime: number; // seconds "waiting"
 }
@@ -43,34 +43,30 @@ interface FindMatchChallengesProps {
   onAcceptChallenge: (challenge: BotChallenge) => void;
 }
 
-const getModeLabel = (mode: 2 | 3 | 4) => {
+const getModeLabel = (mode: 2 | 4) => {
   switch (mode) {
     case 2: return '1v1';
-    case 3: return '1v1v1';
     case 4: return '1v1v1v1';
   }
 };
 
-const getModeColor = (mode: 2 | 3 | 4) => {
+const getModeColor = (mode: 2 | 4) => {
   switch (mode) {
     case 2: return { bg: 'bg-rose-500/10', text: 'text-rose-400', border: 'border-rose-500/30' };
-    case 3: return { bg: 'bg-amber-500/10', text: 'text-amber-400', border: 'border-amber-500/30' };
     case 4: return { bg: 'bg-emerald-500/10', text: 'text-emerald-400', border: 'border-emerald-500/30' };
   }
 };
 
-const getModeIcon = (mode: 2 | 3 | 4) => {
+const getModeIcon = (mode: 2 | 4) => {
   switch (mode) {
     case 2: return Swords;
-    case 3: return Users;
     case 4: return Crown;
   }
 };
 
-const getMultiplier = (mode: 2 | 3 | 4, baseMultiplier: number) => {
+const getMultiplier = (mode: 2 | 4, baseMultiplier: number) => {
   switch (mode) {
     case 2: return baseMultiplier; // 1.5x for 1v1
-    case 3: return 2.5; // 2.5x for 1v1v1
     case 4: return 3.5; // 3.5x for 1v1v1v1
   }
 };
@@ -93,9 +89,9 @@ const generateChallenges = (minEntry: number): BotChallenge[] => {
     
     usedBots.add(BOT_PERSONAS[botIndex].name);
     
-    // Pick random amount and mode
+    // Pick random amount and mode (only 1v1 and 1v1v1v1)
     const entryAmount = validAmounts[Math.floor(Math.random() * validAmounts.length)];
-    const modes: (2 | 3 | 4)[] = [2, 2, 2, 3, 3, 4]; // More 1v1s
+    const modes: (2 | 4)[] = [2, 2, 2, 2, 4]; // More 1v1s
     const playerMode = modes[Math.floor(Math.random() * modes.length)];
     
     challenges.push({
@@ -120,7 +116,7 @@ const FindMatchChallenges = ({
 }: FindMatchChallengesProps) => {
   const [challenges, setChallenges] = useState<BotChallenge[]>([]);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [selectedFilter, setSelectedFilter] = useState<'all' | 2 | 3 | 4>('all');
+  const [selectedFilter, setSelectedFilter] = useState<'all' | 2 | 4>('all');
   
   // Generate initial challenges
   useEffect(() => {
@@ -153,7 +149,7 @@ const FindMatchChallenges = ({
             
             if (availableBots.length > 0) {
               const bot = availableBots[Math.floor(Math.random() * availableBots.length)];
-              const modes: (2 | 3 | 4)[] = [2, 2, 2, 3, 3, 4];
+              const modes: (2 | 4)[] = [2, 2, 2, 4];
               newChallenges.push({
                 id: `challenge-${Date.now()}`,
                 bot,
@@ -218,7 +214,7 @@ const FindMatchChallenges = ({
       
       {/* Mode Filters */}
       <div className="flex gap-1.5 mt-2 flex-shrink-0">
-        {(['all', 2, 3, 4] as const).map((filter) => {
+        {(['all', 2, 4] as const).map((filter) => {
           const isActive = selectedFilter === filter;
           const colors = filter === 'all' 
             ? { bg: 'bg-gray-500/10', text: 'text-gray-400', border: 'border-gray-500/30' }
