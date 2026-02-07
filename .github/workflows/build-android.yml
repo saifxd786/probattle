@@ -140,6 +140,30 @@ jobs:
           rm -rf node_modules/.cache || true
           npx cap add android
 
+      - name: Downgrade AGP to stable 8.7.3 (avoid 8.13.0 ParseLibraryResourcesTask bug)
+        run: |
+          set -euo pipefail
+          # Capacitor 8 ships with AGP 8.13.0 which has a known bug in ParseLibraryResourcesTask
+          # causing !directory.isDirectory() errors. Downgrade to stable AGP 8.7.3.
+          
+          ROOT_GRADLE="android/build.gradle"
+          VARS_GRADLE="android/variables.gradle"
+          
+          # Patch root build.gradle - replace AGP version
+          if [ -f "$ROOT_GRADLE" ]; then
+            # Match patterns like: classpath 'com.android.tools.build:gradle:X.X.X'
+            sed -i -E "s/(com\\.android\\.tools\\.build:gradle:)[0-9]+\\.[0-9]+\\.[0-9]+/\\18.7.3/g" "$ROOT_GRADLE"
+            echo "==== Patched ROOT build.gradle AGP version ===="
+            grep -n "gradle:" "$ROOT_GRADLE" || true
+          fi
+          
+          # Also patch variables.gradle if it has AGP version
+          if [ -f "$VARS_GRADLE" ]; then
+            sed -i -E "s/(androidGradlePluginVersion\\s*=\\s*['\"])[0-9]+\\.[0-9]+\\.[0-9]+/\\18.7.3/g" "$VARS_GRADLE"
+            echo "==== Patched variables.gradle AGP version ===="
+            grep -n "androidGradlePluginVersion" "$VARS_GRADLE" || true
+          fi
+
       - name: Sync Capacitor
         run: npx cap sync android
 
@@ -213,14 +237,15 @@ jobs:
             exit 1
           fi
 
-          # Pin to Gradle 8.13 (required for AGP 8.13.0)
-          sed -i 's|distributionUrl=.*|distributionUrl=https\\://services.gradle.org/distributions/gradle-8.13-bin.zip|' "$WRAPPER"
+          # Pin to Gradle 8.10.2 (compatible with AGP 8.7.3)
+          # AGP 8.7.x requires Gradle 8.9+ but 8.10.2 is more stable
+          sed -i 's|distributionUrl=.*|distributionUrl=https\\://services.gradle.org/distributions/gradle-8.10.2-bin.zip|' "$WRAPPER"
           
           # Verify the pinning worked
           echo "==== Verify wrapper version ===="
           grep "distributionUrl" "$WRAPPER"
-          if ! grep -q "gradle-8.13" "$WRAPPER"; then
-            echo "ERROR: Failed to pin Gradle wrapper to 8.13!"
+          if ! grep -q "gradle-8.10.2" "$WRAPPER"; then
+            echo "ERROR: Failed to pin Gradle wrapper to 8.10.2!"
             exit 1
           fi
           echo "Pinned Gradle wrapper:"
