@@ -23,6 +23,7 @@ interface ChallengesPageProps {
     isHost: boolean;
   }) => void;
   onCreateChallenge: (entryAmount: number, playerMode: 2 | 3 | 4) => void;
+  onSwitchToJoin?: () => void;
 }
 
 const getModeLabel = (mode: 2 | 3 | 4) => {
@@ -52,8 +53,8 @@ const getModeIcon = (mode: 2 | 3 | 4) => {
 const getMultiplier = (mode: 2 | 3 | 4, baseMultiplier: number) => {
   switch (mode) {
     case 2: return baseMultiplier;
-    case 3: return 2.5;
-    case 4: return 3.5;
+    case 3: return 2;
+    case 4: return 2.5;
   }
 };
 
@@ -80,6 +81,7 @@ const ChallengesPage = ({
   onBack,
   onAcceptChallenge,
   onCreateChallenge,
+  onSwitchToJoin,
 }: ChallengesPageProps) => {
   const { user } = useAuth();
   const { 
@@ -148,6 +150,10 @@ const ChallengesPage = ({
     
     if (result.success) {
       setIsWaiting(true);
+      // Redirect to join section so user can see their challenge at top
+      if (onSwitchToJoin) {
+        onSwitchToJoin();
+      }
     }
   };
 
@@ -169,13 +175,18 @@ const ChallengesPage = ({
     }
   };
 
-  // Filter challenges (exclude own)
+  // Filter challenges - show own challenge at top, then others
   const filteredChallenges = useMemo(() => {
-    let filtered = challenges.filter(c => c.creator_id !== user?.id);
+    let ownChallenge = challenges.filter(c => c.creator_id === user?.id);
+    let otherChallenges = challenges.filter(c => c.creator_id !== user?.id);
+    
     if (selectedFilter !== 'all') {
-      filtered = filtered.filter(c => c.player_mode === selectedFilter);
+      ownChallenge = ownChallenge.filter(c => c.player_mode === selectedFilter);
+      otherChallenges = otherChallenges.filter(c => c.player_mode === selectedFilter);
     }
-    return filtered;
+    
+    // Own challenge first, then others
+    return [...ownChallenge, ...otherChallenges];
   }, [challenges, selectedFilter, user?.id]);
 
   // Valid amounts (multiples of 10)
@@ -423,94 +434,114 @@ const ChallengesPage = ({
               </div>
             ) : (
               <AnimatePresence mode="popLayout">
-                {filteredChallenges.map((challenge, index) => {
-                  const canAfford = walletBalance >= challenge.entry_amount;
-                  const modeColors = getModeColor(challenge.player_mode);
-                  const ModeIcon = getModeIcon(challenge.player_mode);
-                  const multiplier = getMultiplier(challenge.player_mode, rewardMultiplier);
-                  const reward = challenge.entry_amount * multiplier;
-                  const avatarUrl = getAvatarForUser(challenge.creator_id, challenge.creator?.avatar_url);
-                  
-                  return (
-                    <motion.div
-                      key={challenge.id}
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, x: 20 }}
-                      transition={{ delay: index * 0.05 }}
-                      className={cn(
-                        "relative p-3 rounded-xl border transition-all",
-                        canAfford 
-                          ? "bg-gray-900/60 border-gray-800 hover:border-gray-700" 
-                          : "bg-gray-900/30 border-gray-800/50 opacity-50"
-                      )}
-                    >
-                      <div className="flex items-center gap-3">
-                        {/* User Avatar */}
-                        <div className="relative">
-                          <Avatar className="w-11 h-11 rounded-xl">
-                            <AvatarImage src={avatarUrl} alt={challenge.creator?.username || 'Player'} />
-                            <AvatarFallback className="bg-gradient-to-br from-gray-700 to-gray-800 rounded-xl">
-                              {(challenge.creator?.username || 'P').slice(0, 2).toUpperCase()}
-                            </AvatarFallback>
-                          </Avatar>
-                          {challenge.waitingTime < 30 && (
-                            <div className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-orange-500 flex items-center justify-center">
-                              <Flame className="w-2.5 h-2.5 text-white" />
+                    {filteredChallenges.map((challenge, index) => {
+                      const isOwnChallenge = challenge.creator_id === user?.id;
+                      const canAfford = walletBalance >= challenge.entry_amount || isOwnChallenge;
+                      const modeColors = getModeColor(challenge.player_mode);
+                      const ModeIcon = getModeIcon(challenge.player_mode);
+                      const multiplier = getMultiplier(challenge.player_mode, rewardMultiplier);
+                      const reward = challenge.entry_amount * multiplier;
+                      const avatarUrl = getAvatarForUser(challenge.creator_id, challenge.creator?.avatar_url);
+                      
+                      return (
+                        <motion.div
+                          key={challenge.id}
+                          initial={{ opacity: 0, x: -20 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          exit={{ opacity: 0, x: 20 }}
+                          transition={{ delay: index * 0.05 }}
+                          className={cn(
+                            "relative p-3 rounded-xl border transition-all",
+                            isOwnChallenge
+                              ? "bg-gradient-to-r from-indigo-500/10 to-purple-500/10 border-indigo-500/30"
+                              : canAfford 
+                                ? "bg-gray-900/60 border-gray-800 hover:border-gray-700" 
+                                : "bg-gray-900/30 border-gray-800/50 opacity-50"
+                          )}
+                        >
+                          {/* Own challenge badge */}
+                          {isOwnChallenge && (
+                            <div className="absolute -top-2 left-3 px-2 py-0.5 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full text-[9px] font-bold text-white">
+                              YOUR CHALLENGE
                             </div>
                           )}
-                        </div>
-                        
-                        {/* Info */}
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <p className="font-semibold text-white text-sm truncate">
-                              {challenge.creator?.username || 'Player'}
-                            </p>
-                            <span className={cn(
-                              "px-1.5 py-0.5 rounded text-[9px] font-bold flex items-center gap-0.5",
-                              modeColors.bg, modeColors.text
-                            )}>
-                              <ModeIcon className="w-2.5 h-2.5" />
-                              {getModeLabel(challenge.player_mode)}
-                            </span>
+                          
+                          <div className="flex items-center gap-3">
+                            {/* User Avatar */}
+                            <div className="relative">
+                              <Avatar className="w-11 h-11 rounded-xl">
+                                <AvatarImage src={avatarUrl} alt={challenge.creator?.username || 'Player'} />
+                                <AvatarFallback className="bg-gradient-to-br from-gray-700 to-gray-800 rounded-xl">
+                                  {(challenge.creator?.username || 'P').slice(0, 2).toUpperCase()}
+                                </AvatarFallback>
+                              </Avatar>
+                              {challenge.waitingTime < 30 && !isOwnChallenge && (
+                                <div className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-orange-500 flex items-center justify-center">
+                                  <Flame className="w-2.5 h-2.5 text-white" />
+                                </div>
+                              )}
+                            </div>
+                            
+                            {/* Info */}
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                <p className="font-semibold text-white text-sm truncate">
+                                  {isOwnChallenge ? 'You' : (challenge.creator?.username || 'Player')}
+                                </p>
+                                <span className={cn(
+                                  "px-1.5 py-0.5 rounded text-[9px] font-bold flex items-center gap-0.5",
+                                  modeColors.bg, modeColors.text
+                                )}>
+                                  <ModeIcon className="w-2.5 h-2.5" />
+                                  {getModeLabel(challenge.player_mode)}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-2 mt-0.5">
+                                <span className="text-[10px] text-gray-500 flex items-center gap-1">
+                                  <Clock className="w-3 h-3" />
+                                  {formatWaitTime(challenge.waitingTime)}
+                                </span>
+                                <span className="text-gray-700">•</span>
+                                <span className="text-[10px] text-emerald-400 font-medium">
+                                  Win ₹{reward.toFixed(0)}
+                                </span>
+                              </div>
+                            </div>
+                            
+                            {/* Entry & Accept */}
+                            <div className="flex flex-col items-end gap-1.5">
+                              <div className="text-right">
+                                <p className="text-[9px] text-gray-500">Entry</p>
+                                <p className="font-bold text-white text-sm">₹{challenge.entry_amount}</p>
+                              </div>
+                              {isOwnChallenge ? (
+                                <motion.button
+                                  whileTap={{ scale: 0.95 }}
+                                  onClick={handleCancelChallenge}
+                                  className="px-3 py-1.5 rounded-lg text-xs font-bold bg-red-500/20 border border-red-500/30 text-red-400"
+                                >
+                                  Cancel
+                                </motion.button>
+                              ) : (
+                                <motion.button
+                                  whileTap={{ scale: 0.95 }}
+                                  onClick={() => handleAcceptChallenge(challenge)}
+                                  disabled={!canAfford || isLoading}
+                                  className={cn(
+                                    "px-3 py-1.5 rounded-lg text-xs font-bold transition-all",
+                                    canAfford
+                                      ? "bg-gradient-to-r from-emerald-500 to-green-500 text-white shadow-lg shadow-emerald-500/30"
+                                      : "bg-gray-800 text-gray-500 cursor-not-allowed"
+                                  )}
+                                >
+                                  {isLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Play'}
+                                </motion.button>
+                              )}
+                            </div>
                           </div>
-                          <div className="flex items-center gap-2 mt-0.5">
-                            <span className="text-[10px] text-gray-500 flex items-center gap-1">
-                              <Clock className="w-3 h-3" />
-                              {formatWaitTime(challenge.waitingTime)}
-                            </span>
-                            <span className="text-gray-700">•</span>
-                            <span className="text-[10px] text-emerald-400 font-medium">
-                              Win ₹{reward.toFixed(0)}
-                            </span>
-                          </div>
-                        </div>
-                        
-                        {/* Entry & Accept */}
-                        <div className="flex flex-col items-end gap-1.5">
-                          <div className="text-right">
-                            <p className="text-[9px] text-gray-500">Entry</p>
-                            <p className="font-bold text-white text-sm">₹{challenge.entry_amount}</p>
-                          </div>
-                          <motion.button
-                            whileTap={{ scale: 0.95 }}
-                            onClick={() => handleAcceptChallenge(challenge)}
-                            disabled={!canAfford || isLoading}
-                            className={cn(
-                              "px-3 py-1.5 rounded-lg text-xs font-bold transition-all",
-                              canAfford
-                                ? "bg-gradient-to-r from-emerald-500 to-green-500 text-white shadow-lg shadow-emerald-500/30"
-                                : "bg-gray-800 text-gray-500 cursor-not-allowed"
-                            )}
-                          >
-                            {isLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : 'Play'}
-                          </motion.button>
-                        </div>
-                      </div>
-                    </motion.div>
-                  );
-                })}
+                        </motion.div>
+                      );
+                    })}
               </AnimatePresence>
             )}
           </div>
