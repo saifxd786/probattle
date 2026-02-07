@@ -59,22 +59,28 @@ const getMultiplier = (mode: 2 | 3 | 4, baseMultiplier: number) => {
   }
 };
 
-// Indian boy names only (Hindu + Muslim) for bot players
+// Indian boy names (Hindu + Muslim) + Gaming/Funny nicknames for bot players
 const BOT_NAMES = [
   // Hindu names
   'Rahul_Gamer', 'Amit_King', 'Vikram_99', 'Rohan_X', 'Arjun_YT',
   'Deepak_FF', 'Suresh_OP', 'Karan_Ace', 'Raj_Thunder', 'Aakash_Beast',
-  'Mohit_Legend', 'Nikhil_Storm', 'Varun_Clash', 'Harsh_Boom', 'Gaurav_Max',
-  'Vivek_Pro99', 'Ajay_Killer', 'Vishal_YT', 'Rakesh_OP', 'Manish_X',
+  'Mohit_Legend', 'Nikhil_Storm', 'Varun_Pro', 'Harsh_Boom', 'Gaurav_Max',
+  'Vivek_99', 'Ajay_Killer', 'Vishal_YT', 'Rakesh_OP', 'Manish_X',
   'Sunny_Beast', 'Rohit_Max', 'Sanjay_King', 'Kunal_Storm', 'Mayank_FF',
-  'Ankit_Legend', 'Ramesh_Clash', 'Ashish_Ace', 'Vikash_YT', 'Pawan_OP',
+  'Ankit_Pro', 'Ramesh_GG', 'Ashish_Ace', 'Vikash_YT', 'Pawan_OP',
   'Sachin_Pro', 'Ravi_Fire', 'Arun_Boss', 'Vijay_GG', 'Tushar_777',
-  'Akash_Rush', 'Shubham_X', 'Yash_Win', 'Saurabh_King', 'Pranav_OP',
   // Muslim names
   'Aamir_Pro', 'Faizan_YT', 'Zaid_King', 'Rehan_Beast', 'Arman_FF',
   'Salman_GG', 'Imran_Storm', 'Ayaan_Legend', 'Danish_Ace', 'Farhan_Max',
-  'Rizwan_OP', 'Shahid_Clash', 'Junaid_Fire', 'Adnan_Boss', 'Hamza_777',
-  'Saif_Thunder', 'Irfan_Rush', 'Bilal_Pro', 'Asif_King', 'Raza_Beast'
+  'Rizwan_OP', 'Shahid_Pro', 'Junaid_Fire', 'Adnan_Boss', 'Hamza_777',
+  'Saif_Thunder', 'Irfan_Rush', 'Bilal_Pro', 'Asif_King', 'Raza_Beast',
+  // Gaming & Funny nicknames
+  'Danger_Boy', 'Cute_Lover', 'Sonu_OP', 'Kaliya_Don', 'Ludo_King',
+  'Thunder_God', 'Royal_Beast', 'Lucky_777', 'Badshah_YT', 'Killer_Pro',
+  'Monu_Legend', 'Golu_Gamer', 'Chotu_OP', 'Pappu_King', 'Babu_Beast',
+  'Storm_Rider', 'Dark_Knight', 'Fire_Boss', 'Speed_King', 'Tiger_Pro',
+  'Desi_Gamer', 'Champion_X', 'Victory_99', 'Winner_YT', 'Master_OP',
+  'Bhola_GG', 'Gabbar_Pro', 'Sultan_King', 'Raja_Beta', 'Prince_FF'
 ];
 
 // Entry amounts for bots - weighted towards popular amounts
@@ -128,13 +134,13 @@ const seededRandom = (seed: number, index: number): number => {
 const generateBotChallenges = (minEntry: number): BotChallenge[] => {
   const seed = getDailyBotSeed();
   const bots: BotChallenge[] = [];
-  const usedNames = new Set<string>();
+  const usedNames = new Set<string>(); // Track ALL used names (creators + companions)
   
   // Generate 25-35 bot challenges for realistic activity
   const count = 25 + Math.floor(seededRandom(seed, 0) * 11);
   
   for (let i = 0; i < count; i++) {
-    // Pick unique name using deterministic selection
+    // Pick unique name for creator using deterministic selection
     const nameIndex = Math.floor(seededRandom(seed, i * 3 + 1) * BOT_NAMES.length);
     let name = BOT_NAMES[nameIndex];
     let attempts = 0;
@@ -142,7 +148,7 @@ const generateBotChallenges = (minEntry: number): BotChallenge[] => {
       name = BOT_NAMES[(nameIndex + attempts + 1) % BOT_NAMES.length];
       attempts++;
     }
-    if (usedNames.has(name)) continue;
+    if (usedNames.has(name)) continue; // Skip if no unique name available
     usedNames.add(name);
     
     // Pick entry amount - allows duplicates across bots for realistic feel
@@ -169,13 +175,17 @@ const generateBotChallenges = (minEntry: number): BotChallenge[] => {
     const companions: CompanionPlayer[] = [];
     
     for (let j = 0; j < companionCount; j++) {
-      // Get a unique companion name (different from creator)
+      // Get a unique companion name (different from ALL used names)
       const companionNameIndex = Math.floor(seededRandom(seed, i * 100 + j * 17 + 50) * BOT_NAMES.length);
       let companionName = BOT_NAMES[companionNameIndex];
-      // Make sure it's different from creator
-      if (companionName === name) {
-        companionName = BOT_NAMES[(companionNameIndex + 1) % BOT_NAMES.length];
+      let compAttempts = 0;
+      // Make sure it's different from ALL used names (creators + other companions)
+      while (usedNames.has(companionName) && compAttempts < BOT_NAMES.length) {
+        companionName = BOT_NAMES[(companionNameIndex + compAttempts + 1) % BOT_NAMES.length];
+        compAttempts++;
       }
+      if (usedNames.has(companionName)) continue; // Skip this companion if no unique name
+      usedNames.add(companionName);
       
       const companionAvatarIndex = Math.floor(seededRandom(seed, i * 100 + j * 23 + 70) * LUDO_AVATARS.length);
       
@@ -362,17 +372,34 @@ const ChallengesPage = ({
         const seed = getDailyBotSeed();
         const currentTime = Date.now();
         
+        // First, collect ALL currently used names (for uniqueness check)
+        const usedNames = new Set<string>();
+        prev.forEach(bot => {
+          usedNames.add(bot.creator.username);
+          bot.companions?.forEach(comp => usedNames.add(comp.username));
+        });
+        
         return prev.map((bot, index) => {
           const newWaitTime = bot.waitingTime + 1;
           
           // If bot exceeded 5 minutes, replace with fresh bot
           if (newWaitTime > MAX_WAIT_TIME) {
+            // Remove old names from used set (this bot is being replaced)
+            usedNames.delete(bot.creator.username);
+            bot.companions?.forEach(comp => usedNames.delete(comp.username));
+            
+            // Pick a new unique name
+            const newNameIndex = Math.floor(seededRandom(seed + currentTime, index * 13) * BOT_NAMES.length);
+            let newName = BOT_NAMES[newNameIndex];
+            let attempts = 0;
+            while (usedNames.has(newName) && attempts < BOT_NAMES.length) {
+              newName = BOT_NAMES[(newNameIndex + attempts + 1) % BOT_NAMES.length];
+              attempts++;
+            }
+            usedNames.add(newName);
+            
             // Generate new random waiting time (5-60 seconds)
             const newBaseWait = Math.floor(seededRandom(seed + currentTime, index * 11) * 55) + 5;
-            
-            // Pick a new random name
-            const newNameIndex = Math.floor(seededRandom(seed + currentTime, index * 13) * BOT_NAMES.length);
-            const newName = BOT_NAMES[newNameIndex];
             
             // Pick new avatar
             const newAvatarIndex = Math.floor(seededRandom(seed + currentTime, index * 17) * LUDO_AVATARS.length);
@@ -386,13 +413,19 @@ const ChallengesPage = ({
             const newModeIndex = Math.floor(seededRandom(seed + currentTime, index * 23) * modes.length);
             const newMode = modes[newModeIndex];
             
-            // Generate companions for new mode
+            // Generate companions for new mode (also unique names)
             const companionCount = newMode - 2;
             const newCompanions: CompanionPlayer[] = [];
             for (let j = 0; j < companionCount; j++) {
               const compNameIdx = Math.floor(seededRandom(seed + currentTime, index * 100 + j * 29) * BOT_NAMES.length);
               let compName = BOT_NAMES[compNameIdx];
-              if (compName === newName) compName = BOT_NAMES[(compNameIdx + 1) % BOT_NAMES.length];
+              let compAttempts = 0;
+              while (usedNames.has(compName) && compAttempts < BOT_NAMES.length) {
+                compName = BOT_NAMES[(compNameIdx + compAttempts + 1) % BOT_NAMES.length];
+                compAttempts++;
+              }
+              usedNames.add(compName);
+              
               const compAvatarIdx = Math.floor(seededRandom(seed + currentTime, index * 100 + j * 31) * LUDO_AVATARS.length);
               newCompanions.push({ username: compName, avatar_url: LUDO_AVATARS[compAvatarIdx] });
             }
