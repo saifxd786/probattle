@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState, ReactNode, useRe
 import { User, Session, AuthChangeEvent } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
+import { useNativePushNotifications } from '@/hooks/useNativePushNotifications';
 import { logDeviceToServer } from '@/utils/deviceInfo';
 import { isPWAStandalone } from '@/utils/pwaAuthStorage';
 
@@ -16,9 +17,10 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Component to initialize push notifications
+// Component to initialize push notifications (both web and native)
 const PushNotificationInitializer = () => {
-  usePushNotifications();
+  usePushNotifications(); // Web notifications
+  useNativePushNotifications(); // Native FCM notifications
   return null;
 };
 
