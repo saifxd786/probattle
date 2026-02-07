@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
-import { BOT_NAMES } from '@/components/ludo/MatchmakingScreen';
+import { BOT_NAMES } from '@/constants/ludoBotNames';
 import { CUSTOM_AVATARS } from '@/components/ludo/LudoAvatarPicker';
 import { soundManager } from '@/utils/soundManager';
 import { hapticManager } from '@/utils/hapticManager';

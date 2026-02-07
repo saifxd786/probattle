@@ -61,29 +61,8 @@ const getMultiplier = (mode: 2 | 4, baseMultiplier: number) => {
   }
 };
 
-// Indian boy names (Hindu + Muslim) + Gaming/Funny nicknames for bot players
-const BOT_NAMES = [
-  // Hindu names
-  'Rahul_Gamer', 'Amit_King', 'Vikram_99', 'Rohan_X', 'Arjun_YT',
-  'Deepak_FF', 'Suresh_OP', 'Karan_Ace', 'Raj_Thunder', 'Aakash_Beast',
-  'Mohit_Legend', 'Nikhil_Storm', 'Varun_Pro', 'Harsh_Boom', 'Gaurav_Max',
-  'Vivek_99', 'Ajay_Killer', 'Vishal_YT', 'Rakesh_OP', 'Manish_X',
-  'Sunny_Beast', 'Rohit_Max', 'Sanjay_King', 'Kunal_Storm', 'Mayank_FF',
-  'Ankit_Pro', 'Ramesh_GG', 'Ashish_Ace', 'Vikash_YT', 'Pawan_OP',
-  'Sachin_Pro', 'Ravi_Fire', 'Arun_Boss', 'Vijay_GG', 'Tushar_777',
-  // Muslim names
-  'Aamir_Pro', 'Faizan_YT', 'Zaid_King', 'Rehan_Beast', 'Arman_FF',
-  'Salman_GG', 'Imran_Storm', 'Ayaan_Legend', 'Danish_Ace', 'Farhan_Max',
-  'Rizwan_OP', 'Shahid_Pro', 'Junaid_Fire', 'Adnan_Boss', 'Hamza_777',
-  'Saif_Thunder', 'Irfan_Rush', 'Bilal_Pro', 'Asif_King', 'Raza_Beast',
-  // Gaming & Funny nicknames
-  'Danger_Boy', 'Cute_Lover', 'Sonu_OP', 'Kaliya_Don', 'Ludo_King',
-  'Thunder_God', 'Royal_Beast', 'Lucky_777', 'Badshah_YT', 'Killer_Pro',
-  'Monu_Legend', 'Golu_Gamer', 'Chotu_OP', 'Pappu_King', 'Babu_Beast',
-  'Storm_Rider', 'Dark_Knight', 'Fire_Boss', 'Speed_King', 'Tiger_Pro',
-  'Desi_Gamer', 'Champion_X', 'Victory_99', 'Winner_YT', 'Master_OP',
-  'Bhola_GG', 'Gabbar_Pro', 'Sultan_King', 'Raja_Beta', 'Prince_FF'
-];
+// Import centralized bot names (200+ names: Hindu, Muslim, Gaming/Funny)
+import { BOT_NAMES } from '@/constants/ludoBotNames';
 
 // Entry amounts for bots - weighted towards popular amounts
 const BOT_ENTRY_AMOUNTS = [
@@ -449,8 +428,7 @@ const ChallengesPage = ({
       
       // For 1v1v1v1, add one more random bot
       if (botResult.playerMode === 4) {
-        const BOT_NAMES_LOCAL = ['Rahul_Gamer', 'Amit_King', 'Vikram_99', 'Rohan_X', 'Arjun_YT'];
-        const randomName = BOT_NAMES_LOCAL[Math.floor(Math.random() * BOT_NAMES_LOCAL.length)];
+        const randomName = BOT_NAMES[Math.floor(Math.random() * BOT_NAMES.length)];
         presetBots.push({
           name: randomName,
           avatar: LUDO_AVATARS[Math.floor(Math.random() * LUDO_AVATARS.length)],
