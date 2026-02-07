@@ -631,7 +631,7 @@ const CompactPlayerAvatar = ({
   );
 };
 
-// Bottom info bar - supports 2 or 4 players
+// Bottom info bar - supports 2, 3 or 4 players
 const BottomInfoBar = ({ 
   players,
   turnTimeLeft,
@@ -641,9 +641,9 @@ const BottomInfoBar = ({
   turnTimeLeft?: number;
   offlineTimeLeft?: number;
 }) => {
-  const is4Player = players.length === 4;
-  
-  if (is4Player) {
+  const playerCount = players.length;
+
+  if (playerCount === 4) {
     // 4 Player Layout - All 4 players in a row with compact avatars
     return (
       <div 
@@ -662,6 +662,31 @@ const BottomInfoBar = ({
             turnTimeLeft={player?.isCurrentTurn ? turnTimeLeft : undefined}
             offlineTimeLeft={player?.isCurrentTurn ? offlineTimeLeft : undefined}
             size={36}
+          />
+        ))}
+      </div>
+    );
+  }
+
+  if (playerCount === 3) {
+    // 3 Player Layout - Show all 3 players (fix: 1v1v1 looked like 1v1)
+    return (
+      <div 
+        className="flex items-center justify-between px-2 py-2 rounded-xl"
+        style={{
+          background: 'linear-gradient(180deg, rgba(20,20,30,0.95) 0%, rgba(10,10,20,0.98) 100%)',
+          border: '1px solid rgba(255,255,255,0.08)',
+          boxShadow: '0 4px 20px rgba(0,0,0,0.4)'
+        }}
+      >
+        {players.map((player, index) => (
+          <CompactPlayerAvatar
+            key={player?.color || index}
+            player={player}
+            isCurrentTurn={player?.isCurrentTurn || false}
+            turnTimeLeft={player?.isCurrentTurn ? turnTimeLeft : undefined}
+            offlineTimeLeft={player?.isCurrentTurn ? offlineTimeLeft : undefined}
+            size={38}
           />
         ))}
       </div>
