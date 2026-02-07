@@ -395,7 +395,41 @@ jobs:
           org.gradle.jvmargs=-Xmx3g -Dfile.encoding=UTF-8
           kotlin.daemon.jvmargs=-Xmx2g -Dfile.encoding=UTF-8
           kotlin.incremental=false
+          # Java compatibility for Capacitor Android
+          android.useFullClasspathForDexingTransform=true
           EOF
+
+      - name: Force Java 17 compatibility for Capacitor
+        run: |
+          set -euo pipefail
+          # Capacitor Android modules need Java 17 source/target even with JDK 21
+          # Add Java compatibility settings to all build.gradle files
+          
+          for GRADLE_FILE in android/build.gradle android/app/build.gradle; do
+            if [ -f "$GRADLE_FILE" ]; then
+              cat >> "$GRADLE_FILE" << 'JAVAEOF'
+
+          // CI: Force Java 17 compatibility
+          tasks.withType(JavaCompile).configureEach {
+              options.release = 17
+          }
+          JAVAEOF
+              echo "Patched $GRADLE_FILE with Java 17 compatibility"
+            fi
+          done
+          
+          # Also patch capacitor-android if it exists
+          CAP_GRADLE="node_modules/@capacitor/android/capacitor/build.gradle"
+          if [ -f "$CAP_GRADLE" ]; then
+            cat >> "$CAP_GRADLE" << 'CAPEOF'
+
+          // CI: Force Java 17 compatibility for capacitor-android
+          tasks.withType(JavaCompile).configureEach {
+              options.release = 17
+          }
+          CAPEOF
+            echo "Patched $CAP_GRADLE with Java 17 compatibility"
+          fi
 
       # Gradle wrapper already pinned in earlier step
 
@@ -453,10 +487,11 @@ jobs:
           : > ../gradle-build.log
 
           echo "==== Running Gradle (output redirected to gradle-build.log) ===="
+          # Use --info to capture actual compiler error messages
           ./gradlew --no-daemon --max-workers=1 assembleDebug \
             -x :app:processDebugNavigationResources \
             -x :app:compileDebugNavigationResources \
-            --stacktrace --warning-mode all --console=plain >> ../gradle-build.log 2>&1
+            --stacktrace --info --warning-mode all --console=plain 2>&1 | tee ../gradle-build.log
           RC=$?
 
           # Retry once (this error can be flaky when Gradle/AAR transforms create a bad resource path)
@@ -495,7 +530,7 @@ jobs:
             rm -rf .gradle app/build build || true
 
             ./gradlew --no-daemon --max-workers=1 --refresh-dependencies assembleDebug \
-              --stacktrace --warning-mode all --console=plain >> ../gradle-build.log 2>&1
+              --stacktrace --info --warning-mode all --console=plain 2>&1 | tee -a ../gradle-build.log
             RC=$?
           fi
 
@@ -582,7 +617,7 @@ jobs:
           echo "Lines: $(wc -l < "$CLEAN" 2>/dev/null || echo 0)"
 
           MARKER_RE='BUILD FAILED|FAILURE:|Build failed with an exception|What went wrong:|A problem occurred|Execution failed for task|Caused by:|AAR metadata|aar metadata|checkAarMetadata|CheckAarMetadata|issues were found when checking|Could not resolve|Could not determine|No matching variant|Unsupported|SDK location|Daemon disappeared|daemon disappeared|Killed|SIGKILL|exit code|OutOfMemory|OOM|!directory.isDirectory\(\)|ResourceDirectoryParser'
-          LIKELY_RE='BUILD FAILED|FAILURE:|Build failed with an exception|What went wrong:|A problem occurred|Execution failed for task|Caused by:|\\bException\\b|\\bERROR\\b|\\bError:\\b|AAR metadata|aar metadata|checkAarMetadata|CheckAarMetadata|issues were found when checking|Could not resolve|Could not determine|Could not find|No matching variant|Unsupported|SDK location|compileSdkVersion|targetSdkVersion|Daemon disappeared|daemon disappeared|Killed|SIGKILL|exit code|OutOfMemory|OOM|!directory.isDirectory\(\)|ResourceDirectoryParser'
+          LIKELY_RE='BUILD FAILED|FAILURE:|Build failed with an exception|What went wrong:|A problem occurred|Execution failed for task|Caused by:|\\bException\\b|\\bERROR\\b|\\bError:\\b|AAR metadata|aar metadata|checkAarMetadata|CheckAarMetadata|issues were found when checking|Could not resolve|Could not determine|Could not find|No matching variant|Unsupported|SDK location|compileSdkVersion|targetSdkVersion|Daemon disappeared|daemon disappeared|Killed|SIGKILL|exit code|OutOfMemory|OOM|!directory.isDirectory\(\)|ResourceDirectoryParser|\.java:[0-9]+:|error:|cannot find symbol|incompatible types|package .* does not exist|method .* cannot be applied|is not abstract|does not override|unreported exception'
 
            echo "==== gradle-build.log (LIKELY-CAUSE LINES - COPY THIS BLOCK) ===="
            echo "====================================="
