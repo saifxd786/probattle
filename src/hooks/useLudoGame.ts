@@ -736,117 +736,106 @@ export const useLudoGame = () => {
       players: [userPlayer]
     }));
 
-    // Calculate matchmaking delay based on entry amount
-    // Lower amounts = faster matchmaking, higher amounts = slower (more realistic)
-    const getMatchmakingDelay = (amount: number): { botJoinBase: number; botJoinRandom: number; readyDelay: number; gameStartBase: number } => {
-      if (amount <= 20) {
-        // ₹10-20: ~4-6 seconds total
-        return { botJoinBase: 3000, botJoinRandom: 1500, readyDelay: 500, gameStartBase: 1500 };
-      } else if (amount <= 50) {
-        // ₹50: ~8-9 seconds total
-        return { botJoinBase: 6000, botJoinRandom: 2000, readyDelay: 600, gameStartBase: 1800 };
-      } else if (amount <= 100) {
-        // ₹100: ~10-12 seconds total
-        return { botJoinBase: 8000, botJoinRandom: 2500, readyDelay: 700, gameStartBase: 2000 };
-      } else if (amount <= 500) {
-        // ₹200-500: ~15-18 seconds total
-        return { botJoinBase: 12000, botJoinRandom: 4000, readyDelay: 800, gameStartBase: 2500 };
-      } else if (amount <= 1000) {
-        // ₹1000: ~18-20 seconds total
-        return { botJoinBase: 15000, botJoinRandom: 3500, readyDelay: 900, gameStartBase: 2500 };
-      } else {
-        // ₹5000+: ~25-30 seconds total - rare high rollers
-        return { botJoinBase: 22000, botJoinRandom: 6000, readyDelay: 1000, gameStartBase: 3000 };
-      }
-    };
-
-    const delays = getMatchmakingDelay(entryAmount);
-
-    // Simulate bot joining with realistic delays
+    // Build bot roster synchronously (fix: 1v1v1 / 1v1v1v1 sometimes stuck in `waiting` with missing bots)
+    const botCount = effectivePlayerMode - 1;
     const usedNames: string[] = [];
     const usedAvatars: number[] = [];
-    let totalBotJoinTime = 0;
-    
-    for (let i = 1; i < effectivePlayerMode; i++) {
-      // Each subsequent bot takes the base delay + random variance
-      const botJoinDelay = delays.botJoinBase + Math.random() * delays.botJoinRandom;
-      totalBotJoinTime += botJoinDelay;
-      
-      // Use preset bot if available, otherwise generate random
-      const presetBot = presetBots && presetBots[i - 1]; // i-1 because presetBots is 0-indexed for bots
-      
-      setTimeout(async () => {
-        // Use preset name/avatar if available, otherwise random
-        const botName = presetBot ? presetBot.name : getRandomBotName(usedNames);
-        usedNames.push(botName);
-        const botColor = COLORS[i];
-        
-        // Use preset avatar or assign random
-        let botAvatar: string;
-        if (presetBot && presetBot.avatar) {
-          botAvatar = presetBot.avatar;
-        } else {
-          let avatarIndex = Math.floor(Math.random() * CUSTOM_AVATARS.length);
-          while (usedAvatars.includes(avatarIndex) && usedAvatars.length < CUSTOM_AVATARS.length) {
-            avatarIndex = Math.floor(Math.random() * CUSTOM_AVATARS.length);
-          }
-          usedAvatars.push(avatarIndex);
-          botAvatar = CUSTOM_AVATARS[avatarIndex].src;
+
+    const botRows: Array<{
+      match_id: string;
+      is_bot: true;
+      bot_name: string;
+      bot_avatar_url: string | null;
+      player_color: string;
+      token_positions: number[];
+    }> = [];
+
+    const botPlayers: Player[] = [];
+
+    for (let i = 1; i <= botCount; i++) {
+      const presetBot = presetBots?.[i - 1];
+      const botName = presetBot?.name?.trim() ? presetBot.name : getRandomBotName(usedNames);
+      usedNames.push(botName);
+
+      const botColor = COLORS[i];
+
+      let botAvatar: string | undefined = presetBot?.avatar || undefined;
+      if (!botAvatar) {
+        let avatarIndex = Math.floor(Math.random() * CUSTOM_AVATARS.length);
+        while (usedAvatars.includes(avatarIndex) && usedAvatars.length < CUSTOM_AVATARS.length) {
+          avatarIndex = Math.floor(Math.random() * CUSTOM_AVATARS.length);
         }
+        usedAvatars.push(avatarIndex);
+        botAvatar = CUSTOM_AVATARS[avatarIndex]?.src;
+      }
 
-        await supabase.from('ludo_match_players').insert({
-          match_id: match.id,
-          is_bot: true,
-          bot_name: botName,
-          bot_avatar_url: botAvatar,
-          player_color: botColor,
-          token_positions: [0, 0, 0, 0]
-        });
+      botRows.push({
+        match_id: match.id,
+        is_bot: true,
+        bot_name: botName,
+        bot_avatar_url: botAvatar || null,
+        player_color: botColor,
+        token_positions: [0, 0, 0, 0]
+      });
 
-        const botPlayer: Player = {
-          id: `bot-${i}`,
-          name: botName,
-          uid: generateUID(),
-          avatar: botAvatar,
-          isBot: true,
-          status: 'connecting',
-          color: botColor,
-          tokens: createInitialTokens(botColor),
-          tokensHome: 0
-        };
-
-        setGameState(prev => ({
-          ...prev,
-          players: [...prev.players, botPlayer]
-        }));
-
-        setTimeout(() => {
-          setGameState(prev => ({
-            ...prev,
-            players: prev.players.map(p => 
-              p.id === botPlayer.id ? { ...p, status: 'ready' } : p
-            )
-          }));
-        }, delays.readyDelay + Math.random() * 400);
-      }, totalBotJoinTime);
+      botPlayers.push({
+        id: `bot-${i}`,
+        name: botName,
+        uid: generateUID(),
+        avatar: botAvatar,
+        isBot: true,
+        status: 'ready',
+        color: botColor,
+        tokens: createInitialTokens(botColor),
+        tokensHome: 0
+      });
     }
 
-    // Start game after all bots have joined and are ready
-    const gameStartDelay = totalBotJoinTime + delays.gameStartBase + Math.random() * 1000;
-    setTimeout(() => {
-      gameInProgressRef.current = true;
-      setGameState(prev => ({
-        ...prev,
-        phase: 'playing',
-        canRoll: true,
-        currentTurn: 0
-      }));
+    if (botRows.length > 0) {
+      const { error: botsError } = await supabase.from('ludo_match_players').insert(botRows);
+      if (botsError) {
+        console.error('[LudoGame] Failed to insert bots:', botsError);
+        toast({ title: 'Failed to start match', variant: 'destructive' });
+        // Best-effort rollback: cancel match and refund wallet
+        await supabase.from('ludo_matches').update({ status: 'cancelled', ended_at: new Date().toISOString() }).eq('id', match.id);
+        await supabase.from('profiles').update({ wallet_balance: walletBalance }).eq('id', user.id);
+        setWalletBalance(walletBalance);
+        return;
+      }
+    }
 
-      supabase.from('ludo_matches').update({ 
+    // Mark match as started immediately so it can be resumed reliably
+    const startedAt = new Date().toISOString();
+    const { error: startError } = await supabase
+      .from('ludo_matches')
+      .update({
         status: 'in_progress',
-        started_at: new Date().toISOString()
-      }).eq('id', match.id);
-    }, gameStartDelay);
+        started_at: startedAt,
+        game_state: { currentTurn: 0, diceValue: 1, hasRolled: false }
+      })
+      .eq('id', match.id);
+
+    if (startError) {
+      console.error('[LudoGame] Failed to start match:', startError);
+      toast({ title: 'Failed to start match', variant: 'destructive' });
+      await supabase.from('profiles').update({ wallet_balance: walletBalance }).eq('id', user.id);
+      setWalletBalance(walletBalance);
+      return;
+    }
+
+    gameInProgressRef.current = true;
+    setGameState({
+      phase: 'playing',
+      matchId: match.id,
+      players: [userPlayer, ...botPlayers],
+      currentTurn: 0,
+      diceValue: 1,
+      isRolling: false,
+      canRoll: true,
+      hasRolled: false,
+      selectedToken: null,
+      winner: null
+    });
   }, [user, walletBalance, entryAmount, playerMode, settings, toast, getRandomBotName, createInitialTokens, userUID, userAvatar, userName]);
 
   // Generate dice value - HIGH STAKES (>₹100) makes bots smarter BUT SUBTLE
