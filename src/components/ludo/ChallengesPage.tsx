@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { 
-  ArrowLeft, Swords, Users, Crown, RefreshCw, Flame, Sparkles, Loader2, X, Clock
+  ArrowLeft, Swords, Users, Crown, RefreshCw, Flame, Sparkles, Loader2, Clock
 } from 'lucide-react';
 import { usePublicLudoChallenge, LUDO_AVATARS, CUSTOM_AMOUNTS, PublicChallenge } from '@/hooks/usePublicLudoChallenge';
 import { useAuth } from '@/contexts/AuthContext';
@@ -101,16 +101,9 @@ const ChallengesPage = ({
   const [selectedEntry, setSelectedEntry] = useState(minEntryAmount);
   const [selectedMode, setSelectedMode] = useState<2 | 3 | 4>(2);
   const [isCreating, setIsCreating] = useState(false);
-  const [isWaiting, setIsWaiting] = useState(false);
 
-  // Check if user has active challenge (waiting mode)
-  useEffect(() => {
-    if (myChallenge && mode === 'create') {
-      setIsWaiting(true);
-      setSelectedEntry(myChallenge.entry_amount);
-      setSelectedMode(myChallenge.player_mode);
-    }
-  }, [myChallenge, mode]);
+  // No longer auto-show waiting screen - just redirect to join tab
+  // The user's challenge will be shown at the top of the join list with "YOUR CHALLENGE" badge
 
   // Watch for when myChallenge gets matched - auto redirect (for challenge creator)
   useEffect(() => {
@@ -149,8 +142,8 @@ const ChallengesPage = ({
     setIsCreating(false);
     
     if (result.success) {
-      setIsWaiting(true);
-      // Redirect to join section so user can see their challenge at top
+      // Don't show waiting animation - directly switch to join tab
+      // User's challenge will appear at top with "YOUR CHALLENGE" badge
       if (onSwitchToJoin) {
         onSwitchToJoin();
       }
@@ -159,7 +152,6 @@ const ChallengesPage = ({
 
   const handleCancelChallenge = async () => {
     await cancelChallenge();
-    setIsWaiting(false);
   };
 
   const handleAcceptChallenge = async (challenge: PublicChallenge) => {
@@ -214,10 +206,10 @@ const ChallengesPage = ({
         <div className="flex items-center gap-3">
           <motion.button
             whileTap={{ scale: 0.9 }}
-            onClick={isWaiting ? handleCancelChallenge : onBack}
+            onClick={onBack}
             className="w-10 h-10 rounded-xl bg-gray-800/60 border border-gray-700/50 flex items-center justify-center text-gray-400 hover:text-white transition-colors"
           >
-            {isWaiting ? <X className="w-5 h-5" /> : <ArrowLeft className="w-5 h-5" />}
+            <ArrowLeft className="w-5 h-5" />
           </motion.button>
           
           <div className="flex items-center gap-2">
@@ -226,19 +218,17 @@ const ChallengesPage = ({
             </div>
             <div>
               <h1 className="text-lg font-bold text-white">
-                {isWaiting ? 'Waiting for Opponent' : mode === 'create' ? 'Create Challenge' : 'Join Challenge'}
+                {mode === 'create' ? 'Create Challenge' : 'Join Challenge'}
               </h1>
               <p className="text-[10px] text-gray-500">
-                {isWaiting 
-                  ? `Entry: ₹${selectedEntry} • ${getModeLabel(selectedMode)}`
-                  : mode === 'create' 
-                    ? 'Set your entry & wait for opponent' 
-                    : `${filteredChallenges.length} players waiting`}
+                {mode === 'create' 
+                  ? 'Set your entry & find opponent' 
+                  : `${filteredChallenges.length} players waiting`}
               </p>
             </div>
           </div>
 
-          {mode === 'join' && !isWaiting && (
+          {mode === 'join' && (
             <motion.button
               whileTap={{ scale: 0.9 }}
               onClick={handleRefresh}
@@ -251,48 +241,8 @@ const ChallengesPage = ({
         </div>
       </div>
 
-      {/* Waiting State */}
-      {isWaiting && myChallenge ? (
-        <div className="flex-1 flex flex-col items-center justify-center px-4">
-          <motion.div
-            animate={{ scale: [1, 1.05, 1] }}
-            transition={{ duration: 2, repeat: Infinity }}
-            className="w-24 h-24 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center mb-6"
-          >
-            <Loader2 className="w-10 h-10 text-white animate-spin" />
-          </motion.div>
-          
-          <h2 className="text-xl font-bold text-white mb-2">Searching for Opponent...</h2>
-          <p className="text-gray-400 text-sm mb-6">Waiting {formatWaitTime(myChallenge.waitingTime)}</p>
-          
-          <div className="p-4 rounded-xl bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/20 w-full max-w-xs">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs text-gray-400">Entry</p>
-                <p className="text-lg font-bold text-white">₹{myChallenge.entry_amount}</p>
-              </div>
-              <div className="text-center">
-                <p className="text-xs text-gray-400">Mode</p>
-                <p className="text-lg font-bold text-white">{getModeLabel(myChallenge.player_mode)}</p>
-              </div>
-              <div className="text-right">
-                <p className="text-xs text-gray-400">Win</p>
-                <p className="text-lg font-bold text-amber-400">
-                  ₹{(myChallenge.entry_amount * getMultiplier(myChallenge.player_mode, rewardMultiplier)).toFixed(0)}
-                </p>
-              </div>
-            </div>
-          </div>
-          
-          <motion.button
-            whileTap={{ scale: 0.98 }}
-            onClick={handleCancelChallenge}
-            className="mt-6 px-6 py-3 rounded-xl bg-red-500/20 border border-red-500/30 text-red-400 font-semibold"
-          >
-            Cancel Challenge
-          </motion.button>
-        </div>
-      ) : mode === 'create' ? (
+      {/* Content */}
+      {mode === 'create' ? (
         /* Create Challenge UI */
         <div className="flex-1 px-4 pb-4 flex flex-col overflow-hidden">
           {/* Mode Selection */}
