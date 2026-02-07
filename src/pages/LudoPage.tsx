@@ -1240,7 +1240,8 @@ const LudoPage = () => {
             setEntryAmount(amount);
             setPlayerMode(mode);
             setShowChallengesPage(null);
-            startMatchmaking(presetBots);
+            // Pass mode directly to avoid state sync issues
+            startMatchmaking(presetBots, mode);
           }}
         />
       )}
