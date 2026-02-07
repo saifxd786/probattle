@@ -90,18 +90,33 @@ interface BotChallenge {
   };
 }
 
-// Generate consistent bot challenges based on seed (current hour)
+// Generate DETERMINISTIC bot challenges - SAME for ALL users
+// Uses date-based seed so everyone sees identical bots
+const getDailyBotSeed = (): number => {
+  const now = new Date();
+  // Seed changes every 6 hours (4 times per day), same for all users
+  const hours = Math.floor(now.getHours() / 6);
+  const dateSeed = now.getFullYear() * 10000 + (now.getMonth() + 1) * 100 + now.getDate();
+  return dateSeed * 10 + hours;
+};
+
+// Simple seeded random generator for deterministic results
+const seededRandom = (seed: number, index: number): number => {
+  const x = Math.sin(seed * 9999 + index * 7919) * 10000;
+  return x - Math.floor(x);
+};
+
 const generateBotChallenges = (minEntry: number): BotChallenge[] => {
-  const seed = Math.floor(Date.now() / (1000 * 60 * 30)); // Changes every 30 mins
+  const seed = getDailyBotSeed();
   const bots: BotChallenge[] = [];
   const usedNames = new Set<string>();
   
-  // Generate 8-12 bot challenges
-  const count = 8 + (seed % 5);
+  // Generate 10-14 bot challenges (deterministic count)
+  const count = 10 + Math.floor(seededRandom(seed, 0) * 5);
   
   for (let i = 0; i < count; i++) {
     // Pick unique name using deterministic selection
-    const nameIndex = (seed * (i + 1) * 7) % BOT_NAMES.length;
+    const nameIndex = Math.floor(seededRandom(seed, i * 3 + 1) * BOT_NAMES.length);
     let name = BOT_NAMES[nameIndex];
     let attempts = 0;
     while (usedNames.has(name) && attempts < BOT_NAMES.length) {
@@ -111,33 +126,33 @@ const generateBotChallenges = (minEntry: number): BotChallenge[] => {
     if (usedNames.has(name)) continue;
     usedNames.add(name);
     
-    // Pick entry amount
+    // Pick entry amount (deterministic)
     const validAmounts = BOT_ENTRY_AMOUNTS.filter(a => a >= minEntry);
-    const amountIndex = (seed * (i + 3) * 13) % validAmounts.length;
+    const amountIndex = Math.floor(seededRandom(seed, i * 3 + 2) * validAmounts.length);
     const entryAmount = validAmounts[amountIndex];
     
-    // Pick mode (more 1v1s)
+    // Pick mode - more 1v1s (deterministic)
     const modes: (2 | 3 | 4)[] = [2, 2, 2, 2, 3, 3, 4];
-    const modeIndex = (seed * (i + 5) * 11) % modes.length;
+    const modeIndex = Math.floor(seededRandom(seed, i * 3 + 3) * modes.length);
     const playerMode = modes[modeIndex];
     
-    // Random waiting time
-    const waitingTime = 5 + ((seed * (i + 7)) % 55);
+    // Waiting time - starts deterministic but will tick up
+    const baseWaitTime = Math.floor(seededRandom(seed, i * 5) * 50) + 5;
     
-    // Pick avatar
-    const avatarIndex = (seed * (i + 2)) % LUDO_AVATARS.length;
+    // Pick avatar (deterministic per bot)
+    const avatarIndex = Math.floor(seededRandom(seed, i * 7) * LUDO_AVATARS.length);
     
     bots.push({
       id: `bot-${seed}-${i}`,
-      creator_id: `bot-${i}`,
+      creator_id: `bot-${seed}-${i}`,
       entry_amount: entryAmount,
       player_mode: playerMode,
       status: 'waiting',
       room_code: null,
       matched_user_id: null,
-      created_at: new Date(Date.now() - waitingTime * 1000).toISOString(),
+      created_at: new Date(Date.now() - baseWaitTime * 1000).toISOString(),
       expires_at: new Date(Date.now() + 300000).toISOString(),
-      waitingTime,
+      waitingTime: baseWaitTime,
       isBot: true,
       creator: {
         username: name,
@@ -197,7 +212,7 @@ const ChallengesPage = ({
   // No longer auto-show waiting screen - just redirect to join tab
   // The user's challenge will be shown at the top of the join list with "YOUR CHALLENGE" badge
 
-  // Watch for when myChallenge gets matched - auto redirect (for challenge creator)
+  // Watch for when myChallenge gets matched by real player - auto redirect (for challenge creator)
   useEffect(() => {
     if (myChallenge?.status === 'matched' && myChallenge.room_code) {
       // Fetch the room details to get room_id
@@ -221,6 +236,26 @@ const ChallengesPage = ({
       fetchRoomAndJoin();
     }
   }, [myChallenge, onAcceptChallenge]);
+
+  // Auto-connect with bot after 7 seconds if no real player joins
+  // This gives priority to real player matches first
+  useEffect(() => {
+    if (!myChallenge || myChallenge.status !== 'waiting') return;
+    
+    const waitingTime = myChallenge.waitingTime;
+    const BOT_CONNECT_DELAY = 7; // 7 seconds delay before bot connection
+    
+    // If we've waited 7+ seconds, auto-connect with bot
+    if (waitingTime >= BOT_CONNECT_DELAY && onPlayWithBot) {
+      console.log('[ChallengesPage] 7s elapsed, connecting with bot...');
+      // Cancel the challenge first (cleanup)
+      cancelChallenge().then(() => {
+        // Start bot game
+        onPlayWithBot(myChallenge.entry_amount, myChallenge.player_mode);
+        onBack();
+      });
+    }
+  }, [myChallenge?.waitingTime, myChallenge?.status, onPlayWithBot, cancelChallenge, onBack]);
 
   const handleCreateChallenge = async () => {
     setIsCreating(true);

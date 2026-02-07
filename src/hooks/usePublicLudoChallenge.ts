@@ -26,6 +26,8 @@ export interface PublicChallenge {
     avatar_url: string | null;
   };
   waitingTime: number; // Calculated in seconds
+  isRealPlayer?: boolean; // Flag to identify real player challenges
+  canConnectWithBot?: boolean; // True after 7 seconds waiting
 }
 
 // Custom amounts: 10, 20, 30, 40, 50... up to 2000
@@ -61,12 +63,19 @@ export const usePublicLudoChallenge = () => {
           .in('id', creatorIds);
 
         const nowMs = Date.now();
-        const challengesWithProfiles: PublicChallenge[] = data.map(c => ({
-          ...c,
-          player_mode: c.player_mode as 2 | 3 | 4,
-          creator: profiles?.find(p => p.id === c.creator_id),
-          waitingTime: Math.floor((nowMs - new Date(c.created_at).getTime()) / 1000),
-        }));
+        const BOT_DELAY_SECONDS = 7; // Wait 7s before connecting real challenges with bots
+        
+        const challengesWithProfiles: PublicChallenge[] = data.map(c => {
+          const waitingTime = Math.floor((nowMs - new Date(c.created_at).getTime()) / 1000);
+          return {
+            ...c,
+            player_mode: c.player_mode as 2 | 3 | 4,
+            creator: profiles?.find(p => p.id === c.creator_id),
+            waitingTime,
+            isRealPlayer: true, // Mark as real player challenge
+            canConnectWithBot: waitingTime >= BOT_DELAY_SECONDS, // Can connect with bot after 7s
+          };
+        });
 
         setChallenges(challengesWithProfiles);
 
@@ -321,13 +330,18 @@ export const usePublicLudoChallenge = () => {
     };
   }, [user, fetchChallenges, toast]);
 
-  // Update waiting times every second
+  // Update waiting times every second (also updates canConnectWithBot flag)
   useEffect(() => {
+    const BOT_DELAY_SECONDS = 7;
     const interval = setInterval(() => {
-      setChallenges(prev => prev.map(c => ({
-        ...c,
-        waitingTime: Math.floor((Date.now() - new Date(c.created_at).getTime()) / 1000),
-      })));
+      setChallenges(prev => prev.map(c => {
+        const newWaitingTime = c.waitingTime + 1;
+        return {
+          ...c,
+          waitingTime: newWaitingTime,
+          canConnectWithBot: c.isRealPlayer ? newWaitingTime >= BOT_DELAY_SECONDS : undefined,
+        };
+      }));
     }, 1000);
 
     return () => clearInterval(interval);
