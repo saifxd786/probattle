@@ -72,6 +72,12 @@ const BOT_NAMES = [
 // Entry amounts for bots
 const BOT_ENTRY_AMOUNTS = [10, 20, 30, 50, 100, 150, 200, 300, 500];
 
+// Companion player for 1v1v1 and 1v1v1v1 modes
+interface CompanionPlayer {
+  username: string;
+  avatar_url: string;
+}
+
 interface BotChallenge {
   id: string;
   creator_id: string;
@@ -88,6 +94,7 @@ interface BotChallenge {
     username: string;
     avatar_url: string;
   };
+  companions?: CompanionPlayer[]; // Other players already in the challenge
 }
 
 // Generate DETERMINISTIC bot challenges - SAME for ALL users
@@ -142,6 +149,29 @@ const generateBotChallenges = (minEntry: number): BotChallenge[] => {
     // Pick avatar (deterministic per bot)
     const avatarIndex = Math.floor(seededRandom(seed, i * 7) * LUDO_AVATARS.length);
     
+    // Generate companion players for 1v1v1 and 1v1v1v1
+    // 1v1v1 (3 players) = 1 companion (creator + companion + joiner)
+    // 1v1v1v1 (4 players) = 2 companions (creator + 2 companions + joiner)
+    const companionCount = playerMode - 2; // 0 for 1v1, 1 for 1v1v1, 2 for 1v1v1v1
+    const companions: CompanionPlayer[] = [];
+    
+    for (let j = 0; j < companionCount; j++) {
+      // Get a unique companion name (different from creator)
+      const companionNameIndex = Math.floor(seededRandom(seed, i * 100 + j * 17 + 50) * BOT_NAMES.length);
+      let companionName = BOT_NAMES[companionNameIndex];
+      // Make sure it's different from creator
+      if (companionName === name) {
+        companionName = BOT_NAMES[(companionNameIndex + 1) % BOT_NAMES.length];
+      }
+      
+      const companionAvatarIndex = Math.floor(seededRandom(seed, i * 100 + j * 23 + 70) * LUDO_AVATARS.length);
+      
+      companions.push({
+        username: companionName,
+        avatar_url: LUDO_AVATARS[companionAvatarIndex],
+      });
+    }
+    
     bots.push({
       id: `bot-${seed}-${i}`,
       creator_id: `bot-${seed}-${i}`,
@@ -158,6 +188,7 @@ const generateBotChallenges = (minEntry: number): BotChallenge[] => {
         username: name,
         avatar_url: LUDO_AVATARS[avatarIndex],
       },
+      companions: companions.length > 0 ? companions : undefined,
     });
   }
   
@@ -577,17 +608,41 @@ const ChallengesPage = ({
                           )}
                           
                           <div className="flex items-center gap-3">
-                            {/* User Avatar */}
-                            <div className="relative">
-                              <Avatar className="w-11 h-11 rounded-xl">
-                                <AvatarImage src={avatarUrl} alt={challenge.creator?.username || 'Player'} />
-                                <AvatarFallback className="bg-gradient-to-br from-gray-700 to-gray-800 rounded-xl">
-                                  {(challenge.creator?.username || 'P').slice(0, 2).toUpperCase()}
-                                </AvatarFallback>
-                              </Avatar>
-                              {challenge.waitingTime < 30 && !isOwnChallenge && (
-                                <div className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-orange-500 flex items-center justify-center">
-                                  <Flame className="w-2.5 h-2.5 text-white" />
+                            {/* Player Avatars - Stack for multiple players */}
+                            <div className="relative flex items-center">
+                              {/* Creator Avatar */}
+                              <div className="relative z-10">
+                                <Avatar className="w-11 h-11 rounded-xl border-2 border-gray-900">
+                                  <AvatarImage src={avatarUrl} alt={challenge.creator?.username || 'Player'} />
+                                  <AvatarFallback className="bg-gradient-to-br from-gray-700 to-gray-800 rounded-xl">
+                                    {(challenge.creator?.username || 'P').slice(0, 2).toUpperCase()}
+                                  </AvatarFallback>
+                                </Avatar>
+                                {challenge.waitingTime < 30 && !isOwnChallenge && (
+                                  <div className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-orange-500 flex items-center justify-center z-20">
+                                    <Flame className="w-2.5 h-2.5 text-white" />
+                                  </div>
+                                )}
+                              </div>
+                              
+                              {/* Companion Avatars (for 1v1v1 and 1v1v1v1) */}
+                              {(challenge as any).companions?.map((companion: { username: string; avatar_url: string }, idx: number) => (
+                                <div key={idx} className="relative -ml-3" style={{ zIndex: 9 - idx }}>
+                                  <Avatar className="w-9 h-9 rounded-lg border-2 border-gray-900">
+                                    <AvatarImage src={companion.avatar_url} alt={companion.username} />
+                                    <AvatarFallback className="bg-gradient-to-br from-gray-600 to-gray-700 rounded-lg text-[10px]">
+                                      {companion.username.slice(0, 2).toUpperCase()}
+                                    </AvatarFallback>
+                                  </Avatar>
+                                </div>
+                              ))}
+                              
+                              {/* "You" slot indicator for modes > 2 */}
+                              {challenge.player_mode > 2 && (
+                                <div className="relative -ml-2" style={{ zIndex: 5 }}>
+                                  <div className="w-8 h-8 rounded-lg border-2 border-dashed border-emerald-500/50 bg-emerald-500/10 flex items-center justify-center">
+                                    <span className="text-[8px] font-bold text-emerald-400">YOU</span>
+                                  </div>
                                 </div>
                               )}
                             </div>
