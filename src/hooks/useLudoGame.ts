@@ -622,6 +622,12 @@ export const useLudoGame = () => {
   const startMatchmaking = useCallback(async (presetBots?: { name: string; avatar: string }[], overridePlayerMode?: 2 | 3 | 4) => {
     // Use override mode if provided (for joining challenges), otherwise use state
     const effectivePlayerMode = overridePlayerMode || playerMode;
+
+    // Keep UI + derived values in sync (prevents 1v1 UI on 1v1v1 challenges)
+    if (playerMode !== effectivePlayerMode) {
+      setPlayerMode(effectivePlayerMode);
+    }
+
     if (!user) {
       toast({ title: 'Please login to play', variant: 'destructive' });
       return;

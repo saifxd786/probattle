@@ -158,7 +158,9 @@ const MatchmakingScreen = ({ players, totalPlayers, entryAmount, rewardAmount }:
   const [searchTime, setSearchTime] = useState(0);
   const [onlinePlayers, setOnlinePlayers] = useState(2500);
   const allReady = players.length === totalPlayers && players.every(p => p.status === 'ready');
+  const isMultiPlayer = totalPlayers > 2;
   const is4Player = totalPlayers === 4;
+  const is3Player = totalPlayers === 3;
 
   useEffect(() => {
     const timer = setInterval(() => setSearchTime(prev => prev + 1), 1000);
@@ -218,7 +220,7 @@ const MatchmakingScreen = ({ players, totalPlayers, entryAmount, rewardAmount }:
             </div>
             <div>
               <h1 className="font-bold text-sm text-white tracking-wide">
-                {is4Player ? '4 PLAYER MATCH' : 'ONLINE MATCH'}
+                {isMultiPlayer ? `${totalPlayers} PLAYER MATCH` : 'ONLINE MATCH'}
               </h1>
               <div className="flex items-center gap-1.5 text-[10px]">
                 <motion.div 
@@ -238,27 +240,25 @@ const MatchmakingScreen = ({ players, totalPlayers, entryAmount, rewardAmount }:
           <motion.div 
             className="relative overflow-hidden"
             animate={{ scale: [1, 1.015, 1] }}
-            transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+            transition={{ duration: 2, repeat: Infinity }}
           >
-            {/* Outer glow */}
-            <div className="absolute -inset-1 bg-gradient-to-r from-amber-500/30 via-yellow-400/20 to-amber-500/30 rounded-xl blur-sm" />
-            
-            {/* Main badge container */}
             <div 
-              className="relative px-4 py-2 rounded-xl border-2"
+              className="flex items-center gap-2 px-3 py-2 rounded-xl"
               style={{
-                background: 'linear-gradient(135deg, rgba(180, 130, 60, 0.25) 0%, rgba(120, 80, 40, 0.35) 100%)',
-                borderColor: 'rgba(212, 175, 55, 0.6)',
-                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.1), 0 2px 8px rgba(0,0,0,0.3)'
+                background: 'linear-gradient(135deg, rgba(212, 175, 55, 0.15) 0%, rgba(255, 165, 0, 0.12) 100%)',
+                border: '1px solid rgba(212, 175, 55, 0.25)',
               }}
             >
-              {/* Inner shine effect */}
-              <div 
-                className="absolute inset-0 rounded-xl opacity-30"
-                style={{
-                  background: 'linear-gradient(180deg, rgba(255,255,255,0.15) 0%, transparent 50%)'
-                }}
-              />
+              <div className="relative">
+                <Trophy className="w-4 h-4 text-amber-500" />
+                <motion.div
+                  className="absolute inset-0"
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 4, repeat: Infinity, ease: 'linear' }}
+                >
+                  <div className="w-4 h-4 border border-amber-500/20 rounded-full" />
+                </motion.div>
+              </div>
               
               {/* Content */}
               <div className="relative text-center">
@@ -315,7 +315,7 @@ const MatchmakingScreen = ({ players, totalPlayers, entryAmount, rewardAmount }:
             className="w-4 h-4 rounded-full border-2 border-indigo-500 border-t-transparent"
           />
           <span className="text-gray-400 text-xs">
-            {is4Player 
+            {isMultiPlayer 
               ? `Finding players... (${players.length}/${totalPlayers})`
               : 'Finding opponent...'
             }
@@ -330,7 +330,7 @@ const MatchmakingScreen = ({ players, totalPlayers, entryAmount, rewardAmount }:
               <span className="text-gray-400 text-xs">Mode</span>
             </div>
             <span className="text-white font-semibold text-xs">
-              {is4Player ? '4 Player Battle' : 'Classic 1v1'}
+              {isMultiPlayer ? `${totalPlayers} Player Battle` : 'Classic 1v1'}
             </span>
           </div>
           
@@ -344,14 +344,13 @@ const MatchmakingScreen = ({ players, totalPlayers, entryAmount, rewardAmount }:
         </div>
       </div>
 
-      {/* Bottom Players Section - Updated for 4 players */}
+      {/* Bottom Players Section - Updated for 2/3/4 players */}
       <div className="px-4 py-4 border-t border-gray-800/50 bg-gray-900/30">
-        {is4Player ? (
-          // 4 Player Grid Layout
+        {isMultiPlayer ? (
           <div className="space-y-3">
-            {/* Player slots in 2x2 grid */}
-            <div className="grid grid-cols-2 gap-3">
-              {[0, 1, 2, 3].map((index) => {
+            {/* Player slots */}
+            <div className={`grid ${is3Player ? 'grid-cols-3 gap-2' : 'grid-cols-2 gap-3'}`}>
+              {Array.from({ length: totalPlayers }).map((_, index) => {
                 const player = players[index];
                 const colorMap: Record<string, string> = {
                   red: '#E53935',
@@ -361,7 +360,7 @@ const MatchmakingScreen = ({ players, totalPlayers, entryAmount, rewardAmount }:
                 };
                 const colorOrder = ['red', 'green', 'yellow', 'blue'];
                 const slotColor = colorOrder[index];
-                
+
                 return (
                   <motion.div
                     key={index}
@@ -422,7 +421,7 @@ const MatchmakingScreen = ({ players, totalPlayers, entryAmount, rewardAmount }:
                 );
               })}
             </div>
-            
+
             {/* Timer in center */}
             <div className="flex justify-center">
               <div className="bg-gray-800/60 border border-gray-700/50 px-3 py-1.5 rounded-full">
