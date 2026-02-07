@@ -276,7 +276,7 @@ export const useLudoGame = () => {
   }, [user?.id, isRefreshing, lastUserId, gameState.phase]);
   
   const [entryAmount, setEntryAmount] = useState(10);
-  const [playerMode, setPlayerMode] = useState<2 | 3 | 4>(2);
+  const [playerMode, setPlayerMode] = useState<2 | 4>(2);
   const [walletBalance, setWalletBalance] = useState(0);
   const [userUID, setUserUID] = useState<string>('');
   const [userName, setUserName] = useState<string>('You');
@@ -620,7 +620,7 @@ export const useLudoGame = () => {
     }
   }, [user, activeGameData, toast]);
 
-  const startMatchmaking = useCallback(async (presetBots?: { name: string; avatar: string }[], overridePlayerMode?: 2 | 3 | 4) => {
+  const startMatchmaking = useCallback(async (presetBots?: { name: string; avatar: string }[], overridePlayerMode?: 2 | 4) => {
     // Use override mode if provided (for joining challenges), otherwise use state
     const effectivePlayerMode = overridePlayerMode || playerMode;
 
@@ -1745,7 +1745,6 @@ export const useLudoGame = () => {
   const getReturnRewardAmount = () => {
     switch (playerMode) {
       case 2: return entryAmount * settings.rewardMultiplier; // 1.5x
-      case 3: return entryAmount * 2.5; // 2.5x for 1v1v1
       case 4: return entryAmount * 3.5; // 3.5x for 1v1v1v1
     }
   };

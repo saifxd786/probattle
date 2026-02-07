@@ -28,39 +28,35 @@ interface ChallengesPageProps {
     rewardAmount: number;
     isHost: boolean;
   }) => void;
-  onCreateChallenge: (entryAmount: number, playerMode: 2 | 3 | 4) => void;
+  onCreateChallenge: (entryAmount: number, playerMode: 2 | 4) => void;
   onSwitchToJoin?: () => void;
-  onPlayWithBot?: (entryAmount: number, playerMode: 2 | 3 | 4, presetBots?: PresetBotInfo[]) => void;
+  onPlayWithBot?: (entryAmount: number, playerMode: 2 | 4, presetBots?: PresetBotInfo[]) => void;
 }
 
-const getModeLabel = (mode: 2 | 3 | 4) => {
+const getModeLabel = (mode: 2 | 4) => {
   switch (mode) {
     case 2: return '1v1';
-    case 3: return '1v1v1';
     case 4: return '1v1v1v1';
   }
 };
 
-const getModeColor = (mode: 2 | 3 | 4) => {
+const getModeColor = (mode: 2 | 4) => {
   switch (mode) {
     case 2: return { bg: 'bg-rose-500/10', text: 'text-rose-400', border: 'border-rose-500/30' };
-    case 3: return { bg: 'bg-amber-500/10', text: 'text-amber-400', border: 'border-amber-500/30' };
     case 4: return { bg: 'bg-emerald-500/10', text: 'text-emerald-400', border: 'border-emerald-500/30' };
   }
 };
 
-const getModeIcon = (mode: 2 | 3 | 4) => {
+const getModeIcon = (mode: 2 | 4) => {
   switch (mode) {
     case 2: return Swords;
-    case 3: return Users;
     case 4: return Crown;
   }
 };
 
-const getMultiplier = (mode: 2 | 3 | 4, baseMultiplier: number) => {
+const getMultiplier = (mode: 2 | 4, baseMultiplier: number) => {
   switch (mode) {
     case 2: return baseMultiplier;
-    case 3: return 2;
     case 4: return 2.5;
   }
 };
@@ -106,7 +102,7 @@ interface BotChallenge {
   id: string;
   creator_id: string;
   entry_amount: number;
-  player_mode: 2 | 3 | 4;
+  player_mode: 2 | 4;
   status: string;
   room_code: null;
   matched_user_id: null;
@@ -163,8 +159,8 @@ const generateBotChallenges = (minEntry: number): BotChallenge[] => {
     const rawAmount = BOT_ENTRY_AMOUNTS[amountIndex];
     const entryAmount = Math.max(rawAmount, minEntry);
     
-    // Pick mode - more 1v1s (deterministic)
-    const modes: (2 | 3 | 4)[] = [2, 2, 2, 2, 3, 3, 4];
+    // Pick mode - more 1v1s (deterministic) - only 1v1 and 1v1v1v1
+    const modes: (2 | 4)[] = [2, 2, 2, 2, 4];
     const modeIndex = Math.floor(seededRandom(seed, i * 3 + 3) * modes.length);
     const playerMode = modes[modeIndex];
     
@@ -268,11 +264,11 @@ const ChallengesPage = ({
   } = usePublicLudoChallenge();
   
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [selectedFilter, setSelectedFilter] = useState<'all' | 2 | 3 | 4>('all');
+  const [selectedFilter, setSelectedFilter] = useState<'all' | 2 | 4>('all');
   
   // For create mode
   const [selectedEntry, setSelectedEntry] = useState(minEntryAmount);
-  const [selectedMode, setSelectedMode] = useState<2 | 3 | 4>(2);
+  const [selectedMode, setSelectedMode] = useState<2 | 4>(2);
   const [isCreating, setIsCreating] = useState(false);
 
   // No longer auto-show waiting screen - just redirect to join tab
@@ -284,8 +280,8 @@ const ChallengesPage = ({
       // For 1v1v1 and 1v1v1v1, both players start their own bot games
       // The challenge creator also starts a bot game (no room needed)
       if (myChallenge.player_mode > 2 && onPlayWithBot) {
-        console.log('[ChallengesPage] 1v1v1+ matched, starting bot game for creator');
-        onPlayWithBot(myChallenge.entry_amount, myChallenge.player_mode as 2 | 3 | 4);
+        console.log('[ChallengesPage] 4-player matched, starting bot game for creator');
+        onPlayWithBot(myChallenge.entry_amount, myChallenge.player_mode as 2 | 4);
         onBack();
         return;
       }
@@ -391,7 +387,7 @@ const ChallengesPage = ({
       const botResult = result as {
         success: true;
         isBotGame: true;
-        playerMode: 2 | 3 | 4;
+        playerMode: 2 | 4;
         entryAmount: number;
         creatorName: string;
         creatorAvatar: string;
@@ -484,8 +480,8 @@ const ChallengesPage = ({
             const newAmountIndex = Math.floor(seededRandom(seed + currentTime, index * 19) * BOT_ENTRY_AMOUNTS.length);
             const newAmount = Math.max(BOT_ENTRY_AMOUNTS[newAmountIndex], minEntryAmount);
             
-            // Pick new mode
-            const modes: (2 | 3 | 4)[] = [2, 2, 2, 2, 3, 3, 4];
+            // Pick new mode - only 1v1 and 1v1v1v1
+            const modes: (2 | 4)[] = [2, 2, 2, 2, 4];
             const newModeIndex = Math.floor(seededRandom(seed + currentTime, index * 23) * modes.length);
             const newMode = modes[newModeIndex];
             
@@ -630,7 +626,7 @@ const ChallengesPage = ({
           <div className="mb-4">
             <p className="text-xs text-gray-400 mb-2">Select Mode</p>
             <div className="flex gap-2">
-              {([2, 3, 4] as const).map((m) => {
+              {([2, 4] as const).map((m) => {
                 const isActive = selectedMode === m;
                 const colors = getModeColor(m);
                 const Icon = getModeIcon(m);
@@ -727,7 +723,7 @@ const ChallengesPage = ({
           {/* Mode Filters */}
           <div className="flex-shrink-0 px-4 pb-2">
             <div className="flex gap-1.5">
-              {(['all', 2, 3, 4] as const).map((filter) => {
+              {(['all', 2, 4] as const).map((filter) => {
                 const isActive = selectedFilter === filter;
                 const colors = filter === 'all' 
                   ? { bg: 'bg-gray-500/10', text: 'text-gray-400', border: 'border-gray-500/30' }

@@ -13,8 +13,8 @@ interface LudoLobbyProps {
   walletBalance: number;
   entryAmount: number;
   setEntryAmount: (amount: number) => void;
-  playerMode: 2 | 3 | 4;
-  setPlayerMode: (mode: 2 | 3 | 4) => void;
+  playerMode: 2 | 4;
+  setPlayerMode: (mode: 2 | 4) => void;
   settings: {
     minEntryAmount: number;
     rewardMultiplier: number;
@@ -49,8 +49,8 @@ const LudoLobby = ({
   const navigate = useNavigate();
   const canAfford = walletBalance >= entryAmount;
 
-  // Convert playerMode (2|3|4) to (2|4) for EntrySelector compatibility
-  const entrySelectorMode = playerMode === 3 ? 2 : playerMode as 2 | 4;
+  // playerMode is now 2 | 4 only
+  const entrySelectorMode = playerMode;
   const handlePlayerModeChange = (mode: 2 | 4) => {
     setPlayerMode(mode);
   };
