@@ -50,13 +50,15 @@ jobs:
           # Install ONLY stable SDK (avoid preview SDK flakiness that can break resource parsing)
           $SM "platform-tools" "cmdline-tools;latest"
 
-          # Use stable Android SDK 35 for CI reliability
-          $SM "platforms;android-35" "build-tools;35.0.0"
+          # Install stable Android SDKs (34 is most reliable on GitHub runners)
           $SM "platforms;android-34" "build-tools;34.0.0"
           $SM "platforms;android-33" "build-tools;33.0.2"
+
+          # Keep API 35 available (optional) but do NOT select it by default
+          $SM "platforms;android-35" "build-tools;35.0.0"
  
-          # Hard-pin chosen API to stable 35
-          API="35"
+          # Hard-pin chosen API to stable 34
+          API="34"
 
           echo "==== Android platform sanity check (android-$API) ===="
           ls -la "$SDKROOT/platforms" || true
@@ -339,8 +341,25 @@ jobs:
           # Capture BOTH stdout + stderr into gradle-build.log
           # Also preserve exit code even with piping to tee
           set +e
+
           ./gradlew --no-daemon --max-workers=2 assembleDebug -x :app:processDebugNavigationResources -x :app:compileDebugNavigationResources --stacktrace --info --warning-mode all --console=plain 2>&1 | tee ../gradle-build.log
           RC=${PIPESTATUS[0]}
+
+          # Retry once (this error can be flaky when Gradle/AAR transforms create a bad resource path)
+          if [ "$RC" -ne 0 ]; then
+            echo "==== Retry once after cleaning transform caches (parseDebugLocalResources) ====" | tee -a ../gradle-build.log
+            rm -rf ~/.gradle/caches/transforms-* || true
+            rm -rf .gradle app/build build || true
+            ./gradlew --no-daemon --max-workers=2 assembleDebug -x :app:processDebugNavigationResources -x :app:compileDebugNavigationResources --stacktrace --info --warning-mode all --console=plain 2>&1 | tee -a ../gradle-build.log
+            RC=${PIPESTATUS[0]}
+          fi
+
+          # If still failing, re-run the failing task with --debug so logs include the offending path
+          if [ "$RC" -ne 0 ]; then
+            echo "==== Diagnostic re-run: :app:parseDebugLocalResources (debug) ====" | tee -a ../gradle-build.log
+            ./gradlew --no-daemon --max-workers=1 :app:parseDebugLocalResources --stacktrace --debug --console=plain 2>&1 | tee -a ../gradle-build.log
+          fi
+
           set -e
 
           echo "Gradle exit code: ${RC}"
