@@ -59,21 +59,22 @@ const getMultiplier = (mode: 2 | 3 | 4, baseMultiplier: number) => {
   }
 };
 
-// Realistic Indian names for bot players - Extended list for more variety
+// Indian boy names only (Hindu + Muslim) for bot players
 const BOT_NAMES = [
-  'Rahul_Gamer', 'Priya_Pro', 'Amit_King', 'Neha_Star', 'Vikram_99',
-  'Anjali_Boss', 'Rohan_X', 'Sneha_Win', 'Arjun_YT', 'Kavita_777',
-  'Deepak_FF', 'Megha_Queen', 'Suresh_OP', 'Divya_GG', 'Karan_Ace',
-  'Pooja_Lucky', 'Raj_Thunder', 'Simran_Pro', 'Aakash_Beast', 'Ritu_Fire',
-  'Mohit_Legend', 'Ananya_Blitz', 'Nikhil_Storm', 'Tanvi_Rush', 'Varun_Clash',
-  'Sakshi_Fury', 'Harsh_Boom', 'Shruti_Glow', 'Gaurav_Max', 'Ishita_Zen',
-  // Extended names for more bots
-  'Vivek_Pro99', 'Komal_Star', 'Ajay_Killer', 'Meera_GG', 'Vishal_YT',
-  'Nisha_Queen', 'Rakesh_OP', 'Swati_Fire', 'Manish_X', 'Kritika_Win',
-  'Sunny_Beast', 'Tanya_Rush', 'Rohit_Max', 'Ankita_Pro', 'Sanjay_King',
-  'Pallavi_777', 'Kunal_Storm', 'Rashi_Glow', 'Mayank_FF', 'Jaya_Boss',
-  'Ankit_Legend', 'Preeti_Blitz', 'Ramesh_Clash', 'Kavya_Fury', 'Ashish_Ace',
-  'Suman_Lucky', 'Vikash_YT', 'Kriti_Star', 'Pawan_OP', 'Shivani_Pro'
+  // Hindu names
+  'Rahul_Gamer', 'Amit_King', 'Vikram_99', 'Rohan_X', 'Arjun_YT',
+  'Deepak_FF', 'Suresh_OP', 'Karan_Ace', 'Raj_Thunder', 'Aakash_Beast',
+  'Mohit_Legend', 'Nikhil_Storm', 'Varun_Clash', 'Harsh_Boom', 'Gaurav_Max',
+  'Vivek_Pro99', 'Ajay_Killer', 'Vishal_YT', 'Rakesh_OP', 'Manish_X',
+  'Sunny_Beast', 'Rohit_Max', 'Sanjay_King', 'Kunal_Storm', 'Mayank_FF',
+  'Ankit_Legend', 'Ramesh_Clash', 'Ashish_Ace', 'Vikash_YT', 'Pawan_OP',
+  'Sachin_Pro', 'Ravi_Fire', 'Arun_Boss', 'Vijay_GG', 'Tushar_777',
+  'Akash_Rush', 'Shubham_X', 'Yash_Win', 'Saurabh_King', 'Pranav_OP',
+  // Muslim names
+  'Aamir_Pro', 'Faizan_YT', 'Zaid_King', 'Rehan_Beast', 'Arman_FF',
+  'Salman_GG', 'Imran_Storm', 'Ayaan_Legend', 'Danish_Ace', 'Farhan_Max',
+  'Rizwan_OP', 'Shahid_Clash', 'Junaid_Fire', 'Adnan_Boss', 'Hamza_777',
+  'Saif_Thunder', 'Irfan_Rush', 'Bilal_Pro', 'Asif_King', 'Raza_Beast'
 ];
 
 // Entry amounts for bots - weighted towards popular amounts
