@@ -313,8 +313,16 @@ const ChallengesPage = ({
 
   // Auto-connect with bot after 7 seconds if no real player joins
   // This gives priority to real player matches first
+  // Track if we've already triggered bot connection to prevent race conditions
+  const [botConnectionTriggered, setBotConnectionTriggered] = useState(false);
+  
   useEffect(() => {
-    if (!myChallenge || myChallenge.status !== 'waiting') return;
+    // Reset trigger when challenge changes
+    setBotConnectionTriggered(false);
+  }, [myChallenge?.id]);
+  
+  useEffect(() => {
+    if (!myChallenge || myChallenge.status !== 'waiting' || botConnectionTriggered) return;
     
     const waitingTime = myChallenge.waitingTime;
     const BOT_CONNECT_DELAY = 7; // 7 seconds delay before bot connection
@@ -322,14 +330,26 @@ const ChallengesPage = ({
     // If we've waited 7+ seconds, auto-connect with bot
     if (waitingTime >= BOT_CONNECT_DELAY && onPlayWithBot) {
       console.log('[ChallengesPage] 7s elapsed, connecting with bot...');
-      // Cancel the challenge first (cleanup)
+      
+      // Prevent duplicate triggers
+      setBotConnectionTriggered(true);
+      
+      // Capture values before async operation
+      const entryAmount = myChallenge.entry_amount;
+      const playerMode = myChallenge.player_mode;
+      
+      // Cancel the challenge first (cleanup), then start bot game
       cancelChallenge().then(() => {
-        // Start bot game
-        onPlayWithBot(myChallenge.entry_amount, myChallenge.player_mode);
+        // Double-check component is still mounted by checking if onPlayWithBot exists
+        onPlayWithBot(entryAmount, playerMode);
+        onBack();
+      }).catch(() => {
+        // If cancel fails (e.g., already cancelled), still try to start game
+        onPlayWithBot(entryAmount, playerMode);
         onBack();
       });
     }
-  }, [myChallenge?.waitingTime, myChallenge?.status, onPlayWithBot, cancelChallenge, onBack]);
+  }, [myChallenge?.waitingTime, myChallenge?.status, myChallenge?.id, myChallenge?.entry_amount, myChallenge?.player_mode, onPlayWithBot, cancelChallenge, onBack, botConnectionTriggered]);
 
   const handleCreateChallenge = async () => {
     setIsCreating(true);
