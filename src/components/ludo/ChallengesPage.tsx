@@ -9,6 +9,12 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { supabase } from '@/integrations/supabase/client';
 
+// Preset bot info for when joining a bot challenge
+export interface PresetBotInfo {
+  name: string;
+  avatar: string;
+}
+
 interface ChallengesPageProps {
   mode: 'create' | 'join';
   minEntryAmount: number;
@@ -24,7 +30,7 @@ interface ChallengesPageProps {
   }) => void;
   onCreateChallenge: (entryAmount: number, playerMode: 2 | 3 | 4) => void;
   onSwitchToJoin?: () => void;
-  onPlayWithBot?: (entryAmount: number, playerMode: 2 | 3 | 4) => void;
+  onPlayWithBot?: (entryAmount: number, playerMode: 2 | 3 | 4, presetBots?: PresetBotInfo[]) => void;
 }
 
 const getModeLabel = (mode: 2 | 3 | 4) => {
@@ -335,11 +341,32 @@ const ChallengesPage = ({
     await cancelChallenge();
   };
 
-  const handleAcceptChallenge = async (challenge: PublicChallenge & { isBot?: boolean }) => {
+  const handleAcceptChallenge = async (challenge: PublicChallenge & { isBot?: boolean; companions?: CompanionPlayer[] }) => {
     // Check if this is a bot challenge
     if ((challenge as any).isBot && onPlayWithBot) {
-      // Start bot game with selected entry and mode
-      onPlayWithBot(challenge.entry_amount, challenge.player_mode);
+      // Build preset bots array from challenge creator + companions
+      const presetBots: PresetBotInfo[] = [];
+      
+      // Add the challenge creator (main bot)
+      if (challenge.creator) {
+        presetBots.push({
+          name: challenge.creator.username,
+          avatar: challenge.creator.avatar_url || LUDO_AVATARS[0],
+        });
+      }
+      
+      // Add companions for 1v1v1 and 1v1v1v1 modes
+      if ((challenge as any).companions) {
+        ((challenge as any).companions as CompanionPlayer[]).forEach((comp: CompanionPlayer) => {
+          presetBots.push({
+            name: comp.username,
+            avatar: comp.avatar_url,
+          });
+        });
+      }
+      
+      // Start bot game with preset bots from the challenge
+      onPlayWithBot(challenge.entry_amount, challenge.player_mode, presetBots);
       onBack(); // Close challenges page
       return;
     }

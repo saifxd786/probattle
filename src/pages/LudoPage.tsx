@@ -28,7 +28,7 @@ import LudoChat from '@/components/ludo/LudoChat';
 import CaptureAnimation from '@/components/ludo/CaptureAnimation';
 import RematchDialog from '@/components/ludo/RematchDialog';
 import LudoLobby from '@/components/ludo/LudoLobby';
-import ChallengesPage from '@/components/ludo/ChallengesPage';
+import ChallengesPage, { PresetBotInfo } from '@/components/ludo/ChallengesPage';
 import { CUSTOM_AVATARS } from '@/components/ludo/LudoAvatarPicker';
 import { useLudoGame } from '@/hooks/useLudoGame';
 import { useFriendLudoGame } from '@/hooks/useFriendLudoGame';
@@ -1235,12 +1235,12 @@ const LudoPage = () => {
             setPlayerMode(mode);
           }}
           onSwitchToJoin={() => setShowChallengesPage('join')}
-          onPlayWithBot={(amount, mode) => {
-            // Start bot matchmaking with selected entry and mode
+          onPlayWithBot={(amount, mode, presetBots) => {
+            // Start bot matchmaking with selected entry, mode, and preset bots from challenge
             setEntryAmount(amount);
             setPlayerMode(mode);
             setShowChallengesPage(null);
-            startMatchmaking();
+            startMatchmaking(presetBots);
           }}
         />
       )}
