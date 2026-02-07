@@ -280,28 +280,40 @@ const ChallengesPage = ({
 
   // Watch for when myChallenge gets matched by real player - auto redirect (for challenge creator)
   useEffect(() => {
-    if (myChallenge?.status === 'matched' && myChallenge.room_code) {
-      // Fetch the room details to get room_id
-      const fetchRoomAndJoin = async () => {
-        const { data: room } = await supabase
-          .from('ludo_rooms')
-          .select('id, entry_amount, reward_amount')
-          .eq('room_code', myChallenge.room_code)
-          .single();
-        
-        if (room) {
-          onAcceptChallenge({ 
-            roomId: room.id,
-            roomCode: myChallenge.room_code!,
-            entryAmount: room.entry_amount, 
-            rewardAmount: room.reward_amount,
-            isHost: false, // Creator joins as guest since the joiner created the room
-          });
-        }
-      };
-      fetchRoomAndJoin();
+    if (myChallenge?.status === 'matched') {
+      // For 1v1v1 and 1v1v1v1, both players start their own bot games
+      // The challenge creator also starts a bot game (no room needed)
+      if (myChallenge.player_mode > 2 && onPlayWithBot) {
+        console.log('[ChallengesPage] 1v1v1+ matched, starting bot game for creator');
+        onPlayWithBot(myChallenge.entry_amount, myChallenge.player_mode as 2 | 3 | 4);
+        onBack();
+        return;
+      }
+      
+      // For 1v1 mode, use the room system
+      if (myChallenge.room_code) {
+        // Fetch the room details to get room_id
+        const fetchRoomAndJoin = async () => {
+          const { data: room } = await supabase
+            .from('ludo_rooms')
+            .select('id, entry_amount, reward_amount')
+            .eq('room_code', myChallenge.room_code)
+            .single();
+          
+          if (room) {
+            onAcceptChallenge({ 
+              roomId: room.id,
+              roomCode: myChallenge.room_code!,
+              entryAmount: room.entry_amount, 
+              rewardAmount: room.reward_amount,
+              isHost: false, // Creator joins as guest since the joiner created the room
+            });
+          }
+        };
+        fetchRoomAndJoin();
+      }
     }
-  }, [myChallenge, onAcceptChallenge]);
+  }, [myChallenge, onAcceptChallenge, onPlayWithBot, onBack]);
 
   // Auto-connect with bot after 7 seconds if no real player joins
   // This gives priority to real player matches first
@@ -373,6 +385,43 @@ const ChallengesPage = ({
     
     // Real challenge - normal flow
     const result = await acceptChallenge(challenge.id);
+    
+    // Check if this is a 1v1v1/1v1v1v1 challenge (handled as bot game)
+    if (result.success && (result as any).isBotGame && onPlayWithBot) {
+      const botResult = result as {
+        success: true;
+        isBotGame: true;
+        playerMode: 2 | 3 | 4;
+        entryAmount: number;
+        creatorName: string;
+        creatorAvatar: string;
+      };
+      
+      // Build preset bots with challenge creator as first bot
+      const presetBots: PresetBotInfo[] = [
+        {
+          name: botResult.creatorName,
+          avatar: botResult.creatorAvatar,
+        }
+      ];
+      
+      // For 1v1v1v1, add one more random bot
+      if (botResult.playerMode === 4) {
+        const BOT_NAMES_LOCAL = ['Rahul_Gamer', 'Amit_King', 'Vikram_99', 'Rohan_X', 'Arjun_YT'];
+        const randomName = BOT_NAMES_LOCAL[Math.floor(Math.random() * BOT_NAMES_LOCAL.length)];
+        presetBots.push({
+          name: randomName,
+          avatar: LUDO_AVATARS[Math.floor(Math.random() * LUDO_AVATARS.length)],
+        });
+      }
+      
+      // Start bot game
+      onPlayWithBot(botResult.entryAmount, botResult.playerMode, presetBots);
+      onBack();
+      return;
+    }
+    
+    // 1v1 challenge - friend room flow
     if (result.success && result.roomId && result.roomCode) {
       onAcceptChallenge({ 
         roomId: result.roomId, 
