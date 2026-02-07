@@ -316,9 +316,18 @@ const ChallengesPage = ({
   // Track if we've already triggered bot connection to prevent race conditions
   const [botConnectionTriggered, setBotConnectionTriggered] = useState(false);
   
+  // Show "Opponent Found" animation before starting game
+  const [joiningOpponent, setJoiningOpponent] = useState<{
+    name: string;
+    avatar: string;
+    entryAmount: number;
+    playerMode: 2 | 4;
+  } | null>(null);
+  
   useEffect(() => {
     // Reset trigger when challenge changes
     setBotConnectionTriggered(false);
+    setJoiningOpponent(null);
   }, [myChallenge?.id]);
   
   useEffect(() => {
@@ -327,9 +336,9 @@ const ChallengesPage = ({
     const waitingTime = myChallenge.waitingTime;
     const BOT_CONNECT_DELAY = 7; // 7 seconds delay before bot connection
     
-    // If we've waited 7+ seconds, auto-connect with bot
+    // If we've waited 7+ seconds, show opponent joining animation then connect
     if (waitingTime >= BOT_CONNECT_DELAY && onPlayWithBot) {
-      console.log('[ChallengesPage] 7s elapsed, connecting with bot...');
+      console.log('[ChallengesPage] 7s elapsed, showing opponent joining...');
       
       // Prevent duplicate triggers
       setBotConnectionTriggered(true);
@@ -338,15 +347,32 @@ const ChallengesPage = ({
       const entryAmount = myChallenge.entry_amount;
       const playerMode = myChallenge.player_mode;
       
-      // Cancel the challenge silently (no toast), then start bot game
+      // Pick a random bot to show as opponent
+      const randomBotIndex = Math.floor(Math.random() * BOT_NAMES.length);
+      const randomAvatarIndex = Math.floor(Math.random() * LUDO_AVATARS.length);
+      const opponentName = BOT_NAMES[randomBotIndex];
+      const opponentAvatar = LUDO_AVATARS[randomAvatarIndex];
+      
+      // Show joining animation
+      setJoiningOpponent({
+        name: opponentName,
+        avatar: opponentAvatar,
+        entryAmount,
+        playerMode,
+      });
+      
+      // Cancel challenge silently and start game after animation (2.5s)
       cancelChallenge(true).then(() => {
-        // Double-check component is still mounted by checking if onPlayWithBot exists
-        onPlayWithBot(entryAmount, playerMode);
-        onBack();
+        setTimeout(() => {
+          // Start bot game with the displayed opponent
+          onPlayWithBot(entryAmount, playerMode, [{ name: opponentName, avatar: opponentAvatar }]);
+          onBack();
+        }, 2500);
       }).catch(() => {
-        // If cancel fails (e.g., already cancelled), still try to start game
-        onPlayWithBot(entryAmount, playerMode);
-        onBack();
+        setTimeout(() => {
+          onPlayWithBot(entryAmount, playerMode, [{ name: opponentName, avatar: opponentAvatar }]);
+          onBack();
+        }, 2500);
       });
     }
   }, [myChallenge?.waitingTime, myChallenge?.status, myChallenge?.id, myChallenge?.entry_amount, myChallenge?.player_mode, onPlayWithBot, cancelChallenge, onBack, botConnectionTriggered]);
@@ -583,6 +609,181 @@ const ChallengesPage = ({
   const canAffordCreate = walletBalance >= selectedEntry;
   const createMultiplier = getMultiplier(selectedMode, rewardMultiplier);
   const createReward = selectedEntry * createMultiplier;
+
+  // Opponent Joining Overlay - Full screen VS animation
+  if (joiningOpponent) {
+    return (
+      <div className="h-[100dvh] bg-[#0A0A0F] flex flex-col overflow-hidden">
+        {/* Background with enhanced glow */}
+        <div 
+          className="fixed inset-0 -z-10 pointer-events-none"
+          style={{
+            background: `
+              radial-gradient(circle at 50% 50%, rgba(99, 102, 241, 0.15) 0%, transparent 50%),
+              radial-gradient(circle at 0% 0%, rgba(99, 102, 241, 0.08) 0%, transparent 40%),
+              radial-gradient(circle at 100% 100%, rgba(236, 72, 153, 0.06) 0%, transparent 40%),
+              #0A0A0F
+            `,
+          }}
+        />
+
+        {/* VS Animation Container */}
+        <div className="flex-1 flex flex-col items-center justify-center px-6 gap-6">
+          {/* Header */}
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-center"
+          >
+            <motion.p
+              animate={{ scale: [1, 1.05, 1] }}
+              transition={{ duration: 1.5, repeat: Infinity }}
+              className="text-lg font-bold text-emerald-400 mb-1"
+            >
+              ✨ Opponent Found!
+            </motion.p>
+            <p className="text-xs text-gray-500">Starting game...</p>
+          </motion.div>
+
+          {/* VS Battle Section */}
+          <div className="flex items-center justify-center gap-4 w-full">
+            {/* You */}
+            <motion.div
+              initial={{ x: -50, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              transition={{ delay: 0.2 }}
+              className="flex flex-col items-center gap-2"
+            >
+              <div className="relative">
+                <div className="w-20 h-20 rounded-2xl overflow-hidden border-3 border-indigo-500 shadow-lg shadow-indigo-500/30">
+                  <img 
+                    src={user?.user_metadata?.avatar_url || LUDO_AVATARS[0]} 
+                    alt="You"
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+                <motion.div
+                  animate={{ scale: [1, 1.2, 1] }}
+                  transition={{ duration: 1, repeat: Infinity }}
+                  className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-indigo-500 flex items-center justify-center text-[10px] font-bold text-white"
+                >
+                  ✓
+                </motion.div>
+              </div>
+              <span className="text-sm font-semibold text-white">You</span>
+              <span className="text-[10px] text-gray-500 px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-400">
+                Ready
+              </span>
+            </motion.div>
+
+            {/* VS Badge */}
+            <motion.div
+              initial={{ scale: 0 }}
+              animate={{ scale: 1, rotate: [0, 5, -5, 0] }}
+              transition={{ 
+                scale: { delay: 0.4, type: 'spring', stiffness: 200 },
+                rotate: { delay: 0.6, duration: 0.5, repeat: Infinity, repeatDelay: 2 }
+              }}
+              className="relative"
+            >
+              <div 
+                className="w-14 h-14 rounded-full flex items-center justify-center"
+                style={{
+                  background: 'linear-gradient(135deg, #6366F1 0%, #EC4899 100%)',
+                  boxShadow: '0 0 30px rgba(99, 102, 241, 0.5)',
+                }}
+              >
+                <span className="text-white font-black text-lg">VS</span>
+              </div>
+              {/* Pulse rings */}
+              <motion.div
+                className="absolute inset-0 rounded-full border-2 border-indigo-400"
+                animate={{ scale: [1, 1.5], opacity: [0.5, 0] }}
+                transition={{ duration: 1.5, repeat: Infinity }}
+              />
+            </motion.div>
+
+            {/* Opponent */}
+            <motion.div
+              initial={{ x: 50, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              transition={{ delay: 0.3 }}
+              className="flex flex-col items-center gap-2"
+            >
+              <div className="relative">
+                <motion.div 
+                  animate={{ scale: [1, 1.05, 1] }}
+                  transition={{ duration: 1.5, repeat: Infinity }}
+                  className="w-20 h-20 rounded-2xl overflow-hidden border-3 border-emerald-500 shadow-lg shadow-emerald-500/30"
+                >
+                  <img 
+                    src={joiningOpponent.avatar} 
+                    alt={joiningOpponent.name}
+                    className="w-full h-full object-cover"
+                  />
+                </motion.div>
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  transition={{ delay: 0.8, type: 'spring' }}
+                  className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-emerald-500 flex items-center justify-center text-[10px] font-bold text-white"
+                >
+                  ✓
+                </motion.div>
+              </div>
+              <span className="text-sm font-semibold text-white">{joiningOpponent.name.split('_')[0]}</span>
+              <motion.span 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.6 }}
+                className="text-[10px] text-gray-500 px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400"
+              >
+                Joining...
+              </motion.span>
+            </motion.div>
+          </div>
+
+          {/* Match Info */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.5 }}
+            className="flex items-center gap-4 px-4 py-3 rounded-xl bg-gray-900/60 border border-gray-800"
+          >
+            <div className="text-center">
+              <p className="text-[10px] text-gray-500">Entry</p>
+              <p className="text-sm font-bold text-white">₹{joiningOpponent.entryAmount}</p>
+            </div>
+            <div className="w-px h-8 bg-gray-700" />
+            <div className="text-center">
+              <p className="text-[10px] text-gray-500">Mode</p>
+              <p className="text-sm font-bold text-indigo-400">{getModeLabel(joiningOpponent.playerMode)}</p>
+            </div>
+            <div className="w-px h-8 bg-gray-700" />
+            <div className="text-center">
+              <p className="text-[10px] text-gray-500">Prize</p>
+              <p className="text-sm font-bold text-amber-400">₹{(joiningOpponent.entryAmount * getMultiplier(joiningOpponent.playerMode, rewardMultiplier)).toFixed(0)}</p>
+            </div>
+          </motion.div>
+
+          {/* Loading indicator */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 1 }}
+            className="flex items-center gap-2"
+          >
+            <motion.div
+              animate={{ rotate: 360 }}
+              transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+              className="w-4 h-4 rounded-full border-2 border-indigo-500 border-t-transparent"
+            />
+            <span className="text-xs text-gray-400">Preparing game board...</span>
+          </motion.div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="h-[100dvh] bg-[#0A0A0F] flex flex-col overflow-hidden">
