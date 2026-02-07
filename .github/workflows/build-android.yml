@@ -493,8 +493,6 @@ jobs:
             rm -rf .gradle app/build build || true
 
             ./gradlew --no-daemon --max-workers=1 --refresh-dependencies assembleDebug \
-              -x :app:processDebugNavigationResources \
-              -x :app:compileDebugNavigationResources \
               --stacktrace --warning-mode all --console=plain >> ../gradle-build.log 2>&1
             RC=$?
           fi
