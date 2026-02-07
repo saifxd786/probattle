@@ -10,6 +10,7 @@ import {
   AlertDialogDescription,
 } from '@/components/ui/alert-dialog';
 import { Progress } from '@/components/ui/progress';
+import { Capacitor } from '@capacitor/core';
 
 interface ForceUpdatePopupProps {
   isOpen: boolean;
@@ -19,6 +20,9 @@ interface ForceUpdatePopupProps {
 
 const ForceUpdatePopup = ({ isOpen, onUpdate, isUpdating }: ForceUpdatePopupProps) => {
   const [progress, setProgress] = useState(0);
+  
+  // Check if running in native app (APK)
+  const isNativeApp = Capacitor.isNativePlatform();
 
   // Simulate download progress when updating
   useEffect(() => {
@@ -36,6 +40,12 @@ const ForceUpdatePopup = ({ isOpen, onUpdate, isUpdating }: ForceUpdatePopupProp
       return () => clearInterval(interval);
     }
   }, [isUpdating]);
+
+  // Handle APK download
+  const handleDownloadAPK = () => {
+    // Open APK download URL in browser
+    window.open('https://probattle.lovable.app/probattle.apk', '_system');
+  };
 
   return (
     <AlertDialog open={isOpen}>
@@ -66,15 +76,17 @@ const ForceUpdatePopup = ({ isOpen, onUpdate, isUpdating }: ForceUpdatePopupProp
           <AlertDialogDescription className="text-center text-muted-foreground">
             {isUpdating 
               ? 'Please wait while we install the latest version.'
-              : 'A new version of ProBattle is available. Update now to continue using the app.'
+              : isNativeApp
+                ? 'A new version of ProBattle is available. Download the latest APK to continue.'
+                : 'A new version of ProBattle is available. Update now to continue using the app.'
             }
           </AlertDialogDescription>
         </AlertDialogHeader>
 
         {/* Scrollable body (keeps CTA visible on small screens) */}
         <div className="flex-1 overflow-y-auto py-4 pr-1 space-y-4">
-          {/* Horizontal Progress Bar (only while updating) */}
-          {isUpdating && (
+          {/* Horizontal Progress Bar (only while updating - PWA only) */}
+          {isUpdating && !isNativeApp && (
             <div className="space-y-2">
               <Progress 
                 value={progress}
@@ -89,7 +101,10 @@ const ForceUpdatePopup = ({ isOpen, onUpdate, isUpdating }: ForceUpdatePopupProp
           {!isUpdating && (
             <div className="p-3 rounded-lg bg-muted/30 border border-border/40">
               <p className="text-xs text-muted-foreground text-center">
-                Tap <span className="font-medium text-foreground">Update Now</span> to download & install the latest version.
+                {isNativeApp 
+                  ? <>Tap <span className="font-medium text-foreground">Download APK</span> to get the latest version.</>
+                  : <>Tap <span className="font-medium text-foreground">Update Now</span> to download & install the latest version.</>
+                }
               </p>
             </div>
           )}
@@ -107,14 +122,25 @@ const ForceUpdatePopup = ({ isOpen, onUpdate, isUpdating }: ForceUpdatePopupProp
         {/* Sticky footer CTA */}
         {!isUpdating && (
           <div className="pt-2">
-            <Button 
-              onClick={onUpdate} 
-              className="w-full bg-gradient-to-r from-primary to-primary/80 font-bold"
-              size="lg"
-            >
-              <RefreshCw className="w-4 h-4 mr-2" />
-              Update Now
-            </Button>
+            {isNativeApp ? (
+              <Button 
+                onClick={handleDownloadAPK} 
+                className="w-full bg-gradient-to-r from-emerald-500 to-green-500 font-bold"
+                size="lg"
+              >
+                <Download className="w-4 h-4 mr-2" />
+                Download APK
+              </Button>
+            ) : (
+              <Button 
+                onClick={onUpdate} 
+                className="w-full bg-gradient-to-r from-primary to-primary/80 font-bold"
+                size="lg"
+              >
+                <RefreshCw className="w-4 h-4 mr-2" />
+                Update Now
+              </Button>
+            )}
           </div>
         )}
       </AlertDialogContent>
