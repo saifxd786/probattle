@@ -23,6 +23,7 @@ interface LudoLobbyProps {
   startMatchmaking: () => void;
   onPlayWithFriend: () => void;
   onJoinChallenge: () => void;
+  onQuickPlay: (mode: 2 | 4) => void;
   selectedAvatar: string | null;
   onSelectAvatar: (avatar: string | null) => void;
   userAvatar?: string | null;
@@ -40,6 +41,7 @@ const LudoLobby = ({
   startMatchmaking,
   onPlayWithFriend,
   onJoinChallenge,
+  onQuickPlay,
   selectedAvatar,
   onSelectAvatar,
   userAvatar,
@@ -188,6 +190,7 @@ const LudoLobby = ({
                 rewardMultiplier={settings.rewardMultiplier}
                 playerMode={entrySelectorMode}
                 onPlayerModeChange={handlePlayerModeChange}
+                onQuickPlay={onQuickPlay}
               />
             </motion.div>
 

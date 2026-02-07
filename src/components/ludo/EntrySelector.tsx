@@ -12,6 +12,7 @@ interface EntrySelectorProps {
   rewardMultiplier: number;
   playerMode: 2 | 4;
   onPlayerModeChange: (mode: 2 | 4) => void;
+  onQuickPlay?: (mode: 2 | 4) => void;
 }
 
 const EntrySelector = ({ 
@@ -20,7 +21,8 @@ const EntrySelector = ({
   onSelect, 
   rewardMultiplier,
   playerMode,
-  onPlayerModeChange
+  onPlayerModeChange,
+  onQuickPlay
 }: EntrySelectorProps) => {
   // 4v4 mode gets 2x multiplier, 1v1 uses settings multiplier
   const actualMultiplier = playerMode === 4 ? 2 : rewardMultiplier;
@@ -39,7 +41,10 @@ const EntrySelector = ({
           {/* 1v1 Mode */}
           <motion.button
             whileTap={{ scale: 0.98 }}
-            onClick={() => onPlayerModeChange(2)}
+            onClick={() => {
+              onPlayerModeChange(2);
+              if (onQuickPlay) onQuickPlay(2);
+            }}
             className={cn(
               "relative p-3 rounded-xl transition-all duration-200 flex items-center gap-2",
               playerMode === 2
@@ -82,7 +87,10 @@ const EntrySelector = ({
           {/* 4 Player Mode */}
           <motion.button
             whileTap={{ scale: 0.98 }}
-            onClick={() => onPlayerModeChange(4)}
+            onClick={() => {
+              onPlayerModeChange(4);
+              if (onQuickPlay) onQuickPlay(4);
+            }}
             className={cn(
               "relative p-3 rounded-xl transition-all duration-200 flex items-center gap-2",
               playerMode === 4
