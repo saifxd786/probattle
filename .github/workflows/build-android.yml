@@ -54,11 +54,12 @@ jobs:
           $SM "platforms;android-34" "build-tools;34.0.0"
           $SM "platforms;android-33" "build-tools;33.0.2"
 
-          # NOTE: Do not install/use android-35 in CI (can trigger !directory.isDirectory()).
+          # NOTE: Do not install/use android-35/36 in CI (preview SDKs can trigger !directory.isDirectory()).
           # If it's preinstalled on the runner, remove it so Gradle cannot pick it.
           rm -rf "$SDKROOT/platforms/android-35" || true
           rm -rf "$SDKROOT/build-tools/35.0.0" || true
- 
+          rm -rf "$SDKROOT/platforms/android-36" || true
+          rm -rf "$SDKROOT/build-tools/36.0.0" || true
           # Hard-pin chosen API to stable 34
           API="34"
 
@@ -140,21 +141,27 @@ jobs:
           rm -rf node_modules/.cache || true
           npx cap add android
 
+      # IMPORTANT: `npx cap sync android` can overwrite Gradle/AGP versions.
+      # So we sync first, THEN apply our version pinning.
+      - name: Sync Capacitor
+        run: npx cap sync android
+
       - name: Downgrade AGP to stable 8.7.3 (avoid 8.13.0 ParseLibraryResourcesTask bug)
         run: |
           set -euo pipefail
           # Capacitor 8 ships with AGP 8.13.0 which has a known bug in ParseLibraryResourcesTask
           # causing !directory.isDirectory() errors. Downgrade to stable AGP 8.7.3.
-          
+
           ROOT_GRADLE="android/build.gradle"
           VARS_GRADLE="android/variables.gradle"
-          
-          echo "==== BEFORE patching ===="
-          echo "--- ROOT build.gradle ---"
-          cat "$ROOT_GRADLE" || true
-          echo "--- variables.gradle ---"
-          cat "$VARS_GRADLE" || true
-          
+          SETTINGS_GRADLE="android/settings.gradle"
+
+          echo "==== BEFORE patching (AGP) ===="
+          for F in "$ROOT_GRADLE" "$VARS_GRADLE" "$SETTINGS_GRADLE"; do
+            echo "--- $F ---"
+            (test -f "$F" && cat "$F") || echo "(missing)"
+          done
+
           # Patch root build.gradle - replace AGP version (multiple patterns)
           if [ -f "$ROOT_GRADLE" ]; then
             # Pattern 1: classpath 'com.android.tools.build:gradle:X.X.X'
@@ -162,20 +169,25 @@ jobs:
             # Pattern 2: id 'com.android.application' version 'X.X.X'
             sed -i -E "s/(id\\s+['\"]com\\.android\\.(application|library)['\"]\\s+version\\s+['\"])[0-9]+\\.[0-9]+\\.[0-9]+/\\18.7.3/g" "$ROOT_GRADLE"
           fi
-          
-          # Also patch variables.gradle if it has AGP version
+
+          # Patch variables.gradle if it has AGP version
           if [ -f "$VARS_GRADLE" ]; then
             sed -i -E "s/(androidGradlePluginVersion\\s*=\\s*['\"])[0-9]+\\.[0-9]+\\.[0-9]+/\\18.7.3/g" "$VARS_GRADLE"
           fi
-          
-          echo "==== AFTER patching ===="
-          echo "--- ROOT build.gradle ---"
-          cat "$ROOT_GRADLE" || true
-          echo "--- variables.gradle ---"
-          cat "$VARS_GRADLE" || true
-          
+
+          # Patch settings.gradle if it uses plugins DSL version pinning
+          if [ -f "$SETTINGS_GRADLE" ]; then
+            sed -i -E "s/(id\\s+['\"]com\\.android\\.(application|library)['\"]\\s+version\\s+['\"])[0-9]+\\.[0-9]+\\.[0-9]+/\\18.7.3/g" "$SETTINGS_GRADLE" || true
+          fi
+
+          echo "==== AFTER patching (AGP) ===="
+          for F in "$ROOT_GRADLE" "$VARS_GRADLE" "$SETTINGS_GRADLE"; do
+            echo "--- $F ---"
+            (test -f "$F" && cat "$F") || echo "(missing)"
+          done
+
           # Verify AGP 8.7.3 is now present
-          if grep -q "8.7.3" "$ROOT_GRADLE" || grep -q "8.7.3" "$VARS_GRADLE"; then
+          if grep -q "8.7.3" "$ROOT_GRADLE" 2>/dev/null || grep -q "8.7.3" "$VARS_GRADLE" 2>/dev/null || grep -q "8.7.3" "$SETTINGS_GRADLE" 2>/dev/null; then
             echo "SUCCESS: AGP 8.7.3 confirmed"
           else
             echo "WARNING: AGP 8.7.3 not found after patching - build may fail"
@@ -185,13 +197,15 @@ jobs:
         run: |
           set -euo pipefail
           echo "==== Scanning for corrupt 'res' paths (files instead of directories) ===="
-          
+
           # Check in android directory
-          find android -name "res" -type f 2>/dev/null | while read -r P; do
-            echo "CORRUPT FILE (should be dir): $P"
-            rm -f "$P" || true
-          done
-          
+          if [ -d android ]; then
+            find android -name "res" -type f 2>/dev/null | while read -r P; do
+              echo "CORRUPT FILE (should be dir): $P"
+              rm -f "$P" || true
+            done
+          fi
+
           # Check in gradle caches
           GRADLE_HOME="${GRADLE_USER_HOME:-$HOME/.gradle}"
           if [ -d "$GRADLE_HOME/caches" ]; then
@@ -200,11 +214,8 @@ jobs:
               rm -f "$P" || true
             done
           fi
-          
-          echo "==== Corrupt resource scan complete ===="
 
-      - name: Sync Capacitor
-        run: npx cap sync android
+          echo "==== Corrupt resource scan complete ===="
 
       - name: Pin AndroidX to SDK 35-compatible versions (CI)
         run: |
