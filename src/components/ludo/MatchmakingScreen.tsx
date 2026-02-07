@@ -19,17 +19,11 @@ interface MatchmakingScreenProps {
   rewardAmount: number;
 }
 
-// Indian Male Names (Hindu + Muslim mix) - Only boys names
-const BOT_NAMES = [
-  // Hindu Names
-  'Aman', 'Rohit', 'Kunal', 'Arjun', 'Vikram', 'Rahul', 'Deepak', 'Mohit',
-  'Ankur', 'Rajesh', 'Suresh', 'Karan', 'Varun', 'Nikhil', 'Aditya', 'Manish',
-  'Sachin', 'Vikas', 'Gaurav', 'Harsh', 'Ravi', 'Amit', 'Sanjay', 'Akash',
-  // Muslim Names
-  'Imran', 'Aamir', 'Farhan', 'Zaid', 'Arman', 'Salman', 'Asif', 'Faisal',
-  'Rizwan', 'Irfan', 'Danish', 'Nadeem', 'Tariq', 'Wasim', 'Shahid', 'Junaid',
-  'Ayaan', 'Rehan', 'Saif', 'Kabir', 'Ayan', 'Bilal', 'Hamza', 'Yusuf'
-];
+// Import centralized bot names (200+ names: Hindu, Muslim, Gaming/Funny)
+import { BOT_NAMES, HINDU_NAMES } from '@/constants/ludoBotNames';
+
+// Re-export for backward compatibility
+export { BOT_NAMES };
 
 // Player card component - Flat design with Avatar
 const PlayerCard = ({ 
@@ -490,4 +484,3 @@ const MatchmakingScreen = ({ players, totalPlayers, entryAmount, rewardAmount }:
 };
 
 export default MatchmakingScreen;
-export { BOT_NAMES };
