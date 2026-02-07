@@ -399,37 +399,9 @@ jobs:
           android.useFullClasspathForDexingTransform=true
           EOF
 
-      - name: Force Java 17 compatibility for Capacitor
-        run: |
-          set -euo pipefail
-          # Capacitor Android modules need Java 17 source/target even with JDK 21
-          # Add Java compatibility settings to all build.gradle files
-          
-          for GRADLE_FILE in android/build.gradle android/app/build.gradle; do
-            if [ -f "$GRADLE_FILE" ]; then
-              cat >> "$GRADLE_FILE" << 'JAVAEOF'
-
-          // CI: Force Java 17 compatibility
-          tasks.withType(JavaCompile).configureEach {
-              options.release = 17
-          }
-          JAVAEOF
-              echo "Patched $GRADLE_FILE with Java 17 compatibility"
-            fi
-          done
-          
-          # Also patch capacitor-android if it exists
-          CAP_GRADLE="node_modules/@capacitor/android/capacitor/build.gradle"
-          if [ -f "$CAP_GRADLE" ]; then
-            cat >> "$CAP_GRADLE" << 'CAPEOF'
-
-          // CI: Force Java 17 compatibility for capacitor-android
-          tasks.withType(JavaCompile).configureEach {
-              options.release = 17
-          }
-          CAPEOF
-            echo "Patched $CAP_GRADLE with Java 17 compatibility"
-          fi
+      # NOTE: Removed "options.release = 17" patching - AGP doesn't support --release flag
+      # Java compatibility is handled via sourceCompatibility/targetCompatibility in build.gradle files
+      # which are already set correctly by Capacitor
 
       # Gradle wrapper already pinned in earlier step
 
