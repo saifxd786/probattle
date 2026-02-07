@@ -338,8 +338,8 @@ const ChallengesPage = ({
       const entryAmount = myChallenge.entry_amount;
       const playerMode = myChallenge.player_mode;
       
-      // Cancel the challenge first (cleanup), then start bot game
-      cancelChallenge().then(() => {
+      // Cancel the challenge silently (no toast), then start bot game
+      cancelChallenge(true).then(() => {
         // Double-check component is still mounted by checking if onPlayWithBot exists
         onPlayWithBot(entryAmount, playerMode);
         onBack();
