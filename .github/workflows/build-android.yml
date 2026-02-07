@@ -149,20 +149,59 @@ jobs:
           ROOT_GRADLE="android/build.gradle"
           VARS_GRADLE="android/variables.gradle"
           
-          # Patch root build.gradle - replace AGP version
+          echo "==== BEFORE patching ===="
+          echo "--- ROOT build.gradle ---"
+          cat "$ROOT_GRADLE" || true
+          echo "--- variables.gradle ---"
+          cat "$VARS_GRADLE" || true
+          
+          # Patch root build.gradle - replace AGP version (multiple patterns)
           if [ -f "$ROOT_GRADLE" ]; then
-            # Match patterns like: classpath 'com.android.tools.build:gradle:X.X.X'
+            # Pattern 1: classpath 'com.android.tools.build:gradle:X.X.X'
             sed -i -E "s/(com\\.android\\.tools\\.build:gradle:)[0-9]+\\.[0-9]+\\.[0-9]+/\\18.7.3/g" "$ROOT_GRADLE"
-            echo "==== Patched ROOT build.gradle AGP version ===="
-            grep -n "gradle:" "$ROOT_GRADLE" || true
+            # Pattern 2: id 'com.android.application' version 'X.X.X'
+            sed -i -E "s/(id\\s+['\"]com\\.android\\.(application|library)['\"]\\s+version\\s+['\"])[0-9]+\\.[0-9]+\\.[0-9]+/\\18.7.3/g" "$ROOT_GRADLE"
           fi
           
           # Also patch variables.gradle if it has AGP version
           if [ -f "$VARS_GRADLE" ]; then
             sed -i -E "s/(androidGradlePluginVersion\\s*=\\s*['\"])[0-9]+\\.[0-9]+\\.[0-9]+/\\18.7.3/g" "$VARS_GRADLE"
-            echo "==== Patched variables.gradle AGP version ===="
-            grep -n "androidGradlePluginVersion" "$VARS_GRADLE" || true
           fi
+          
+          echo "==== AFTER patching ===="
+          echo "--- ROOT build.gradle ---"
+          cat "$ROOT_GRADLE" || true
+          echo "--- variables.gradle ---"
+          cat "$VARS_GRADLE" || true
+          
+          # Verify AGP 8.7.3 is now present
+          if grep -q "8.7.3" "$ROOT_GRADLE" || grep -q "8.7.3" "$VARS_GRADLE"; then
+            echo "SUCCESS: AGP 8.7.3 confirmed"
+          else
+            echo "WARNING: AGP 8.7.3 not found after patching - build may fail"
+          fi
+
+      - name: Find and fix corrupt resource directories
+        run: |
+          set -euo pipefail
+          echo "==== Scanning for corrupt 'res' paths (files instead of directories) ===="
+          
+          # Check in android directory
+          find android -name "res" -type f 2>/dev/null | while read -r P; do
+            echo "CORRUPT FILE (should be dir): $P"
+            rm -f "$P" || true
+          done
+          
+          # Check in gradle caches
+          GRADLE_HOME="${GRADLE_USER_HOME:-$HOME/.gradle}"
+          if [ -d "$GRADLE_HOME/caches" ]; then
+            find "$GRADLE_HOME/caches" -name "res" -type f 2>/dev/null | head -n 50 | while read -r P; do
+              echo "CORRUPT CACHE FILE: $P"
+              rm -f "$P" || true
+            done
+          fi
+          
+          echo "==== Corrupt resource scan complete ===="
 
       - name: Sync Capacitor
         run: npx cap sync android
