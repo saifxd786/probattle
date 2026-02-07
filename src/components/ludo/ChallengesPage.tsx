@@ -340,18 +340,18 @@ const ChallengesPage = ({
         playerMode,
       });
       
-      // Cancel challenge silently and start game after animation (2.5s)
+      // Cancel challenge silently and start game after animation (4.5s for better visibility)
       cancelChallenge(true).then(() => {
         setTimeout(() => {
           // Start bot game with the displayed opponent
           onPlayWithBot(entryAmount, playerMode, [{ name: opponentName, avatar: opponentAvatar }]);
           onBack();
-        }, 2500);
+        }, 4500);
       }).catch(() => {
         setTimeout(() => {
           onPlayWithBot(entryAmount, playerMode, [{ name: opponentName, avatar: opponentAvatar }]);
           onBack();
-        }, 2500);
+        }, 4500);
       });
     }
   }, [myChallenge?.waitingTime, myChallenge?.status, myChallenge?.id, myChallenge?.entry_amount, myChallenge?.player_mode, onPlayWithBot, cancelChallenge, onBack, botConnectionTriggered]);
