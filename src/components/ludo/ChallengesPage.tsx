@@ -24,6 +24,7 @@ interface ChallengesPageProps {
   }) => void;
   onCreateChallenge: (entryAmount: number, playerMode: 2 | 3 | 4) => void;
   onSwitchToJoin?: () => void;
+  onPlayWithBot?: (entryAmount: number, playerMode: 2 | 3 | 4) => void;
 }
 
 const getModeLabel = (mode: 2 | 3 | 4) => {
@@ -58,6 +59,96 @@ const getMultiplier = (mode: 2 | 3 | 4, baseMultiplier: number) => {
   }
 };
 
+// Realistic Indian names for bot players
+const BOT_NAMES = [
+  'Rahul_Gamer', 'Priya_Pro', 'Amit_King', 'Neha_Star', 'Vikram_99',
+  'Anjali_Boss', 'Rohan_X', 'Sneha_Win', 'Arjun_YT', 'Kavita_777',
+  'Deepak_FF', 'Megha_Queen', 'Suresh_OP', 'Divya_GG', 'Karan_Ace',
+  'Pooja_Lucky', 'Raj_Thunder', 'Simran_Pro', 'Aakash_Beast', 'Ritu_Fire',
+  'Mohit_Legend', 'Ananya_Blitz', 'Nikhil_Storm', 'Tanvi_Rush', 'Varun_Clash',
+  'Sakshi_Fury', 'Harsh_Boom', 'Shruti_Glow', 'Gaurav_Max', 'Ishita_Zen'
+];
+
+// Entry amounts for bots
+const BOT_ENTRY_AMOUNTS = [10, 20, 30, 50, 100, 150, 200, 300, 500];
+
+interface BotChallenge {
+  id: string;
+  creator_id: string;
+  entry_amount: number;
+  player_mode: 2 | 3 | 4;
+  status: string;
+  room_code: null;
+  matched_user_id: null;
+  created_at: string;
+  expires_at: string;
+  waitingTime: number;
+  isBot: true;
+  creator: {
+    username: string;
+    avatar_url: string;
+  };
+}
+
+// Generate consistent bot challenges based on seed (current hour)
+const generateBotChallenges = (minEntry: number): BotChallenge[] => {
+  const seed = Math.floor(Date.now() / (1000 * 60 * 30)); // Changes every 30 mins
+  const bots: BotChallenge[] = [];
+  const usedNames = new Set<string>();
+  
+  // Generate 8-12 bot challenges
+  const count = 8 + (seed % 5);
+  
+  for (let i = 0; i < count; i++) {
+    // Pick unique name using deterministic selection
+    const nameIndex = (seed * (i + 1) * 7) % BOT_NAMES.length;
+    let name = BOT_NAMES[nameIndex];
+    let attempts = 0;
+    while (usedNames.has(name) && attempts < BOT_NAMES.length) {
+      name = BOT_NAMES[(nameIndex + attempts + 1) % BOT_NAMES.length];
+      attempts++;
+    }
+    if (usedNames.has(name)) continue;
+    usedNames.add(name);
+    
+    // Pick entry amount
+    const validAmounts = BOT_ENTRY_AMOUNTS.filter(a => a >= minEntry);
+    const amountIndex = (seed * (i + 3) * 13) % validAmounts.length;
+    const entryAmount = validAmounts[amountIndex];
+    
+    // Pick mode (more 1v1s)
+    const modes: (2 | 3 | 4)[] = [2, 2, 2, 2, 3, 3, 4];
+    const modeIndex = (seed * (i + 5) * 11) % modes.length;
+    const playerMode = modes[modeIndex];
+    
+    // Random waiting time
+    const waitingTime = 5 + ((seed * (i + 7)) % 55);
+    
+    // Pick avatar
+    const avatarIndex = (seed * (i + 2)) % LUDO_AVATARS.length;
+    
+    bots.push({
+      id: `bot-${seed}-${i}`,
+      creator_id: `bot-${i}`,
+      entry_amount: entryAmount,
+      player_mode: playerMode,
+      status: 'waiting',
+      room_code: null,
+      matched_user_id: null,
+      created_at: new Date(Date.now() - waitingTime * 1000).toISOString(),
+      expires_at: new Date(Date.now() + 300000).toISOString(),
+      waitingTime,
+      isBot: true,
+      creator: {
+        username: name,
+        avatar_url: LUDO_AVATARS[avatarIndex],
+      },
+    });
+  }
+  
+  return bots.sort((a, b) => a.entry_amount - b.entry_amount);
+};
+
 // Get a consistent avatar based on creator ID
 const getAvatarForUser = (creatorId: string, avatarUrl?: string | null): string => {
   if (avatarUrl) return avatarUrl;
@@ -82,6 +173,7 @@ const ChallengesPage = ({
   onAcceptChallenge,
   onCreateChallenge,
   onSwitchToJoin,
+  onPlayWithBot,
 }: ChallengesPageProps) => {
   const { user } = useAuth();
   const { 
@@ -130,12 +222,6 @@ const ChallengesPage = ({
     }
   }, [myChallenge, onAcceptChallenge]);
 
-  const handleRefresh = async () => {
-    setIsRefreshing(true);
-    await refetch();
-    setTimeout(() => setIsRefreshing(false), 500);
-  };
-
   const handleCreateChallenge = async () => {
     setIsCreating(true);
     const result = await createChallenge(selectedEntry, selectedMode);
@@ -154,7 +240,16 @@ const ChallengesPage = ({
     await cancelChallenge();
   };
 
-  const handleAcceptChallenge = async (challenge: PublicChallenge) => {
+  const handleAcceptChallenge = async (challenge: PublicChallenge & { isBot?: boolean }) => {
+    // Check if this is a bot challenge
+    if ((challenge as any).isBot && onPlayWithBot) {
+      // Start bot game with selected entry and mode
+      onPlayWithBot(challenge.entry_amount, challenge.player_mode);
+      onBack(); // Close challenges page
+      return;
+    }
+    
+    // Real challenge - normal flow
     const result = await acceptChallenge(challenge.id);
     if (result.success && result.roomId && result.roomCode) {
       onAcceptChallenge({ 
@@ -167,19 +262,49 @@ const ChallengesPage = ({
     }
   };
 
-  // Filter challenges - show own challenge at top, then others
+  // Generate bot challenges
+  const [botChallenges, setBotChallenges] = useState<BotChallenge[]>(() => 
+    generateBotChallenges(minEntryAmount)
+  );
+  
+  // Update bot waiting times every second
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setBotChallenges(prev => prev.map(bot => ({
+        ...bot,
+        waitingTime: bot.waitingTime + 1,
+      })));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
+  
+  // Regenerate bots on refresh
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await refetch();
+    setBotChallenges(generateBotChallenges(minEntryAmount));
+    setTimeout(() => setIsRefreshing(false), 500);
+  };
+
+  // Filter challenges - show own challenge at top, then real users, then bots
   const filteredChallenges = useMemo(() => {
+    // Real challenges
     let ownChallenge = challenges.filter(c => c.creator_id === user?.id);
-    let otherChallenges = challenges.filter(c => c.creator_id !== user?.id);
+    let otherRealChallenges = challenges.filter(c => c.creator_id !== user?.id);
+    
+    // Bot challenges (cast to match type)
+    let filteredBots = botChallenges as unknown as PublicChallenge[];
     
     if (selectedFilter !== 'all') {
       ownChallenge = ownChallenge.filter(c => c.player_mode === selectedFilter);
-      otherChallenges = otherChallenges.filter(c => c.player_mode === selectedFilter);
+      otherRealChallenges = otherRealChallenges.filter(c => c.player_mode === selectedFilter);
+      filteredBots = botChallenges.filter(c => c.player_mode === selectedFilter) as unknown as PublicChallenge[];
     }
     
-    // Own challenge first, then others
-    return [...ownChallenge, ...otherChallenges];
-  }, [challenges, selectedFilter, user?.id]);
+    // Own challenge first, then real users, then bots (sorted by entry)
+    const allOthers = [...otherRealChallenges, ...filteredBots].sort((a, b) => a.entry_amount - b.entry_amount);
+    return [...ownChallenge, ...allOthers];
+  }, [challenges, botChallenges, selectedFilter, user?.id]);
 
   // Valid amounts (multiples of 10)
   const validAmounts = CUSTOM_AMOUNTS.filter(a => a >= minEntryAmount && a <= 2000);
