@@ -110,7 +110,7 @@ jobs:
       - name: Build web assets
         run: npm run build
 
-      - name: Create production Capacitor config (WebView Mode)
+      - name: Create production Capacitor config (Bundled Mode)
         run: |
           cat > capacitor.config.json << 'EOF'
           {
@@ -118,11 +118,6 @@ jobs:
             "appName": "ProBattle",
             "webDir": "dist",
             "bundledWebRuntime": false,
-            "server": {
-              "url": "https://probattle.lovable.app",
-              "cleartext": true,
-              "allowNavigation": ["probattle.lovable.app", "*.supabase.co", "*.supabase.in"]
-            },
             "android": {
               "allowMixedContent": true,
               "backgroundColor": "#0a0a0a"

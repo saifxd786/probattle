@@ -5,17 +5,8 @@ const config: CapacitorConfig = {
   appName: 'ProBattle',
   webDir: 'dist',
   
-  // WebView Mode: Load from live website for instant updates
-  server: {
-    url: 'https://probattle.lovable.app',
-    cleartext: true,
-    // Handle navigation within app
-    allowNavigation: [
-      'probattle.lovable.app',
-      '*.supabase.co',
-      '*.supabase.in'
-    ]
-  },
+  // Bundled Mode: Assets loaded from local dist for native experience
+  // No browser URL bar - full immersive app feel
   
   // Android-specific configurations
   android: {
