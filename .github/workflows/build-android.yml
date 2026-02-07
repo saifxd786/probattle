@@ -515,72 +515,84 @@ jobs:
         run: |
           set -euo pipefail
           CLEAN="gradle-build.clean.log"
-          SUMMARY="${GITHUB_STEP_SUMMARY:-}"
-          if [ -z "$SUMMARY" ]; then SUMMARY=/dev/null; fi
+          FAILSUM="android-build-failure-summary.txt"
+          SUMMARY="${GITHUB_STEP_SUMMARY:-/dev/null}"
+
+          if [ ! -f gradle-build.log ]; then
+            echo "gradle-build.log not found — build likely failed before Gradle step." | tee "$FAILSUM"
+            {
+              echo "## Android build failure summary"
+              echo ""
+              echo "**gradle-build.log not found** — build likely failed before Gradle ran."
+              echo ""
+              echo "Next: open the first failed step above and copy its red lines."
+            } >> "$SUMMARY" || true
+            exit 0
+          fi
 
           # Strip ANSI codes + Windows CR to make grep reliable
-          (sed -r 's/\x1B\[[0-9;]*[mK]//g' gradle-build.log | tr -d '\r') > "$CLEAN" || cp gradle-build.log "$CLEAN"
+          (sed -r 's/\x1B\[[0-9;]*[mK]//g' gradle-build.log | tr -d '\r') > "$CLEAN" || cp gradle-build.log "$CLEAN" || true
 
           echo "==== gradle-build.log (stats) ===="
-          echo "Lines: $(wc -l < "$CLEAN" || echo 0)"
+          echo "Lines: $(wc -l < "$CLEAN" 2>/dev/null || echo 0)"
+
+          MARKER_RE='BUILD FAILED|FAILURE:|Build failed with an exception|What went wrong:|A problem occurred|Execution failed for task|Caused by:|AAR metadata|aar metadata|checkAarMetadata|CheckAarMetadata|issues were found when checking|Could not resolve|Could not determine|No matching variant|Unsupported|SDK location|Daemon disappeared|daemon disappeared|Killed|SIGKILL|exit code|OutOfMemory|OOM|!directory.isDirectory\(\)|ResourceDirectoryParser'
+          LIKELY_RE='BUILD FAILED|FAILURE:|Build failed with an exception|What went wrong:|A problem occurred|Execution failed for task|Caused by:|\\bException\\b|\\bERROR\\b|\\bError:\\b|AAR metadata|aar metadata|checkAarMetadata|CheckAarMetadata|issues were found when checking|Could not resolve|Could not determine|Could not find|No matching variant|Unsupported|SDK location|compileSdkVersion|targetSdkVersion|Daemon disappeared|daemon disappeared|Killed|SIGKILL|exit code|OutOfMemory|OOM|!directory.isDirectory\(\)|ResourceDirectoryParser'
 
           echo "==== gradle-build.log (best-effort failure context) ===="
-          # Gradle doesn't always print the 'FAILURE:' block (some crashes only show stacktrace + 'BUILD FAILED')
-          MARKER_RE='BUILD FAILED|FAILURE:|Build failed with an exception|What went wrong:|A problem occurred|Execution failed for task|Caused by:|AAR metadata|aar metadata|checkAarMetadata|CheckAarMetadata|issues were found when checking|Daemon disappeared|daemon disappeared|Killed|SIGKILL|exit code'
           if grep -nE "$MARKER_RE" "$CLEAN" >/dev/null 2>&1; then
             L=$(grep -nE "$MARKER_RE" "$CLEAN" | tail -n 1 | cut -d: -f1)
             START=$((L-320)); if [ "$START" -lt 1 ]; then START=1; fi
-            sed -n "${START},$((L+120))p" "$CLEAN" || true
+            sed -n "${START},$((L+160))p" "$CLEAN" || true
           else
             echo "No common failure markers found."
           fi
 
           echo "==== gradle-build.log (likely-cause lines) ===="
-          # Print the most informative error-like lines even when Gradle markers are missing
-          grep -nE "Caused by:|\\bException\\b|\\bERROR\\b|\\bError:\\b|AAR metadata|aar metadata|checkAarMetadata|CheckAarMetadata|issues were found when checking|Plugin \\[id:|Could not|No matching variant|Unsupported|SDK location|compileSdkVersion|targetSdkVersion|Daemon disappeared|daemon disappeared|Killed|SIGKILL|exit code|OutOfMemory|OOM" "$CLEAN" | tail -n 320 || true
+          grep -nE "$LIKELY_RE" "$CLEAN" | tail -n 320 || true
 
           echo "==== gradle-build.log (NOT A DIRECTORY scan) ===="
           grep -n "NOT A DIRECTORY:" "$CLEAN" | tail -n 200 || true
 
-          echo "==== Context around !directory.isDirectory() ===="
-          if grep -n "!directory.isDirectory()" "$CLEAN" >/dev/null 2>&1; then
-            L=$(grep -n "!directory.isDirectory()" "$CLEAN" | head -n 1 | cut -d: -f1)
-            START=$((L-200)); if [ "$START" -lt 1 ]; then START=1; fi
-            sed -n "${START},$((L+60))p" "$CLEAN" || true
-          else
-            echo "No '!directory.isDirectory()' line found in clean log."
-          fi
-
-          echo "==== Context around ResourceDirectoryParser ===="
-          if grep -n "ResourceDirectoryParser" "$CLEAN" >/dev/null 2>&1; then
-            L=$(grep -n "ResourceDirectoryParser" "$CLEAN" | head -n 1 | cut -d: -f1)
-            START=$((L-200)); if [ "$START" -lt 1 ]; then START=1; fi
-            sed -n "${START},$((L+60))p" "$CLEAN" || true
-          else
-            echo "No 'ResourceDirectoryParser' line found in clean log."
-          fi
-
           echo "==== gradle-build.log (tail 2000) ===="
           tail -n 2000 "$CLEAN" || true
 
+          # Create a small text file you can download easily on mobile
+          {
+            echo "Android build failure summary"
+            echo "==========================="
+            echo ""
+            echo "Likely-cause lines (tail)"
+            echo "------------------------"
+            grep -nE "$LIKELY_RE" "$CLEAN" | tail -n 200 || true
+            echo ""
+            echo "NOT A DIRECTORY (scan)"
+            echo "----------------------"
+            grep -n "NOT A DIRECTORY:" "$CLEAN" | tail -n 200 || true
+            echo ""
+            echo "Tail 250"
+            echo "--------"
+            tail -n 250 "$CLEAN" || true
+          } > "$FAILSUM" || true
+
           # Also write a concise summary to the GitHub job summary (easy to view on mobile)
           {
-            echo "## Android build failure summary";
-            echo "";
-            echo "### Likely-cause lines (tail)";
-            echo "\`\`\`";
-            grep -nE "Caused by:|\\bException\\b|\\bERROR\\b|\\bError:\\b|Plugin \\[id:|Could not|No matching variant|Unsupported|SDK location|compileSdkVersion|targetSdkVersion|Daemon disappeared|daemon disappeared|Killed|SIGKILL|exit code|OutOfMemory|OOM" "$CLEAN" | tail -n 120 || true;
-            echo "\`\`\`";
-            echo "";
-            echo "### NOT A DIRECTORY (scan)";
-            echo "\`\`\`";
-            grep -n "NOT A DIRECTORY:" "$CLEAN" | tail -n 120 || true;
-            echo "\`\`\`";
-            echo "";
-            echo "### Tail 250";
-            echo "\`\`\`";
-            tail -n 250 "$CLEAN" || true;
-            echo "\`\`\`";
+            echo "## Android build failure summary"
+            echo ""
+            echo "### Likely-cause lines (tail)"
+            echo "\`\`\`"
+            grep -nE "$LIKELY_RE" "$CLEAN" | tail -n 120 || true
+            echo "\`\`\`"
+            echo ""
+            echo "### NOT A DIRECTORY (scan)"
+            echo "\`\`\`"
+            grep -n "NOT A DIRECTORY:" "$CLEAN" | tail -n 120 || true
+            echo "\`\`\`"
+            echo ""
+            echo "### Tail 250"
+            echo "\`\`\`"
+            tail -n 250 "$CLEAN" || true
+            echo "\`\`\`"
           } >> "$SUMMARY" || true
 
       - name: Upload build logs (always)
@@ -591,11 +603,13 @@ jobs:
           path: |
             gradle-build.log
             gradle-build.clean.log
+            android-build-failure-summary.txt
             android/app/build/reports
             android/build/reports
             ~/.gradle/daemon/**/daemon-*.out.log
           if-no-files-found: ignore
           retention-days: 7
+
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
