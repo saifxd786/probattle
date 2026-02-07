@@ -372,23 +372,29 @@ const ChallengesPage = ({
   };
 
   // Filter challenges - show own challenge at top, then real users, then bots
-  const filteredChallenges = useMemo(() => {
+  // Extended type to include bot-specific properties
+  type ChallengeWithCompanions = PublicChallenge & { 
+    isBot?: boolean; 
+    companions?: CompanionPlayer[] 
+  };
+  
+  const filteredChallenges = useMemo((): ChallengeWithCompanions[] => {
     // Real challenges
     let ownChallenge = challenges.filter(c => c.creator_id === user?.id);
     let otherRealChallenges = challenges.filter(c => c.creator_id !== user?.id);
     
-    // Bot challenges (cast to match type)
-    let filteredBots = botChallenges as unknown as PublicChallenge[];
+    // Bot challenges - keep companions data
+    let filteredBots = botChallenges as unknown as ChallengeWithCompanions[];
     
     if (selectedFilter !== 'all') {
       ownChallenge = ownChallenge.filter(c => c.player_mode === selectedFilter);
       otherRealChallenges = otherRealChallenges.filter(c => c.player_mode === selectedFilter);
-      filteredBots = botChallenges.filter(c => c.player_mode === selectedFilter) as unknown as PublicChallenge[];
+      filteredBots = (botChallenges.filter(c => c.player_mode === selectedFilter)) as unknown as ChallengeWithCompanions[];
     }
     
     // Own challenge first, then real users, then bots (sorted by entry)
     const allOthers = [...otherRealChallenges, ...filteredBots].sort((a, b) => a.entry_amount - b.entry_amount);
-    return [...ownChallenge, ...allOthers];
+    return [...ownChallenge, ...allOthers] as ChallengeWithCompanions[];
   }, [challenges, botChallenges, selectedFilter, user?.id]);
 
   // Valid amounts (multiples of 10)
@@ -648,7 +654,7 @@ const ChallengesPage = ({
                             </div>
                             
                             {/* Companion Players with names (for 1v1v1 and 1v1v1v1) */}
-                            {(challenge as any).companions?.map((companion: { username: string; avatar_url: string }, idx: number) => (
+                            {challenge.companions?.map((companion, idx) => (
                               <div key={idx} className="flex flex-col items-center gap-0.5 shrink-0">
                                 <Avatar className="w-8 h-8 rounded-lg border-2 border-gray-800">
                                   <AvatarImage src={companion.avatar_url} alt={companion.username} />
@@ -662,8 +668,8 @@ const ChallengesPage = ({
                               </div>
                             ))}
                             
-                            {/* "You" slot indicator for modes > 2 */}
-                            {challenge.player_mode > 2 && !isOwnChallenge && (
+                            {/* "You" slot indicator - shows for all modes */}
+                            {!isOwnChallenge && (
                               <div className="flex flex-col items-center gap-0.5 shrink-0">
                                 <div className="w-8 h-8 rounded-lg border-2 border-dashed border-emerald-500/40 bg-emerald-500/10 flex items-center justify-center">
                                   <span className="text-[7px] font-bold text-emerald-400">+1</span>
