@@ -1261,7 +1261,8 @@ const LudoPage = () => {
           onJoinChallenge={() => setShowChallengesPage('join')}
           onQuickPlay={(mode) => {
             setPlayerMode(mode);
-            startMatchmaking();
+            // Pass mode directly to avoid state sync issues
+            startMatchmaking(undefined, mode);
           }}
           selectedAvatar={selectedAvatar}
           onSelectAvatar={setSelectedAvatar}
