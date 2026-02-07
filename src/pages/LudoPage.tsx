@@ -1260,6 +1260,10 @@ const LudoPage = () => {
           startMatchmaking={() => setShowChallengesPage('create')}
           onPlayWithFriend={() => setGameMode('vs-friend')}
           onJoinChallenge={() => setShowChallengesPage('join')}
+          onQuickPlay={(mode) => {
+            setPlayerMode(mode);
+            startMatchmaking();
+          }}
           selectedAvatar={selectedAvatar}
           onSelectAvatar={setSelectedAvatar}
           userAvatar={userAvatar}
