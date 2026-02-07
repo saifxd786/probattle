@@ -506,16 +506,7 @@ const LudoPage = () => {
               </div>
             </div>
           </motion.div>
-          {/* Chat Button in Header */}
-          {user && (
-            <LudoChat
-              messages={[]}
-              onSendMessage={() => {}}
-              currentUserId={user.id}
-              playerColor={gameState.players.find(p => !p.isBot)?.color || 'red'}
-              inHeader
-            />
-          )}
+          {/* Chat removed for bot games - no chat with bots */}
         </div>
 
 
