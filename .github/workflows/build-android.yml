@@ -54,14 +54,17 @@ jobs:
           $SM "platforms;android-34" "build-tools;34.0.0"
           $SM "platforms;android-33" "build-tools;33.0.2"
 
-          # Keep API 35 available (optional) but do NOT select it by default
-          $SM "platforms;android-35" "build-tools;35.0.0"
+          # NOTE: Do not install/use android-35 in CI (can trigger !directory.isDirectory()).
+          # If it's preinstalled on the runner, remove it so Gradle cannot pick it.
+          rm -rf "$SDKROOT/platforms/android-35" || true
+          rm -rf "$SDKROOT/build-tools/35.0.0" || true
  
           # Hard-pin chosen API to stable 34
           API="34"
 
           echo "==== Android platform sanity check (android-$API) ===="
           ls -la "$SDKROOT/platforms" || true
+          ls -la "$SDKROOT/platforms/android-35" || true
           ls -la "$SDKROOT/platforms/android-$API" || true
           ls -la "$SDKROOT/platforms/android-$API/data" || true
 
@@ -238,15 +241,41 @@ jobs:
           echo "Using ANDROID_API_LEVEL=$API"
 
           # Capacitor templates usually keep these values in android/variables.gradle
+          # (or inline in android/app/build.gradle). We hard-force BOTH old & new AGP syntaxes.
           if [ -f android/variables.gradle ]; then
-            sed -i -E "s/(compileSdkVersion\\s*=\\s*)[0-9]+/\\1${API}/" android/variables.gradle
-            sed -i -E "s/(targetSdkVersion\\s*=\\s*)[0-9]+/\\1${API}/" android/variables.gradle
+            sed -i -E "s/(compileSdkVersion\\s*=\\s*)[0-9]+/\\1${API}/" android/variables.gradle || true
+            sed -i -E "s/(targetSdkVersion\\s*=\\s*)[0-9]+/\\1${API}/" android/variables.gradle || true
+            sed -i -E "s/(compileSdk\\s*=\\s*)[0-9]+/\\1${API}/" android/variables.gradle || true
+            sed -i -E "s/(targetSdk\\s*=\\s*)[0-9]+/\\1${API}/" android/variables.gradle || true
           fi
 
           # Fallback: patch app/build.gradle if values are inlined
           if [ -f android/app/build.gradle ]; then
+            # compileSdkVersion 34 / compileSdkVersion = 34
             sed -i -E "s/(compileSdkVersion\\s+)[0-9]+/\\1${API}/" android/app/build.gradle || true
+            sed -i -E "s/(compileSdkVersion\\s*=\\s*)[0-9]+/\\1${API}/" android/app/build.gradle || true
+
+            # compileSdk 34 / compileSdk = 34
+            sed -i -E "s/(compileSdk\\s+)[0-9]+/\\1${API}/" android/app/build.gradle || true
+            sed -i -E "s/(compileSdk\\s*=\\s*)[0-9]+/\\1${API}/" android/app/build.gradle || true
+
+            # targetSdkVersion 34 / targetSdkVersion = 34
             sed -i -E "s/(targetSdkVersion\\s+)[0-9]+/\\1${API}/" android/app/build.gradle || true
+            sed -i -E "s/(targetSdkVersion\\s*=\\s*)[0-9]+/\\1${API}/" android/app/build.gradle || true
+
+            # targetSdk 34 / targetSdk = 34
+            sed -i -E "s/(targetSdk\\s+)[0-9]+/\\1${API}/" android/app/build.gradle || true
+            sed -i -E "s/(targetSdk\\s*=\\s*)[0-9]+/\\1${API}/" android/app/build.gradle || true
+          fi
+
+          echo "==== Verify resolved SDK levels (CI) ===="
+          if [ -f android/variables.gradle ]; then
+            echo "--- android/variables.gradle ---"
+            grep -nE "compileSdk|compileSdkVersion|targetSdk|targetSdkVersion" android/variables.gradle || true
+          fi
+          if [ -f android/app/build.gradle ]; then
+            echo "--- android/app/build.gradle ---"
+            grep -nE "compileSdk|compileSdkVersion|targetSdk|targetSdkVersion" android/app/build.gradle || true
           fi
 
       - name: Android platform sanity (CI)
