@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "621517644022",
+    "project_id": "probattle-55b2c",
+    "storage_bucket": "probattle-55b2c.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:621517644022:android:0c7d918423eaf81a2eccd7",
+        "android_client_info": {
+          "package_name": "app.lovable.cd88dc0dffab4b21aa84c640694b0643"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBNokCQ8iRjlej5IqIw-9NEKxcx_ReDaoM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

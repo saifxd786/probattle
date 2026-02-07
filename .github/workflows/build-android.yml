@@ -146,6 +146,52 @@ jobs:
       - name: Sync Capacitor
         run: npx cap sync android
 
+      - name: Setup Firebase Cloud Messaging
+        run: |
+          set -euo pipefail
+          echo "==== Setting up Firebase Cloud Messaging ===="
+          
+          # Copy google-services.json to android/app/
+          if [ -f "google-services.json" ]; then
+            cp google-services.json android/app/google-services.json
+            echo "SUCCESS: google-services.json copied to android/app/"
+          else
+            echo "WARNING: google-services.json not found in project root"
+          fi
+          
+          # Add Google Services plugin to root build.gradle
+          ROOT_GRADLE="android/build.gradle"
+          if [ -f "$ROOT_GRADLE" ]; then
+            # Check if already has google-services
+            if ! grep -q "com.google.gms:google-services" "$ROOT_GRADLE"; then
+              # Add to buildscript dependencies
+              sed -i '/dependencies {/a\        classpath "com.google.gms:google-services:4.4.2"' "$ROOT_GRADLE"
+              echo "Added Google Services plugin to root build.gradle"
+            fi
+          fi
+          
+          # Add Firebase to app build.gradle
+          APP_GRADLE="android/app/build.gradle"
+          if [ -f "$APP_GRADLE" ]; then
+            # Add google-services plugin at the bottom
+            if ! grep -q "com.google.gms.google-services" "$APP_GRADLE"; then
+              echo "" >> "$APP_GRADLE"
+              echo "// Firebase Cloud Messaging" >> "$APP_GRADLE"
+              echo "apply plugin: 'com.google.gms.google-services'" >> "$APP_GRADLE"
+              echo "Added google-services plugin to app build.gradle"
+            fi
+            
+            # Add Firebase Messaging dependency
+            if ! grep -q "firebase-messaging" "$APP_GRADLE"; then
+              # Find dependencies block and add Firebase
+              sed -i '/dependencies {/a\    implementation "com.google.firebase:firebase-messaging:24.0.0"' "$APP_GRADLE"
+              echo "Added Firebase Messaging dependency"
+            fi
+          fi
+          
+          echo "==== Firebase setup complete ===="
+          cat android/app/google-services.json 2>/dev/null | head -10 || true
+
       - name: Downgrade AGP to stable 8.7.3 (avoid 8.13.0 ParseLibraryResourcesTask bug)
         run: |
           set -euo pipefail
