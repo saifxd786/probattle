@@ -1244,6 +1244,13 @@ const LudoPage = () => {
             setPlayerMode(mode);
           }}
           onSwitchToJoin={() => setShowChallengesPage('join')}
+          onPlayWithBot={(amount, mode) => {
+            // Start bot matchmaking with selected entry and mode
+            setEntryAmount(amount);
+            setPlayerMode(mode);
+            setShowChallengesPage(null);
+            startMatchmaking();
+          }}
         />
       )}
       
