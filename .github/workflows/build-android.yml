@@ -446,12 +446,16 @@ jobs:
           echo "==== CI memory (before Gradle) ===="
           free -h || true
 
-          # Capture BOTH stdout + stderr into gradle-build.log
-          # Also preserve exit code even with piping to tee
+          # Capture BOTH stdout + stderr into gradle-build.log (no console spam → avoids log truncation)
           set +e
+          : > ../gradle-build.log
 
-          ./gradlew --no-daemon --max-workers=1 assembleDebug -x :app:processDebugNavigationResources -x :app:compileDebugNavigationResources --stacktrace --info --warning-mode all --console=plain 2>&1 | tee ../gradle-build.log
-          RC=${PIPESTATUS[0]}
+          echo "==== Running Gradle (output redirected to gradle-build.log) ===="
+          ./gradlew --no-daemon --max-workers=1 assembleDebug \
+            -x :app:processDebugNavigationResources \
+            -x :app:compileDebugNavigationResources \
+            --stacktrace --warning-mode all --console=plain >> ../gradle-build.log 2>&1
+          RC=$?
 
           # Retry once (this error can be flaky when Gradle/AAR transforms create a bad resource path)
           if [ "$RC" -ne 0 ]; then
@@ -491,14 +495,14 @@ jobs:
             ./gradlew --no-daemon --max-workers=1 --refresh-dependencies assembleDebug \
               -x :app:processDebugNavigationResources \
               -x :app:compileDebugNavigationResources \
-              --stacktrace --info --warning-mode all --console=plain 2>&1 | tee -a ../gradle-build.log
-            RC=${PIPESTATUS[0]}
+              --stacktrace --warning-mode all --console=plain >> ../gradle-build.log 2>&1
+            RC=$?
           fi
 
           # If still failing, re-run the failing task with --debug so logs include the offending path
           if [ "$RC" -ne 0 ]; then
             echo "==== Diagnostic re-run: :app:parseDebugLocalResources (debug) ====" | tee -a ../gradle-build.log
-            ./gradlew --no-daemon --max-workers=1 :app:parseDebugLocalResources --stacktrace --debug --console=plain 2>&1 | tee -a ../gradle-build.log
+            ./gradlew --no-daemon --max-workers=1 :app:parseDebugLocalResources --stacktrace --debug --console=plain >> ../gradle-build.log 2>&1 || true
           fi
 
           set -e
@@ -560,23 +564,16 @@ jobs:
           MARKER_RE='BUILD FAILED|FAILURE:|Build failed with an exception|What went wrong:|A problem occurred|Execution failed for task|Caused by:|AAR metadata|aar metadata|checkAarMetadata|CheckAarMetadata|issues were found when checking|Could not resolve|Could not determine|No matching variant|Unsupported|SDK location|Daemon disappeared|daemon disappeared|Killed|SIGKILL|exit code|OutOfMemory|OOM|!directory.isDirectory\(\)|ResourceDirectoryParser'
           LIKELY_RE='BUILD FAILED|FAILURE:|Build failed with an exception|What went wrong:|A problem occurred|Execution failed for task|Caused by:|\\bException\\b|\\bERROR\\b|\\bError:\\b|AAR metadata|aar metadata|checkAarMetadata|CheckAarMetadata|issues were found when checking|Could not resolve|Could not determine|Could not find|No matching variant|Unsupported|SDK location|compileSdkVersion|targetSdkVersion|Daemon disappeared|daemon disappeared|Killed|SIGKILL|exit code|OutOfMemory|OOM|!directory.isDirectory\(\)|ResourceDirectoryParser'
 
-          echo "==== gradle-build.log (best-effort failure context) ===="
-          if grep -nE "$MARKER_RE" "$CLEAN" >/dev/null 2>&1; then
-            L=$(grep -nE "$MARKER_RE" "$CLEAN" | tail -n 1 | cut -d: -f1)
-            START=$((L-320)); if [ "$START" -lt 1 ]; then START=1; fi
-            sed -n "${START},$((L+160))p" "$CLEAN" || true
-          else
-            echo "No common failure markers found."
-          fi
+           echo "==== gradle-build.log (LIKELY-CAUSE LINES - COPY THIS BLOCK) ===="
+           echo "====================================="
+           (grep -nE "$LIKELY_RE" "$CLEAN" | tail -n 220) || true
 
-          echo "==== gradle-build.log (likely-cause lines) ===="
-          grep -nE "$LIKELY_RE" "$CLEAN" | tail -n 320 || true
+           echo "==== gradle-build.log (NOT A DIRECTORY scan - tail) ===="
+           grep -n "NOT A DIRECTORY:" "$CLEAN" | tail -n 80 || true
 
-          echo "==== gradle-build.log (NOT A DIRECTORY scan) ===="
-          grep -n "NOT A DIRECTORY:" "$CLEAN" | tail -n 200 || true
-
-          echo "==== gradle-build.log (tail 2000) ===="
-          tail -n 2000 "$CLEAN" || true
+           echo "---------- Tail 400 (fallback) ----------"
+           tail -n 400 "$CLEAN" || true
+           echo "====================================="
 
           # Create a small text file you can download easily on mobile
           {
