@@ -386,8 +386,8 @@ const LudoPage = () => {
     );
   }
 
-  // Resume Game Dialog for Bot games
-  const showResumeDialog = hasActiveGame && activeGameData && gameState.phase === 'idle' && gameMode === 'select';
+  // Bot games no longer show resume dialog - they are auto-forfeited on exit
+  // Only Friend matches can be resumed
   
   // Resume Game Dialog for Friend games
   const showFriendResumeDialog = hasActiveFriendRoom && activeFriendRoomData && friendGameState.phase === 'idle' && gameMode === 'select';
