@@ -155,9 +155,10 @@ jobs:
           ROOT_GRADLE="android/build.gradle"
           VARS_GRADLE="android/variables.gradle"
           SETTINGS_GRADLE="android/settings.gradle"
+          CAPACITOR_GRADLE="node_modules/@capacitor/android/capacitor/build.gradle"
 
           echo "==== BEFORE patching (AGP) ===="
-          for F in "$ROOT_GRADLE" "$VARS_GRADLE" "$SETTINGS_GRADLE"; do
+          for F in "$ROOT_GRADLE" "$VARS_GRADLE" "$SETTINGS_GRADLE" "$CAPACITOR_GRADLE"; do
             echo "--- $F ---"
             (test -f "$F" && cat "$F") || echo "(missing)"
           done
@@ -180,14 +181,19 @@ jobs:
             sed -i -E "s/(id\\s+['\"]com\\.android\\.(application|library)['\"]\\s+version\\s+['\"])[0-9]+\\.[0-9]+\\.[0-9]+/\\18.7.3/g" "$SETTINGS_GRADLE" || true
           fi
 
+          # Patch Capacitor Android module build.gradle (this is where AGP 8.13.0 usually lives)
+          if [ -f "$CAPACITOR_GRADLE" ]; then
+            sed -i -E "s/(com\\.android\\.tools\\.build:gradle:)[0-9]+\\.[0-9]+\\.[0-9]+/\\18.7.3/g" "$CAPACITOR_GRADLE"
+          fi
+
           echo "==== AFTER patching (AGP) ===="
-          for F in "$ROOT_GRADLE" "$VARS_GRADLE" "$SETTINGS_GRADLE"; do
+          for F in "$ROOT_GRADLE" "$VARS_GRADLE" "$SETTINGS_GRADLE" "$CAPACITOR_GRADLE"; do
             echo "--- $F ---"
             (test -f "$F" && cat "$F") || echo "(missing)"
           done
 
           # Verify AGP 8.7.3 is now present
-          if grep -q "8.7.3" "$ROOT_GRADLE" 2>/dev/null || grep -q "8.7.3" "$VARS_GRADLE" 2>/dev/null || grep -q "8.7.3" "$SETTINGS_GRADLE" 2>/dev/null; then
+          if grep -q "8.7.3" "$ROOT_GRADLE" 2>/dev/null || grep -q "8.7.3" "$VARS_GRADLE" 2>/dev/null || grep -q "8.7.3" "$SETTINGS_GRADLE" 2>/dev/null || grep -q "8.7.3" "$CAPACITOR_GRADLE" 2>/dev/null; then
             echo "SUCCESS: AGP 8.7.3 confirmed"
           else
             echo "WARNING: AGP 8.7.3 not found after patching - build may fail"
@@ -353,6 +359,26 @@ jobs:
           if [ -f android/app/build.gradle ]; then
             echo "--- android/app/build.gradle ---"
             grep -nE "compileSdk|compileSdkVersion|targetSdk|targetSdkVersion" android/app/build.gradle || true
+          fi
+
+      - name: Patch Capacitor SystemBars for SDK 34 (CI)
+        run: |
+          set -euo pipefail
+          # Capacitor 8 references Build.VERSION_CODES.VANILLA_ICE_CREAM (API 35).
+          # When we compile with Android SDK 34, that constant doesn't exist → "cannot find symbol".
+          # Using the numeric API level keeps runtime behavior the same and fixes compilation.
+          TARGET="node_modules/@capacitor/android/capacitor/src/main/java/com/getcapacitor/plugin/SystemBars.java"
+
+          if [ -f "$TARGET" ]; then
+            echo "==== Before patch (VANILLA_ICE_CREAM occurrences) ===="
+            grep -n "VANILLA_ICE_CREAM" "$TARGET" || true
+
+            sed -i "s/Build\\.VERSION_CODES\\.VANILLA_ICE_CREAM/35/g" "$TARGET"
+
+            echo "==== After patch (VANILLA_ICE_CREAM occurrences) ===="
+            grep -n "VANILLA_ICE_CREAM" "$TARGET" || true
+          else
+            echo "WARN: $TARGET not found; skipping patch"
           fi
 
       - name: Android platform sanity (CI)
