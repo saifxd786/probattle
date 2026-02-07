@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { RefreshCw, Sparkles, Download } from 'lucide-react';
+import { RefreshCw, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   AlertDialog,
@@ -9,6 +9,7 @@ import {
   AlertDialogTitle,
   AlertDialogDescription,
 } from '@/components/ui/alert-dialog';
+import probattleLogo from '@/assets/probattle-logo.jpg';
 import { Progress } from '@/components/ui/progress';
 import { Capacitor } from '@capacitor/core';
 
@@ -59,12 +60,14 @@ const ForceUpdatePopup = ({ isOpen, onUpdate, isUpdating }: ForceUpdatePopupProp
                 scale: { duration: 0.3 },
                 rotate: { duration: 1, repeat: isUpdating ? Infinity : 0, ease: 'linear' }
               }}
-              className="p-4 rounded-full bg-gradient-to-br from-primary/20 to-primary/10"
+              className="w-20 h-20 rounded-full overflow-hidden border-2 border-primary/30 shadow-lg shadow-primary/20"
             >
               {isUpdating ? (
-                <Download className="w-8 h-8 text-primary" />
+                <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/20 to-primary/10">
+                  <Download className="w-8 h-8 text-primary" />
+                </div>
               ) : (
-                <Sparkles className="w-8 h-8 text-primary" />
+                <img src={probattleLogo} alt="ProBattle" className="w-full h-full object-cover" />
               )}
             </motion.div>
           </div>
