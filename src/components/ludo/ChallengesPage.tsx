@@ -625,52 +625,55 @@ const ChallengesPage = ({
                             </div>
                           )}
                           
-                          <div className="flex items-center gap-3">
-                            {/* Player Avatars - Stack for multiple players */}
-                            <div className="relative flex items-center">
-                              {/* Creator Avatar */}
-                              <div className="relative z-10">
-                                <Avatar className="w-11 h-11 rounded-xl border-2 border-gray-900">
+                          <div className="flex items-start gap-2">
+                            {/* Creator Avatar with name */}
+                            <div className="flex flex-col items-center gap-0.5 shrink-0">
+                              <div className="relative">
+                                <Avatar className="w-10 h-10 rounded-xl border-2 border-gray-800">
                                   <AvatarImage src={avatarUrl} alt={challenge.creator?.username || 'Player'} />
-                                  <AvatarFallback className="bg-gradient-to-br from-gray-700 to-gray-800 rounded-xl">
+                                  <AvatarFallback className="bg-gradient-to-br from-gray-700 to-gray-800 rounded-xl text-xs">
                                     {(challenge.creator?.username || 'P').slice(0, 2).toUpperCase()}
                                   </AvatarFallback>
                                 </Avatar>
                                 {challenge.waitingTime < 30 && !isOwnChallenge && (
-                                  <div className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-orange-500 flex items-center justify-center z-20">
-                                    <Flame className="w-2.5 h-2.5 text-white" />
+                                  <div className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-orange-500 flex items-center justify-center z-20">
+                                    <Flame className="w-2 h-2 text-white" />
                                   </div>
                                 )}
                               </div>
-                              
-                              {/* Companion Avatars (for 1v1v1 and 1v1v1v1) */}
-                              {(challenge as any).companions?.map((companion: { username: string; avatar_url: string }, idx: number) => (
-                                <div key={idx} className="relative -ml-3" style={{ zIndex: 9 - idx }}>
-                                  <Avatar className="w-9 h-9 rounded-lg border-2 border-gray-900">
-                                    <AvatarImage src={companion.avatar_url} alt={companion.username} />
-                                    <AvatarFallback className="bg-gradient-to-br from-gray-600 to-gray-700 rounded-lg text-[10px]">
-                                      {companion.username.slice(0, 2).toUpperCase()}
-                                    </AvatarFallback>
-                                  </Avatar>
-                                </div>
-                              ))}
-                              
-                              {/* "You" slot indicator for modes > 2 */}
-                              {challenge.player_mode > 2 && (
-                                <div className="relative -ml-2" style={{ zIndex: 5 }}>
-                                  <div className="w-8 h-8 rounded-lg border-2 border-dashed border-emerald-500/50 bg-emerald-500/10 flex items-center justify-center">
-                                    <span className="text-[8px] font-bold text-emerald-400">YOU</span>
-                                  </div>
-                                </div>
-                              )}
+                              <span className="text-[8px] text-gray-400 max-w-[48px] truncate text-center">
+                                {isOwnChallenge ? 'You' : (challenge.creator?.username?.split('_')[0] || 'Player')}
+                              </span>
                             </div>
                             
-                            {/* Info */}
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2">
-                                <p className="font-semibold text-white text-sm truncate">
-                                  {isOwnChallenge ? 'You' : (challenge.creator?.username || 'Player')}
-                                </p>
+                            {/* Companion Players with names (for 1v1v1 and 1v1v1v1) */}
+                            {(challenge as any).companions?.map((companion: { username: string; avatar_url: string }, idx: number) => (
+                              <div key={idx} className="flex flex-col items-center gap-0.5 shrink-0">
+                                <Avatar className="w-8 h-8 rounded-lg border-2 border-gray-800">
+                                  <AvatarImage src={companion.avatar_url} alt={companion.username} />
+                                  <AvatarFallback className="bg-gradient-to-br from-gray-600 to-gray-700 rounded-lg text-[9px]">
+                                    {companion.username.slice(0, 2).toUpperCase()}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <span className="text-[8px] text-gray-500 max-w-[40px] truncate text-center">
+                                  {companion.username.split('_')[0]}
+                                </span>
+                              </div>
+                            ))}
+                            
+                            {/* "You" slot indicator for modes > 2 */}
+                            {challenge.player_mode > 2 && !isOwnChallenge && (
+                              <div className="flex flex-col items-center gap-0.5 shrink-0">
+                                <div className="w-8 h-8 rounded-lg border-2 border-dashed border-emerald-500/40 bg-emerald-500/10 flex items-center justify-center">
+                                  <span className="text-[7px] font-bold text-emerald-400">+1</span>
+                                </div>
+                                <span className="text-[8px] text-emerald-400 font-medium">You</span>
+                              </div>
+                            )}
+                            
+                            {/* Info & Actions */}
+                            <div className="flex-1 min-w-0 ml-1">
+                              <div className="flex items-center gap-1.5 flex-wrap">
                                 <span className={cn(
                                   "px-1.5 py-0.5 rounded text-[9px] font-bold flex items-center gap-0.5",
                                   modeColors.bg, modeColors.text
@@ -678,13 +681,12 @@ const ChallengesPage = ({
                                   <ModeIcon className="w-2.5 h-2.5" />
                                   {getModeLabel(challenge.player_mode)}
                                 </span>
-                              </div>
-                              <div className="flex items-center gap-2 mt-0.5">
-                                <span className="text-[10px] text-gray-500 flex items-center gap-1">
-                                  <Clock className="w-3 h-3" />
+                                <span className="text-[9px] text-gray-500 flex items-center gap-0.5">
+                                  <Clock className="w-2.5 h-2.5" />
                                   {formatWaitTime(challenge.waitingTime)}
                                 </span>
-                                <span className="text-gray-700">•</span>
+                              </div>
+                              <div className="flex items-center gap-1.5 mt-1">
                                 <span className="text-[10px] text-emerald-400 font-medium">
                                   Win ₹{reward.toFixed(0)}
                                 </span>
@@ -692,16 +694,16 @@ const ChallengesPage = ({
                             </div>
                             
                             {/* Entry & Accept */}
-                            <div className="flex flex-col items-end gap-1.5">
+                            <div className="flex flex-col items-end gap-1 shrink-0">
                               <div className="text-right">
-                                <p className="text-[9px] text-gray-500">Entry</p>
+                                <p className="text-[8px] text-gray-500">Entry</p>
                                 <p className="font-bold text-white text-sm">₹{challenge.entry_amount}</p>
                               </div>
                               {isOwnChallenge ? (
                                 <motion.button
                                   whileTap={{ scale: 0.95 }}
                                   onClick={handleCancelChallenge}
-                                  className="px-3 py-1.5 rounded-lg text-xs font-bold bg-red-500/20 border border-red-500/30 text-red-400"
+                                  className="px-2.5 py-1 rounded-lg text-[10px] font-bold bg-red-500/20 border border-red-500/30 text-red-400"
                                 >
                                   Cancel
                                 </motion.button>
