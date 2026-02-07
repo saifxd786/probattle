@@ -141,32 +141,61 @@ jobs:
       - name: Pin AndroidX to SDK 35-compatible versions (CI)
         run: |
           set -euo pipefail
+
+          # ========== PATCH ROOT build.gradle ==========
           ROOT_GRADLE="android/build.gradle"
+          APP_GRADLE="android/app/build.gradle"
+
+          FORCE_DEPS='
+            "androidx.core:core:1.15.0",
+            "androidx.core:core-ktx:1.15.0",
+            "androidx.activity:activity:1.9.3",
+            "androidx.activity:activity-ktx:1.9.3",
+            "androidx.activity:activity-compose:1.9.3",
+            "androidx.fragment:fragment:1.8.5",
+            "androidx.fragment:fragment-ktx:1.8.5",
+            "androidx.appcompat:appcompat:1.7.0",
+            "androidx.lifecycle:lifecycle-runtime:2.8.7",
+            "androidx.lifecycle:lifecycle-runtime-ktx:2.8.7",
+            "androidx.lifecycle:lifecycle-common:2.8.7",
+            "androidx.savedstate:savedstate:1.2.1",
+            "androidx.savedstate:savedstate-ktx:1.2.1"
+          '
+
           if [ -f "$ROOT_GRADLE" ]; then
-            echo "" >> "$ROOT_GRADLE"
-            echo "// CI Workaround: Force ALL AndroidX to SDK 35-compatible versions" >> "$ROOT_GRADLE"
-            echo "subprojects { proj ->" >> "$ROOT_GRADLE"
-            echo "  proj.configurations.all { cfg ->" >> "$ROOT_GRADLE"
-            echo "    cfg.resolutionStrategy.force(" >> "$ROOT_GRADLE"
-            echo "      \"androidx.core:core:1.15.0\"," >> "$ROOT_GRADLE"
-            echo "      \"androidx.core:core-ktx:1.15.0\"," >> "$ROOT_GRADLE"
-            echo "      \"androidx.activity:activity:1.9.3\"," >> "$ROOT_GRADLE"
-            echo "      \"androidx.activity:activity-ktx:1.9.3\"," >> "$ROOT_GRADLE"
-            echo "      \"androidx.activity:activity-compose:1.9.3\"," >> "$ROOT_GRADLE"
-            echo "      \"androidx.fragment:fragment:1.8.5\"," >> "$ROOT_GRADLE"
-            echo "      \"androidx.fragment:fragment-ktx:1.8.5\"," >> "$ROOT_GRADLE"
-            echo "      \"androidx.appcompat:appcompat:1.7.0\"," >> "$ROOT_GRADLE"
-            echo "      \"androidx.lifecycle:lifecycle-runtime:2.8.7\"," >> "$ROOT_GRADLE"
-            echo "      \"androidx.lifecycle:lifecycle-runtime-ktx:2.8.7\"," >> "$ROOT_GRADLE"
-            echo "      \"androidx.lifecycle:lifecycle-common:2.8.7\"," >> "$ROOT_GRADLE"
-            echo "      \"androidx.savedstate:savedstate:1.2.1\"," >> "$ROOT_GRADLE"
-            echo "      \"androidx.savedstate:savedstate-ktx:1.2.1\"" >> "$ROOT_GRADLE"
-            echo "    )" >> "$ROOT_GRADLE"
-            echo "  }" >> "$ROOT_GRADLE"
-            echo "}" >> "$ROOT_GRADLE"
-            echo "Pinned ALL AndroidX libs to SDK 35-compatible versions"
+            cat >> "$ROOT_GRADLE" << ROOTEOF
+
+          // CI Workaround: Force ALL AndroidX to SDK 35-compatible versions (root level)
+          subprojects {
+            configurations.all {
+              resolutionStrategy.force(
+                $FORCE_DEPS
+              )
+            }
+          }
+          ROOTEOF
+            echo "==== Patched ROOT build.gradle ===="
+            tail -30 "$ROOT_GRADLE"
           else
-            echo "WARN: $ROOT_GRADLE not found; skipping AndroidX pin"
+            echo "ERROR: $ROOT_GRADLE not found!"
+            exit 1
+          fi
+
+          # ========== PATCH APP build.gradle ==========
+          if [ -f "$APP_GRADLE" ]; then
+            cat >> "$APP_GRADLE" << APPEOF
+
+          // CI Workaround: Force ALL AndroidX to SDK 35-compatible versions (app level)
+          configurations.all {
+            resolutionStrategy.force(
+              $FORCE_DEPS
+            )
+          }
+          APPEOF
+            echo "==== Patched APP build.gradle ===="
+            tail -30 "$APP_GRADLE"
+          else
+            echo "WARN: $APP_GRADLE not found; skipping app-level pin"
           fi
 
       # CRITICAL: Pin Gradle wrapper AFTER cap add android (which creates its own wrapper)
