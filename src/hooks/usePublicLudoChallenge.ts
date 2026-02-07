@@ -118,15 +118,20 @@ export const usePublicLudoChallenge = () => {
         return { success: false, error: 'Insufficient balance' };
       }
 
-      // Check if user already has a waiting challenge
-      const { data: existing } = await supabase
+      // Check if user already has a NON-EXPIRED waiting challenge
+      // (The join list filters out expired challenges, so this check must match that behavior)
+      const now = new Date().toISOString();
+      const { data: existing, error: existingError } = await supabase
         .from('ludo_public_challenges')
         .select('id')
         .eq('creator_id', user.id)
         .eq('status', 'waiting')
-        .single();
+        .gt('expires_at', now)
+        .limit(1);
 
-      if (existing) {
+      if (existingError) throw existingError;
+
+      if (existing && existing.length > 0) {
         toast({
           title: "Challenge Already Active",
           description: "You already have an active challenge",
