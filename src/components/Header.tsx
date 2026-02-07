@@ -1,4 +1,4 @@
-import { Menu, User, LogOut, Download, Smartphone, RefreshCw, RotateCcw, Info } from 'lucide-react';
+import { Menu, User, LogOut, Download, RefreshCw, RotateCcw, Info } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useState, useEffect } from 'react';
@@ -8,12 +8,7 @@ import NotificationBell from '@/components/NotificationBell';
 import SupportChat from '@/components/SupportChat';
 import UpdatePopup from '@/components/UpdatePopup';
 import UpdateCheckPopup from '@/components/UpdateCheckPopup';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+import DownloadAppDialog from '@/components/DownloadAppDialog';
 import { useUpdateAvailable } from '@/hooks/useUpdateAvailable';
 import { APP_VERSION } from '@/constants/appVersion';
 // Telegram SVG Icon
@@ -26,6 +21,7 @@ const TelegramIcon = () => (
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [showInstallPrompt, setShowInstallPrompt] = useState(false);
+  const [showDownloadDialog, setShowDownloadDialog] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [showUpdatePopup, setShowUpdatePopup] = useState(false);
   const [showCheckPopup, setShowCheckPopup] = useState(false);
@@ -93,36 +89,15 @@ const Header = () => {
           {/* Actions */}
           <div className="flex items-center gap-2">
             {showInstallPrompt && isMobile && (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="flex gap-1 px-2 h-8 text-xs"
-                  >
-                    <Download className="w-3 h-3" />
-                    <span className="hidden xs:inline">Install</span>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48">
-                  <DropdownMenuItem asChild>
-                    <Link to="/install" className="flex items-center gap-2 cursor-pointer">
-                      <Smartphone className="w-4 h-4" />
-                      <span>PWA Install</span>
-                    </Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <a 
-                      href="/probattle.apk" 
-                      download="ProBattle.apk"
-                      className="flex items-center gap-2 cursor-pointer"
-                    >
-                      <Download className="w-4 h-4" />
-                      <span>Download APK</span>
-                    </a>
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="flex gap-1 px-2 h-8 text-xs"
+                onClick={() => setShowDownloadDialog(true)}
+              >
+                <Download className="w-3 h-3" />
+                <span className="hidden xs:inline">Install</span>
+              </Button>
             )}
 
             {/* Update Available Button */}
@@ -290,6 +265,12 @@ const Header = () => {
         isChecking={isChecking}
         updateAvailable={updateAvailable}
         onApplyUpdate={applyUpdate}
+      />
+
+      {/* Download App Dialog - Android/iOS selection */}
+      <DownloadAppDialog 
+        open={showDownloadDialog} 
+        onOpenChange={setShowDownloadDialog} 
       />
     </header>
   );

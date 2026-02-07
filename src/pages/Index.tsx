@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { ChevronRight, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -9,6 +10,7 @@ import GameCard from '@/components/GameCard';
 import HowItWorks from '@/components/HowItWorks';
 import TrustSection from '@/components/TrustSection';
 import PullToRefresh from '@/components/PullToRefresh';
+import DownloadAppDialog from '@/components/DownloadAppDialog';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePullToRefresh } from '@/hooks/usePullToRefresh';
 import { useGameAvailability } from '@/hooks/useGameAvailability';
@@ -25,6 +27,7 @@ const Index = () => {
   const { user } = useAuth();
   const { handleRefresh } = usePullToRefresh();
   const { availability, isLoading: isLoadingAvailability } = useGameAvailability();
+  const [showDownloadDialog, setShowDownloadDialog] = useState(false);
 
   // Games configuration with availability status
   const games = [
@@ -77,12 +80,15 @@ const Index = () => {
                   <ChevronRight className="w-5 h-5" />
                 </Button>
               </Link>
-              <a href="/probattle.apk" download="ProBattle.apk">
-                <Button variant="outline" size="xl" className="gap-2">
-                  <Download className="w-5 h-5" />
-                  Download App
-                </Button>
-              </a>
+              <Button 
+                variant="outline" 
+                size="xl" 
+                className="gap-2"
+                onClick={() => setShowDownloadDialog(true)}
+              >
+                <Download className="w-5 h-5" />
+                Download App
+              </Button>
               {!user && (
                 <Link to="/auth">
                   <Button variant="outline" size="xl">
@@ -157,6 +163,7 @@ const Index = () => {
       <Footer />
       <BottomNav />
       {user && <SupportChat />}
+      <DownloadAppDialog open={showDownloadDialog} onOpenChange={setShowDownloadDialog} />
     </div>
     </PullToRefresh>
   );
