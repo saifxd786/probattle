@@ -149,11 +149,14 @@ jobs:
             echo "  proj.configurations.all { cfg ->" >> "$ROOT_GRADLE"
             echo "    cfg.resolutionStrategy.force(" >> "$ROOT_GRADLE"
             echo "      \"androidx.core:core:1.15.0\"," >> "$ROOT_GRADLE"
-            echo "      \"androidx.core:core-ktx:1.15.0\"" >> "$ROOT_GRADLE"
+            echo "      \"androidx.core:core-ktx:1.15.0\"," >> "$ROOT_GRADLE"
+            echo "      \"androidx.activity:activity:1.9.3\"," >> "$ROOT_GRADLE"
+            echo "      \"androidx.activity:activity-ktx:1.9.3\"," >> "$ROOT_GRADLE"
+            echo "      \"androidx.activity:activity-compose:1.9.3\"" >> "$ROOT_GRADLE"
             echo "    )" >> "$ROOT_GRADLE"
             echo "  }" >> "$ROOT_GRADLE"
             echo "}" >> "$ROOT_GRADLE"
-            echo "Pinned AndroidX core to 1.15.0 in $ROOT_GRADLE"
+            echo "Pinned AndroidX core+activity to SDK 35-compatible versions in $ROOT_GRADLE"
           else
             echo "WARN: $ROOT_GRADLE not found; skipping AndroidX pin"
           fi
