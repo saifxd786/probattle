@@ -381,6 +381,52 @@ jobs:
             echo "WARN: $TARGET not found; skipping patch"
           fi
 
+      - name: Generate Android App Icons (CI)
+        run: |
+          set -euo pipefail
+          echo "Installing ImageMagick for icon generation..."
+          sudo apt-get update && sudo apt-get install -y imagemagick
+          
+          # Source logo
+          LOGO="public/probattle-logo.jpg"
+          
+          if [ -f "$LOGO" ]; then
+            echo "Generating Android launcher icons from $LOGO..."
+            
+            # Create mipmap directories if they don't exist
+            mkdir -p android/app/src/main/res/mipmap-mdpi
+            mkdir -p android/app/src/main/res/mipmap-hdpi
+            mkdir -p android/app/src/main/res/mipmap-xhdpi
+            mkdir -p android/app/src/main/res/mipmap-xxhdpi
+            mkdir -p android/app/src/main/res/mipmap-xxxhdpi
+            
+            # Generate icons at required sizes
+            convert "$LOGO" -resize 48x48 android/app/src/main/res/mipmap-mdpi/ic_launcher.png
+            convert "$LOGO" -resize 72x72 android/app/src/main/res/mipmap-hdpi/ic_launcher.png
+            convert "$LOGO" -resize 96x96 android/app/src/main/res/mipmap-xhdpi/ic_launcher.png
+            convert "$LOGO" -resize 144x144 android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png
+            convert "$LOGO" -resize 192x192 android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
+            
+            # Also create round icons (same as regular for now)
+            cp android/app/src/main/res/mipmap-mdpi/ic_launcher.png android/app/src/main/res/mipmap-mdpi/ic_launcher_round.png
+            cp android/app/src/main/res/mipmap-hdpi/ic_launcher.png android/app/src/main/res/mipmap-hdpi/ic_launcher_round.png
+            cp android/app/src/main/res/mipmap-xhdpi/ic_launcher.png android/app/src/main/res/mipmap-xhdpi/ic_launcher_round.png
+            cp android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png android/app/src/main/res/mipmap-xxhdpi/ic_launcher_round.png
+            cp android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_round.png
+            
+            # Also create foreground icons for adaptive icons
+            cp android/app/src/main/res/mipmap-mdpi/ic_launcher.png android/app/src/main/res/mipmap-mdpi/ic_launcher_foreground.png
+            cp android/app/src/main/res/mipmap-hdpi/ic_launcher.png android/app/src/main/res/mipmap-hdpi/ic_launcher_foreground.png
+            cp android/app/src/main/res/mipmap-xhdpi/ic_launcher.png android/app/src/main/res/mipmap-xhdpi/ic_launcher_foreground.png
+            cp android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png android/app/src/main/res/mipmap-xxhdpi/ic_launcher_foreground.png
+            cp android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_foreground.png
+            
+            echo "SUCCESS: Android icons generated"
+            ls -la android/app/src/main/res/mipmap-*/
+          else
+            echo "WARNING: Logo not found at $LOGO"
+          fi
+
       - name: Android platform sanity (CI)
         run: |
           set -euo pipefail
