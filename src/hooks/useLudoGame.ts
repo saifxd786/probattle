@@ -619,7 +619,9 @@ export const useLudoGame = () => {
     }
   }, [user, activeGameData, toast]);
 
-  const startMatchmaking = useCallback(async (presetBots?: { name: string; avatar: string }[]) => {
+  const startMatchmaking = useCallback(async (presetBots?: { name: string; avatar: string }[], overridePlayerMode?: 2 | 3 | 4) => {
+    // Use override mode if provided (for joining challenges), otherwise use state
+    const effectivePlayerMode = overridePlayerMode || playerMode;
     if (!user) {
       toast({ title: 'Please login to play', variant: 'destructive' });
       return;
@@ -676,14 +678,14 @@ export const useLudoGame = () => {
         case 4: return 3.5; // 3.5x for 1v1v1v1
       }
     };
-    const rewardAmount = entryAmount * getRewardMultiplier(playerMode);
+    const rewardAmount = entryAmount * getRewardMultiplier(effectivePlayerMode);
     const { data: match, error: matchError } = await supabase
       .from('ludo_matches')
       .insert({
         created_by: user.id,
         entry_amount: entryAmount,
         reward_amount: rewardAmount,
-        player_count: playerMode,
+        player_count: effectivePlayerMode,
         status: 'waiting',
         difficulty: settings.difficulty
       })
@@ -765,7 +767,7 @@ export const useLudoGame = () => {
     const usedAvatars: number[] = [];
     let totalBotJoinTime = 0;
     
-    for (let i = 1; i < playerMode; i++) {
+    for (let i = 1; i < effectivePlayerMode; i++) {
       // Each subsequent bot takes the base delay + random variance
       const botJoinDelay = delays.botJoinBase + Math.random() * delays.botJoinRandom;
       totalBotJoinTime += botJoinDelay;
