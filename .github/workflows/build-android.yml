@@ -400,28 +400,44 @@ jobs:
             mkdir -p android/app/src/main/res/mipmap-xxhdpi
             mkdir -p android/app/src/main/res/mipmap-xxxhdpi
             
-            # Generate icons at required sizes
-            convert "$LOGO" -resize 48x48 android/app/src/main/res/mipmap-mdpi/ic_launcher.png
-            convert "$LOGO" -resize 72x72 android/app/src/main/res/mipmap-hdpi/ic_launcher.png
-            convert "$LOGO" -resize 96x96 android/app/src/main/res/mipmap-xhdpi/ic_launcher.png
-            convert "$LOGO" -resize 144x144 android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png
-            convert "$LOGO" -resize 192x192 android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
+            # Generate properly centered icons with background
+            # Logo ko 70% size rakhenge aur dark background pe center karenge
             
-            # Also create round icons (same as regular for now)
-            cp android/app/src/main/res/mipmap-mdpi/ic_launcher.png android/app/src/main/res/mipmap-mdpi/ic_launcher_round.png
-            cp android/app/src/main/res/mipmap-hdpi/ic_launcher.png android/app/src/main/res/mipmap-hdpi/ic_launcher_round.png
-            cp android/app/src/main/res/mipmap-xhdpi/ic_launcher.png android/app/src/main/res/mipmap-xhdpi/ic_launcher_round.png
-            cp android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png android/app/src/main/res/mipmap-xxhdpi/ic_launcher_round.png
-            cp android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_round.png
+            # mdpi (48x48) - logo 34x34 centered
+            convert -size 48x48 xc:'#0a0a0a' \( "$LOGO" -resize 34x34 -gravity center \) -gravity center -composite android/app/src/main/res/mipmap-mdpi/ic_launcher.png
             
-            # Also create foreground icons for adaptive icons
-            cp android/app/src/main/res/mipmap-mdpi/ic_launcher.png android/app/src/main/res/mipmap-mdpi/ic_launcher_foreground.png
-            cp android/app/src/main/res/mipmap-hdpi/ic_launcher.png android/app/src/main/res/mipmap-hdpi/ic_launcher_foreground.png
-            cp android/app/src/main/res/mipmap-xhdpi/ic_launcher.png android/app/src/main/res/mipmap-xhdpi/ic_launcher_foreground.png
-            cp android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png android/app/src/main/res/mipmap-xxhdpi/ic_launcher_foreground.png
-            cp android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_foreground.png
+            # hdpi (72x72) - logo 50x50 centered
+            convert -size 72x72 xc:'#0a0a0a' \( "$LOGO" -resize 50x50 -gravity center \) -gravity center -composite android/app/src/main/res/mipmap-hdpi/ic_launcher.png
             
-            echo "SUCCESS: Android icons generated"
+            # xhdpi (96x96) - logo 67x67 centered
+            convert -size 96x96 xc:'#0a0a0a' \( "$LOGO" -resize 67x67 -gravity center \) -gravity center -composite android/app/src/main/res/mipmap-xhdpi/ic_launcher.png
+            
+            # xxhdpi (144x144) - logo 100x100 centered
+            convert -size 144x144 xc:'#0a0a0a' \( "$LOGO" -resize 100x100 -gravity center \) -gravity center -composite android/app/src/main/res/mipmap-xxhdpi/ic_launcher.png
+            
+            # xxxhdpi (192x192) - logo 134x134 centered
+            convert -size 192x192 xc:'#0a0a0a' \( "$LOGO" -resize 134x134 -gravity center \) -gravity center -composite android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
+            
+            # Round icons with circular mask
+            for density in mdpi hdpi xhdpi xxhdpi xxxhdpi; do
+              convert android/app/src/main/res/mipmap-${density}/ic_launcher.png \
+                \( +clone -alpha extract -draw 'fill black polygon 0,0 0,15 15,0 fill white circle 15,15 15,0' \
+                \( +clone -flip \) -compose Multiply -composite \
+                \( +clone -flop \) -compose Multiply -composite \) \
+                -alpha off -compose CopyOpacity -composite \
+                android/app/src/main/res/mipmap-${density}/ic_launcher_round.png 2>/dev/null || \
+              cp android/app/src/main/res/mipmap-${density}/ic_launcher.png android/app/src/main/res/mipmap-${density}/ic_launcher_round.png
+            done
+            
+            # Foreground icons for adaptive icons (108dp with 18dp safe zone = 72dp visible)
+            # Foreground needs larger canvas with logo centered
+            convert -size 108x108 xc:transparent \( "$LOGO" -resize 72x72 -gravity center \) -gravity center -composite android/app/src/main/res/mipmap-mdpi/ic_launcher_foreground.png
+            convert -size 162x162 xc:transparent \( "$LOGO" -resize 108x108 -gravity center \) -gravity center -composite android/app/src/main/res/mipmap-hdpi/ic_launcher_foreground.png
+            convert -size 216x216 xc:transparent \( "$LOGO" -resize 144x144 -gravity center \) -gravity center -composite android/app/src/main/res/mipmap-xhdpi/ic_launcher_foreground.png
+            convert -size 324x324 xc:transparent \( "$LOGO" -resize 216x216 -gravity center \) -gravity center -composite android/app/src/main/res/mipmap-xxhdpi/ic_launcher_foreground.png
+            convert -size 432x432 xc:transparent \( "$LOGO" -resize 288x288 -gravity center \) -gravity center -composite android/app/src/main/res/mipmap-xxxhdpi/ic_launcher_foreground.png
+            
+            echo "SUCCESS: Android icons generated with proper centering"
             ls -la android/app/src/main/res/mipmap-*/
           else
             echo "WARNING: Logo not found at $LOGO"
