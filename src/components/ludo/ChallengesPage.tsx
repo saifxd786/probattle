@@ -353,15 +353,71 @@ const ChallengesPage = ({
   );
   
   // Update bot waiting times every second
+  // Remove bots after 5 minutes (300s) and replace with new ones
   useEffect(() => {
+    const MAX_WAIT_TIME = 300; // 5 minutes max
+    
     const interval = setInterval(() => {
-      setBotChallenges(prev => prev.map(bot => ({
-        ...bot,
-        waitingTime: bot.waitingTime + 1,
-      })));
+      setBotChallenges(prev => {
+        const seed = getDailyBotSeed();
+        const currentTime = Date.now();
+        
+        return prev.map((bot, index) => {
+          const newWaitTime = bot.waitingTime + 1;
+          
+          // If bot exceeded 5 minutes, replace with fresh bot
+          if (newWaitTime > MAX_WAIT_TIME) {
+            // Generate new random waiting time (5-60 seconds)
+            const newBaseWait = Math.floor(seededRandom(seed + currentTime, index * 11) * 55) + 5;
+            
+            // Pick a new random name
+            const newNameIndex = Math.floor(seededRandom(seed + currentTime, index * 13) * BOT_NAMES.length);
+            const newName = BOT_NAMES[newNameIndex];
+            
+            // Pick new avatar
+            const newAvatarIndex = Math.floor(seededRandom(seed + currentTime, index * 17) * LUDO_AVATARS.length);
+            
+            // Pick new entry amount
+            const newAmountIndex = Math.floor(seededRandom(seed + currentTime, index * 19) * BOT_ENTRY_AMOUNTS.length);
+            const newAmount = Math.max(BOT_ENTRY_AMOUNTS[newAmountIndex], minEntryAmount);
+            
+            // Pick new mode
+            const modes: (2 | 3 | 4)[] = [2, 2, 2, 2, 3, 3, 4];
+            const newModeIndex = Math.floor(seededRandom(seed + currentTime, index * 23) * modes.length);
+            const newMode = modes[newModeIndex];
+            
+            // Generate companions for new mode
+            const companionCount = newMode - 2;
+            const newCompanions: CompanionPlayer[] = [];
+            for (let j = 0; j < companionCount; j++) {
+              const compNameIdx = Math.floor(seededRandom(seed + currentTime, index * 100 + j * 29) * BOT_NAMES.length);
+              let compName = BOT_NAMES[compNameIdx];
+              if (compName === newName) compName = BOT_NAMES[(compNameIdx + 1) % BOT_NAMES.length];
+              const compAvatarIdx = Math.floor(seededRandom(seed + currentTime, index * 100 + j * 31) * LUDO_AVATARS.length);
+              newCompanions.push({ username: compName, avatar_url: LUDO_AVATARS[compAvatarIdx] });
+            }
+            
+            return {
+              ...bot,
+              id: `bot-${seed}-${currentTime}-${index}`,
+              entry_amount: newAmount,
+              player_mode: newMode,
+              waitingTime: newBaseWait,
+              creator: {
+                username: newName,
+                avatar_url: LUDO_AVATARS[newAvatarIndex],
+              },
+              companions: newCompanions.length > 0 ? newCompanions : undefined,
+            };
+          }
+          
+          return { ...bot, waitingTime: newWaitTime };
+        });
+      });
     }, 1000);
+    
     return () => clearInterval(interval);
-  }, []);
+  }, [minEntryAmount]);
   
   // Regenerate bots on refresh
   const handleRefresh = async () => {
