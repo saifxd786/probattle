@@ -380,16 +380,17 @@ jobs:
 
           # Retry once (this error can be flaky when Gradle/AAR transforms create a bad resource path)
           if [ "$RC" -ne 0 ]; then
-            echo "==== Retry once after cleaning transform caches (parseDebugLocalResources) ====" | tee -a ../gradle-build.log
+            echo "==== Retry once after cleaning Gradle caches (parseDebugLocalResources) ====" | tee -a ../gradle-build.log
 
             echo "==== Scan: find 'res' paths that are NOT directories (common root-cause) ====" | tee -a ../gradle-build.log
             for ROOT in "$GRADLE_USER_HOME" "$HOME/.gradle"; do
               if [ -d "$ROOT/caches" ]; then
                 echo "--- scanning $ROOT/caches/transforms-* ---" | tee -a ../gradle-build.log
                 find "$ROOT/caches" -maxdepth 2 -type d -name "transforms-*" 2>/dev/null | while read -r T; do
-                  find "$T" -maxdepth 8 -name res -print0 2>/dev/null | while IFS= read -r -d '' P; do
+                  find "$T" -maxdepth 10 -name res -print0 2>/dev/null | while IFS= read -r -d '' P; do
                     if [ ! -d "$P" ]; then
                       echo "NOT A DIRECTORY: $P" | tee -a ../gradle-build.log
+                      ls -la "$(dirname "$P")" 2>&1 | tee -a ../gradle-build.log || true
                       ls -la "$P" 2>&1 | tee -a ../gradle-build.log || true
                       file "$P" 2>&1 | tee -a ../gradle-build.log || true
                     fi
@@ -398,10 +399,24 @@ jobs:
               fi
             done
 
+            if ! grep -q "NOT A DIRECTORY:" ../gradle-build.log 2>/dev/null; then
+              echo "No invalid 'res' entries found via filesystem scan (may be missing dir rather than file)." | tee -a ../gradle-build.log
+            fi
+
+            echo "==== Aggressive cache cleanup (modules-2 + transforms) ====" | tee -a ../gradle-build.log
             rm -rf ~/.gradle/caches/transforms-* || true
-            rm -rf "$GRADLE_USER_HOME/caches/transforms-*" || true
+            rm -rf ~/.gradle/caches/modules-2/files-2.1 || true
+            rm -rf ~/.gradle/caches/jars-* || true
+            rm -rf "$GRADLE_USER_HOME"/caches/transforms-* || true
+            rm -rf "$GRADLE_USER_HOME/caches/modules-2/files-2.1" || true
+            rm -rf "$GRADLE_USER_HOME"/caches/jars-* || true
+
             rm -rf .gradle app/build build || true
-            ./gradlew --no-daemon --max-workers=1 assembleDebug -x :app:processDebugNavigationResources -x :app:compileDebugNavigationResources --stacktrace --info --warning-mode all --console=plain 2>&1 | tee -a ../gradle-build.log
+
+            ./gradlew --no-daemon --max-workers=1 --refresh-dependencies assembleDebug \
+              -x :app:processDebugNavigationResources \
+              -x :app:compileDebugNavigationResources \
+              --stacktrace --info --warning-mode all --console=plain 2>&1 | tee -a ../gradle-build.log
             RC=${PIPESTATUS[0]}
           fi
 
@@ -449,6 +464,9 @@ jobs:
           # Print the most informative error-like lines even when Gradle markers are missing
           grep -nE "Caused by:|\\bException\\b|\\bERROR\\b|\\bError:\\b|AAR metadata|aar metadata|checkAarMetadata|CheckAarMetadata|issues were found when checking|Plugin \\[id:|Could not|No matching variant|Unsupported|SDK location|compileSdkVersion|targetSdkVersion|Daemon disappeared|daemon disappeared|Killed|SIGKILL|exit code|OutOfMemory|OOM" "$CLEAN" | tail -n 320 || true
 
+          echo "==== gradle-build.log (NOT A DIRECTORY scan) ===="
+          grep -n "NOT A DIRECTORY:" "$CLEAN" | tail -n 200 || true
+
           echo "==== Context around !directory.isDirectory() ===="
           if grep -n "!directory.isDirectory()" "$CLEAN" >/dev/null 2>&1; then
             L=$(grep -n "!directory.isDirectory()" "$CLEAN" | head -n 1 | cut -d: -f1)
@@ -477,6 +495,11 @@ jobs:
             echo "### Likely-cause lines (tail)";
             echo "\`\`\`";
             grep -nE "Caused by:|\\bException\\b|\\bERROR\\b|\\bError:\\b|Plugin \\[id:|Could not|No matching variant|Unsupported|SDK location|compileSdkVersion|targetSdkVersion|Daemon disappeared|daemon disappeared|Killed|SIGKILL|exit code|OutOfMemory|OOM" "$CLEAN" | tail -n 120 || true;
+            echo "\`\`\`";
+            echo "";
+            echo "### NOT A DIRECTORY (scan)";
+            echo "\`\`\`";
+            grep -n "NOT A DIRECTORY:" "$CLEAN" | tail -n 120 || true;
             echo "\`\`\`";
             echo "";
             echo "### Tail 250";
