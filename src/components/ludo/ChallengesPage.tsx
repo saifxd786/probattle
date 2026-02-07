@@ -59,18 +59,29 @@ const getMultiplier = (mode: 2 | 3 | 4, baseMultiplier: number) => {
   }
 };
 
-// Realistic Indian names for bot players
+// Realistic Indian names for bot players - Extended list for more variety
 const BOT_NAMES = [
   'Rahul_Gamer', 'Priya_Pro', 'Amit_King', 'Neha_Star', 'Vikram_99',
   'Anjali_Boss', 'Rohan_X', 'Sneha_Win', 'Arjun_YT', 'Kavita_777',
   'Deepak_FF', 'Megha_Queen', 'Suresh_OP', 'Divya_GG', 'Karan_Ace',
   'Pooja_Lucky', 'Raj_Thunder', 'Simran_Pro', 'Aakash_Beast', 'Ritu_Fire',
   'Mohit_Legend', 'Ananya_Blitz', 'Nikhil_Storm', 'Tanvi_Rush', 'Varun_Clash',
-  'Sakshi_Fury', 'Harsh_Boom', 'Shruti_Glow', 'Gaurav_Max', 'Ishita_Zen'
+  'Sakshi_Fury', 'Harsh_Boom', 'Shruti_Glow', 'Gaurav_Max', 'Ishita_Zen',
+  // Extended names for more bots
+  'Vivek_Pro99', 'Komal_Star', 'Ajay_Killer', 'Meera_GG', 'Vishal_YT',
+  'Nisha_Queen', 'Rakesh_OP', 'Swati_Fire', 'Manish_X', 'Kritika_Win',
+  'Sunny_Beast', 'Tanya_Rush', 'Rohit_Max', 'Ankita_Pro', 'Sanjay_King',
+  'Pallavi_777', 'Kunal_Storm', 'Rashi_Glow', 'Mayank_FF', 'Jaya_Boss',
+  'Ankit_Legend', 'Preeti_Blitz', 'Ramesh_Clash', 'Kavya_Fury', 'Ashish_Ace',
+  'Suman_Lucky', 'Vikash_YT', 'Kriti_Star', 'Pawan_OP', 'Shivani_Pro'
 ];
 
-// Entry amounts for bots
-const BOT_ENTRY_AMOUNTS = [10, 20, 30, 50, 100, 150, 200, 300, 500];
+// Entry amounts for bots - weighted towards popular amounts
+const BOT_ENTRY_AMOUNTS = [
+  10, 10, 10, 20, 20, 20, 30, 30, 50, 50, 50, 50,
+  100, 100, 100, 100, 100, 150, 150, 200, 200, 200,
+  300, 300, 500, 500
+];
 
 // Companion player for 1v1v1 and 1v1v1v1 modes
 interface CompanionPlayer {
@@ -118,8 +129,8 @@ const generateBotChallenges = (minEntry: number): BotChallenge[] => {
   const bots: BotChallenge[] = [];
   const usedNames = new Set<string>();
   
-  // Generate 10-14 bot challenges (deterministic count)
-  const count = 10 + Math.floor(seededRandom(seed, 0) * 5);
+  // Generate 25-35 bot challenges for realistic activity
+  const count = 25 + Math.floor(seededRandom(seed, 0) * 11);
   
   for (let i = 0; i < count; i++) {
     // Pick unique name using deterministic selection
@@ -133,10 +144,11 @@ const generateBotChallenges = (minEntry: number): BotChallenge[] => {
     if (usedNames.has(name)) continue;
     usedNames.add(name);
     
-    // Pick entry amount (deterministic)
-    const validAmounts = BOT_ENTRY_AMOUNTS.filter(a => a >= minEntry);
-    const amountIndex = Math.floor(seededRandom(seed, i * 3 + 2) * validAmounts.length);
-    const entryAmount = validAmounts[amountIndex];
+    // Pick entry amount - allows duplicates across bots for realistic feel
+    // Popular amounts (50, 100, 200) will appear more frequently
+    const amountIndex = Math.floor(seededRandom(seed, i * 7 + 2) * BOT_ENTRY_AMOUNTS.length);
+    const rawAmount = BOT_ENTRY_AMOUNTS[amountIndex];
+    const entryAmount = Math.max(rawAmount, minEntry);
     
     // Pick mode - more 1v1s (deterministic)
     const modes: (2 | 3 | 4)[] = [2, 2, 2, 2, 3, 3, 4];
@@ -192,7 +204,13 @@ const generateBotChallenges = (minEntry: number): BotChallenge[] => {
     });
   }
   
-  return bots.sort((a, b) => a.entry_amount - b.entry_amount);
+  // Sort by entry amount but with slight randomization to mix same amounts
+  return bots.sort((a, b) => {
+    const diff = a.entry_amount - b.entry_amount;
+    if (diff !== 0) return diff;
+    // Same amount - randomize order using waiting time
+    return a.waitingTime - b.waitingTime;
+  });
 };
 
 // Get a consistent avatar based on creator ID
