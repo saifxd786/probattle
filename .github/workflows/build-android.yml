@@ -507,7 +507,28 @@ jobs:
           echo "==== CI memory (after Gradle) ===="
           free -h || true
 
+          # If build failed, print a concise "copy-paste" block right here (mobile-friendly)
+          if [ "${RC}" -ne 0 ]; then
+            echo ""
+            echo "====================================="
+            echo "LIKELY-CAUSE LINES (COPY THIS BLOCK)"
+            echo "====================================="
+
+            CLEAN_TMP="../gradle-build.clean.quick.log"
+            (sed -r 's/\x1B\[[0-9;]*[mK]//g' ../gradle-build.log | tr -d '\r') > "$CLEAN_TMP" || cp ../gradle-build.log "$CLEAN_TMP" || true
+
+            LIKELY_RE='BUILD FAILED|FAILURE:|Build failed with an exception|What went wrong:|A problem occurred|Execution failed for task|Caused by:|\bException\b|\bERROR\b|\bError:\b|AAR metadata|aar metadata|checkAarMetadata|CheckAarMetadata|issues were found when checking|Could not resolve|Could not determine|Could not find|No matching variant|Unsupported|SDK location|compileSdkVersion|targetSdkVersion|Daemon disappeared|daemon disappeared|Killed|SIGKILL|exit code|OutOfMemory|OOM|!directory.isDirectory\(\)|ResourceDirectoryParser'
+
+            (grep -nE "$LIKELY_RE" "$CLEAN_TMP" | tail -n 140) || true
+
+            echo "---------- Tail 120 (fallback) ----------"
+            tail -n 120 "$CLEAN_TMP" || true
+            echo "====================================="
+            echo ""
+          fi
+
           exit ${RC}
+
 
 
       - name: Print Gradle failure snippet (always)
