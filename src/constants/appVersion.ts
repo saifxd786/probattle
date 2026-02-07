@@ -7,7 +7,7 @@ const MINOR_VERSION = '3';
 
 // Build number - this gets updated on each deploy
 // Format: YYMMDDHHMM for uniqueness
-const BUILD_NUMBER = '2602071700';
+const BUILD_NUMBER = '2602071830';
 
 // Full version with build number
 export const APP_VERSION = `${MAJOR_VERSION}.${MINOR_VERSION}.${BUILD_NUMBER}`;
