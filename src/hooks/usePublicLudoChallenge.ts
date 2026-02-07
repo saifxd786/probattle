@@ -83,9 +83,12 @@ export const usePublicLudoChallenge = () => {
         if (user) {
           const userChallenge = challengesWithProfiles.find(c => c.creator_id === user.id);
           setMyChallenge(userChallenge || null);
+        } else {
+          setMyChallenge(null);
         }
       } else {
         setChallenges([]);
+        // CRITICAL: Always clear myChallenge when no challenges exist
         setMyChallenge(null);
       }
     } catch (error) {
