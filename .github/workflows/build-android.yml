@@ -499,10 +499,10 @@ jobs:
             RC=$?
           fi
 
-          # If still failing, re-run the failing task with --debug so logs include the offending path
+          # If still failing, run diagnostic WITHOUT --debug (debug floods logs)
           if [ "$RC" -ne 0 ]; then
-            echo "==== Diagnostic re-run: :app:parseDebugLocalResources (debug) ====" | tee -a ../gradle-build.log
-            ./gradlew --no-daemon --max-workers=1 :app:parseDebugLocalResources --stacktrace --debug --console=plain >> ../gradle-build.log 2>&1 || true
+            echo "==== Diagnostic: checking dependencies ====" | tee -a ../gradle-build.log
+            ./gradlew --no-daemon --max-workers=1 dependencies --configuration debugRuntimeClasspath --console=plain >> ../gradle-build.log 2>&1 || true
           fi
 
           set -e
@@ -514,20 +514,40 @@ jobs:
           # If build failed, print a concise "copy-paste" block right here (mobile-friendly)
           if [ "${RC}" -ne 0 ]; then
             echo ""
-            echo "====================================="
-            echo "LIKELY-CAUSE LINES (COPY THIS BLOCK)"
-            echo "====================================="
+            echo "##############################################"
+            echo "#  BUILD FAILED - ERROR DETAILS BELOW        #"
+            echo "##############################################"
+            echo ""
 
             CLEAN_TMP="../gradle-build.clean.quick.log"
             (sed -r 's/\x1B\[[0-9;]*[mK]//g' ../gradle-build.log | tr -d '\r') > "$CLEAN_TMP" || cp ../gradle-build.log "$CLEAN_TMP" || true
 
-            LIKELY_RE='BUILD FAILED|FAILURE:|Build failed with an exception|What went wrong:|A problem occurred|Execution failed for task|Caused by:|\bException\b|\bERROR\b|\bError:\b|AAR metadata|aar metadata|checkAarMetadata|CheckAarMetadata|issues were found when checking|Could not resolve|Could not determine|Could not find|No matching variant|Unsupported|SDK location|compileSdkVersion|targetSdkVersion|Daemon disappeared|daemon disappeared|Killed|SIGKILL|exit code|OutOfMemory|OOM|!directory.isDirectory\(\)|ResourceDirectoryParser'
+            # Extract the specific failure block (lines around "What went wrong")
+            echo "==== WHAT WENT WRONG ===="
+            if grep -n "What went wrong" "$CLEAN_TMP" >/dev/null 2>&1; then
+              WWL=$(grep -n "What went wrong" "$CLEAN_TMP" | tail -1 | cut -d: -f1)
+              sed -n "${WWL},$((WWL+60))p" "$CLEAN_TMP" || true
+            else
+              echo "(No 'What went wrong' block found)"
+            fi
+            echo ""
 
-            (grep -nE "$LIKELY_RE" "$CLEAN_TMP" | tail -n 140) || true
+            # Look for BUILD FAILED and show surrounding context
+            echo "==== BUILD FAILED CONTEXT ===="
+            if grep -n "BUILD FAILED" "$CLEAN_TMP" >/dev/null 2>&1; then
+              BFL=$(grep -n "BUILD FAILED" "$CLEAN_TMP" | tail -1 | cut -d: -f1)
+              START=$((BFL-30)); if [ "$START" -lt 1 ]; then START=1; fi
+              sed -n "${START},$((BFL+20))p" "$CLEAN_TMP" || true
+            else
+              echo "(No 'BUILD FAILED' marker found)"
+            fi
+            echo ""
 
-            echo "---------- Tail 120 (fallback) ----------"
-            tail -n 120 "$CLEAN_TMP" || true
-            echo "====================================="
+            # Show last 80 non-DEBUG lines (filter out noise)
+            echo "==== LAST 80 NON-DEBUG LINES ===="
+            grep -v "^\[DEBUG\]" "$CLEAN_TMP" | grep -v "\[org.gradle" | tail -n 80 || tail -n 80 "$CLEAN_TMP" || true
+            echo ""
+            echo "##############################################"
             echo ""
           fi
 
