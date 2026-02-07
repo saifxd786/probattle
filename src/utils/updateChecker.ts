@@ -28,7 +28,9 @@ const generateCacheBuster = (): string => {
 // Fetch version with aggressive cache bypass
 const fetchVersionDirect = async (attempt: number = 1): Promise<string | null> => {
   const cacheBuster = generateCacheBuster();
-  const url = `/version.json?${cacheBuster}&attempt=${attempt}`;
+  // Use absolute URL for native apps, relative for web
+  const baseUrl = 'https://probattle.lovable.app';
+  const url = `${baseUrl}/version.json?${cacheBuster}&attempt=${attempt}`;
   
   try {
     const controller = new AbortController();
