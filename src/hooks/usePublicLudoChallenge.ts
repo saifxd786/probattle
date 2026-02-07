@@ -308,8 +308,8 @@ export const usePublicLudoChallenge = () => {
     }
   };
 
-  // Cancel my challenge
-  const cancelChallenge = async () => {
+  // Cancel my challenge (silent = true skips toast, used for bot auto-connection)
+  const cancelChallenge = async (silent: boolean = false) => {
     if (!user || !myChallenge) return { success: false };
 
     try {
@@ -324,10 +324,13 @@ export const usePublicLudoChallenge = () => {
       setMyChallenge(null);
       await fetchChallenges();
       
-      toast({
-        title: "Challenge Cancelled",
-        description: "Your challenge has been cancelled",
-      });
+      // Only show toast if not silent (user manually cancelled)
+      if (!silent) {
+        toast({
+          title: "Challenge Cancelled",
+          description: "Your challenge has been cancelled",
+        });
+      }
       
       return { success: true };
     } catch (error: any) {
