@@ -143,18 +143,16 @@ jobs:
           set -euo pipefail
           ROOT_GRADLE="android/build.gradle"
           if [ -f "$ROOT_GRADLE" ]; then
-            cat >> "$ROOT_GRADLE" << 'EOF'
-
-// CI Workaround: keep AndroidX versions compatible with compileSdk 35
-subprojects { proj ->
-  proj.configurations.all { cfg ->
-    cfg.resolutionStrategy.force(
-      "androidx.core:core:1.15.0",
-      "androidx.core:core-ktx:1.15.0"
-    )
-  }
-}
-EOF
+            echo "" >> "$ROOT_GRADLE"
+            echo "// CI Workaround: keep AndroidX versions compatible with compileSdk 35" >> "$ROOT_GRADLE"
+            echo "subprojects { proj ->" >> "$ROOT_GRADLE"
+            echo "  proj.configurations.all { cfg ->" >> "$ROOT_GRADLE"
+            echo "    cfg.resolutionStrategy.force(" >> "$ROOT_GRADLE"
+            echo "      \"androidx.core:core:1.15.0\"," >> "$ROOT_GRADLE"
+            echo "      \"androidx.core:core-ktx:1.15.0\"" >> "$ROOT_GRADLE"
+            echo "    )" >> "$ROOT_GRADLE"
+            echo "  }" >> "$ROOT_GRADLE"
+            echo "}" >> "$ROOT_GRADLE"
             echo "Pinned AndroidX core to 1.15.0 in $ROOT_GRADLE"
           else
             echo "WARN: $ROOT_GRADLE not found; skipping AndroidX pin"
