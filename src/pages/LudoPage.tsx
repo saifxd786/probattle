@@ -1230,17 +1230,18 @@ const LudoPage = () => {
           walletBalance={walletBalance}
           rewardMultiplier={settings.rewardMultiplier}
           onBack={() => setShowChallengesPage(null)}
-          onAcceptChallenge={(challenge) => {
-            setEntryAmount(challenge.entryAmount);
-            setPlayerMode(challenge.playerMode);
+          onAcceptChallenge={(data) => {
+            // Navigate to friend game with room data
+            setEntryAmount(data.entryAmount);
             setShowChallengesPage(null);
-            startMatchmaking();
+            // Start friend game with full room data
+            startRoom(data.roomId, data.roomCode, data.isHost, data.entryAmount, data.rewardAmount);
+            setGameMode('vs-friend');
           }}
           onCreateChallenge={(amount, mode) => {
+            // This is now handled inside ChallengesPage - user waits there
             setEntryAmount(amount);
             setPlayerMode(mode);
-            setShowChallengesPage(null);
-            startMatchmaking();
           }}
         />
       )}

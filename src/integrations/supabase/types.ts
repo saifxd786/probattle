@@ -675,6 +675,60 @@ export type Database = {
           },
         ]
       }
+      ludo_public_challenges: {
+        Row: {
+          created_at: string
+          creator_id: string
+          entry_amount: number
+          expires_at: string
+          id: string
+          matched_user_id: string | null
+          player_mode: number
+          room_code: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          creator_id: string
+          entry_amount?: number
+          expires_at?: string
+          id?: string
+          matched_user_id?: string | null
+          player_mode?: number
+          room_code?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          creator_id?: string
+          entry_amount?: number
+          expires_at?: string
+          id?: string
+          matched_user_id?: string | null
+          player_mode?: number
+          room_code?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ludo_public_challenges_creator_id_fkey"
+            columns: ["creator_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ludo_public_challenges_matched_user_id_fkey"
+            columns: ["matched_user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ludo_rooms: {
         Row: {
           created_at: string
