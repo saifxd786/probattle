@@ -1243,6 +1243,7 @@ const LudoPage = () => {
             setEntryAmount(amount);
             setPlayerMode(mode);
           }}
+          onSwitchToJoin={() => setShowChallengesPage('join')}
         />
       )}
       
