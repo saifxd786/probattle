@@ -384,6 +384,17 @@ export const usePublicLudoChallenge = () => {
           canConnectWithBot: c.isRealPlayer ? newWaitingTime >= BOT_DELAY_SECONDS : undefined,
         };
       }));
+      
+      // CRITICAL: Also update myChallenge's waiting time so the 7s animation triggers
+      setMyChallenge(prev => {
+        if (!prev) return null;
+        const newWaitingTime = prev.waitingTime + 1;
+        return {
+          ...prev,
+          waitingTime: newWaitingTime,
+          canConnectWithBot: prev.isRealPlayer ? newWaitingTime >= BOT_DELAY_SECONDS : undefined,
+        };
+      });
     }, 1000);
 
     return () => clearInterval(interval);
