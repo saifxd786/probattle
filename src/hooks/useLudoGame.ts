@@ -583,14 +583,25 @@ export const useLudoGame = () => {
     }
   }, [user, activeGameData, userUID, userAvatar, userName, toast]);
 
-  // Auto-resume effect - triggered when shouldAutoResume becomes true and activeGameData is available
+  // Bot games should NOT auto-resume - they are forfeited when user exits
+  // Auto-dismiss active bot games instead of prompting for resume
   useEffect(() => {
-    if (shouldAutoResume && activeGameData && user) {
-      console.log('[LudoGame] Auto-resuming game...');
-      setShouldAutoResume(false);
-      resumeGame();
+    if (hasActiveGame && activeGameData && gameState.phase === 'idle') {
+      console.log('[LudoGame] Auto-dismissing active bot game (resume disabled for bot matches)');
+      // Silently forfeit the game
+      supabase
+        .from('ludo_matches')
+        .update({ 
+          status: 'cancelled',
+          ended_at: new Date().toISOString()
+        })
+        .eq('id', activeGameData.matchId)
+        .then(() => {
+          setHasActiveGame(false);
+          setActiveGameData(null);
+        });
     }
-  }, [shouldAutoResume, activeGameData, user, resumeGame]);
+  }, [hasActiveGame, activeGameData, gameState.phase]);
 
   // Dismiss active game (forfeit)
   const dismissActiveGame = useCallback(async () => {
