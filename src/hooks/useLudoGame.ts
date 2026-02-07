@@ -510,6 +510,7 @@ export const useLudoGame = () => {
             user_id,
             is_bot,
             bot_name,
+            bot_avatar_url,
             player_color,
             token_positions,
             tokens_home
@@ -532,7 +533,7 @@ export const useLudoGame = () => {
           id: p.is_bot ? `bot-${index}` : p.user_id,
           name: p.is_bot ? (p.bot_name || `Bot ${index}`) : (userName || 'You'),
           uid: p.is_bot ? generateUID() : (userUID || generateUID()),
-          avatar: p.is_bot ? undefined : (userAvatar || undefined),
+          avatar: p.is_bot ? (p.bot_avatar_url || undefined) : (userAvatar || undefined),
           isBot: p.is_bot,
           status: 'ready' as const,
           color: p.player_color,
