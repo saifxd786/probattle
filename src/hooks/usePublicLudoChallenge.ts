@@ -170,7 +170,7 @@ export const usePublicLudoChallenge = () => {
 
     setIsLoading(true);
     try {
-      // Get challenge details
+      // Get challenge details with creator profile
       const { data: challenge } = await supabase
         .from('ludo_public_challenges')
         .select('*')
@@ -212,7 +212,46 @@ export const usePublicLudoChallenge = () => {
         return { success: false, error: 'Insufficient balance' };
       }
 
-      // Create Ludo room
+      const playerMode = challenge.player_mode as 2 | 3 | 4;
+
+      // For 1v1v1 and 1v1v1v1 (playerMode > 2), use bot-based matches
+      // Because ludo_rooms only supports 2-player (1v1) games
+      if (playerMode > 2) {
+        // Get creator profile for preset bot info
+        const { data: creatorProfile } = await supabase
+          .from('profiles')
+          .select('username, avatar_url')
+          .eq('id', challenge.creator_id)
+          .single();
+
+        // Cancel the challenge (joiner will start bot game locally)
+        await supabase
+          .from('ludo_public_challenges')
+          .update({
+            status: 'matched',
+            matched_user_id: user.id,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', challengeId)
+          .eq('status', 'waiting');
+
+        toast({
+          title: "Challenge Accepted!",
+          description: "Starting the game...",
+        });
+
+        // Return special flag for bot game
+        return { 
+          success: true, 
+          isBotGame: true,
+          playerMode,
+          entryAmount: challenge.entry_amount,
+          creatorName: creatorProfile?.username || 'Player',
+          creatorAvatar: creatorProfile?.avatar_url || LUDO_AVATARS[0],
+        };
+      }
+
+      // 1v1 mode: Create Ludo room (Friend system)
       const { data: roomData, error: roomError } = await supabase
         .rpc('create_ludo_room', { p_entry_amount: challenge.entry_amount });
 
