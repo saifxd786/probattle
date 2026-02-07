@@ -619,7 +619,7 @@ export const useLudoGame = () => {
     }
   }, [user, activeGameData, toast]);
 
-  const startMatchmaking = useCallback(async () => {
+  const startMatchmaking = useCallback(async (presetBots?: { name: string; avatar: string }[]) => {
     if (!user) {
       toast({ title: 'Please login to play', variant: 'destructive' });
       return;
@@ -770,18 +770,27 @@ export const useLudoGame = () => {
       const botJoinDelay = delays.botJoinBase + Math.random() * delays.botJoinRandom;
       totalBotJoinTime += botJoinDelay;
       
+      // Use preset bot if available, otherwise generate random
+      const presetBot = presetBots && presetBots[i - 1]; // i-1 because presetBots is 0-indexed for bots
+      
       setTimeout(async () => {
-        const botName = getRandomBotName(usedNames);
+        // Use preset name/avatar if available, otherwise random
+        const botName = presetBot ? presetBot.name : getRandomBotName(usedNames);
         usedNames.push(botName);
         const botColor = COLORS[i];
         
-        // Assign random avatar to bot (avoid duplicates)
-        let avatarIndex = Math.floor(Math.random() * CUSTOM_AVATARS.length);
-        while (usedAvatars.includes(avatarIndex) && usedAvatars.length < CUSTOM_AVATARS.length) {
-          avatarIndex = Math.floor(Math.random() * CUSTOM_AVATARS.length);
+        // Use preset avatar or assign random
+        let botAvatar: string;
+        if (presetBot && presetBot.avatar) {
+          botAvatar = presetBot.avatar;
+        } else {
+          let avatarIndex = Math.floor(Math.random() * CUSTOM_AVATARS.length);
+          while (usedAvatars.includes(avatarIndex) && usedAvatars.length < CUSTOM_AVATARS.length) {
+            avatarIndex = Math.floor(Math.random() * CUSTOM_AVATARS.length);
+          }
+          usedAvatars.push(avatarIndex);
+          botAvatar = CUSTOM_AVATARS[avatarIndex].src;
         }
-        usedAvatars.push(avatarIndex);
-        const botAvatar = CUSTOM_AVATARS[avatarIndex].src;
 
         await supabase.from('ludo_match_players').insert({
           match_id: match.id,
