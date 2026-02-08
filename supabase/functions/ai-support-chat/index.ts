@@ -301,12 +301,76 @@ serve(async (req) => {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
+    // Initialize Supabase client for POV hold check
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
     // Analyze conversation
     const lastUserMessage = messages.filter(m => m.role === 'user').pop();
     const userContent = lastUserMessage?.content?.toLowerCase() || '';
     const hasSeriousKeywords = SERIOUS_ISSUE_KEYWORDS.some(keyword => 
       userContent.includes(keyword.toLowerCase())
     );
+    
+    // Check for POV-related keywords
+    const povKeywords = [
+      'winning nahi aaya', 'prize nahi mila', 'paisa kata', 'amount deducted',
+      'pov', 'screen recording', 'handcam', 'video', 'verification hold',
+      'winning kyu nahi', 'prize kaha hai', 'money not credited', 'funds held',
+      'match prize', 'bgmi prize', 'tournament prize', 'result prize'
+    ];
+    const hasPOVKeywords = povKeywords.some(kw => userContent.includes(kw.toLowerCase()));
+
+    // Check for pending POV holds if user has userId
+    let povHoldsInfo = '';
+    let hasPendingPOV = false;
+    if (userId && hasPOVKeywords) {
+      const { data: povHolds } = await supabase
+        .from('pov_verification_holds')
+        .select(`
+          id,
+          prize_amount_held,
+          status,
+          created_at,
+          match_id,
+          admin_note
+        `)
+        .eq('user_id', userId)
+        .in('status', ['pending', 'submitted']);
+      
+      if (povHolds && povHolds.length > 0) {
+        hasPendingPOV = true;
+        // Fetch match titles
+        const matchIds = povHolds.map(h => h.match_id);
+        const { data: matches } = await supabase
+          .from('matches')
+          .select('id, title')
+          .in('id', matchIds);
+        
+        const matchMap = new Map(matches?.map(m => [m.id, m.title]) || []);
+        
+        povHoldsInfo = `\n\n## 🚨 POV VERIFICATION HOLDS DETECTED:\nThis user has pending POV verification holds. Here are the details:\n`;
+        povHolds.forEach((hold, index) => {
+          const matchTitle = matchMap.get(hold.match_id) || 'Unknown Match';
+          const matchIdShort = hold.match_id.slice(0, 8).toUpperCase();
+          povHoldsInfo += `\n${index + 1}. **Match:** ${matchTitle} (ID: ${matchIdShort})
+   - **Amount Held:** ₹${hold.prize_amount_held}
+   - **Status:** ${hold.status === 'pending' ? '⏳ Pending - No videos submitted yet' : '📹 Submitted - Under review'}
+   - **Reason:** ${hold.admin_note || 'Suspicious gameplay flagged'}\n`;
+        });
+        
+        povHoldsInfo += `\n**YOUR RESPONSE MUST:**
+1. Acknowledge the user's prize is on hold due to POV verification
+2. Explain this is a standard anti-cheat measure for suspicious gameplay
+3. Ask them to submit:
+   - Full match SCREEN RECORDING (required)
+   - HANDCAM footage showing their hands (highly recommended)
+4. Tell them once verified, their ₹${povHolds.reduce((sum, h) => sum + h.prize_amount_held, 0)} will be restored
+5. Mention they can upload videos in this chat or contact admin
+6. Be empathetic but firm - this is for fair play\n`;
+      }
+    }
     
     // Sentiment analysis
     const sentiment = analyzeSentiment(messages);
@@ -316,12 +380,46 @@ serve(async (req) => {
 
     // Build enhanced context
     let contextPrompt = ADVANCED_SYSTEM_PROMPT;
+    
+    // Add POV-specific instructions
+    contextPrompt += `\n\n### 🔍 POV VERIFICATION HOLDS
+
+When a user asks about missing winnings, deducted amounts, or held prizes:
+1. First check if they have any pending POV verification holds (info will be provided below)
+2. If POV hold exists, explain:
+   - Their prize was held due to suspicious gameplay flagged during result declaration
+   - They need to submit screen recording + handcam footage
+   - Once verified by admin, their prize will be restored
+   - This is a standard anti-cheat measure to ensure fair play
+3. Ask them to upload their videos via this chat
+4. Be empathetic but firm - explain this protects all players
+5. If they claim they didn't cheat, say admin will review the footage fairly
+
+Example response for POV hold:
+"Bhai, main dekh raha hoon ki tumhara ₹X prize hold mein hai 🔍
+
+Yeh isliye hua kyunki tumhara gameplay suspicious laga. Fair play ke liye, humein tumhari screen recording + handcam chahiye.
+
+📹 **Submit karo:**
+1. Full match ki screen recording
+2. Handcam (haath dikhna chahiye)
+
+Jab admin verify karega, tumhara prize turant restore ho jayega! Yeh sab players ki safety ke liye hai bro 🎮"
+`;
+    
+    // Add POV holds info if detected
+    if (hasPendingPOV) {
+      contextPrompt += povHoldsInfo;
+    }
+    
     contextPrompt += `\n\n## 📊 CURRENT SESSION CONTEXT:\n`;
     contextPrompt += `- **Category:** ${category}\n`;
     contextPrompt += `- **Specific Issue:** ${subCategory}\n`;
     contextPrompt += `- **Preferred Language:** ${language}\n`;
     contextPrompt += `- **Conversation Length:** ${messages.length} messages\n`;
     contextPrompt += `- **User Frustration Level:** ${sentiment.frustrationLevel.toUpperCase()}\n`;
+    contextPrompt += `- **Has POV Keywords:** ${hasPOVKeywords ? 'YES' : 'NO'}\n`;
+    contextPrompt += `- **Has Pending POV Holds:** ${hasPendingPOV ? 'YES - PRIORITIZE THIS' : 'NO'}\n`;
     
     if (sentiment.frustrationLevel !== 'low') {
       contextPrompt += `- ⚠️ **Frustration Indicators Found:** ${sentiment.indicators.join(', ')}\n`;

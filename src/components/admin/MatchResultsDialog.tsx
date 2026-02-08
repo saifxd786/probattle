@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Trophy, Medal, Skull, Gamepad2, Award, XCircle, Edit, Users, RotateCcw, Handshake } from 'lucide-react';
+import { Trophy, Medal, Skull, Gamepad2, Award, XCircle, Edit, Users, RotateCcw, Handshake, ShieldAlert } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,7 +11,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-
+import { Checkbox } from '@/components/ui/checkbox';
 type Match = {
   id: string;
   title: string;
@@ -45,6 +45,7 @@ type ResultEntry = {
   result_status: 'pending' | 'win' | 'lose' | 'tie';
   original_prize: number;
   existing_result_id: string | null;
+  ask_pov: boolean; // POV verification flag
 };
 
 type ExistingResult = {
@@ -166,7 +167,8 @@ const MatchResultsDialog = ({ match, isOpen, onClose, onResultsDeclared, isEditM
             is_winner: existing.is_winner || false,
             result_status: resultStatus,
             original_prize: existing.prize_amount || 0,
-            existing_result_id: existing.id
+            existing_result_id: existing.id,
+            ask_pov: false
           };
         }
         
@@ -182,7 +184,8 @@ const MatchResultsDialog = ({ match, isOpen, onClose, onResultsDeclared, isEditM
           is_winner: false,
           result_status: 'pending' as const,
           original_prize: 0,
-          existing_result_id: null
+          existing_result_id: null,
+          ask_pov: false
         };
       });
       setResults(initialResults);
@@ -419,22 +422,69 @@ const MatchResultsDialog = ({ match, isOpen, onClose, onResultsDeclared, isEditM
               : `🏆 Prize for "${match.title}" - ${result.is_winner ? 'Winner' : `Position: ${result.position || 'N/A'}`}, Kills: ${result.kills}`
           }]);
 
-          const notificationTitle = result.is_winner 
-            ? '🏆 Congratulations! You Won!' 
-            : result.result_status === 'tie' 
-            ? '🤝 Match Ended in TIE!'
-            : '💰 Match Rewards';
-          
-          const notificationMessage = result.result_status === 'tie'
-            ? `Match "${match.title}" ended in a TIE! You earned ₹${result.prize_amount} (50/50 split). ${result.kills > 0 ? `Kills: ${result.kills}` : ''}`
-            : `You earned ₹${result.prize_amount} from "${match.title}". ${result.position ? `Position: #${result.position}` : ''} ${result.kills > 0 ? `Kills: ${result.kills}` : ''}`;
+          // If "Ask POV" is checked, immediately deduct and create POV hold
+          if (result.ask_pov && result.prize_amount > 0) {
+            // Deduct the prize back from wallet
+            const currentBalance = (profile?.wallet_balance || 0) + result.prize_amount;
+            await supabase
+              .from('profiles')
+              .update({ wallet_balance: currentBalance - result.prize_amount })
+              .eq('id', result.user_id);
 
-          await supabase.from('notifications').insert({
-            user_id: result.user_id,
-            title: notificationTitle,
-            message: notificationMessage,
-            type: 'success'
-          });
+            // Create debit transaction
+            await supabase.from('transactions').insert([{
+              user_id: result.user_id,
+              amount: result.prize_amount,
+              type: 'admin_debit' as const,
+              status: 'completed' as const,
+              description: `🔍 POV Verification Hold for "${match.title}" - Submit screen recording + handcam to claim ₹${result.prize_amount}`
+            }]);
+
+            // Get the match result ID we just inserted
+            const { data: matchResult } = await supabase
+              .from('match_results')
+              .select('id')
+              .eq('match_id', match.id)
+              .eq('user_id', result.user_id)
+              .single();
+
+            // Create POV verification hold
+            await supabase.from('pov_verification_holds').insert({
+              match_id: match.id,
+              user_id: result.user_id,
+              match_result_id: matchResult?.id || null,
+              prize_amount_held: result.prize_amount,
+              status: 'pending',
+              admin_note: 'Flagged for suspicious gameplay during result declaration'
+            });
+
+            // Send POV required notification instead of normal win notification
+            const matchIdShort = match.id.slice(0, 8).toUpperCase();
+            await supabase.from('notifications').insert({
+              user_id: result.user_id,
+              title: '⚠️ POV Verification Required',
+              message: `Your prize of ₹${result.prize_amount} from "${match.title}" is on hold. Submit screen recording + handcam via Support to claim your winnings. Match ID: ${matchIdShort}`,
+              type: 'warning'
+            });
+          } else {
+            // Normal win notification
+            const notificationTitle = result.is_winner 
+              ? '🏆 Congratulations! You Won!' 
+              : result.result_status === 'tie' 
+              ? '🤝 Match Ended in TIE!'
+              : '💰 Match Rewards';
+            
+            const notificationMessage = result.result_status === 'tie'
+              ? `Match "${match.title}" ended in a TIE! You earned ₹${result.prize_amount} (50/50 split). ${result.kills > 0 ? `Kills: ${result.kills}` : ''}`
+              : `You earned ₹${result.prize_amount} from "${match.title}". ${result.position ? `Position: #${result.position}` : ''} ${result.kills > 0 ? `Kills: ${result.kills}` : ''}`;
+
+            await supabase.from('notifications').insert({
+              user_id: result.user_id,
+              title: notificationTitle,
+              message: notificationMessage,
+              type: 'success'
+            });
+          }
         }
       }
 
@@ -715,6 +765,24 @@ const MatchResultsDialog = ({ match, isOpen, onClose, onResultsDeclared, isEditM
                         />
                       </div>
                     </div>
+
+                    {/* Ask POV Toggle - Only show for winners with prize */}
+                    {(result.prize_amount > 0 || result.result_status === 'win') && (
+                      <div className="mt-3 pt-3 border-t border-border">
+                        <label className="flex items-center gap-2 cursor-pointer group">
+                          <Checkbox
+                            checked={result.ask_pov}
+                            onCheckedChange={(checked) => updateResult(result.registration_id, 'ask_pov', !!checked)}
+                            className="border-orange-500/50 data-[state=checked]:bg-orange-500 data-[state=checked]:border-orange-500"
+                          />
+                          <div className="flex items-center gap-1.5 text-sm">
+                            <ShieldAlert className="w-4 h-4 text-orange-500" />
+                            <span className="text-orange-500 font-medium">Ask POV</span>
+                            <span className="text-xs text-muted-foreground">(Hold prize until verified)</span>
+                          </div>
+                        </label>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>

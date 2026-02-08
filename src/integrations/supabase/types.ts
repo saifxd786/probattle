@@ -1346,6 +1346,76 @@ export type Database = {
         }
         Relationships: []
       }
+      pov_verification_holds: {
+        Row: {
+          admin_note: string | null
+          created_at: string
+          handcam_video_url: string | null
+          id: string
+          match_id: string
+          match_result_id: string | null
+          pov_video_url: string | null
+          prize_amount_held: number
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: Database["public"]["Enums"]["pov_status"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          admin_note?: string | null
+          created_at?: string
+          handcam_video_url?: string | null
+          id?: string
+          match_id: string
+          match_result_id?: string | null
+          pov_video_url?: string | null
+          prize_amount_held?: number
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: Database["public"]["Enums"]["pov_status"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          admin_note?: string | null
+          created_at?: string
+          handcam_video_url?: string | null
+          id?: string
+          match_id?: string
+          match_result_id?: string | null
+          pov_video_url?: string | null
+          prize_amount_held?: number
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: Database["public"]["Enums"]["pov_status"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pov_verification_holds_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "matches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pov_verification_holds_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "todays_scheduled_matches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pov_verification_holds_match_result_id_fkey"
+            columns: ["match_result_id"]
+            isOneToOne: false
+            referencedRelation: "match_results"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           active_session_id: string | null
@@ -2400,6 +2470,7 @@ export type Database = {
       match_status: "upcoming" | "pending" | "live" | "completed" | "cancelled"
       match_type: "tdm_1v1" | "tdm_2v2" | "tdm_4v4" | "classic"
       payment_status: "PENDING" | "SUCCESS" | "FAILED"
+      pov_status: "pending" | "submitted" | "approved" | "rejected"
       thimble_difficulty: "easy" | "hard" | "impossible"
       transaction_status: "processing" | "pending" | "completed" | "cancelled"
       transaction_type:
@@ -2544,6 +2615,7 @@ export const Constants = {
       match_status: ["upcoming", "pending", "live", "completed", "cancelled"],
       match_type: ["tdm_1v1", "tdm_2v2", "tdm_4v4", "classic"],
       payment_status: ["PENDING", "SUCCESS", "FAILED"],
+      pov_status: ["pending", "submitted", "approved", "rejected"],
       thimble_difficulty: ["easy", "hard", "impossible"],
       transaction_status: ["processing", "pending", "completed", "cancelled"],
       transaction_type: [
