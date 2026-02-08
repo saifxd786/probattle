@@ -2650,7 +2650,7 @@ export const useFriendLudoGame = () => {
     rematchChannelRef.current = channel;
   }, [user]);
 
-  // Reinitialize game for rematch (host only)
+  // Reinitialize game for rematch (host only) - supports 2, 3, or 4 players
   const reinitializeGame = async (roomId: string) => {
     if (!user) return;
 
@@ -2661,55 +2661,54 @@ export const useFriendLudoGame = () => {
       .eq('id', roomId)
       .single();
 
-    if (error || !roomData || !roomData.guest_id) {
+    if (error || !roomData) {
       toast({ title: 'Error', description: 'Could not restart game', variant: 'destructive' });
       return;
     }
 
-    const hostColor = 'red';
-    const guestColor = 'green';
+    const playerCount = roomData.player_count || 2;
+    const colorOrder = COLOR_ORDERS[playerCount] || COLOR_ORDERS[2];
 
-    // Fetch player names and avatars
-    const { data: hostProfile } = await supabase
+    console.log('[FriendLudo] Reinitializing game with', playerCount, 'players');
+
+    // Fetch all players from ludo_room_players table (same logic as initializeGame)
+    const { data: roomPlayers, error: playersError } = await supabase
+      .from('ludo_room_players')
+      .select('user_id, player_color, slot_index')
+      .eq('room_id', roomId)
+      .order('slot_index', { ascending: true });
+
+    if (playersError || !roomPlayers || roomPlayers.length < playerCount) {
+      console.error('[FriendLudo] Failed to fetch room players for rematch:', playersError);
+      toast({ title: 'Error', description: 'Could not restart game', variant: 'destructive' });
+      return;
+    }
+
+    // Fetch profiles for all players
+    const userIds = roomPlayers.map(p => p.user_id);
+    const { data: profiles } = await supabase
       .from('profiles')
-      .select('username, email, user_code, avatar_url')
-      .eq('id', roomData.host_id)
-      .single();
+      .select('id, username, email, user_code, avatar_url')
+      .in('id', userIds);
 
-    const { data: guestProfile } = await supabase
-      .from('profiles')
-      .select('username, email, user_code, avatar_url')
-      .eq('id', roomData.guest_id)
-      .single();
-
-    const hostUid = hostProfile?.user_code || Math.floor(10000 + Math.random() * 90000).toString();
-    const guestUid = guestProfile?.user_code || Math.floor(10000 + Math.random() * 90000).toString();
-    // Never fall back to email/phone as display name
-    const hostName = hostProfile?.username || `Player ${hostUid}`;
-    const guestName = guestProfile?.username || `Player ${guestUid}`;
-
-    const players: Player[] = [
-      {
-        id: roomData.host_id,
-        name: hostName,
-        uid: hostUid,
+    // Build players array in color order (same logic as initializeGame)
+    const players: Player[] = roomPlayers.map((rp, index) => {
+      const profile = profiles?.find(p => p.id === rp.user_id);
+      const uid = profile?.user_code || Math.floor(10000 + Math.random() * 90000).toString();
+      const name = profile?.username || `Player ${uid}`;
+      const color = colorOrder[index];
+      
+      return {
+        id: rp.user_id,
+        name,
+        uid,
         isBot: false,
-        color: hostColor,
-        tokens: createInitialTokens(hostColor),
+        color,
+        tokens: createInitialTokens(color),
         tokensHome: 0,
-        avatar: hostProfile?.avatar_url || undefined
-      },
-      {
-        id: roomData.guest_id,
-        name: guestName,
-        uid: guestUid,
-        isBot: false,
-        color: guestColor,
-        tokens: createInitialTokens(guestColor),
-        tokensHome: 0,
-        avatar: guestProfile?.avatar_url || undefined
-      }
-    ];
+        avatar: profile?.avatar_url || undefined
+      };
+    });
 
     const gameData: GameStateData = {
       players,
@@ -2723,6 +2722,8 @@ export const useFriendLudoGame = () => {
       .from('ludo_rooms')
       .update({
         status: 'playing',
+        host_color: colorOrder[0],
+        guest_color: colorOrder[1], // For backward compat
         current_turn: 0,
         game_state: gameData as any,
         winner_id: null,
