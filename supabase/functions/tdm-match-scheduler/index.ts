@@ -340,13 +340,14 @@ Deno.serve(async (req) => {
               .update({ wallet_balance: newBalance })
               .eq('id', reg.user_id);
 
-            // Create refund transaction
+            // Create refund transaction with game details
+            const gameLabel = match.game === 'bgmi' ? 'BGMI' : match.game === 'freefire' ? 'Free Fire' : String(match.game).toUpperCase();
             await supabase.from('transactions').insert({
               user_id: reg.user_id,
-              type: 'admin_credit',
+              type: 'refund',
               amount: entryFee,
               status: 'completed',
-              description: `Auto-cancelled: Room details not provided for "${match.title}"`
+              description: `${gameLabel} ${match.match_type} - ${match.title} (room details timeout)`
             });
 
             // Send notification
