@@ -936,9 +936,8 @@ const LudoPage = () => {
           />
         </div>
 
-        {/* Bottom Section - Flat VS Bar with Dice */}
-        <div className="shrink-0 px-4 py-3 border-t border-white/10 bg-[#0A0A0F]/90">
-          {/* Player VS Bar - Self always on LEFT, Opponent always on RIGHT */}
+        {/* Bottom Section - Player Bar with Dice (supports 2-4 players) */}
+        <div className="shrink-0 px-2 py-2 border-t border-white/10 bg-[#0A0A0F]/90">
           {(() => {
             const colorMap: Record<string, string> = {
               red: '#E53935',
@@ -947,21 +946,88 @@ const LudoPage = () => {
               blue: '#1E88E5'
             };
             
-            // Always show current user on left, opponent on right
+            const playerCount = friendGameState.players.length;
             const selfPlayer = friendGameState.players.find(p => p.id === user?.id);
-            const opponentPlayer = friendGameState.players.find(p => p.id !== user?.id);
-            
             const selfIndex = friendGameState.players.findIndex(p => p.id === user?.id);
-            const opponentIndex = friendGameState.players.findIndex(p => p.id !== user?.id);
-            
             const isSelfTurn = friendGameState.currentTurn === selfIndex;
-            const isOpponentTurn = friendGameState.currentTurn === opponentIndex;
+            
+            // For 2 players: Show self on left, opponent on right
+            if (playerCount <= 2) {
+              const opponentPlayer = friendGameState.players.find(p => p.id !== user?.id);
+              const opponentIndex = friendGameState.players.findIndex(p => p.id !== user?.id);
+              const isOpponentTurn = friendGameState.currentTurn === opponentIndex;
+              
+              return (
+                <div className="flex items-center justify-between">
+                  {/* Left - SELF */}
+                  {selfPlayer && (
+                    <div className="flex items-center gap-2">
+                      <SquareTurnTimerAvatar
+                        avatarUrl={selfPlayer.avatar}
+                        fallbackText={selfPlayer.name.slice(0, 2).toUpperCase()}
+                        borderColor={colorMap[selfPlayer.color]}
+                        isActive={isSelfTurn}
+                        timeLeft={friendTurnTimeLeft}
+                        badgeSide="left"
+                      />
+                      <div className="text-left">
+                        <p className="text-white/80 font-medium text-xs truncate max-w-[60px]">{selfPlayer.name}</p>
+                        <p className="text-[9px] text-green-400">You</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Center - Dice with Status */}
+                  <div className="flex flex-col items-center gap-1">
+                    {!opponentOnline && opponentDisconnectCountdown !== null && (
+                      <div className="flex flex-col items-center gap-0.5 px-2 py-1 rounded bg-red-500/30 border border-red-500/50 mb-1">
+                        <div className="flex items-center gap-1">
+                          <WifiOff className="w-2.5 h-2.5 text-red-400 animate-pulse" />
+                          <span className="text-[9px] text-red-400 font-medium">Disconnected</span>
+                        </div>
+                        <span className="text-[10px] text-white font-mono font-bold">{opponentDisconnectCountdown}s</span>
+                      </div>
+                    )}
+                    <LudoDice
+                      value={friendGameState.diceValue}
+                      isRolling={friendGameState.isRolling}
+                      onRoll={friendRollDice}
+                      disabled={!isUserTurn}
+                      canRoll={friendGameState.canRoll && isUserTurn}
+                      compact
+                    />
+                  </div>
+
+                  {/* Right - OPPONENT */}
+                  {opponentPlayer && (
+                    <div className="flex items-center gap-2 flex-row-reverse">
+                      <SquareTurnTimerAvatar
+                        avatarUrl={opponentPlayer.avatar}
+                        fallbackText={opponentPlayer.name.slice(0, 2).toUpperCase()}
+                        borderColor={colorMap[opponentPlayer.color]}
+                        isActive={isOpponentTurn}
+                        timeLeft={friendTurnTimeLeft}
+                        badgeSide="right"
+                        isOffline={!opponentOnline}
+                        offlineTimeLeft={opponentDisconnectCountdown}
+                      />
+                      <div className="text-right">
+                        <p className="text-white/80 font-medium text-xs truncate max-w-[60px]">{opponentPlayer.name}</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            }
+            
+            // For 3-4 players: Compact grid layout
+            const otherPlayers = friendGameState.players.filter(p => p.id !== user?.id);
             
             return (
-              <div className="flex items-center justify-between">
-                {/* Left - SELF (Current User) */}
+              <div className="flex items-center gap-2">
+                {/* Self - Always on left */}
                 {selfPlayer && (
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1.5 shrink-0">
                     <SquareTurnTimerAvatar
                       avatarUrl={selfPlayer.avatar}
                       fallbackText={selfPlayer.name.slice(0, 2).toUpperCase()}
@@ -971,33 +1037,14 @@ const LudoPage = () => {
                       badgeSide="left"
                     />
                     <div className="text-left">
-                      <p className="text-white/80 font-medium text-xs">{selfPlayer.name}</p>
-                      <p className="text-[9px] text-green-400">You</p>
+                      <p className="text-white/80 font-medium text-[10px] truncate max-w-[50px]">{selfPlayer.name}</p>
+                      <p className="text-[8px] text-green-400">You</p>
                     </div>
                   </div>
                 )}
-
-                {/* Center - Dice with Status */}
-                <div className="flex flex-col items-center gap-1">
-                  {/* Connection Status - Compact */}
-                  {!opponentOnline && opponentDisconnectCountdown !== null && (
-                    <div className="flex flex-col items-center gap-0.5 px-2 py-1 rounded bg-red-500/30 border border-red-500/50 mb-1">
-                      <div className="flex items-center gap-1">
-                        <WifiOff className="w-2.5 h-2.5 text-red-400 animate-pulse" />
-                        <span className="text-[9px] text-red-400 font-medium">Opponent Disconnected</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <span className="text-[10px] text-white font-mono font-bold">{opponentDisconnectCountdown}s</span>
-                        <span className="text-[8px] text-red-300">until auto-win</span>
-                      </div>
-                    </div>
-                  )}
-                  {!opponentOnline && opponentDisconnectCountdown === null && (
-                    <div className="flex items-center gap-1 px-2 py-0.5 rounded bg-red-500/20 mb-1">
-                      <WifiOff className="w-2.5 h-2.5 text-red-400" />
-                      <span className="text-[9px] text-red-400">Offline</span>
-                    </div>
-                  )}
+                
+                {/* Center - Dice */}
+                <div className="flex-1 flex justify-center">
                   <LudoDice
                     value={friendGameState.diceValue}
                     isRolling={friendGameState.isRolling}
@@ -1007,25 +1054,32 @@ const LudoPage = () => {
                     compact
                   />
                 </div>
-
-                {/* Right - OPPONENT (Friend) */}
-                {opponentPlayer && (
-                  <div className="flex items-center gap-2 flex-row-reverse">
-                    <SquareTurnTimerAvatar
-                      avatarUrl={opponentPlayer.avatar}
-                      fallbackText={opponentPlayer.name.slice(0, 2).toUpperCase()}
-                      borderColor={colorMap[opponentPlayer.color]}
-                      isActive={isOpponentTurn}
-                      timeLeft={friendTurnTimeLeft}
-                      badgeSide="right"
-                      isOffline={!opponentOnline}
-                      offlineTimeLeft={opponentDisconnectCountdown}
-                    />
-                    <div className="text-right">
-                      <p className="text-white/80 font-medium text-xs">{opponentPlayer.name}</p>
-                    </div>
-                  </div>
-                )}
+                
+                {/* Other players - Compact avatars on right */}
+                <div className="flex items-center gap-1.5 shrink-0">
+                  {otherPlayers.map((player, idx) => {
+                    const playerIdx = friendGameState.players.findIndex(p => p.id === player.id);
+                    const isTheirTurn = friendGameState.currentTurn === playerIdx;
+                    
+                    return (
+                      <div key={player.id} className="flex items-center gap-1">
+                        <SquareTurnTimerAvatar
+                          avatarUrl={player.avatar}
+                          fallbackText={player.name.slice(0, 2).toUpperCase()}
+                          borderColor={colorMap[player.color]}
+                          isActive={isTheirTurn}
+                          timeLeft={friendTurnTimeLeft}
+                          badgeSide="right"
+                        />
+                        {idx === otherPlayers.length - 1 && (
+                          <div className="text-right hidden sm:block">
+                            <p className="text-white/80 font-medium text-[10px] truncate max-w-[40px]">{player.name}</p>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             );
           })()}
@@ -1107,8 +1161,8 @@ const LudoPage = () => {
           walletBalance={walletBalance}
           pingLatency={pingLatency}
           opponentOnline={opponentOnline}
-          onRoomCreated={(roomId, roomCode, isHost, entryAmt, rewardAmt) => {
-            startRoom(roomId, roomCode, isHost, entryAmt, rewardAmt);
+          onRoomCreated={(roomId, roomCode, isHost, entryAmt, rewardAmt, playerCount) => {
+            startRoom(roomId, roomCode, isHost, entryAmt, rewardAmt, playerCount);
           }}
           onBack={() => {
             friendResetGame();
