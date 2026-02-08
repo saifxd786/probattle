@@ -47,6 +47,8 @@ interface Player {
   tokens: Token[];
   tokensHome: number;
   avatar?: string;
+  isForfeited?: boolean; // Player forfeited due to disconnects (3+ times)
+  disconnectCount?: number; // Track disconnect count per player
 }
 
 interface RoomData {
@@ -393,9 +395,15 @@ export const useFriendLudoGame = () => {
   const opponentDisconnectCountRef = useRef(0); // Mirror of state (avoid stale closures)
   const opponentEverOnlineRef = useRef(false); // Only count disconnects after opponent was seen online
   
-  // Track opponent disconnect count - more than 3 = instant forfeit
+  // Track opponent disconnect count - more than 3 = instant forfeit (for 1v1)
   const [opponentDisconnectCount, setOpponentDisconnectCount] = useState(0);
   const MAX_DISCONNECT_COUNT = 3;
+  
+  // Track per-player disconnect counts for multiplayer (3+ players)
+  // Map: playerId -> disconnect count
+  const playerDisconnectCountsRef = useRef<Map<string, number>>(new Map());
+  // Track which players were last seen online (for multiplayer presence)
+  const lastSeenOnlineRef = useRef<Set<string>>(new Set());
 
   // Keep refs in sync with state
   useEffect(() => {
@@ -556,6 +564,165 @@ export const useFriendLudoGame = () => {
     return [0, 1, 2, 3].map(id => ({ id, position: 0, color }));
   }, []);
 
+  // Helper: Get next active (non-forfeited) player index
+  // Used in multiplayer games to skip forfeited players' turns
+  const getNextActivePlayerIndex = useCallback((currentIndex: number, players: Player[]): number => {
+    // If there are no players or only forfeited players, return current
+    const activePlayers = players.filter(p => !p.isForfeited);
+    if (activePlayers.length === 0) return currentIndex;
+    
+    // Find next non-forfeited player
+    for (let i = 1; i <= players.length; i++) {
+      const nextIdx = (currentIndex + i) % players.length;
+      if (!players[nextIdx].isForfeited) {
+        return nextIdx;
+      }
+    }
+    return currentIndex; // Fallback
+  }, []);
+
+  // Handle player forfeit in multiplayer games (3+ players)
+  // When a player disconnects 3+ times, mark them as forfeited
+  // Their tokens go back to home and their turns are skipped
+  const handlePlayerForfeit = useCallback((forfeitedPlayerId: string) => {
+    if (!user || gameState.phase !== 'playing') return;
+    
+    // Only handle for multiplayer games (3+ players)
+    if (gameState.players.length < 3) return;
+    
+    setGameState(prev => {
+      // Check if player already forfeited
+      const player = prev.players.find(p => p.id === forfeitedPlayerId);
+      if (!player || player.isForfeited) return prev;
+      
+      console.log('[LudoForfeit] Player forfeiting:', forfeitedPlayerId, player.name);
+      
+      // Mark player as forfeited and reset their tokens to home
+      const updatedPlayers = prev.players.map(p => {
+        if (p.id === forfeitedPlayerId) {
+          return {
+            ...p,
+            isForfeited: true,
+            tokens: p.tokens.map(t => ({ ...t, position: 0 })), // All tokens back to home
+            tokensHome: 0
+          };
+        }
+        return p;
+      });
+      
+      // Count active (non-forfeited) players
+      const activePlayers = updatedPlayers.filter(p => !p.isForfeited);
+      
+      // If only 1 active player remains, they win!
+      if (activePlayers.length === 1) {
+        const winner = activePlayers[0];
+        console.log('[LudoForfeit] Only one player remaining - declaring winner:', winner.name);
+        
+        // Trigger win by last standing
+        setTimeout(() => {
+          handleLastPlayerStandingWin(winner.id);
+        }, 100);
+        
+        return {
+          ...prev,
+          players: updatedPlayers,
+          phase: 'result',
+          winner: winner
+        };
+      }
+      
+      // If it was the forfeited player's turn, advance to next active player
+      let newTurn = prev.currentTurn;
+      if (updatedPlayers[prev.currentTurn]?.isForfeited) {
+        // Find next active player
+        for (let i = 1; i <= updatedPlayers.length; i++) {
+          const nextIdx = (prev.currentTurn + i) % updatedPlayers.length;
+          if (!updatedPlayers[nextIdx].isForfeited) {
+            newTurn = nextIdx;
+            break;
+          }
+        }
+      }
+      
+      const isMyTurn = updatedPlayers[newTurn]?.id === user?.id;
+      
+      // Show toast notification
+      sonnerToast.error(`${player.name} forfeited!`, {
+        description: 'Disconnected too many times',
+        duration: 3000
+      });
+      
+      return {
+        ...prev,
+        players: updatedPlayers,
+        currentTurn: newTurn,
+        canRoll: isMyTurn && !prev.hasRolled,
+        hasRolled: prev.currentTurn !== newTurn ? false : prev.hasRolled // Reset if turn changed
+      };
+    });
+    
+    // Broadcast forfeit to other players
+    if (gameActionChannelRef.current) {
+      gameActionChannelRef.current.send({
+        type: 'broadcast',
+        event: 'player_forfeited_multi',
+        payload: {
+          senderId: user?.id,
+          forfeitedPlayerId,
+          timestamp: Date.now()
+        }
+      });
+    }
+  }, [user, gameState.phase, gameState.players.length]);
+
+  // Handle win when all other players forfeit (last player standing)
+  const handleLastPlayerStandingWin = useCallback(async (winnerId: string) => {
+    if (!gameState.roomId) return;
+    
+    console.log('[LudoForfeit] Claiming win - last player standing');
+    
+    // Update room status
+    await supabase
+      .from('ludo_rooms')
+      .update({
+        status: 'completed',
+        winner_id: winnerId,
+        ended_at: new Date().toISOString()
+      })
+      .eq('id', gameState.roomId);
+
+    // Credit reward to winner's wallet
+    if (gameState.rewardAmount > 0 && user?.id === winnerId) {
+      await supabase.from('profiles').update({
+        wallet_balance: walletBalance + gameState.rewardAmount
+      }).eq('id', winnerId);
+
+      // Create transaction
+      await supabase.from('transactions').insert({
+        user_id: winnerId,
+        type: 'prize',
+        amount: gameState.rewardAmount,
+        status: 'completed',
+        description: `Won Ludo match - last player standing (Room: ${gameState.roomCode})`
+      });
+
+      setWalletBalance(prev => prev + gameState.rewardAmount);
+
+      // Send notification
+      await supabase.from('notifications').insert({
+        user_id: winnerId,
+        title: '🏆 Victory!',
+        message: `You won ₹${gameState.rewardAmount}! All opponents forfeited.`,
+        type: 'success'
+      });
+      
+      toast({
+        title: '🏆 You Win!',
+        description: 'All opponents forfeited.',
+      });
+    }
+  }, [gameState.roomId, gameState.rewardAmount, gameState.roomCode, user?.id, walletBalance, toast]);
+
   // Subscribe to room updates
   const subscribeToRoom = useCallback((roomId: string) => {
     // Clean up existing channel
@@ -584,6 +751,7 @@ export const useFriendLudoGame = () => {
   }, []);
 
   // Subscribe to presence for opponent online status with enhanced heartbeat
+  // Enhanced for multiplayer: track per-player disconnect counts for 3+ player games
   const subscribeToPresence = useCallback((roomId: string) => {
     if (presenceChannelRef.current) {
       supabase.removeChannel(presenceChannelRef.current);
@@ -599,12 +767,16 @@ export const useFriendLudoGame = () => {
       })
       .on('presence', { event: 'sync' }, () => {
         const state = channel.presenceState();
-        const onlineCount = Object.keys(state).length;
+        const onlinePlayerIds = new Set(Object.keys(state));
+        const onlineCount = onlinePlayerIds.size;
         setOpponentOnline(onlineCount >= 2);
 
         if (onlineCount >= 2) {
           opponentEverOnlineRef.current = true;
         }
+        
+        // Track online players for multiplayer disconnect detection
+        lastSeenOnlineRef.current = onlinePlayerIds;
         
         // Update last heartbeat time when we get presence sync
         lastHeartbeatRef.current = Date.now();
@@ -616,6 +788,8 @@ export const useFriendLudoGame = () => {
         // If someone else joined, we have seen opponent online at least once.
         if (key !== user?.id) {
           opponentEverOnlineRef.current = true;
+          // Track this player as online
+          lastSeenOnlineRef.current.add(key);
         }
         lastHeartbeatRef.current = Date.now();
         heartbeatMissedRef.current = 0;
@@ -626,7 +800,25 @@ export const useFriendLudoGame = () => {
       .on('presence', { event: 'leave' }, ({ key }) => {
         console.log('[LudoPresence] Player left:', key);
         const state = channel.presenceState();
-        setOpponentOnline(Object.keys(state).length >= 2);
+        const onlineCount = Object.keys(state).length;
+        setOpponentOnline(onlineCount >= 2);
+        
+        // For multiplayer games (3+ players), track disconnect count per player
+        // Only increment if player was previously seen online
+        if (key !== user?.id && lastSeenOnlineRef.current.has(key)) {
+          const currentCount = playerDisconnectCountsRef.current.get(key) || 0;
+          const newCount = currentCount + 1;
+          playerDisconnectCountsRef.current.set(key, newCount);
+          console.log('[LudoPresence] Player', key, 'disconnect count:', newCount);
+          
+          // Check if player exceeded disconnect limit in multiplayer game
+          if (newCount > MAX_DISCONNECT_COUNT) {
+            console.log('[LudoPresence] Player', key, 'exceeded disconnect limit - triggering forfeit');
+            handlePlayerForfeit(key);
+          }
+          
+          lastSeenOnlineRef.current.delete(key);
+        }
       })
       .subscribe(async (status) => {
         console.log('[LudoPresence] Channel status:', status);
@@ -748,7 +940,8 @@ export const useFriendLudoGame = () => {
             });
 
             if (!canMove) {
-              const nextTurn = (prev.currentTurn + 1) % prev.players.length;
+              // Skip forfeited players when advancing turn
+              const nextTurn = getNextActivePlayerIndex(prev.currentTurn, prev.players);
               const isMyTurn = prev.players[nextTurn]?.id === user?.id;
               if (globalQoSManager.shouldPlaySounds()) {
                 soundManager.playDiceResult(diceValue);
@@ -854,6 +1047,84 @@ export const useFriendLudoGame = () => {
           
           // Immediately claim win - no waiting
           claimWinByForfeit();
+        }
+      })
+      // Listen for multiplayer forfeit (3+ disconnect) from other players
+      .on('broadcast', { event: 'player_forfeited_multi' }, (payload) => {
+        const senderId = payload.payload.senderId || payload.payload.s;
+        const forfeitedPlayerId = payload.payload.forfeitedPlayerId;
+        const timestamp = payload.payload.timestamp || payload.payload.t;
+        
+        if (senderId !== user?.id && timestamp > lastActionRef.current) {
+          lastActionRef.current = timestamp;
+          console.log('[LudoSync] Received multiplayer forfeit for player:', forfeitedPlayerId);
+          
+          setGameState(prev => {
+            // Check if player already forfeited
+            const player = prev.players.find(p => p.id === forfeitedPlayerId);
+            if (!player || player.isForfeited) return prev;
+            
+            // Mark player as forfeited and reset their tokens to home
+            const updatedPlayers = prev.players.map(p => {
+              if (p.id === forfeitedPlayerId) {
+                return {
+                  ...p,
+                  isForfeited: true,
+                  tokens: p.tokens.map(t => ({ ...t, position: 0 })),
+                  tokensHome: 0
+                };
+              }
+              return p;
+            });
+            
+            // Count active (non-forfeited) players
+            const activePlayers = updatedPlayers.filter(p => !p.isForfeited);
+            
+            // If only 1 active player remains, they win!
+            if (activePlayers.length === 1) {
+              const winner = activePlayers[0];
+              const isWinner = winner.id === user?.id;
+              
+              if (isWinner) {
+                handleLastPlayerStandingWin(winner.id);
+              }
+              
+              return {
+                ...prev,
+                players: updatedPlayers,
+                phase: 'result',
+                winner: winner
+              };
+            }
+            
+            // If it was the forfeited player's turn, advance to next active player
+            let newTurn = prev.currentTurn;
+            if (updatedPlayers[prev.currentTurn]?.isForfeited) {
+              for (let i = 1; i <= updatedPlayers.length; i++) {
+                const nextIdx = (prev.currentTurn + i) % updatedPlayers.length;
+                if (!updatedPlayers[nextIdx].isForfeited) {
+                  newTurn = nextIdx;
+                  break;
+                }
+              }
+            }
+            
+            const isMyTurn = updatedPlayers[newTurn]?.id === user?.id;
+            
+            // Show toast notification
+            sonnerToast.error(`${player.name} forfeited!`, {
+              description: 'Disconnected too many times',
+              duration: 3000
+            });
+            
+            return {
+              ...prev,
+              players: updatedPlayers,
+              currentTurn: newTurn,
+              canRoll: isMyTurn && !prev.hasRolled,
+              hasRolled: prev.currentTurn !== newTurn ? false : prev.hasRolled
+            };
+          });
         }
       })
       .on('broadcast', { event: 'turn_timeout' }, (payload) => {
@@ -2149,7 +2420,8 @@ export const useFriendLudoGame = () => {
       });
 
       if (!canMove) {
-        const nextTurn = (prev.currentTurn + 1) % prev.players.length;
+        // Skip forfeited players when advancing turn
+        const nextTurn = getNextActivePlayerIndex(prev.currentTurn, prev.players);
         syncGameState(prev.players, nextTurn, diceValue);
         // Reset hasRolled for next player's turn
         return { ...prev, diceValue, isRolling: false, hasRolled: false, currentTurn: nextTurn, canRoll: false };
@@ -2213,7 +2485,8 @@ export const useFriendLudoGame = () => {
     ludoPredictiveAnimator.startTokenMove(color, tokenId, fromPosition, toPosition);
     
     const { updatedPlayers, winner, gotSix } = moveToken(color, tokenId, gameState.diceValue, gameState.players);
-    const nextTurn = gotSix ? gameState.currentTurn : (gameState.currentTurn + 1) % gameState.players.length;
+    // Skip forfeited players when advancing turn
+    const nextTurn = gotSix ? gameState.currentTurn : getNextActivePlayerIndex(gameState.currentTurn, updatedPlayers);
 
     // Broadcast token move with action tracking
     broadcastAction('token_move', {
@@ -2891,10 +3164,10 @@ export const useFriendLudoGame = () => {
           const isMyTurn = currentPlayer?.id === user?.id;
           
           if (isMyTurn && !gameState.isRolling) {
-            console.log('[LudoTimer] Time expired - switching turn to opponent');
+            console.log('[LudoTimer] Time expired - switching turn to next player');
             
-            // Calculate next turn
-            const nextTurn = (gameState.currentTurn + 1) % gameState.players.length;
+            // Calculate next turn (skip forfeited players)
+            const nextTurn = getNextActivePlayerIndex(gameState.currentTurn, gameState.players);
             
             // Broadcast turn skip to opponent
             broadcastAction('turn_timeout', { 

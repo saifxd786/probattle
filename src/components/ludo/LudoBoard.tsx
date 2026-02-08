@@ -34,6 +34,7 @@ interface Player {
   isBot?: boolean;
   avatar?: string;
   coins?: number;
+  isForfeited?: boolean; // Player forfeited due to disconnects
 }
 
 interface CaptureEvent {
@@ -397,6 +398,7 @@ const TimerAvatar = ({
   const progress = (timeLeft / maxTime) * 100;
   const isLowTime = timeLeft <= 5;
   const isOffline = offlineTimeLeft !== undefined && offlineTimeLeft < 60;
+  const isForfeited = player?.isForfeited || false;
   
   // Square border path calculation
   const size = 48;
@@ -490,19 +492,27 @@ const TimerAvatar = ({
           alt={uid} 
           className="w-full h-full object-cover"
           style={{
-            opacity: isOffline ? 0.5 : 1,
+            opacity: isOffline || isForfeited ? 0.4 : 1,
+            filter: isForfeited ? 'grayscale(100%)' : 'none',
           }}
         />
         
-        {/* Offline indicator */}
-        {isOffline && (
+        {/* FORFEITED/LOST indicator - shows when player has been eliminated */}
+        {isForfeited && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/70 rounded-lg">
+            <span className="text-[10px] font-bold text-red-500 uppercase tracking-wider">LOST</span>
+          </div>
+        )}
+        
+        {/* Offline indicator - only show if not already forfeited */}
+        {isOffline && !isForfeited && (
           <div className="absolute inset-0 flex items-center justify-center bg-black/50 rounded-lg">
             <span className="text-[7px] font-bold text-red-400 uppercase">Offline</span>
           </div>
         )}
         
-        {/* Current turn glow pulse */}
-        {isCurrentTurn && !isOffline && (
+        {/* Current turn glow pulse - don't show for forfeited players */}
+        {isCurrentTurn && !isOffline && !isForfeited && (
           <motion.div
             className="absolute inset-0 rounded-lg pointer-events-none"
             style={{
@@ -575,6 +585,7 @@ const CompactPlayerAvatar = ({
   const isLowTime = timeLeft <= 5;
   const isOffline = offlineTimeLeft !== undefined && offlineTimeLeft < 60;
   const displayName = player?.name || player?.uid || 'Player';
+  const isForfeited = player?.isForfeited || false;
   
   return (
     <div className="flex flex-col items-center gap-1" style={{ width: size + 10 }}>
@@ -584,37 +595,60 @@ const CompactPlayerAvatar = ({
         style={{
           width: size,
           height: size,
-          border: isCurrentTurn 
-            ? `2px solid ${isLowTime ? '#EF4444' : colors?.main || '#1E88E5'}` 
-            : '2px solid rgba(255,255,255,0.2)',
-          boxShadow: isCurrentTurn ? `0 0 10px ${colors?.main}80` : 'none',
+          border: isForfeited 
+            ? '2px solid rgba(127,29,29,0.8)'
+            : isCurrentTurn 
+              ? `2px solid ${isLowTime ? '#EF4444' : colors?.main || '#1E88E5'}` 
+              : '2px solid rgba(255,255,255,0.2)',
+          boxShadow: isForfeited 
+            ? '0 0 8px rgba(127,29,29,0.6)'
+            : isCurrentTurn 
+              ? `0 0 10px ${colors?.main}80` 
+              : 'none',
         }}
       >
         <img 
           src={avatarSrc} 
           alt={displayName} 
           className="w-full h-full object-cover"
-          style={{ opacity: isOffline ? 0.5 : 1 }}
+          style={{ 
+            opacity: isOffline || isForfeited ? 0.4 : 1,
+            filter: isForfeited ? 'grayscale(100%)' : 'none',
+          }}
         />
         
-        {/* Offline indicator */}
-        {isOffline && (
+        {/* FORFEITED/LOST indicator */}
+        {isForfeited && (
+          <div className="absolute inset-0 flex items-center justify-center bg-black/70">
+            <span className="text-[7px] font-bold text-red-500 uppercase">LOST</span>
+          </div>
+        )}
+        
+        {/* Offline indicator - only show if not forfeited */}
+        {isOffline && !isForfeited && (
           <div className="absolute inset-0 flex items-center justify-center bg-black/50">
             <span className="text-[6px] font-bold text-red-400 uppercase">OFF</span>
           </div>
         )}
       </div>
       
-      {/* Name - truncated */}
+      {/* Name - truncated, with LOST styling if forfeited */}
       <div 
         className="text-[9px] font-medium text-center truncate w-full"
-        style={{ color: isCurrentTurn ? colors?.main : 'rgba(255,255,255,0.7)' }}
+        style={{ 
+          color: isForfeited 
+            ? 'rgba(239,68,68,0.7)' 
+            : isCurrentTurn 
+              ? colors?.main 
+              : 'rgba(255,255,255,0.7)',
+          textDecoration: isForfeited ? 'line-through' : 'none',
+        }}
       >
         {displayName.length > 6 ? displayName.slice(0, 6) + '...' : displayName}
       </div>
       
-      {/* Turn indicator with timer */}
-      {isCurrentTurn && (
+      {/* Turn indicator with timer - hide for forfeited players */}
+      {isCurrentTurn && !isForfeited && (
         <motion.div 
           className="px-1.5 py-0.5 rounded text-[8px] font-bold"
           style={{
@@ -626,6 +660,20 @@ const CompactPlayerAvatar = ({
         >
           {timeLeft}s
         </motion.div>
+      )}
+      
+      {/* LOST badge for forfeited players */}
+      {isForfeited && (
+        <div 
+          className="px-1.5 py-0.5 rounded text-[7px] font-bold uppercase"
+          style={{
+            background: 'rgba(127,29,29,0.9)',
+            color: '#fff',
+            border: '1px solid rgba(239,68,68,0.5)',
+          }}
+        >
+          Lost
+        </div>
       )}
     </div>
   );
