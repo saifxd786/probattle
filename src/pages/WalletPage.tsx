@@ -463,8 +463,13 @@ const WalletPage = () => {
                       }`}>
                         {getTypeIcon(tx.type)}
                       </div>
-                      <div>
+                      <div className="max-w-[180px]">
                         <p className="text-sm font-medium capitalize">{tx.type.replace('_', ' ')}</p>
+                        {tx.description && ['refund', 'prize', 'admin_credit', 'admin_debit'].includes(tx.type) && (
+                          <p className="text-[10px] text-muted-foreground mt-0.5 line-clamp-2">
+                            {tx.description}
+                          </p>
+                        )}
                         <p className="text-xs text-muted-foreground">
                           {format(new Date(tx.created_at), 'MMM dd, hh:mm a')}
                         </p>
