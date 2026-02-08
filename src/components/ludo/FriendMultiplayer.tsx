@@ -44,8 +44,11 @@ interface RoomPlayer {
   slot_index: number;
 }
 
+// Entry amounts for friend matches
+const FRIEND_ENTRY_AMOUNTS = [10, 20, 50, 100, 200, 500, 1000];
+
 const FriendMultiplayer = ({ 
-  entryAmount, 
+  entryAmount: initialEntryAmount, 
   walletBalance, 
   onRoomCreated, 
   onBack,
@@ -63,6 +66,7 @@ const FriendMultiplayer = ({
   const [playerMode, setPlayerMode] = useState<PlayerMode>(2);
   const [currentPlayers, setCurrentPlayers] = useState<RoomPlayer[]>([]);
   const [roomPlayerCount, setRoomPlayerCount] = useState<number>(2);
+  const [selectedEntryAmount, setSelectedEntryAmount] = useState(initialEntryAmount || 50);
   
   // Room preview info for join confirmation
   const [roomPreview, setRoomPreview] = useState<{
@@ -77,11 +81,11 @@ const FriendMultiplayer = ({
     players: RoomPlayer[];
   } | null>(null);
 
-  const actualEntryAmount = isFreeMatch ? 0 : entryAmount;
+  const actualEntryAmount = isFreeMatch ? 0 : selectedEntryAmount;
   const rewardAmount = calculateReward(actualEntryAmount, playerMode);
 
   const handleCreateRoom = async () => {
-    if (!isFreeMatch && walletBalance < entryAmount) {
+    if (!isFreeMatch && walletBalance < selectedEntryAmount) {
       toast.error('Insufficient balance');
       return;
     }
@@ -466,7 +470,7 @@ const FriendMultiplayer = ({
                   Paid
                 </p>
                 <p className={`text-xs ${!isFreeMatch ? 'text-amber-400' : 'text-gray-600'}`}>
-                  Win ₹{Math.floor(entryAmount * 1.5)}
+                  Win ₹{Math.floor(selectedEntryAmount * 1.5)}
                 </p>
               </div>
             </div>
@@ -557,6 +561,49 @@ const FriendMultiplayer = ({
           </div>
         </motion.div>
 
+        {/* Entry Amount Selector - Only show for paid matches */}
+        {!isFreeMatch && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.14 }}
+            className="mb-5"
+          >
+            <p className="text-xs text-gray-500 mb-2 uppercase tracking-wide">Entry Amount</p>
+            <div className="grid grid-cols-4 gap-2">
+              {FRIEND_ENTRY_AMOUNTS.map((amount) => {
+                const isSelected = selectedEntryAmount === amount;
+                const canAfford = walletBalance >= amount;
+                
+                return (
+                  <button
+                    key={amount}
+                    onClick={() => canAfford && setSelectedEntryAmount(amount)}
+                    disabled={!canAfford}
+                    className={`relative py-2.5 px-2 rounded-xl transition-all ${
+                      isSelected
+                        ? 'bg-emerald-500/15 border-emerald-500/50'
+                        : canAfford
+                        ? 'bg-gray-900/50 border-gray-800 hover:border-gray-700'
+                        : 'bg-gray-900/30 border-gray-800/50 opacity-50'
+                    }`}
+                    style={{ border: '1px solid' }}
+                  >
+                    <p className={`font-bold text-sm ${
+                      isSelected ? 'text-emerald-400' : canAfford ? 'text-gray-300' : 'text-gray-600'
+                    }`}>
+                      ₹{amount}
+                    </p>
+                    {isSelected && (
+                      <div className="absolute bottom-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-emerald-400" />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </motion.div>
+        )}
+
         {/* Prize Info Card */}
         <motion.div
           initial={{ opacity: 0, y: 10 }}
@@ -579,7 +626,7 @@ const FriendMultiplayer = ({
                   </div>
                   <div>
                     <p className="text-[10px] text-gray-500 uppercase">Entry ({playerMode} players)</p>
-                    <p className="text-lg font-bold text-white">₹{entryAmount}</p>
+                    <p className="text-lg font-bold text-white">₹{selectedEntryAmount}</p>
                   </div>
                 </div>
                 
@@ -605,7 +652,7 @@ const FriendMultiplayer = ({
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.2 }}
             onClick={() => handleCreateRoom()}
-            disabled={(!isFreeMatch && walletBalance < entryAmount) || isLoading}
+            disabled={(!isFreeMatch && walletBalance < selectedEntryAmount) || isLoading}
             className="w-full p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-left disabled:opacity-50 flex items-center gap-3"
           >
             <div className="w-12 h-12 rounded-xl bg-emerald-500/20 flex items-center justify-center">
@@ -646,14 +693,14 @@ const FriendMultiplayer = ({
         </div>
 
         {/* Insufficient Balance Warning */}
-        {!isFreeMatch && walletBalance < entryAmount && (
+        {!isFreeMatch && walletBalance < selectedEntryAmount && (
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
             className="mt-4 p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-center"
           >
-            <p className="text-sm text-red-400">⚠️ Insufficient balance. Need ₹{entryAmount}</p>
+            <p className="text-sm text-red-400">⚠️ Insufficient balance. Need ₹{selectedEntryAmount}</p>
           </motion.div>
         )}
 
@@ -677,7 +724,7 @@ const FriendMultiplayer = ({
               </>
             ) : (
               <>
-                <p>2. Both players pay ₹{entryAmount} entry</p>
+                <p>2. Both players pay ₹{selectedEntryAmount} entry</p>
                 <p>3. Winner takes ₹{rewardAmount} (1.5x)</p>
               </>
             )}
@@ -916,7 +963,7 @@ const FriendMultiplayer = ({
             <div className="p-3 rounded-xl bg-gray-900/50 border border-gray-800">
               <div className="flex justify-between items-center mb-2">
                 <span className="text-xs text-gray-500">Your Entry</span>
-                <span className="text-sm font-medium text-white">₹{entryAmount}</span>
+                <span className="text-sm font-medium text-white">₹{selectedEntryAmount}</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-xs text-gray-500 flex items-center gap-1">
