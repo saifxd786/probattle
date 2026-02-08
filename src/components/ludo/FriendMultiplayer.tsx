@@ -1,18 +1,47 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Users, Copy, Check, ArrowLeft, Loader2, Signal, Wifi, WifiOff, Gamepad2, Hash, Trophy, Coins, UserPlus, Link2, Gift, Zap } from 'lucide-react';
+import { Users, Copy, Check, ArrowLeft, Loader2, Signal, Wifi, WifiOff, Gamepad2, Hash, Trophy, Coins, UserPlus, Link2, Gift, Zap, Crown, Swords } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 
 interface FriendMultiplayerProps {
   entryAmount: number;
   walletBalance: number;
-  onRoomCreated: (roomId: string, roomCode: string, isHost: boolean, entryAmount: number, rewardAmount: number) => void;
+  onRoomCreated: (roomId: string, roomCode: string, isHost: boolean, entryAmount: number, rewardAmount: number, playerCount?: number) => void;
   onBack: () => void;
   pingLatency?: number | null;
   opponentOnline?: boolean;
+}
+
+// Player mode options
+type PlayerMode = 2 | 3 | 4;
+
+const PLAYER_MODES: { mode: PlayerMode; label: string; icon: any; multiplier: string; description: string }[] = [
+  { mode: 2, label: '1v1', icon: Swords, multiplier: '1.5x', description: '2 players' },
+  { mode: 3, label: '1v1v1', icon: Users, multiplier: '2.7x', description: '3 players' },
+  { mode: 4, label: '1v1v1v1', icon: Crown, multiplier: '3x', description: '4 players' },
+];
+
+// Calculate reward based on player count
+const calculateReward = (entryAmount: number, playerCount: PlayerMode): number => {
+  if (entryAmount === 0) return 0;
+  switch (playerCount) {
+    case 2: return Math.floor(entryAmount * 2 * 1.5); // 1.5x total pool
+    case 3: return Math.floor(entryAmount * 3 * 0.9); // 2.7x for winner
+    case 4: return Math.floor(entryAmount * 4 * 0.75); // 3x for winner
+    default: return Math.floor(entryAmount * 1.5);
+  }
+};
+
+interface RoomPlayer {
+  user_id: string;
+  username: string;
+  avatar_url: string | null;
+  player_color: string;
+  slot_index: number;
 }
 
 const FriendMultiplayer = ({ 
@@ -31,6 +60,9 @@ const FriendMultiplayer = ({
   const [waitingForPlayer, setWaitingForPlayer] = useState(false);
   const [currentRoomId, setCurrentRoomId] = useState<string | null>(null);
   const [isFreeMatch, setIsFreeMatch] = useState(false);
+  const [playerMode, setPlayerMode] = useState<PlayerMode>(2);
+  const [currentPlayers, setCurrentPlayers] = useState<RoomPlayer[]>([]);
+  const [roomPlayerCount, setRoomPlayerCount] = useState<number>(2);
   
   // Room preview info for join confirmation
   const [roomPreview, setRoomPreview] = useState<{
@@ -40,10 +72,13 @@ const FriendMultiplayer = ({
     isFree: boolean;
     hostName: string;
     hostAvatar: string | null;
+    playerCount: number;
+    currentPlayers: number;
+    players: RoomPlayer[];
   } | null>(null);
 
   const actualEntryAmount = isFreeMatch ? 0 : entryAmount;
-  const rewardAmount = isFreeMatch ? 0 : Math.floor(entryAmount * 1.5);
+  const rewardAmount = calculateReward(actualEntryAmount, playerMode);
 
   const handleCreateRoom = async () => {
     if (!isFreeMatch && walletBalance < entryAmount) {
@@ -53,13 +88,22 @@ const FriendMultiplayer = ({
 
     setIsLoading(true);
     try {
-      const { data, error } = await supabase.rpc('create_ludo_room', {
-        p_entry_amount: actualEntryAmount
+      // Use multiplayer RPC for all modes
+      const { data, error } = await supabase.rpc('create_ludo_room_multiplayer', {
+        p_entry_amount: actualEntryAmount,
+        p_player_count: playerMode
       });
 
       if (error) throw error;
       
-      const result = data as { success: boolean; message?: string; room_id?: string; room_code?: string };
+      const result = data as { 
+        success: boolean; 
+        message?: string; 
+        room_id?: string; 
+        room_code?: string;
+        player_count?: number;
+        player_color?: string;
+      };
       
       if (!result.success) {
         toast.error(result.message || 'Failed to create room');
@@ -68,9 +112,11 @@ const FriendMultiplayer = ({
 
       setCreatedRoomCode(result.room_code!);
       setCurrentRoomId(result.room_id!);
+      setRoomPlayerCount(result.player_count || playerMode);
       setWaitingForPlayer(true);
       setMode('create');
 
+      // Subscribe to both room updates and player joins
       const channel = supabase
         .channel(`room-${result.room_id}`)
         .on(
@@ -82,10 +128,47 @@ const FriendMultiplayer = ({
             filter: `id=eq.${result.room_id}`
           },
           (payload) => {
-            const newData = payload.new as { status: string; guest_id: string; entry_amount: number; reward_amount: number };
-            if (newData.status === 'ready' && newData.guest_id) {
-              toast.success(isFreeMatch ? 'Friend joined! Free game starting...' : 'Friend joined! Game starting...');
-              onRoomCreated(result.room_id!, result.room_code!, true, newData.entry_amount, newData.reward_amount);
+            const newData = payload.new as { status: string; player_count: number; entry_amount: number; reward_amount: number };
+            if (newData.status === 'ready') {
+              toast.success(isFreeMatch ? 'All players joined! Free game starting...' : 'All players joined! Game starting...');
+              onRoomCreated(result.room_id!, result.room_code!, true, newData.entry_amount, newData.reward_amount, newData.player_count);
+            }
+          }
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'ludo_room_players',
+            filter: `room_id=eq.${result.room_id}`
+          },
+          async () => {
+            // Refresh player list when someone joins
+            const { data: players } = await supabase
+              .from('ludo_room_players')
+              .select('user_id, player_color, slot_index')
+              .eq('room_id', result.room_id!);
+            
+            if (players) {
+              // Get usernames
+              const userIds = players.map(p => p.user_id);
+              const { data: profiles } = await supabase
+                .from('profiles')
+                .select('id, username, avatar_url')
+                .in('id', userIds);
+              
+              const playersWithNames: RoomPlayer[] = players.map(p => {
+                const profile = profiles?.find(pr => pr.id === p.user_id);
+                return {
+                  user_id: p.user_id,
+                  username: profile?.username || 'Player',
+                  avatar_url: profile?.avatar_url || null,
+                  player_color: p.player_color,
+                  slot_index: p.slot_index
+                };
+              });
+              setCurrentPlayers(playersWithNames);
             }
           }
         )
@@ -110,13 +193,14 @@ const FriendMultiplayer = ({
 
     setIsLoading(true);
     try {
-      const { data, error } = await supabase.rpc('check_ludo_room', {
+      // Use multiplayer check function
+      const { data, error } = await supabase.rpc('check_ludo_room_multiplayer', {
         p_room_code: roomCode.toUpperCase()
       });
 
       if (error) throw error;
       
-      const result = data as { 
+      const result = data as unknown as { 
         success: boolean; 
         message?: string; 
         room_code?: string; 
@@ -125,10 +209,19 @@ const FriendMultiplayer = ({
         is_free?: boolean;
         host_name?: string;
         host_avatar?: string | null;
+        player_count?: number;
+        current_players?: number;
+        players?: RoomPlayer[];
+        is_full?: boolean;
       };
       
       if (!result.success) {
         toast.error(result.message || 'Room not found');
+        return;
+      }
+
+      if (result.is_full) {
+        toast.error('Room is full');
         return;
       }
 
@@ -139,7 +232,10 @@ const FriendMultiplayer = ({
         rewardAmount: result.reward_amount || 0,
         isFree: result.is_free || false,
         hostName: result.host_name || 'Unknown',
-        hostAvatar: result.host_avatar || null
+        hostAvatar: result.host_avatar || null,
+        playerCount: result.player_count || 2,
+        currentPlayers: result.current_players || 1,
+        players: result.players || []
       });
       setMode('confirm-join');
     } catch (error: any) {
@@ -161,21 +257,105 @@ const FriendMultiplayer = ({
 
     setIsLoading(true);
     try {
-      const { data, error } = await supabase.rpc('join_ludo_room', {
+      // Use multiplayer join function
+      const { data, error } = await supabase.rpc('join_ludo_room_multiplayer', {
         p_room_code: roomPreview.roomCode
       });
 
       if (error) throw error;
       
-      const result = data as { success: boolean; message?: string; room_id?: string; room_code?: string; entry_amount?: number; reward_amount?: number };
+      const result = data as { 
+        success: boolean; 
+        message?: string; 
+        room_id?: string; 
+        room_code?: string; 
+        entry_amount?: number; 
+        reward_amount?: number;
+        player_count?: number;
+        is_full?: boolean;
+      };
       
       if (!result.success) {
         toast.error(result.message || 'Failed to join room');
         return;
       }
 
-      toast.success('Joined room! Game starting...');
-      onRoomCreated(result.room_id!, result.room_code!, false, result.entry_amount || roomPreview.entryAmount, result.reward_amount || roomPreview.rewardAmount);
+      if (result.is_full) {
+        toast.success('Joined room! Game starting...');
+        onRoomCreated(
+          result.room_id!, 
+          result.room_code!, 
+          false, 
+          result.entry_amount || roomPreview.entryAmount, 
+          result.reward_amount || roomPreview.rewardAmount,
+          result.player_count || roomPreview.playerCount
+        );
+      } else {
+        // Not full yet - wait for more players
+        toast.success('Joined room! Waiting for more players...');
+        setCurrentRoomId(result.room_id!);
+        setCreatedRoomCode(result.room_code!);
+        setRoomPlayerCount(result.player_count || roomPreview.playerCount);
+        setWaitingForPlayer(true);
+        setMode('create'); // Show waiting screen
+        
+        // Subscribe to room updates
+        const channel = supabase
+          .channel(`room-join-${result.room_id}`)
+          .on(
+            'postgres_changes',
+            {
+              event: 'UPDATE',
+              schema: 'public',
+              table: 'ludo_rooms',
+              filter: `id=eq.${result.room_id}`
+            },
+            (payload) => {
+              const newData = payload.new as { status: string; entry_amount: number; reward_amount: number; player_count: number };
+              if (newData.status === 'ready') {
+                toast.success('All players joined! Game starting...');
+                onRoomCreated(result.room_id!, result.room_code!, false, newData.entry_amount, newData.reward_amount, newData.player_count);
+              }
+            }
+          )
+          .on(
+            'postgres_changes',
+            {
+              event: '*',
+              schema: 'public',
+              table: 'ludo_room_players',
+              filter: `room_id=eq.${result.room_id}`
+            },
+            async () => {
+              // Refresh player list
+              const { data: players } = await supabase
+                .from('ludo_room_players')
+                .select('user_id, player_color, slot_index')
+                .eq('room_id', result.room_id!);
+              
+              if (players) {
+                const userIds = players.map(p => p.user_id);
+                const { data: profiles } = await supabase
+                  .from('profiles')
+                  .select('id, username, avatar_url')
+                  .in('id', userIds);
+                
+                const playersWithNames: RoomPlayer[] = players.map(p => {
+                  const profile = profiles?.find(pr => pr.id === p.user_id);
+                  return {
+                    user_id: p.user_id,
+                    username: profile?.username || 'Player',
+                    avatar_url: profile?.avatar_url || null,
+                    player_color: p.player_color,
+                    slot_index: p.slot_index
+                  };
+                });
+                setCurrentPlayers(playersWithNames);
+              }
+            }
+          )
+          .subscribe();
+      }
     } catch (error: any) {
       toast.error(error.message || 'Failed to join room');
     } finally {
@@ -188,13 +368,14 @@ const FriendMultiplayer = ({
     
     setIsLoading(true);
     try {
-      const { data, error } = await supabase.rpc('cancel_ludo_room', {
+      // Use multiplayer cancel function
+      const { data, error } = await supabase.rpc('cancel_ludo_room_multiplayer', {
         p_room_id: currentRoomId
       });
 
       if (error) throw error;
       
-      const result = data as { success: boolean; message?: string };
+      const result = data as unknown as { success: boolean; message?: string };
       
       if (result.success) {
         toast.success('Room cancelled. Amount refunded!');
@@ -328,6 +509,54 @@ const FriendMultiplayer = ({
           </button>
         </motion.div>
 
+        {/* Player Mode Selector - 1v1, 1v1v1, 1v1v1v1 */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.12 }}
+          className="mb-5"
+        >
+          <p className="text-xs text-gray-500 mb-2 uppercase tracking-wide">Game Mode</p>
+          <div className="grid grid-cols-3 gap-2">
+            {PLAYER_MODES.map((pm) => {
+              const Icon = pm.icon;
+              const isSelected = playerMode === pm.mode;
+              const modeReward = calculateReward(actualEntryAmount, pm.mode);
+              
+              return (
+                <button
+                  key={pm.mode}
+                  onClick={() => setPlayerMode(pm.mode)}
+                  className={`relative p-3 rounded-xl border transition-all ${
+                    isSelected
+                      ? 'bg-violet-500/15 border-violet-500/50'
+                      : 'bg-gray-900/50 border-gray-800 hover:border-gray-700'
+                  }`}
+                >
+                  <div className="flex flex-col items-center gap-1.5">
+                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
+                      isSelected ? 'bg-violet-500' : 'bg-gray-800'
+                    }`}>
+                      <Icon className={`w-4 h-4 ${isSelected ? 'text-white' : 'text-gray-500'}`} />
+                    </div>
+                    <p className={`font-bold text-sm ${isSelected ? 'text-white' : 'text-gray-400'}`}>
+                      {pm.label}
+                    </p>
+                    <p className={`text-[10px] ${isSelected ? 'text-violet-400' : 'text-gray-600'}`}>
+                      {pm.multiplier}
+                    </p>
+                  </div>
+                  {isSelected && (
+                    <div className="absolute top-1.5 right-1.5 w-3.5 h-3.5 rounded-full bg-violet-500 flex items-center justify-center">
+                      <Check className="w-2 h-2 text-white" />
+                    </div>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </motion.div>
+
         {/* Prize Info Card */}
         <motion.div
           initial={{ opacity: 0, y: 10 }}
@@ -338,7 +567,7 @@ const FriendMultiplayer = ({
           {isFreeMatch ? (
             <div className="p-4 rounded-xl bg-indigo-500/10 border border-indigo-500/30 text-center">
               <Gift className="w-8 h-8 text-indigo-400 mx-auto mb-2" />
-              <p className="text-sm font-medium text-white">Free Match</p>
+              <p className="text-sm font-medium text-white">Free Match • {PLAYER_MODES.find(p => p.mode === playerMode)?.label}</p>
               <p className="text-xs text-indigo-400">Play for fun, no money involved!</p>
             </div>
           ) : (
@@ -349,14 +578,14 @@ const FriendMultiplayer = ({
                     <Coins className="w-5 h-5 text-amber-400" />
                   </div>
                   <div>
-                    <p className="text-[10px] text-gray-500 uppercase">Entry</p>
+                    <p className="text-[10px] text-gray-500 uppercase">Entry ({playerMode} players)</p>
                     <p className="text-lg font-bold text-white">₹{entryAmount}</p>
                   </div>
                 </div>
                 
                 <div className="text-center px-3">
                   <Zap className="w-4 h-4 text-indigo-400 mx-auto" />
-                  <span className="text-[10px] text-gray-500">1.5x</span>
+                  <span className="text-[10px] text-gray-500">{PLAYER_MODES.find(p => p.mode === playerMode)?.multiplier}</span>
                 </div>
                 
                 <div className="text-right">
@@ -537,15 +766,67 @@ const FriendMultiplayer = ({
           </p>
         </motion.div>
 
+        {/* Player Slots for Multi-player */}
+        {roomPlayerCount > 2 && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.15 }}
+            className="p-4 rounded-xl bg-gray-900/50 border border-gray-800 mb-4"
+          >
+            <p className="text-xs text-gray-500 uppercase mb-3 text-center">
+              Players ({currentPlayers.length}/{roomPlayerCount})
+            </p>
+            <div className="grid grid-cols-4 gap-2">
+              {Array.from({ length: roomPlayerCount }).map((_, i) => {
+                const player = currentPlayers.find(p => p.slot_index === i);
+                const colors = ['red', 'green', 'yellow', 'blue'];
+                const colorStyles: Record<string, string> = {
+                  red: 'border-red-500/50 bg-red-500/10',
+                  green: 'border-green-500/50 bg-green-500/10',
+                  yellow: 'border-yellow-500/50 bg-yellow-500/10',
+                  blue: 'border-blue-500/50 bg-blue-500/10'
+                };
+                
+                return (
+                  <div
+                    key={i}
+                    className={`p-2 rounded-lg border text-center ${
+                      player ? colorStyles[colors[i]] : 'border-gray-700 bg-gray-800/50'
+                    }`}
+                  >
+                    {player ? (
+                      <>
+                        <Avatar className="w-8 h-8 mx-auto mb-1">
+                          <AvatarImage src={player.avatar_url || undefined} />
+                          <AvatarFallback className="text-xs">{player.username[0]}</AvatarFallback>
+                        </Avatar>
+                        <p className="text-[10px] text-white truncate">{player.username}</p>
+                      </>
+                    ) : (
+                      <>
+                        <div className="w-8 h-8 mx-auto mb-1 rounded-full border border-dashed border-gray-600 flex items-center justify-center">
+                          <Users className="w-3 h-3 text-gray-600" />
+                        </div>
+                        <p className="text-[10px] text-gray-600">Waiting...</p>
+                      </>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </motion.div>
+        )}
+
         {/* Waiting Animation */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.2 }}
-          className="flex flex-col items-center py-8"
+          className="flex flex-col items-center py-6"
         >
           {/* Radar */}
-          <div className="relative w-28 h-28 mb-4">
+          <div className="relative w-24 h-24 mb-4">
             {[0, 1, 2].map((i) => (
               <motion.div
                 key={i}
@@ -562,15 +843,19 @@ const FriendMultiplayer = ({
             ))}
             <div className="absolute inset-0 flex items-center justify-center">
               <div 
-                className="w-14 h-14 rounded-full flex items-center justify-center"
+                className="w-12 h-12 rounded-full flex items-center justify-center"
                 style={{ background: 'linear-gradient(135deg, #6366F1 0%, #4F46E5 100%)' }}
               >
-                <Users className="w-7 h-7 text-white" />
+                <Users className="w-6 h-6 text-white" />
               </div>
             </div>
           </div>
           
-          <p className="text-sm font-medium text-white mb-1">Waiting for friend...</p>
+          <p className="text-sm font-medium text-white mb-1">
+            {roomPlayerCount > 2 
+              ? `Waiting for ${roomPlayerCount - currentPlayers.length} more player${roomPlayerCount - currentPlayers.length > 1 ? 's' : ''}...` 
+              : 'Waiting for friend...'}
+          </p>
           <p className="text-xs text-gray-500">They need to enter the code</p>
           
           {/* Connection Status */}

@@ -729,6 +729,44 @@ export type Database = {
           },
         ]
       }
+      ludo_room_players: {
+        Row: {
+          id: string
+          is_ready: boolean | null
+          joined_at: string
+          player_color: string
+          room_id: string
+          slot_index: number
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          is_ready?: boolean | null
+          joined_at?: string
+          player_color: string
+          room_id: string
+          slot_index: number
+          user_id: string
+        }
+        Update: {
+          id?: string
+          is_ready?: boolean | null
+          joined_at?: string
+          player_color?: string
+          room_id?: string
+          slot_index?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ludo_room_players_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "ludo_rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ludo_rooms: {
         Row: {
           created_at: string
@@ -741,6 +779,7 @@ export type Database = {
           host_color: string | null
           host_id: string
           id: string
+          player_count: number
           reward_amount: number
           room_code: string
           started_at: string | null
@@ -759,6 +798,7 @@ export type Database = {
           host_color?: string | null
           host_id: string
           id?: string
+          player_count?: number
           reward_amount?: number
           room_code: string
           started_at?: string | null
@@ -777,6 +817,7 @@ export type Database = {
           host_color?: string | null
           host_id?: string
           id?: string
+          player_count?: number
           reward_amount?: number
           room_code?: string
           started_at?: string | null
@@ -2237,6 +2278,10 @@ export type Database = {
         }[]
       }
       cancel_ludo_room: { Args: { p_room_id: string }; Returns: Json }
+      cancel_ludo_room_multiplayer: {
+        Args: { p_room_id: string }
+        Returns: Json
+      }
       check_device_status: {
         Args: { p_device_id: string }
         Returns: {
@@ -2248,6 +2293,10 @@ export type Database = {
         }[]
       }
       check_ludo_room: { Args: { p_room_code: string }; Returns: Json }
+      check_ludo_room_multiplayer: {
+        Args: { p_room_code: string }
+        Returns: Json
+      }
       check_referral_eligibility: { Args: { p_user_id: string }; Returns: Json }
       check_spin_availability: { Args: never; Returns: Json }
       claim_daily_bonus: { Args: never; Returns: Json }
@@ -2260,6 +2309,10 @@ export type Database = {
         Returns: Json
       }
       create_ludo_room: { Args: { p_entry_amount: number }; Returns: Json }
+      create_ludo_room_multiplayer: {
+        Args: { p_entry_amount: number; p_player_count?: number }
+        Returns: Json
+      }
       detect_multi_accounts: { Args: never; Returns: Json }
       generate_5digit_user_code: { Args: never; Returns: string }
       generate_match_code: { Args: never; Returns: string }
@@ -2289,6 +2342,11 @@ export type Database = {
         Returns: boolean
       }
       join_ludo_room: { Args: { p_room_code: string }; Returns: Json }
+      join_ludo_room_multiplayer: {
+        Args: { p_room_code: string }
+        Returns: Json
+      }
+      leave_ludo_room: { Args: { p_room_id: string }; Returns: Json }
       link_user_to_device: {
         Args: { p_device_id: string; p_user_id: string }
         Returns: {
