@@ -20,20 +20,20 @@ interface FriendMultiplayerProps {
 type PlayerMode = 2 | 3 | 4;
 
 const PLAYER_MODES: { mode: PlayerMode; label: string; icon: any; multiplier: string; description: string }[] = [
-  { mode: 2, label: '1v1', icon: Swords, multiplier: '1.8x', description: '2 players' },
-  { mode: 3, label: '1v1v1', icon: Users, multiplier: '2.7x', description: '3 players' },
-  { mode: 4, label: '1v1v1v1', icon: Crown, multiplier: '3.6x', description: '4 players - Winner Takes All' },
+  { mode: 2, label: '1v1', icon: Swords, multiplier: '1.5x', description: '2 players' },
+  { mode: 3, label: '1v1v1', icon: Users, multiplier: '2x', description: '3 players' },
+  { mode: 4, label: '1v1v1v1', icon: Crown, multiplier: '3x', description: '4 players - Winner Takes All' },
 ];
 
 // Calculate reward based on player count
-// Platform takes ~10% commission, winner gets rest
+// Only 1st position wins - others lose
 const calculateReward = (entryAmount: number, playerCount: PlayerMode): number => {
   if (entryAmount === 0) return 0;
   switch (playerCount) {
-    case 2: return Math.floor(entryAmount * 2 * 0.9); // 1.8x - 10% platform fee
-    case 3: return Math.floor(entryAmount * 3 * 0.9); // 2.7x - 10% platform fee  
-    case 4: return Math.floor(entryAmount * 4 * 0.9); // 3.6x - Winner takes all (10% fee)
-    default: return Math.floor(entryAmount * 1.8);
+    case 2: return Math.floor(entryAmount * 1.5); // 1.5x for 1v1
+    case 3: return Math.floor(entryAmount * 2); // 2x for 1v1v1  
+    case 4: return Math.floor(entryAmount * 3); // 3x for 1v1v1v1
+    default: return Math.floor(entryAmount * 1.5);
   }
 };
 
@@ -471,7 +471,7 @@ const FriendMultiplayer = ({
                   Paid
                 </p>
                 <p className={`text-xs ${!isFreeMatch ? 'text-amber-400' : 'text-gray-600'}`}>
-                  Win ₹{Math.floor(selectedEntryAmount * 1.5)}
+                  Win Real Cash
                 </p>
               </div>
             </div>

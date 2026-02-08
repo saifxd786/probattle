@@ -688,12 +688,12 @@ export const useLudoGame = () => {
     setWalletBalance(prev => prev - entryAmount);
 
     // Calculate reward based on player mode
-    // 1v1: 1.5x, 1v1v1: 2.5x, 1v1v1v1: 3.5x
+    // 1v1: 1.5x, 1v1v1: 2x, 1v1v1v1: 3x (only 1st position wins)
     const getRewardMultiplier = (mode: 2 | 3 | 4) => {
       switch (mode) {
-        case 2: return settings.rewardMultiplier; // 1.5x
-        case 3: return 2.5; // 2.5x for 1v1v1
-        case 4: return 3.5; // 3.5x for 1v1v1v1
+        case 2: return 1.5; // 1.5x for 1v1
+        case 3: return 2; // 2x for 1v1v1
+        case 4: return 3; // 3x for 1v1v1v1
       }
     };
     const rewardAmount = entryAmount * getRewardMultiplier(effectivePlayerMode);
@@ -1755,8 +1755,8 @@ export const useLudoGame = () => {
   // Calculate reward based on player mode for return value
   const getReturnRewardAmount = () => {
     switch (playerMode) {
-      case 2: return entryAmount * settings.rewardMultiplier; // 1.5x
-      case 4: return entryAmount * 3.5; // 3.5x for 1v1v1v1
+      case 2: return entryAmount * 1.5; // 1.5x for 1v1
+      case 4: return entryAmount * 3; // 3x for 1v1v1v1
     }
   };
 

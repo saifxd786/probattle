@@ -24,8 +24,8 @@ const EntrySelector = ({
   onPlayerModeChange,
   onQuickPlay
 }: EntrySelectorProps) => {
-  // 4v4 mode gets 2x multiplier, 1v1 uses settings multiplier
-  const actualMultiplier = playerMode === 4 ? 2 : rewardMultiplier;
+  // 1v1: 1.5x, 1v1v1v1: 3x (only 1st position wins)
+  const actualMultiplier = playerMode === 4 ? 3 : 1.5;
   const rewardAmount = selectedAmount * actualMultiplier;
   const isHighStake = selectedAmount > 100;
 

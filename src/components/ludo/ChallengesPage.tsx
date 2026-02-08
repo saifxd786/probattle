@@ -56,8 +56,8 @@ const getModeIcon = (mode: 2 | 4) => {
 
 const getMultiplier = (mode: 2 | 4, baseMultiplier: number) => {
   switch (mode) {
-    case 2: return baseMultiplier;
-    case 4: return 2.5;
+    case 2: return 1.5; // 1.5x for 1v1
+    case 4: return 3; // 3x for 1v1v1v1
   }
 };
 

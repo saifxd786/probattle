@@ -163,7 +163,7 @@ const AdminLudoSettings = () => {
                   className="bg-background border-border text-foreground"
                 />
                 <p className="text-xs text-muted-foreground">
-                  1v1: {settings.rewardMultiplier}x | 1v1v1: 2.5x | 1v1v1v1: 3.5x
+                  1v1: 1.5x | 1v1v1: 2x | 1v1v1v1: 3x (Only 1st wins)
                 </p>
               </div>
             </CardContent>
