@@ -62,6 +62,7 @@ interface RoomData {
   winner_id: string | null;
   host_color: string | null;
   guest_color: string | null;
+  player_count: number;
 }
 
 interface GameStateData {
@@ -110,7 +111,15 @@ interface FriendGameState {
   lastSyncTime: number;
 }
 
-const COLORS = ['red', 'green'];
+// All 4 colors for multiplayer support
+const COLORS = ['red', 'green', 'yellow', 'blue'];
+
+// Color assignment order for different player counts
+const COLOR_ORDERS: { [count: number]: string[] } = {
+  2: ['red', 'green'],     // Diagonal opposites
+  3: ['red', 'green', 'yellow'], // 3 corners
+  4: ['red', 'green', 'yellow', 'blue'], // All 4 corners
+};
 
 // ===== TRACK DEFINITIONS FOR COORDINATE-BASED CAPTURE =====
 // Each player has their own track starting position
@@ -148,18 +157,56 @@ const TOP_TRACK: { x: number; y: number }[] = [
   { x: 7.5, y: 0.5 },
 ];
 
+// RIGHT_TRACK: Starts from RIGHT side (13.5, 8.5) going left - YELLOW uses this
+const RIGHT_TRACK: { x: number; y: number }[] = [
+  { x: 13.5, y: 8.5 }, { x: 12.5, y: 8.5 }, { x: 11.5, y: 8.5 }, { x: 10.5, y: 8.5 }, { x: 9.5, y: 8.5 },
+  { x: 8.5, y: 9.5 }, { x: 8.5, y: 10.5 }, { x: 8.5, y: 11.5 }, { x: 8.5, y: 12.5 }, { x: 8.5, y: 13.5 }, { x: 8.5, y: 14.5 },
+  { x: 7.5, y: 14.5 },
+  { x: 6.5, y: 14.5 }, { x: 6.5, y: 13.5 }, { x: 6.5, y: 12.5 }, { x: 6.5, y: 11.5 }, { x: 6.5, y: 10.5 }, { x: 6.5, y: 9.5 },
+  { x: 5.5, y: 8.5 }, { x: 4.5, y: 8.5 }, { x: 3.5, y: 8.5 }, { x: 2.5, y: 8.5 }, { x: 1.5, y: 8.5 }, { x: 0.5, y: 8.5 },
+  { x: 0.5, y: 7.5 },
+  { x: 0.5, y: 6.5 }, { x: 1.5, y: 6.5 }, { x: 2.5, y: 6.5 }, { x: 3.5, y: 6.5 }, { x: 4.5, y: 6.5 }, { x: 5.5, y: 6.5 },
+  { x: 6.5, y: 5.5 }, { x: 6.5, y: 4.5 }, { x: 6.5, y: 3.5 }, { x: 6.5, y: 2.5 }, { x: 6.5, y: 1.5 }, { x: 6.5, y: 0.5 },
+  { x: 7.5, y: 0.5 },
+  { x: 8.5, y: 0.5 }, { x: 8.5, y: 1.5 }, { x: 8.5, y: 2.5 }, { x: 8.5, y: 3.5 }, { x: 8.5, y: 4.5 }, { x: 8.5, y: 5.5 },
+  { x: 9.5, y: 6.5 }, { x: 10.5, y: 6.5 }, { x: 11.5, y: 6.5 }, { x: 12.5, y: 6.5 }, { x: 13.5, y: 6.5 }, { x: 14.5, y: 6.5 },
+  { x: 14.5, y: 7.5 },
+];
+
+// BOTTOM_TRACK: Starts from BOTTOM (6.5, 13.5) going up - BLUE uses this
+const BOTTOM_TRACK: { x: number; y: number }[] = [
+  { x: 6.5, y: 13.5 }, { x: 6.5, y: 12.5 }, { x: 6.5, y: 11.5 }, { x: 6.5, y: 10.5 }, { x: 6.5, y: 9.5 },
+  { x: 5.5, y: 8.5 }, { x: 4.5, y: 8.5 }, { x: 3.5, y: 8.5 }, { x: 2.5, y: 8.5 }, { x: 1.5, y: 8.5 }, { x: 0.5, y: 8.5 },
+  { x: 0.5, y: 7.5 },
+  { x: 0.5, y: 6.5 }, { x: 1.5, y: 6.5 }, { x: 2.5, y: 6.5 }, { x: 3.5, y: 6.5 }, { x: 4.5, y: 6.5 }, { x: 5.5, y: 6.5 },
+  { x: 6.5, y: 5.5 }, { x: 6.5, y: 4.5 }, { x: 6.5, y: 3.5 }, { x: 6.5, y: 2.5 }, { x: 6.5, y: 1.5 }, { x: 6.5, y: 0.5 },
+  { x: 7.5, y: 0.5 },
+  { x: 8.5, y: 0.5 }, { x: 8.5, y: 1.5 }, { x: 8.5, y: 2.5 }, { x: 8.5, y: 3.5 }, { x: 8.5, y: 4.5 }, { x: 8.5, y: 5.5 },
+  { x: 9.5, y: 6.5 }, { x: 10.5, y: 6.5 }, { x: 11.5, y: 6.5 }, { x: 12.5, y: 6.5 }, { x: 13.5, y: 6.5 }, { x: 14.5, y: 6.5 },
+  { x: 14.5, y: 7.5 },
+  { x: 14.5, y: 8.5 }, { x: 13.5, y: 8.5 }, { x: 12.5, y: 8.5 }, { x: 11.5, y: 8.5 }, { x: 10.5, y: 8.5 }, { x: 9.5, y: 8.5 },
+  { x: 8.5, y: 9.5 }, { x: 8.5, y: 10.5 }, { x: 8.5, y: 11.5 }, { x: 8.5, y: 12.5 }, { x: 8.5, y: 13.5 }, { x: 8.5, y: 14.5 },
+  { x: 7.5, y: 14.5 },
+];
+
 // Map colors to their correct tracks
 const COLOR_TRACK_COORDS: { [color: string]: { x: number; y: number }[] } = {
   red: LEFT_TRACK,
   green: TOP_TRACK,
+  yellow: RIGHT_TRACK,
+  blue: BOTTOM_TRACK,
 };
 
 // Safe positions (board coordinates) - starting positions and safe spots
 const SAFE_BOARD_POSITIONS = [
   { x: 1.5, y: 6.5 },   // Red start
   { x: 8.5, y: 1.5 },   // Green start
+  { x: 13.5, y: 8.5 },  // Yellow start
+  { x: 6.5, y: 13.5 },  // Blue start
   { x: 2.5, y: 6.5 },   // Near red start (safe spot)
   { x: 8.5, y: 2.5 },   // Near green start (safe spot)
+  { x: 12.5, y: 8.5 },  // Near yellow start (safe spot)
+  { x: 6.5, y: 12.5 },  // Near blue start (safe spot)
 ];
 
 // Get board coordinates for a token position
@@ -1677,54 +1724,52 @@ export const useFriendLudoGame = () => {
     }
   }, [user, toast]);
 
-  // Initialize game when both players are ready
+  // Initialize game when all players are ready (supports 2, 3, or 4 players)
   const initializeGame = async (roomData: RoomData) => {
     if (!user) return;
 
-    const hostColor = 'red';
-    const guestColor = 'green';
+    const playerCount = roomData.player_count || 2;
+    const colorOrder = COLOR_ORDERS[playerCount] || COLOR_ORDERS[2];
+    
+    console.log('[FriendLudo] Initializing game with', playerCount, 'players');
 
-    // Fetch player names and avatars
-    const { data: hostProfile } = await supabase
+    // Fetch all players from ludo_room_players table
+    const { data: roomPlayers, error: playersError } = await supabase
+      .from('ludo_room_players')
+      .select('user_id, player_color, slot_index')
+      .eq('room_id', roomData.id)
+      .order('slot_index', { ascending: true });
+
+    if (playersError || !roomPlayers || roomPlayers.length < playerCount) {
+      console.error('[FriendLudo] Failed to fetch room players:', playersError);
+      return;
+    }
+
+    // Fetch profiles for all players
+    const userIds = roomPlayers.map(p => p.user_id);
+    const { data: profiles } = await supabase
       .from('profiles')
-      .select('username, email, user_code, avatar_url')
-      .eq('id', roomData.host_id)
-      .single();
+      .select('id, username, email, user_code, avatar_url')
+      .in('id', userIds);
 
-    const { data: guestProfile } = await supabase
-      .from('profiles')
-      .select('username, email, user_code, avatar_url')
-      .eq('id', roomData.guest_id!)
-      .single();
-
-    const hostUid = hostProfile?.user_code || Math.floor(10000 + Math.random() * 90000).toString();
-    const guestUid = guestProfile?.user_code || Math.floor(10000 + Math.random() * 90000).toString();
-    // Never fall back to email/phone as display name
-    const hostName = hostProfile?.username || `Player ${hostUid}`;
-    const guestName = guestProfile?.username || `Player ${guestUid}`;
-
-    const players: Player[] = [
-      {
-        id: roomData.host_id,
-        name: hostName,
-        uid: hostUid,
+    // Build players array in color order
+    const players: Player[] = roomPlayers.map((rp, index) => {
+      const profile = profiles?.find(p => p.id === rp.user_id);
+      const uid = profile?.user_code || Math.floor(10000 + Math.random() * 90000).toString();
+      const name = profile?.username || `Player ${uid}`;
+      const color = colorOrder[index];
+      
+      return {
+        id: rp.user_id,
+        name,
+        uid,
         isBot: false,
-        color: hostColor,
-        tokens: createInitialTokens(hostColor),
+        color,
+        tokens: createInitialTokens(color),
         tokensHome: 0,
-        avatar: hostProfile?.avatar_url || undefined
-      },
-      {
-        id: roomData.guest_id!,
-        name: guestName,
-        uid: guestUid,
-        isBot: false,
-        color: guestColor,
-        tokens: createInitialTokens(guestColor),
-        tokensHome: 0,
-        avatar: guestProfile?.avatar_url || undefined
-      }
-    ];
+        avatar: profile?.avatar_url || undefined
+      };
+    });
 
     const gameData: GameStateData = {
       players,
@@ -1738,8 +1783,8 @@ export const useFriendLudoGame = () => {
       .from('ludo_rooms')
       .update({
         status: 'playing',
-        host_color: hostColor,
-        guest_color: guestColor,
+        host_color: colorOrder[0],
+        guest_color: colorOrder[1], // For backward compat - 2nd player's color
         current_turn: 0,
         game_state: gameData as any,
         started_at: new Date().toISOString()
@@ -1748,13 +1793,15 @@ export const useFriendLudoGame = () => {
   };
 
   // Start room (called from FriendMultiplayer when room is created/joined)
-  const startRoom = useCallback((roomId: string, roomCode: string, isHost: boolean, entryAmount: number, rewardAmount: number) => {
+  const startRoom = useCallback((roomId: string, roomCode: string, isHost: boolean, entryAmount: number, rewardAmount: number, playerCount?: number) => {
     // Store room details for reconnection
     lastRoomIdRef.current = roomId;
     lastRoomCodeRef.current = roomCode;
     lastIsHostRef.current = isHost;
     lastEntryAmountRef.current = entryAmount;
     lastRewardAmountRef.current = rewardAmount;
+    
+    console.log('[FriendLudo] Starting room with', playerCount || 2, 'players');
     
     setGameState(prev => ({
       ...prev,
