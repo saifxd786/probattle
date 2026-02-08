@@ -301,7 +301,7 @@ export const usePublicLudoChallenge = () => {
         roomId: roomResult.room_id,
         roomCode: roomResult.room_code,
         entryAmount: roomResult.entry_amount || challenge.entry_amount,
-        rewardAmount: roomResult.reward_amount || (challenge.entry_amount * 2 * 1.5),
+        rewardAmount: roomResult.reward_amount || (challenge.entry_amount * (challenge.player_mode === 4 ? 3 : 1.5)),
       };
     } catch (error: any) {
       console.error('Error accepting challenge:', error);

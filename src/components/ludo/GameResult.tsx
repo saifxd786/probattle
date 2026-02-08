@@ -335,7 +335,7 @@ const GameResult = ({ isWinner, rewardAmount, entryAmount, playerName, onPlayAga
                 {[
                   { icon: Target, label: 'Entry', value: `₹${entryAmount}` },
                   { icon: Trophy, label: 'Prize', value: `₹${rewardAmount}` },
-                  { icon: Zap, label: 'Multiplier', value: '1.5x' },
+                  { icon: Zap, label: 'Multiplier', value: entryAmount > 0 ? `${(rewardAmount / entryAmount).toFixed(1)}x` : '1.5x' },
                 ].map((stat, idx) => (
                   <div
                     key={stat.label}
